@@ -28,7 +28,7 @@ const TributeMessages = ({ obituaryId, comments = [] }) => {
   };
 
   // Quick message templates
-  const quickMessages = ['ॐ शांति 🙏', 'ईश्वर शांति दें 🙏', 'भावपूर्ण श्रद्धांजलि'];
+  const quickMessages = ['Om Shanti 🙏', 'Rest in Peace 🙏', 'Heartfelt Condolences'];
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
@@ -39,10 +39,10 @@ const TributeMessages = ({ obituaryId, comments = [] }) => {
       >
         <span className="text-[18px]">💬</span>
         <h3 className="text-[14px] font-bold" style={{ color: '#7C5C2E' }}>
-          संदेश / श्रद्धांजलि
+          Messages & Condolences
         </h3>
         <span className="ml-auto text-[12px] font-semibold text-gray-400">
-          {comments.length} संदेश
+          {comments.length} Messages
         </span>
       </div>
 
@@ -52,7 +52,7 @@ const TributeMessages = ({ obituaryId, comments = [] }) => {
           <div className="py-10 flex flex-col items-center gap-2">
             <span className="text-[36px]">🕊️</span>
             <p className="text-[13px] text-gray-400 font-medium">
-              श्रद्धांजलि देने वाले पहले बनें
+              Be the first to offer condolences
             </p>
           </div>
         ) : (
@@ -131,7 +131,7 @@ const TributeMessages = ({ obituaryId, comments = [] }) => {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="अपना संदेश लिखें..."
+            placeholder="Write your message..."
             className="flex-1 bg-transparent border-none text-[13px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-0"
           />
           <button

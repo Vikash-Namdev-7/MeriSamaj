@@ -11,37 +11,14 @@ import FeedPage from './FeedPage';
 import GroupsPage from '../groups/GroupsPage';
 import ChatListPage from '../chat/ChatListPage';
 import DirectoryPage from '../directory/DirectoryPage';
+import { DiscoverContent } from './components/DiscoverContent';
 
 // React Icons
 import { FiUsers } from 'react-icons/fi';
 import { HiOutlineChatAlt } from 'react-icons/hi';
 import { MdOutlineGroupAdd } from 'react-icons/md';
 
-const DiscoverContent = () => (
-  <div className="p-5 pb-28">
-    <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl p-6 text-white mb-6 shadow-lg shadow-purple-500/15 border border-purple-400/20">
-      <Compass size={32} className="mb-3 text-white/90" />
-      <h3 className="text-[20px] font-bold tracking-tight">Discover People & Events</h3>
-      <p className="text-[13px] text-white/80 mt-1 font-medium">Find new connections and trending community topics.</p>
-    </div>
-    
-    <h4 className="font-bold text-[15px] text-text-primary mb-3">Suggested Connections</h4>
-    <div className="grid grid-cols-2 gap-3.5">
-      {mockMembers.slice(0, 4).map(user => (
-        <div key={user.id} className="card-neo p-4 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 text-[20px] font-bold mb-2.5 shadow-sm border border-purple-200/20">
-            {user.initials}
-          </div>
-          <h5 className="text-[14px] font-bold text-text-primary line-clamp-1 leading-none">{user.name}</h5>
-          <p className="text-[11px] text-text-secondary mt-1 mb-3.5 font-semibold">{user.city}</p>
-          <button className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-brand-primary text-[11px] font-bold rounded-xl transition-all press-scale">
-            Connect
-          </button>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+
 
 // Custom Tab Icons matching the requested design and React Icons
 const CityFeedIcon = ({ size = 26, isActive }) => (

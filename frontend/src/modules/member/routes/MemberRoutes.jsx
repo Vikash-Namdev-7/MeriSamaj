@@ -32,6 +32,7 @@ import ChatPage from '../pages/social/ChatPage';
 // Phase B Pages
 import GroupDetailPage from '../pages/groups/GroupDetailPage';
 import SocialHubPage from '../pages/social/SocialHubPage';
+import SocialInsightsPage from '../pages/social/SocialInsightsPage';
 import MatrimonialProfilePage from '../pages/matrimonial/MatrimonialProfilePage';
 import MatrimonialSetupPage from '../pages/matrimonial/MatrimonialSetupPage';
 import InterestsPage from '../pages/matrimonial/InterestsPage';
@@ -120,6 +121,7 @@ export const MemberRoutes = () => {
           {/* Main Tabs */}
           <Route path="home" element={<AnimatedPage><HomePage /></AnimatedPage>} />
           <Route path="social" element={<AnimatedPage><SocialHubPage initialTab="feed" /></AnimatedPage>} />
+          <Route path="social/insights" element={<AnimatedPage><SocialInsightsPage /></AnimatedPage>} />
           <Route path="matrimonial" element={<MatrimonialProvider />}>
             <Route index element={<AnimatedPage><MatrimonialHomePage /></AnimatedPage>} />
             <Route path="setup" element={<AnimatedPage><MatrimonialSetupPage /></AnimatedPage>} />

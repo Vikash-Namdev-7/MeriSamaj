@@ -37,9 +37,9 @@ const ShradhanjaliDetailPage = () => {
       <AnimatedPage>
         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
           <span className="text-[56px]">🕊️</span>
-          <p className="text-gray-500 font-medium">पोस्ट नहीं मिली</p>
+          <p className="text-gray-500 font-medium">Post not found</p>
           <button onClick={() => navigate(-1)} className="text-[13px] font-semibold" style={{ color: '#7C5C2E' }}>
-            वापस जाएं
+            Back
           </button>
         </div>
       </AnimatedPage>
@@ -58,7 +58,7 @@ const ShradhanjaliDetailPage = () => {
       try {
         await navigator.share({
           title: obituary.deceasedName,
-          text: `${obituary.deceasedName} की श्रद्धांजलि — MeriSamaj`,
+          text: `${obituary.deceasedName}'s Tribute — MeriSamaj`,
           url: window.location.href
         });
       } catch {
@@ -83,7 +83,7 @@ const ShradhanjaliDetailPage = () => {
             style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: '#D4AF37' }}
           >
             <ArrowLeft size={18} />
-            <span className="text-[13px] font-bold">श्रद्धांजलि</span>
+            <span className="text-[13px] font-bold">Tribute</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ const ShradhanjaliDetailPage = () => {
             {/* Age divider */}
             <div className="flex items-center justify-center gap-2 mb-3">
               <div className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(to right, transparent, rgba(212,175,55,0.5))' }} />
-              <span className="text-[13px] font-semibold text-gray-500">आयु: {obituary.age} वर्ष</span>
+              <span className="text-[13px] font-semibold text-gray-500">Age: {obituary.age} Years</span>
               <div className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(to left, transparent, rgba(212,175,55,0.5))' }} />
             </div>
 
@@ -154,7 +154,7 @@ const ShradhanjaliDetailPage = () => {
               <div className="text-center">
                 <div className="flex items-center gap-1.5 justify-center">
                   <Flower size={13} style={{ color: '#7C5C2E' }} />
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">जन्म</span>
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Birth</span>
                 </div>
                 <p className="text-[13px] font-semibold text-gray-800 mt-0.5">
                   {obituary.birthDate || '—'}
@@ -164,7 +164,7 @@ const ShradhanjaliDetailPage = () => {
               <div className="text-center">
                 <div className="flex items-center gap-1.5 justify-center">
                   <span className="text-[13px]">🕊️</span>
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">निधन</span>
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Passing</span>
                 </div>
                 <p className="text-[13px] font-semibold text-gray-800 mt-0.5">
                   {obituary.dateOfPassing}
@@ -227,7 +227,7 @@ const ShradhanjaliDetailPage = () => {
                   }}
                 >
                   <Phone size={12} />
-                  संपर्क
+                  Contact
                 </a>
               )}
             </motion.div>
@@ -258,7 +258,7 @@ const ShradhanjaliDetailPage = () => {
                   <Eye size={14} className="text-gray-400" />
                   <span className="text-[13px] font-bold text-gray-700">{formatCount(obituary.views)}</span>
                 </div>
-                <span className="text-[10px] text-gray-400">देखा गया</span>
+                <span className="text-[10px] text-gray-400">Views</span>
               </div>
               <div className="w-px h-8 bg-gray-100" />
               <button
@@ -269,7 +269,7 @@ const ShradhanjaliDetailPage = () => {
                   <Share2 size={14} className="text-gray-400" />
                   <span className="text-[13px] font-bold text-gray-700">{formatCount(obituary.shares)}</span>
                 </div>
-                <span className="text-[10px] text-gray-400">शेयर</span>
+                <span className="text-[10px] text-gray-400">Shares</span>
               </button>
               <div className="w-px h-8 bg-gray-100" />
               <button
@@ -287,7 +287,7 @@ const ShradhanjaliDetailPage = () => {
                   className="text-[10px]"
                   style={{ color: obituary.isSaved ? '#7C5C2E' : '#9CA3AF' }}
                 >
-                  {obituary.isSaved ? 'सेव किया' : 'सेव करें'}
+                  {obituary.isSaved ? 'Saved' : 'Save'}
                 </span>
               </button>
             </div>

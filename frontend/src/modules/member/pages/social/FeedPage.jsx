@@ -7,6 +7,7 @@ import { useData } from '../../context/DataProvider';
 import { PostSkeleton } from '../../components/common/Skeleton';
 import { StoryViewer } from '../../components/common/StoryViewer';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
+import { FeedAnalytics } from './components/FeedAnalytics';
 
 // Local translation dictionary for Feed Redesign
 const localT = {
@@ -509,6 +510,9 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
         </div>
       )}
       
+      {/* ─── FEED ANALYTICS ─── */}
+      <FeedAnalytics />
+
       <div className="px-4.5 pt-4">
         {/* ─── SEARCH & FILTER CONTAINER ─── */}
         <div className="flex items-center gap-3 mb-4">

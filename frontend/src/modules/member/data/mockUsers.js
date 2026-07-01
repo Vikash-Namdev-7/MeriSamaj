@@ -22,6 +22,18 @@ export const currentUser = {
     { id: 'f2', name: 'Aarav Agrawal', relation: 'Son', age: 8, avatar: null, initials: 'AA' },
     { id: 'f3', name: 'Priya Agrawal', relation: 'Daughter', age: 5, avatar: null, initials: 'PA' },
   ],
+  // Analytics and Social Stats
+  stats: {
+    posts: 42,
+    videos: 12,
+    images: 128,
+    followers: 1240,
+    following: 350,
+    likesReceived: '12.4k',
+    commentsReceived: 856,
+    profileVisits: '3.2k',
+  },
+  followingList: ['m1', 'm3'], // IDs of members the current user is following
 };
 
 export const mockMembers = [

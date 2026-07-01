@@ -6,9 +6,9 @@ import { useData } from '../../context/DataProvider';
 import { AnimatedPage } from '../../components/layout/AnimatedPage';
 
 const FILTER_TABS = [
-  { id: 'all', label: 'सभी' },
-  { id: 'recent', label: 'हाल के' },
-  { id: 'ceremony', label: 'आने वाले संस्कार' },
+  { id: 'all', label: 'All' },
+  { id: 'recent', label: 'Recent' },
+  { id: 'ceremony', label: 'Upcoming Ceremonies' },
 ];
 
 const formatCount = (n) => {
@@ -39,16 +39,7 @@ const MemorialCard = ({ obituary, index }) => {
           src={obituary.image}
           alt={obituary.deceasedName}
           className="w-full h-full object-cover"
-          style={{ objectPosition: 'top center', opacity: 0.72 }}
-        />
-
-        {/* Gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(to top, rgba(18,8,0,0.92) 0%, rgba(0,0,0,0.18) 55%, rgba(0,0,0,0.32) 100%)',
-          }}
+          style={{ objectPosition: 'top center' }}
         />
 
         {/* Om Shanti badge */}
@@ -61,7 +52,7 @@ const MemorialCard = ({ obituary, index }) => {
             border: '1px solid rgba(212,175,55,0.3)',
           }}
         >
-          🪔 ॐ शांति
+          🪔 Om Shanti
         </div>
 
         {/* Floral corners */}
@@ -84,15 +75,15 @@ const MemorialCard = ({ obituary, index }) => {
 
         {/* Age + dates */}
         <p className="text-[12px] mb-1" style={{ color: 'rgba(212,175,55,0.8)' }}>
-          {obituary.age > 0 ? `आयु: ${obituary.age} वर्ष` : ''}
+          {obituary.age > 0 ? `Age: ${obituary.age} Years` : ''}
           {obituary.age > 0 && obituary.dateOfPassing ? ' • ' : ''}
-          {obituary.dateOfPassing ? `निधन: ${obituary.dateOfPassing}` : ''}
+          {obituary.dateOfPassing ? `Passing: ${obituary.dateOfPassing}` : ''}
         </p>
 
         {/* Birth date */}
         {obituary.birthDate && (
           <p className="text-[11px] mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            🌸 जन्म: {obituary.birthDate}
+            🌸 Birth: {obituary.birthDate}
           </p>
         )}
 
@@ -112,6 +103,7 @@ const MemorialCard = ({ obituary, index }) => {
             border: '1px solid rgba(212,175,55,0.13)',
           }}
         >
+          {/* Alignment stats */}
           {/* Haath Jode */}
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[18px]">🙏</span>
@@ -119,7 +111,7 @@ const MemorialCard = ({ obituary, index }) => {
               {formatCount(obituary.haathJodeCount ?? obituary.shraddhanjaliCount)}
             </span>
             <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
-              हाथ जोड़े
+              Folded Hands
             </span>
           </div>
 
@@ -132,7 +124,7 @@ const MemorialCard = ({ obituary, index }) => {
               {formatCount(obituary.malaArpanCount)}
             </span>
             <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
-              माला अर्पण
+              Garland
             </span>
           </div>
 
@@ -145,7 +137,7 @@ const MemorialCard = ({ obituary, index }) => {
               {formatCount(obituary.views)}
             </span>
             <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
-              देखा गया
+              Views
             </span>
           </div>
         </div>
@@ -227,7 +219,7 @@ const ShradhanjaliHomePage = () => {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="नाम से खोजें..."
+                  placeholder="Search by name..."
                   className="flex-1 bg-transparent border-none text-[14px] text-gray-900 placeholder-amber-900/40 focus:outline-none font-medium"
                 />
                 {search && (
@@ -247,7 +239,7 @@ const ShradhanjaliHomePage = () => {
                 <span className="text-[20px]">🪔</span>
                 <div>
                   <h1 className="text-[16px] font-bold leading-tight" style={{ color: '#7C5C2E' }}>
-                    श्रद्धांजलि
+                    Obituary
                   </h1>
                   <p className="text-[10px] text-gray-400">Om Shanti</p>
                 </div>
@@ -312,7 +304,7 @@ const ShradhanjaliHomePage = () => {
         {filtered.length > 0 && (
           <div className="flex items-center justify-between pt-1 pb-1">
             <span className="text-[13px] font-semibold text-gray-400">
-              {filtered.length} श्रद्धांजलि पोस्ट
+              {filtered.length} Obituary Posts
             </span>
           </div>
         )}
@@ -329,10 +321,10 @@ const ShradhanjaliHomePage = () => {
             className="flex flex-col items-center gap-3 py-20"
           >
             <span className="text-[64px]">🕊️</span>
-            <p className="text-[16px] font-bold text-gray-500">कोई श्रद्धांजलि नहीं मिली</p>
+            <p className="text-[16px] font-bold text-gray-500">No obituaries found</p>
             {search && (
               <p className="text-[13px] text-gray-400 text-center">
-                "{search}" के लिए कोई परिणाम नहीं है
+                No results for "{search}"
               </p>
             )}
           </motion.div>
@@ -351,7 +343,7 @@ const ShradhanjaliHomePage = () => {
         }}
       >
         <Plus size={20} strokeWidth={2.5} />
-        <span>श्रद्धांजलि पोस्ट करें</span>
+        <span>Post Obituary</span>
       </motion.button>
     </AnimatedPage>
   );

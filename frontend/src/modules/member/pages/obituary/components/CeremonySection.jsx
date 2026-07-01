@@ -20,7 +20,7 @@ const CeremonySection = ({ funeralDetails }) => {
         className="text-[13px] font-bold uppercase tracking-wider mb-3"
         style={{ color: '#7C5C2E' }}
       >
-        {funeralDetails.type || 'उठावना / चौथा'}
+        {funeralDetails.type || 'Funeral / Ceremony'}
       </h3>
 
       {/* Details row */}
@@ -35,7 +35,7 @@ const CeremonySection = ({ funeralDetails }) => {
           <span className="text-[12px] font-semibold text-gray-800 leading-tight">
             {funeralDetails.date}
           </span>
-          <span className="text-[10px] text-gray-500">तारीख</span>
+          <span className="text-[10px] text-gray-500">Date</span>
         </div>
 
         <div className="flex flex-col items-center gap-1 text-center">
@@ -48,7 +48,7 @@ const CeremonySection = ({ funeralDetails }) => {
           <span className="text-[12px] font-semibold text-gray-800 leading-tight">
             {funeralDetails.time}
           </span>
-          <span className="text-[10px] text-gray-500">से प्रारंभ</span>
+          <span className="text-[10px] text-gray-500">Starts At</span>
         </div>
 
         <div className="flex flex-col items-center gap-1 text-center">
@@ -62,7 +62,7 @@ const CeremonySection = ({ funeralDetails }) => {
             {funeralDetails.venue?.split(',')[0]}
           </span>
           <span className="text-[10px] text-gray-500 line-clamp-1">
-            {funeralDetails.venue?.split(',').slice(1).join(',').trim() || 'स्थान'}
+            {funeralDetails.venue?.split(',').slice(1).join(',').trim() || 'Venue'}
           </span>
         </div>
       </div>

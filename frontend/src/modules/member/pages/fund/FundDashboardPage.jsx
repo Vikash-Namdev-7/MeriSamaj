@@ -201,13 +201,13 @@ export default function FundDashboardPage() {
           </div>
           
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-rose-50/20 p-3 rounded-2xl border border-rose-100/15">
-              <p className="text-[10px] font-bold text-rose-550 uppercase tracking-wider mb-1">Total Expenses</p>
-              <p className="text-[15px] font-black text-rose-650">₹ {totalExpenses.toLocaleString('en-IN')}</p>
-            </div>
             <div className="bg-purple-50/30 p-3 rounded-2xl border border-purple-100/15">
               <p className="text-[10px] font-bold text-brand-primary uppercase tracking-wider mb-1">Available Bal.</p>
               <p className="text-[15px] font-black text-brand-dark">₹ {availableBalance.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="bg-rose-50/20 p-3 rounded-2xl border border-rose-100/15">
+              <p className="text-[10px] font-bold text-rose-550 uppercase tracking-wider mb-1">Total Expenses</p>
+              <p className="text-[15px] font-black text-rose-650">₹ {totalExpenses.toLocaleString('en-IN')}</p>
             </div>
           </div>
         </div>

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package } from 'lucide-react';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
+import { ActivityDashboard } from './components/ActivityDashboard';
+import { AnimatePresence } from 'framer-motion';
 
 const MyProfilePage = () => {
   const navigate = useNavigate();
@@ -36,6 +38,9 @@ const MyProfilePage = () => {
 
   // Privacy Settings Modal State
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  
+  // Activity Dashboard State
+  const [showActivityDashboard, setShowActivityDashboard] = useState(false);
   
   const userGranular = granularPrivacy?.u1 || granularPrivacy || {};
   const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.u1 || 'public');
@@ -274,6 +279,23 @@ const MyProfilePage = () => {
         {/* Profile Menu Actions List */}
         <div className="px-4">
           <div className="card-neo overflow-hidden divide-y divide-purple-100/20">
+            {/* Action 0: Activity Dashboard */}
+            <button 
+              onClick={() => setShowActivityDashboard(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-glow text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Activity size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Activity Dashboard</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">View your engagement and growth</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
             {/* Action 1: Personal Info */}
             <button 
               onClick={() => navigate('/member/profile/edit')}
@@ -651,6 +673,12 @@ const MyProfilePage = () => {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showActivityDashboard && (
+          <ActivityDashboard onClose={() => setShowActivityDashboard(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

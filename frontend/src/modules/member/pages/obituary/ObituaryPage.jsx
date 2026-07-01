@@ -28,7 +28,7 @@ const ObituaryPage = () => {
 
   return (
     <AnimatedPage>
-      <PageHeader title="श्रद्धांजलि (Om Shanti)" />
+      <PageHeader title="Tribute (Om Shanti)" />
 
       <div className="pt-20 pb-28 px-5 max-w-lg mx-auto space-y-5">
         {obituaries.map((ob, idx) => (
@@ -41,7 +41,7 @@ const ObituaryPage = () => {
           >
             {/* Watermark */}
             <div className="absolute top-4 right-4 text-[60px] leading-none text-gray-50/50 select-none pointer-events-none font-serif">
-              ॐ
+              Om
             </div>
 
             {/* Photo & Header */}

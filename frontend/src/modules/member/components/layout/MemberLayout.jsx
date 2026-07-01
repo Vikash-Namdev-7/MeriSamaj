@@ -5,7 +5,7 @@ import { SideNav } from './SideNav';
 import { useData } from '../../context/DataProvider';
 import { 
   Home, Users, Heart, BookOpen, MessageCircle, User, Vote, 
-  HeartHandshake, Briefcase, Shield, X, LogOut, Award, Mail
+  HeartHandshake, Briefcase, Shield, X, LogOut, Award, Mail, Settings
 } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
 
@@ -36,6 +36,7 @@ export const MemberLayout = () => {
     { name: 'Professional Network', path: '/member/professional', icon: Briefcase },
     { name: 'Leadership & Board', path: '/member/leadership', icon: Shield },
     { name: 'My Profile', path: '/member/profile', icon: User },
+    { name: 'Settings', path: '/member/settings', icon: Settings },
   ];
 
   return (

@@ -3,13 +3,13 @@ import { motion } from 'framer-motion';
 
 /**
  * StepWizard — Shows step progress for the multi-step create form.
- * Steps: जानकारी → तस्वीर → विवरण → समीक्षा
+ * Steps: Info -> Photo -> Details -> Review
  */
 const STEPS = [
-  { id: 1, label: 'जानकारी' },
-  { id: 2, label: 'तस्वीर' },
-  { id: 3, label: 'विवरण' },
-  { id: 4, label: 'समीक्षा' },
+  { id: 1, label: 'Info' },
+  { id: 2, label: 'Photo' },
+  { id: 3, label: 'Details' },
+  { id: 4, label: 'Review' },
 ];
 
 const StepWizard = ({ currentStep = 1 }) => {

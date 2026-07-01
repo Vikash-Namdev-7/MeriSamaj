@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2, MapPin, Calendar, Clock, Heart, Users, Check, X } from 'lucide-react';
+import { ChevronLeft, Share2, MapPin, Calendar, Clock, Heart, Users, Check, X, Phone } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 
@@ -41,13 +41,13 @@ export default function NimantranDetailPage() {
 
   if (!inv) return <div className="p-10 text-center">Invitation not found.</div>;
 
-  const currentRSVP = inv.rsvps.find(r => r.memberId === currentUser.id)?.status;
+  const currentRSVP = (inv.rsvps || []).find(r => r.memberId === currentUser.id)?.status;
 
   const handleRSVP = (status) => {
     updateInvitationRSVP(inv.id, status);
   };
 
-  const rsvpMembers = inv.rsvps.map(r => {
+  const rsvpMembers = (inv.rsvps || []).map(r => {
     const m = members.find(mem => mem.id === r.memberId);
     return m ? { ...m, status: r.status } : null;
   }).filter(Boolean);

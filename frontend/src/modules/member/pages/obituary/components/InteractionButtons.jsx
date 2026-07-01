@@ -76,7 +76,7 @@ const InteractionButtons = ({
             className="text-[13px] font-bold"
             style={{ color: userHasHaathJode ? '#7C5C2E' : '#374151' }}
           >
-            हाथ जोड़ें
+            Folded Hands
           </span>
           <span
             className="text-[12px] font-semibold"
@@ -106,7 +106,7 @@ const InteractionButtons = ({
             className="text-[13px] font-bold"
             style={{ color: userHasMalaArpan ? '#9F1239' : '#374151' }}
           >
-            माला अर्पण करें
+            Offer Garland
           </span>
           <span
             className="text-[12px] font-semibold"
@@ -147,13 +147,13 @@ const InteractionButtons = ({
                   className="flex flex-col items-center gap-3 py-4"
                 >
                   <span className="text-[56px]">🪷</span>
-                  <p className="text-[18px] font-bold text-gray-900">माला अर्पित हो गई!</p>
-                  <p className="text-[13px] text-gray-500">आपकी {malaQty} माला अर्पण हो गई</p>
+                  <p className="text-[18px] font-bold text-gray-900">Garland Offered!</p>
+                  <p className="text-[13px] text-gray-500">Your {malaQty} Garland(s) offered</p>
                 </motion.div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-[18px] font-bold text-gray-900">माला अर्पण करें</h3>
+                    <h3 className="text-[18px] font-bold text-gray-900">Offer Garland</h3>
                     <button
                       onClick={() => setMalaModal(false)}
                       className="p-1.5 rounded-full bg-gray-100 text-gray-500"
@@ -162,7 +162,7 @@ const InteractionButtons = ({
                     </button>
                   </div>
                   <p className="text-[13px] text-gray-500 mb-6">
-                    आपके श्रद्धा भाव के लिए धन्यवाद
+                    Thank you for your thoughts.
                   </p>
 
                   {/* Mala emoji large */}
@@ -204,7 +204,7 @@ const InteractionButtons = ({
                       boxShadow: '0 4px 14px rgba(244,63,94,0.3)'
                     }}
                   >
-                    माला अर्पित करें 🪷
+                    Offer Garland 🪷
                   </button>
                 </>
               )}

@@ -15,17 +15,7 @@ const TributeHeroImage = ({ src, alt, deceasedName }) => {
         style={{ objectPosition: 'top center' }}
       />
 
-      {/* Top gradient overlay */}
-      <div
-        className="absolute inset-x-0 top-0 h-24"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)' }}
-      />
 
-      {/* Bottom gradient overlay */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-32"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
-      />
 
       {/* Om Shanti badge — top left */}
       <div
@@ -38,7 +28,7 @@ const TributeHeroImage = ({ src, alt, deceasedName }) => {
         }}
       >
         <span>🪔</span>
-        <span>ॐ शांति</span>
+        <span>Om Shanti</span>
       </div>
 
       {/* Decorative floral corners (SVG emoji overlay) */}
