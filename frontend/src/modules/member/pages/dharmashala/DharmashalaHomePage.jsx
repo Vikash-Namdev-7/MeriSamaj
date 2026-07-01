@@ -75,8 +75,8 @@ export default function DharmashalaHomePage() {
 
       <div className="flex-1 overflow-y-auto">
         {/* Search Bar */}
-        <div className="p-4 bg-white/40 backdrop-blur-md border-b border-purple-100/20">
-          <div className="relative">
+        <div className="p-4 bg-white/40 backdrop-blur-md border-b border-purple-100/20 flex gap-3 items-center">
+          <div className="relative flex-1">
             <input 
               type="text" 
               placeholder="धर्मशाला खोजें..." 
@@ -86,6 +86,12 @@ export default function DharmashalaHomePage() {
             />
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" />
           </div>
+          <button 
+            onClick={() => navigate('/member/dharmashala/bookings')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3.5 rounded-2xl font-bold text-[12.5px] shadow-sm shrink-0 transition-all press-scale"
+          >
+            मेरी बुकिंग्स
+          </button>
         </div>
 
         {/* List */}
@@ -130,15 +136,7 @@ export default function DharmashalaHomePage() {
         </div>
       </div>
       
-      {/* Floating Action Button for My Bookings */}
-      <div className="fixed bottom-20 right-4 z-40">
-        <button 
-          onClick={() => navigate('/member/dharmashala/bookings')}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-full font-bold text-[13px] shadow-lg flex items-center gap-2 press-scale hover:bg-indigo-700"
-        >
-          मेरी बुकिंग्स
-        </button>
-      </div>
+
 
       {/* Filter Modal */}
       {showFilterModal && (

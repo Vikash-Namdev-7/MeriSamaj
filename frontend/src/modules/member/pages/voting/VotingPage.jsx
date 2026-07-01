@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataProvider';
 import { 
@@ -8,7 +9,8 @@ import {
   Menu, 
   Bell,
   ClipboardList,
-  ChevronRight
+  ChevronRight,
+  Clock
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Avatar } from '../../components/common/Avatar';
@@ -23,6 +25,31 @@ const VotingPage = () => {
   const activeElections = elections.filter(e => e.status === 'Active');
   const firstActiveElection = activeElections.find(e => e.id === 'el1');
   const pastElections = elections.filter(e => e.status === 'Completed');
+
+  const [timeLeft, setTimeLeft] = useState(15); // 15 seconds countdown
+  const [isVotingEnded, setIsVotingEnded] = useState(false);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setIsVotingEnded(true);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return [
+      hrs.toString().padStart(2, '0'),
+      mins.toString().padStart(2, '0'),
+      secs.toString().padStart(2, '0')
+    ].join(':');
+  };
 
   // Hardcoded real-time results matching the bottom-middle block of reference design
   const simulatedResults = [
@@ -304,8 +331,27 @@ const VotingPage = () => {
           <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
             <div className="border-b border-gray-100 pb-2.5 flex justify-between items-center">
               <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">रियल टाइम रिजल्ट</h3>
-              <span className="text-[9px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded">एडमिन</span>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${isVotingEnded ? 'bg-red-55 text-red-600 border border-red-100' : 'bg-purple-50 text-purple-700'}`}>
+                {isVotingEnded ? 'वोटिंग समाप्त' : 'लाइव'}
+              </span>
             </div>
+
+            {/* Countdown Banner */}
+            {!isVotingEnded ? (
+              <div className="bg-purple-50/50 border border-purple-100/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center space-y-1">
+                <span className="text-[10px] text-purple-750 font-extrabold uppercase tracking-wider flex items-center gap-1.5 justify-center">
+                  <Clock size={12} className="animate-pulse" /> परिणाम घोषित होने में समय
+                </span>
+                <span className="text-[15px] font-black text-purple-950 font-mono tracking-widest">
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+            ) : (
+              <div className="bg-emerald-50/50 border border-emerald-100/40 rounded-2xl p-2.5 flex items-center justify-center gap-1.5 text-center text-[10px] text-emerald-700 font-bold">
+                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                <span>वोटिंग समाप्त हो चुकी है। अंतिम परिणाम नीचे हैं।</span>
+              </div>
+            )}
 
             <div className="space-y-3.5 my-2">
               {simulatedResults.map((candidate, idx) => (
@@ -315,13 +361,17 @@ const VotingPage = () => {
                       <Avatar initials={candidate.initials} src={candidate.avatar} size="sm" />
                       <span className="font-bold text-text-primary">{candidate.name}</span>
                     </div>
-                    <span className="text-text-secondary font-semibold">{candidate.votes} ({candidate.percentage}%)</span>
+                    {isVotingEnded ? (
+                      <span className="text-text-secondary font-semibold">{candidate.votes} ({candidate.percentage}%)</span>
+                    ) : (
+                      <span className="text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-[6px]">गुप्त</span>
+                    )}
                   </div>
                   {/* Progress Bar */}
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full ${candidate.color} rounded-full`} 
-                      style={{ width: `${candidate.percentage}%` }}
+                      className={`h-full ${candidate.color} rounded-full transition-all duration-1000 ease-out`} 
+                      style={{ width: `${isVotingEnded ? candidate.percentage : 0}%` }}
                     />
                   </div>
                 </div>

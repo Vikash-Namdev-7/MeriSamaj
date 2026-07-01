@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -24,9 +24,38 @@ const PollDetailPage = () => {
   const navigate = useNavigate();
   const { elections, votedElections, castVote, getElectionResult } = useVoting();
   
-  // Find election
   const election = elections.find(e => e.id === pollId);
-  
+
+  const [timeLeft, setTimeLeft] = useState(15);
+  const [isVotingEnded, setIsVotingEnded] = useState(election ? election.status === 'Completed' : false);
+
+  useEffect(() => {
+    if (!election) return;
+    if (election.status === 'Completed') {
+      setIsVotingEnded(true);
+      return;
+    }
+    if (timeLeft <= 0) {
+      setIsVotingEnded(true);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft, election]);
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return [
+      hrs.toString().padStart(2, '0'),
+      mins.toString().padStart(2, '0'),
+      secs.toString().padStart(2, '0')
+    ].join(':');
+  };
+
   // States: 'details' | 'vote' | 'success' | 'results'
   const [viewState, setViewState] = useState(() => {
     if (!election) return 'details';
@@ -304,6 +333,23 @@ const PollDetailPage = () => {
               </p>
             </div>
 
+            {/* Countdown Banner */}
+            {!isVotingEnded ? (
+              <div className="bg-purple-50/50 border border-purple-100/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-xs">
+                <span className="text-[10px] text-purple-750 font-extrabold uppercase tracking-wider flex items-center gap-1.5 justify-center">
+                  <Clock size={12} className="animate-pulse" /> परिणाम घोषित होने में समय
+                </span>
+                <span className="text-[16px] font-black text-purple-950 font-mono tracking-widest">
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+            ) : (
+              <div className="bg-emerald-50/50 border border-emerald-100/40 rounded-2xl p-3 flex items-center justify-center gap-1.5 text-center text-[10px] text-emerald-700 font-bold shadow-xs">
+                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                <span>वोटिंग समाप्त हो चुकी है। अंतिम परिणाम नीचे हैं।</span>
+              </div>
+            )}
+
             {/* Results Progress List */}
             <div className="space-y-3">
               {results.map((candidate) => {
@@ -321,8 +367,8 @@ const PollDetailPage = () => {
                     <div 
                       className={`absolute top-0 bottom-0 left-0 ${
                         isUserChoice ? 'bg-emerald-500/10' : 'bg-purple-600/5'
-                      } z-0 pointer-events-none`}
-                      style={{ width: `${candidate.percentage}%` }}
+                      } z-0 pointer-events-none transition-all duration-1000 ease-out`}
+                      style={{ width: `${isVotingEnded ? candidate.percentage : 0}%` }}
                     />
                     
                     <div className="relative z-10 flex items-center justify-between gap-4">
@@ -344,8 +390,14 @@ const PollDetailPage = () => {
                       </div>
 
                       <div className="text-right shrink-0">
-                        <div className="text-sm font-extrabold text-purple-900">{candidate.percentage}%</div>
-                        <div className="text-[10px] text-text-secondary">{candidate.votes} वोट</div>
+                        {isVotingEnded ? (
+                          <>
+                            <div className="text-sm font-extrabold text-purple-900">{candidate.percentage}%</div>
+                            <div className="text-[10px] text-text-secondary">{candidate.votes} वोट</div>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-[6px] text-[10px]">गुप्त</span>
+                        )}
                       </div>
                     </div>
                   </div>

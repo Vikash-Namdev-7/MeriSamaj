@@ -70,6 +70,18 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
+
+  /* ── Dropdown / Select — consistent font sizing ── */
+  select {
+    font-size: 14px;
+    font-family: var(--font-sans);
+  }
+
+  select option {
+    font-size: 14px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
 }
 
 /* ─── PREMIUM UTILITY CLASSES ─── */

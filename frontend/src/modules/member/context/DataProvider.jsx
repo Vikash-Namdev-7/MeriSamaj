@@ -1272,6 +1272,16 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
+  const addNotification = (notificationData) => {
+    const newNotification = {
+      id: `nd-${Date.now()}`,
+      time: 'Just now',
+      isRead: false,
+      ...notificationData
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  };
+
   const getNotificationsForModule = (moduleName) => {
     return adaptedNotificationsList.filter(n => getNotificationModule(n.type) === moduleName);
   };
@@ -1389,6 +1399,7 @@ export const DataProvider = ({ children }) => {
     sendGroupMessage,
     createGroup,
     markAllNotificationsRead,
+    addNotification,
     getNotificationsForModule,
     getUnreadCountForModule,
     getNotificationModule,

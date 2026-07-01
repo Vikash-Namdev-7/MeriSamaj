@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Plus, Wallet, IndianRupee, Users, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Plus, Wallet, IndianRupee, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { useFund } from '../../context/FundContext';
 
 export default function FundListingPage() {
@@ -58,13 +58,6 @@ export default function FundListingPage() {
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-1 bg-purple-50/20 p-4 rounded-2xl border border-purple-100/20 relative overflow-hidden">
-              <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-brand-primary">
-                <Wallet size={80} />
-              </div>
-              <p className="text-[11px] font-bold text-text-secondary mb-1 uppercase tracking-wide">Total Expected</p>
-              <p className="text-[18px] font-black text-text-primary leading-none">₹ {overallExpected.toLocaleString('en-IN')}</p>
-            </div>
             <div className="flex-1 bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50 relative overflow-hidden">
               <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-emerald-950">
                 <TrendingUp size={80} />
@@ -72,21 +65,28 @@ export default function FundListingPage() {
               <p className="text-[11px] font-bold text-emerald-600 mb-1 uppercase tracking-wide">Total Collected</p>
               <p className="text-[18px] font-black text-emerald-700 leading-none">₹ {overallCollected.toLocaleString('en-IN')}</p>
             </div>
+            <div className="flex-1 bg-purple-50/20 p-4 rounded-2xl border border-purple-100/20 relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-brand-primary">
+                <Wallet size={80} />
+              </div>
+              <p className="text-[11px] font-bold text-text-secondary mb-1 uppercase tracking-wide">Total Expected</p>
+              <p className="text-[18px] font-black text-text-primary leading-none">₹ {overallExpected.toLocaleString('en-IN')}</p>
+            </div>
           </div>
 
           <div className="flex justify-between items-center bg-purple-50/10 p-4 rounded-2xl border border-purple-100/20 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100">
-                <Users size={18} />
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100">
+                <AlertCircle size={18} />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-text-secondary leading-tight">Total Contributors</p>
-                <p className="text-[15px] font-bold text-text-primary mt-0.5">{overallContributors.size} Members</p>
+                <p className="text-[11px] font-bold text-text-secondary leading-tight">Total Pending</p>
+                <p className="text-[14px] font-bold text-rose-650 mt-0.5">₹ {overallPending.toLocaleString('en-IN')}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-bold text-text-secondary leading-tight mb-0.5">Total Pending</p>
-              <p className="text-[14px] font-bold text-rose-650">₹ {overallPending.toLocaleString('en-IN')}</p>
+              <p className="text-[11px] font-bold text-text-secondary leading-tight mb-0.5">Total Contributors</p>
+              <p className="text-[13px] font-extrabold text-text-primary">{overallContributors.size} Members</p>
             </div>
           </div>
           

@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle2, Clock, MapPin, X, Info } from 'lucide-react';
-import { mockDharamshalas } from '../../data/mockDharmashala';
+import { mockDharamshalas, mockBookings } from '../../data/mockDharmashala';
+import { useData } from '../../context/DataProvider';
 
 export default function DharmashalaBookingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addNotification } = useData();
   const dh = mockDharamshalas.find(d => d.id === id) || mockDharamshalas[0];
   
   const [selectedDate, setSelectedDate] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [checkInTime, setCheckInTime] = useState('10:00');
   const [checkOutTime, setCheckOutTime] = useState('10:00');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Initialize and load bookings from localStorage
+  const [bookings, setBookings] = useState(() => {
+    const saved = localStorage.getItem('merisamaj_dharmashala_bookings');
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem('merisamaj_dharmashala_bookings', JSON.stringify(mockBookings));
+    return mockBookings;
+  });
 
   // Fallback images if single image
   const galleryImages = [
@@ -40,9 +51,54 @@ export default function DharmashalaBookingPage() {
       default: return 'bg-transparent text-slate-700';
     }
   };
+  const handleConfirmBooking = () => {
+    const checkInDateStr = `2024-06-${selectedDate?.day.toString().padStart(2, '0')}`;
+    const checkOutDateStr = `2024-06-${(selectedDate?.day + 1).toString().padStart(2, '0')}`;
 
+    const newBooking = {
+      id: `DH${Date.now().toString().slice(-8)}`,
+      dharmashalaId: dh.id,
+      dharmashalaName: dh.name,
+      location: dh.location,
+      status: 'pending_approval',
+      checkIn: checkInDateStr,
+      checkOut: checkOutDateStr,
+      nights: 1,
+      totalAmount: dh.hasAcRooms ? 1500 : 1000,
+      bookedBy: 'Rahul Sharma',
+      phone: '9876543210',
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime
+    };
+
+    const updated = [newBooking, ...bookings];
+    setBookings(updated);
+    localStorage.setItem('merisamaj_dharmashala_bookings', JSON.stringify(updated));
+
+    setShowConfirmModal(false);
+    setShowSuccessModal(true);
+
+    // Simulate Admin Approval in 8 seconds
+    setTimeout(() => {
+      const stored = JSON.parse(localStorage.getItem('merisamaj_dharmashala_bookings') || '[]');
+      const updatedStored = stored.map(b => {
+        if (b.id === newBooking.id) {
+          return { ...b, status: 'approved' };
+        }
+        return b;
+      });
+      localStorage.setItem('merisamaj_dharmashala_bookings', JSON.stringify(updatedStored));
+      
+      // Trigger notification
+      addNotification({
+        type: 'community',
+        title: 'धर्मशाला बुकिंग स्वीकृत',
+        message: `${dh.name} के लिए आपका बुकिंग अनुरोध स्वीकृत हो गया है। कृपया भुगतान पूरा करें।`,
+      });
+    }, 8000);
+  };
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-24 font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-24 font-sans overflow-x-hidden max-w-full">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center justify-between sticky top-0 z-30 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
@@ -81,31 +137,32 @@ export default function DharmashalaBookingPage() {
         </div>
 
         {/* Calendar Card */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <button className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronLeft size={20} /></button>
             <h3 className="font-bold text-[15px] text-indigo-700">जून 2024</h3>
             <button className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronRight size={20} /></button>
           </div>
 
-          <div className="grid grid-cols-7 gap-y-4 gap-x-2 text-center mb-2">
+          <div className="grid grid-cols-7 gap-y-1.5 text-center mb-2">
             {['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'].map(d => (
-              <div key={d} className="text-[11px] font-bold text-slate-400">{d}</div>
+              <div key={d} className="text-[10px] font-bold text-slate-400 py-1">{d}</div>
             ))}
             
             {/* Empty slots for start of month */}
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={`e${i}`} className="text-[12px] text-slate-300 py-1">{25 + i}</div>
+              <div key={`e${i}`} className="text-[11px] text-slate-300 flex items-center justify-center aspect-square">{25 + i}</div>
             ))}
 
             {days.map(d => (
-              <button 
-                key={d.day}
-                onClick={() => setSelectedDate(d)}
-                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-[12px] transition-all ${getStatusColor(d.status)} ${selectedDate?.day === d.day ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
-              >
-                {d.day}
-              </button>
+              <div key={d.day} className="flex items-center justify-center">
+                <button 
+                  onClick={() => setSelectedDate(d)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-all ${getStatusColor(d.status)} ${selectedDate?.day === d.day ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
+                >
+                  {d.day}
+                </button>
+              </div>
             ))}
           </div>
 
@@ -194,10 +251,39 @@ export default function DharmashalaBookingPage() {
               </button>
               <div className="w-px bg-slate-100" />
               <button 
-                onClick={() => navigate('/member/dharmashala/bookings')}
+                onClick={handleConfirmBooking}
                 className="flex-1 py-4 text-[14px] font-bold text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
               >
                 हाँ, कन्फर्म करें
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center pt-8">
+              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Clock size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 mb-2">अनुरोध भेजा गया!</h3>
+              <p className="text-[13px] text-slate-500 leading-relaxed font-semibold px-2 mb-4">
+                Your booking request has been successfully sent to the admin. Please wait until the admin reviews and approves your request.
+              </p>
+              <div className="bg-purple-50/50 rounded-2xl p-3 text-[11px] font-bold text-purple-700 leading-relaxed mt-2 border border-purple-100">
+                💡 <span className="text-purple-900">संकेत:</span> सिमुलेटर चालू है! 8 सेकंड में एडमिन इसे स्वीकृत करेगा और आपको नोटिफिकेशन मिलेगा।
+              </div>
+            </div>
+            
+            <div className="flex border-t border-slate-100">
+              <button 
+                onClick={() => navigate('/member/dharmashala/bookings')}
+                className="flex-1 py-4 text-[14px] font-black text-indigo-650 bg-indigo-50/30 hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
+              >
+                मेरी बुकिंग्स देखें
               </button>
             </div>
           </div>

@@ -2322,6 +2322,17 @@ const MatrimonialHomePage = () => {
         style={{ height: 'max(env(safe-area-inset-bottom, 0px) + 56px, 60px)' }}
       >
         <div className="flex items-center justify-around h-14">
+          {/* Home Tab */}
+          <button
+            onClick={() => navigate('/member/home')}
+            className="flex flex-col items-center justify-center flex-1 h-full relative transition-all text-slate-400 hover:text-rose-500"
+          >
+            <div className="flex flex-col items-center">
+              <Home size={20} className="stroke-[2.2]" />
+              <span className="text-[10px] mt-0.5 font-bold">Home</span>
+            </div>
+          </button>
+
           {/* Matches Tab */}
           <button
             onClick={() => { setActiveBottomTab('matches'); setCurrentSubView(null); }}
