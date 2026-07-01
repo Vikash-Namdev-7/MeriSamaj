@@ -1,0 +1,529 @@
+import React, { useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, MapPin, Clock, Users, CheckCircle, Share2, CalendarDays, Heart, Phone, MessageCircle, ExternalLink, ChevronRight, Star, Bookmark, BookmarkCheck, Bell, BellOff, X, Image, User, Ticket, ChevronDown } from 'lucide-react';
+import { Avatar } from '../../components/common/Avatar';
+import { useData } from '../../context/DataProvider';
+import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
+
+const categoryConfig = {
+  Cultural: { hi: 'सांस्कृतिक', emoji: '🎭', gradient: 'from-purple-500 to-violet-600', lightBg: 'bg-purple-50', lightText: 'text-purple-700' },
+  Education: { hi: 'शिक्षा', emoji: '📚', gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50', lightText: 'text-blue-700' },
+  Matrimonial: { hi: 'वैवाहिक', emoji: '💍', gradient: 'from-pink-500 to-rose-600', lightBg: 'bg-pink-50', lightText: 'text-pink-700' },
+  Health: { hi: 'स्वास्थ्य', emoji: '🏥', gradient: 'from-emerald-500 to-teal-600', lightBg: 'bg-emerald-50', lightText: 'text-emerald-700' },
+  Sports: { hi: 'खेल', emoji: '🏆', gradient: 'from-orange-500 to-amber-600', lightBg: 'bg-orange-50', lightText: 'text-orange-700' },
+};
+
+const mockAttendees = [
+  { initials: 'RA', name: 'राजेश अ.' },
+  { initials: 'KA', name: 'कविता अ.' },
+  { initials: 'SM', name: 'सुरेश म.' },
+  { initials: 'AG', name: 'अनिता ग.' },
+  { initials: 'DS', name: 'दीपक श.' },
+  { initials: 'VJ', name: 'विकास ज.' },
+  { initials: 'PK', name: 'प्रियंका क.' },
+];
+
+const EventDetailPage = () => {
+  const { eventId } = useParams();
+  const navigate = useNavigate();
+  const { events, toggleEventRSVP, eventReminders, toggleEventReminder, eventRegistrations, registerForEvent } = useData();
+  const attendeesRef = useDraggableScroll();
+  const galleryRef = useDraggableScroll();
+
+  const event = events.find(e => e.id === eventId);
+  const [isInterested, setIsInterested] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+
+  // RSVP Registration Modal State
+  const [showRSVPModal, setShowRSVPModal] = useState(false);
+  const [rsvpStep, setRsvpStep] = useState(1); // 1: form | 2: success
+  const [rsvpForm, setRsvpForm] = useState({ name: '', phone: '', attendees: '1' });
+  const [rsvpErrors, setRsvpErrors] = useState({});
+
+  // Toast for reminder
+  const [showReminderToast, setShowReminderToast] = useState(false);
+  const [reminderToastMsg, setReminderToastMsg] = useState('');
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: event.title,
+        text: event.description,
+        url: window.location.href
+      }).catch(err => console.log(err));
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
+
+  const handleReminderToggle = () => {
+    if (!event) return;
+    toggleEventReminder(event.id);
+    const isNowSet = !eventReminders[event.id];
+    setReminderToastMsg(isNowSet ? 'रिमाइंडर सेट किया गया' : 'रिमाइंडर हटाया गया');
+    setShowReminderToast(true);
+    setTimeout(() => setShowReminderToast(false), 2500);
+  };
+
+  const handleRSVPSubmit = () => {
+    const errors = {};
+    if (!rsvpForm.name.trim()) errors.name = true;
+    if (!rsvpForm.phone.trim() || rsvpForm.phone.replace(/\D/g,'').length < 10) errors.phone = true;
+    if (Object.keys(errors).length > 0) {
+      setRsvpErrors(errors);
+      return;
+    }
+    registerForEvent(event.id, rsvpForm);
+    setRsvpStep(2);
+  };
+
+  if (!event) return null;
+
+  const isReminderSet = !!(eventReminders && eventReminders[event.id]);
+  const registration = eventRegistrations && eventRegistrations[event.id];
+  const isRegistered = !!(registration || event.isRegistered);
+
+  // Gallery images: use event-specific gallery or fallback to category-based photos
+  const galleryImages = event.gallery || [
+    'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
+    'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80',
+    'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&q=80',
+    'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&q=80',
+    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&q=80',
+    'https://images.unsplash.com/photo-1607190074257-dd4b7af0309f?w=800&q=80',
+  ];
+
+  const config = categoryConfig[event.category] || categoryConfig.Cultural;
+
+  return (
+    <div className="min-h-screen bg-[#f5f6fa] pb-32">
+      {/* ─── Hero Banner ─── */}
+      <div className="relative bg-gray-900">
+        <div className="h-[240px] relative overflow-hidden bg-gray-900">
+          {/* Event Image / Gradient Background */}
+          {event.image ? (
+            <img 
+              src={event.image} 
+              alt={event.title} 
+              className="absolute inset-0 w-full h-full object-cover opacity-80"
+            />
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-90`} />
+          )}
+          
+          {/* Decorative background elements (only if no image) */}
+          {!event.image && (
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-6 right-6">
+                <CalendarDays size={120} className="text-white" />
+              </div>
+              <div className="absolute bottom-4 left-4">
+                <CalendarDays size={60} className="text-white rotate-12" />
+              </div>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
+          {/* Top Nav */}
+          <div className="relative z-10 flex items-center justify-between px-4 pt-5">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform border border-white/20"
+            >
+              <ArrowLeft size={20} className="text-white" />
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsBookmarked(!isBookmarked)}
+                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform border border-white/20"
+              >
+                {isBookmarked ? <BookmarkCheck size={18} className="text-amber-300" fill="currentColor" /> : <Bookmark size={18} className="text-white" />}
+              </button>
+              <button 
+                onClick={handleReminderToggle}
+                className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform border ${
+                  isReminderSet
+                    ? 'bg-amber-400/30 border-amber-300/40'
+                    : 'bg-white/15 border-white/20'
+                }`}
+              >
+                {isReminderSet ? <Bell size={18} className="text-amber-300" fill="currentColor" /> : <Bell size={18} className="text-white" />}
+              </button>
+              <button 
+                onClick={handleShare}
+                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform border border-white/20"
+              >
+                <Share2 size={18} className="text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Category Badge */}
+          <div className="absolute bottom-4 right-4 z-10">
+            <span className="bg-white/20 backdrop-blur-md text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full border border-white/20">
+              {config.emoji} {config.hi}
+            </span>
+          </div>
+        </div>
+
+        {/* Date Badge - Overlapping */}
+        <div className="absolute bottom-[-24px] left-5 z-20">
+          <div className="w-[64px] h-[72px] bg-white rounded-2xl shadow-lg flex flex-col items-center justify-center border border-gray-100">
+            <span className="text-[24px] font-black text-gray-900 leading-none">{event.day}</span>
+            <span className="text-[11px] font-bold text-brand-primary mt-0.5">{event.month}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Event Title Card ─── */}
+      <div className="px-4 pt-8 pb-1">
+        <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100">
+          <h1 className="text-[20px] font-extrabold text-gray-900 leading-snug">{event.title}</h1>
+          {event.titleEn && (
+            <p className="text-[12px] text-gray-400 font-medium mt-1">{event.titleEn}</p>
+          )}
+
+          {/* Quick Info Row */}
+          <div className="flex flex-col gap-2.5 mt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <CalendarDays size={15} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-gray-800">{event.weekday}, {event.day} {event.month}</p>
+                <p className="text-[11px] text-gray-500">{event.date}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                <Clock size={15} className="text-orange-600" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-gray-800">{event.time}</p>
+                <p className="text-[11px] text-gray-500">{event.timeEn}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <MapPin size={15} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-gray-800">{event.venue}</p>
+                {event.venueEn && <p className="text-[11px] text-gray-500">{event.venueEn}</p>}
+              </div>
+            </div>
+
+            {event.entryFee && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+                  <Star size={15} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-gray-800">प्रवेश: {event.entryFee}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Participation Stats ─── */}
+      <div className="px-4 pt-3">
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+            <p className="text-[20px] font-black text-brand-primary leading-none">{event.interested || event.attendees}+</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">रुचि रखने वाले</p>
+          </div>
+          <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+            <p className="text-[20px] font-black text-emerald-600 leading-none">{event.attendees}+</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">शामिल हो चुके</p>
+          </div>
+          <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+            <p className="text-[20px] font-black text-orange-500 leading-none">{event.daysRemaining || '–'}</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">दिन शेष</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── About Event ─── */}
+      <div className="px-4 pt-4">
+        <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+          <h3 className="text-[15px] font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            📋 इवेंट के बारे में
+          </h3>
+          <p className="text-[13px] text-gray-600 leading-relaxed">{event.description}</p>
+
+          <div className="mt-4 space-y-3.5 border-t border-gray-100 pt-4">
+            {event.objectiveHi && (
+              <div className="flex gap-3">
+                <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
+                <div className="flex-1">
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">इवेंट का उद्देश्य</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.objectiveHi}</p>
+                </div>
+              </div>
+            )}
+
+            {event.programsHi && event.programsHi.length > 0 && (
+              <div className="flex gap-3">
+                <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
+                <div className="flex-1">
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">क्या-क्या कार्यक्रम होंगे</h4>
+                  <div className="grid grid-cols-1 gap-1 mt-1.5 pl-0.5">
+                    {event.programsHi.map((prog, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-[12px] text-gray-600">
+                        <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                        <span>{prog}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {event.audienceHi && (
+              <div className="flex gap-3">
+                <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
+                <div className="flex-1">
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">किसके लिए इवेंट है</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.audienceHi}</p>
+                </div>
+              </div>
+            )}
+
+            {event.importantInfoHi && (
+              <div className="flex gap-3">
+                <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
+                <div className="flex-1">
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">महत्वपूर्ण जानकारी</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.importantInfoHi}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {event.tags && event.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 border-t border-gray-50 pt-3">
+              {event.tags.map((tag, i) => (
+                <span key={i} className="text-[10px] font-bold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Organizer ─── */}
+      {event.organizer && (
+        <div className="px-4 pt-3">
+          <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+            <h3 className="text-[15px] font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+              👤 आयोजक
+            </h3>
+            <div className="flex items-center gap-3">
+              <Avatar initials={event.organizer.initials} size="lg" color="bg-brand-primary/10 text-brand-primary border-2 border-brand-primary/20" />
+              <div className="flex-1">
+                <h4 className="text-[14px] font-bold text-gray-900">{event.organizer.name}</h4>
+                <p className="text-[12px] text-gray-500 font-medium">{event.organizer.role}</p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => window.open(`tel:${event.contact || '9876543210'}`)}
+                  className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center active:scale-90 transition-transform border border-blue-100"
+                >
+                  <Phone size={15} className="text-blue-600" />
+                </button>
+                <button 
+                  onClick={() => window.open(`https://wa.me/${(event.contact || '9876543210').replace(/[^0-9]/g, '')}`)}
+                  className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center active:scale-90 transition-transform border border-emerald-100"
+                >
+                  <MessageCircle size={15} className="text-emerald-600" />
+                </button>
+              </div>
+            </div>
+            {event.contact && (
+              <div className="mt-3 pt-3 border-t border-gray-50">
+                <p className="text-[12px] text-gray-500 flex items-center gap-2">
+                  <Phone size={12} className="text-gray-400" />
+                  संपर्क: <span className="font-bold text-gray-700">{event.contact}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Attendees ─── */}
+      <div className="px-4 pt-3">
+        <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-extrabold text-gray-900 flex items-center gap-2">
+              👥 शामिल सदस्य
+            </h3>
+            <span 
+              onClick={() => setShowAttendeesModal(true)}
+              className="text-[12px] text-brand-primary font-bold flex items-center gap-1 active:scale-95 cursor-pointer"
+            >
+              सभी देखें <ChevronRight size={14} />
+            </span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1" ref={attendeesRef}>
+            {mockAttendees.map((a, i) => (
+              <div key={i} className="shrink-0 flex flex-col items-center w-[56px]">
+                <Avatar initials={a.initials} size="md" />
+                <p className="text-[10px] text-gray-500 font-medium mt-1.5 truncate w-full text-center">{a.name}</p>
+              </div>
+            ))}
+            <div className="shrink-0 flex flex-col items-center justify-center w-[56px]">
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-500">
+                +{Math.max(0, event.attendees - 7)}
+              </div>
+              <p className="text-[10px] text-gray-400 font-medium mt-1.5">और</p>
+            </div>
+          </div>
+
+          {/* Stacked Avatars Preview */}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+            <div className="flex -space-x-2">
+              {mockAttendees.slice(0, 4).map((a, i) => (
+                <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 border-2 border-white flex items-center justify-center text-[8px] font-bold text-brand-primary">
+                  {a.initials}
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-500">
+              <span className="font-bold text-gray-700">{mockAttendees[0].name}</span> और <span className="font-bold text-gray-700">{event.attendees - 1} अन्य</span> शामिल हो चुके हैं
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Location Map Placeholder ─── */}
+      <div className="px-4 pt-3">
+        <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
+          <div className="p-5 pb-3">
+            <h3 className="text-[15px] font-extrabold text-gray-900 flex items-center gap-2">
+              📍 स्थान
+            </h3>
+          </div>
+          <div className="h-[140px] bg-gradient-to-br from-blue-50 to-emerald-50 mx-4 mb-3 rounded-2xl flex items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20">
+              {/* Map grid pattern */}
+              <div className="w-full h-full" style={{
+                backgroundImage: 'linear-gradient(to right, #9ca3af 1px, transparent 1px), linear-gradient(to bottom, #9ca3af 1px, transparent 1px)',
+                backgroundSize: '24px 24px'
+              }} />
+            </div>
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 mb-2">
+                <MapPin size={20} className="text-white" fill="currentColor" />
+              </div>
+              <p className="text-[11px] text-gray-600 font-bold text-center px-4">{event.venue}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(event.venue)}`, '_blank')}
+            className="w-full py-3 text-[12px] font-bold text-blue-600 flex items-center justify-center gap-1 border-t border-gray-50 active:bg-gray-50"
+          >
+            <ExternalLink size={13} /> Google Maps में खोलें
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Bottom CTA ─── */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-100 p-4 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex gap-3">
+          {/* Interest Button */}
+          <button
+            onClick={() => setIsInterested(!isInterested)}
+            className={`flex-1 py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border ${
+              isInterested
+                ? 'bg-pink-50 text-pink-600 border-pink-200'
+                : 'bg-gray-50 text-gray-600 border-gray-200'
+            }`}
+          >
+            <Heart size={16} fill={isInterested ? 'currentColor' : 'none'} />
+            {isInterested ? 'रुचि दिखाई' : 'रुचि दिखाएं'}
+          </button>
+
+          {/* Register/RSVP Button */}
+          <button
+            onClick={() => toggleEventRSVP(event.id)}
+            className={`flex-[1.5] py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${
+              event.isRegistered
+                ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                : 'bg-brand-primary text-white shadow-brand-primary/20'
+            }`}
+          >
+            {event.isRegistered ? (
+              <><CheckCircle size={16} /> शामिल हो चुके</>
+            ) : (
+              <>शामिल हों</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ─── SHARE TOAST POPUP ─── */}
+      {showShareToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[12px] font-bold shadow-lg animate-fade-in flex items-center gap-1.5">
+          <CheckCircle size={14} className="text-emerald-400" /> Link copied to clipboard!
+        </div>
+      )}
+
+      {/* ─── ATTENDEES LIST MODAL ─── */}
+      {showAttendeesModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center animate-fade-in" onClick={() => setShowAttendeesModal(false)}>
+          <div className="bg-white rounded-t-[28px] max-w-lg w-full h-[60vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 shrink-0" />
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
+              <h3 className="text-[15.5px] font-black text-gray-900">शामिल सदस्य (Attendees)</h3>
+              <button 
+                onClick={() => setShowAttendeesModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-50 px-5">
+              {mockAttendees.map((a, idx) => (
+                <div key={idx} className="py-3.5 flex items-center gap-3">
+                  <Avatar initials={a.initials} size="md" />
+                  <div>
+                    <h4 className="text-[13.5px] font-bold text-gray-900">{a.name}</h4>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Community Member</p>
+                  </div>
+                </div>
+              ))}
+              {[
+                { initials: 'MK', name: 'मनोज कुमार' },
+                { initials: 'SS', name: 'संजय सिंह' },
+                { initials: 'VP', name: 'विजय पटेल' },
+                { initials: 'NS', name: 'नवीन शर्मा' }
+              ].map((a, idx) => (
+                <div key={idx + 10} className="py-3.5 flex items-center gap-3">
+                  <Avatar initials={a.initials} size="md" />
+                  <div>
+                    <h4 className="text-[13.5px] font-bold text-gray-900">{a.name}</h4>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Community Member</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+export default EventDetailPage;

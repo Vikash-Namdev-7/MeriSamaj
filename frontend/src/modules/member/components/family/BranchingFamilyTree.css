@@ -1,0 +1,72 @@
+/* CSS Family Tree Structure */
+.css-tree ul {
+  padding-top: 25px;
+  position: relative;
+  transition: all 0.5s;
+  display: flex;
+  justify-content: center;
+}
+
+.css-tree li {
+  float: left;
+  text-align: center;
+  list-style-type: none;
+  position: relative;
+  padding: 25px 10px 0 10px;
+  transition: all 0.5s;
+}
+
+/* Connecting vertical/horizontal lines */
+.css-tree li::before, .css-tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  border-top: 2px solid #e2e8f0; /* Soft gray line */
+  width: 50%;
+  height: 25px;
+}
+
+.css-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid #e2e8f0;
+}
+
+/* Fix single children and ends */
+.css-tree li:only-child::after, .css-tree li:only-child::before {
+  display: none;
+}
+
+.css-tree li:only-child {
+  padding-top: 0;
+}
+
+.css-tree li:first-child::before, .css-tree li:last-child::after {
+  border: 0 none;
+}
+
+.css-tree li:last-child::before {
+  border-right: 2px solid #e2e8f0;
+  border-radius: 0 8px 0 0;
+}
+
+.css-tree li:first-child::after {
+  border-radius: 8px 0 0 0;
+}
+
+/* Parent vertical drops */
+.css-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #e2e8f0;
+  width: 0;
+  height: 25px;
+  margin-left: -1px;
+}
+
+.tree-node-container {
+  display: inline-block;
+}
