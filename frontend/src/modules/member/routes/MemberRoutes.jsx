@@ -7,6 +7,8 @@ import { AnimatedPage } from '../components/layout/AnimatedPage';
 // Onboarding
 import SplashScreen from '../pages/onboarding/SplashScreen';
 import LoginScreen from '../pages/onboarding/LoginScreen';
+import RegisterScreen from '../pages/onboarding/RegisterScreen';
+import OnboardingScreen from '../pages/onboarding/OnboardingScreen';
 
 // Main Tab Pages
 import HomePage from '../pages/home/HomePage';
@@ -113,6 +115,8 @@ export const MemberRoutes = () => {
         {/* Onboarding — no bottom nav */}
         <Route path="splash" element={<SplashScreen />} />
         <Route path="login" element={<LoginScreen />} />
+        <Route path="register" element={<RegisterScreen />} />
+        <Route path="onboarding" element={<OnboardingScreen />} />
 
         {/* Main App — with bottom nav */}
         <Route path="/" element={<MemberLayout />}>

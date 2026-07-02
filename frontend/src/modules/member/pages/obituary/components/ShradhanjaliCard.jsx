@@ -39,6 +39,7 @@ const ShradhanjaliCard = ({ obituary, index = 0 }) => {
           <div
             className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px]"
             style={{ background: 'rgba(30,20,10,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}
+          >
             Om
           </div>
         </div>

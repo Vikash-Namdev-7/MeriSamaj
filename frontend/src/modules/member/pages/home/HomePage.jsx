@@ -129,6 +129,79 @@ const HomePage = () => {
       {/* Spacer */}
       <div className="h-4" />
 
+      {/* ─── PROFILE COMPLETION CARD ─── */}
+      {(() => {
+        const getRemainingProfileSections = (user) => {
+          if (!user) return [];
+          const remaining = [];
+          if (!user.qualification && !user.school) remaining.push({ name: 'Education Details', step: 'onboarding-5' });
+          if (!user.profession && !user.company) remaining.push({ name: 'Profession Details', step: 'onboarding-6' });
+          if (!user.detailedAddress && !user.houseNumber) remaining.push({ name: 'Address Details', step: 'onboarding-7' });
+          if (!user.isAadharVerified && !user.isFaceVerified) remaining.push({ name: 'Verification', step: 'onboarding-10' });
+          if (!user.prefEducation && !user.prefAge) remaining.push({ name: 'Partner Preferences', step: 'onboarding-11' });
+          return remaining;
+        };
+
+        const calculateCompletionForUser = (user) => {
+          if (!user) return 0;
+          let pct = 0;
+          pct += 15; // Mobile verified
+          if (user.community && user.subCommunity && user.pincode) pct += 15;
+          if (user.name && user.gender) pct += 20;
+          if (user.qualification || user.school) pct += 10;
+          if (user.profession || user.company) pct += 10;
+          if (user.houseNumber || user.detailedAddress || user.alternatePhone) pct += 10;
+          if (user.familyMembers && user.familyMembers.length > 0) pct += 10;
+          if (user.isAadharVerified || user.isFaceVerified || user.prefEducation || user.prefAge) pct += 10;
+          return Math.min(pct, 100);
+        };
+
+        const remainingSections = getRemainingProfileSections(currentUser);
+        const totalCount = remainingSections.length;
+        const compPct = calculateCompletionForUser(currentUser);
+
+        if (totalCount === 0) return null;
+
+        return (
+          <div className="px-5 mb-4 animate-fade-in-up">
+            <div className="bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#5B21B6] rounded-[24px] p-4 text-white shadow-[0_8px_30px_rgb(124,58,237,0.15)] relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 w-28 h-28 bg-white/5 rounded-full blur-xl" />
+              <div className="absolute left-1/3 top-0 w-20 h-20 bg-purple-300/10 rounded-full blur-xl" />
+              
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center shrink-0 border border-white/10">
+                  <Sparkles size={18} className="text-purple-200 animate-pulse" />
+                </div>
+                
+                <div className="flex-1 min-w-0 text-left">
+                  <h3 className="text-xs font-black tracking-tight leading-tight">Complete Your Profile</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-1.5 w-24 bg-white/20 rounded-full overflow-hidden">
+                      <div className="h-full bg-teal-400 rounded-full" style={{ width: `${compPct}%` }} />
+                    </div>
+                    <span className="text-[10px] font-bold text-purple-200">{compPct}% done</span>
+                  </div>
+                  <p className="text-[9px] text-purple-205/70 font-semibold mt-1 truncate">
+                    {totalCount} section{totalCount !== 1 ? 's' : ''} remaining (Education, Profession, etc.)
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const firstRemainingStep = remainingSections[0].step;
+                    localStorage.setItem('merisamaj_onboarding_resume_step', firstRemainingStep);
+                    navigate('/member/onboarding');
+                  }}
+                  className="bg-white hover:bg-slate-50 text-brand-primary text-[11px] font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1 shrink-0 transition-all press-scale shadow-sm"
+                >
+                  Continue <ArrowRight size={13} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ─── INTERACTIVE HIGHLIGHTS MODULE ─── */}
       <div className="px-5 mt-3 relative z-10 flex gap-3">
         {/* Invitations (Nimantran) */}
