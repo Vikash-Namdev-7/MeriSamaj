@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Star, CheckCircle, Phone, MessageCircle, MapPin, Share2 } from 'lucide-react';
+import { ArrowLeft, Star, CheckCircle, Phone, MessageCircle, MapPin, Share2, X } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import useProfessionalDirectory from '../../hooks/useProfessionalDirectory';
 
@@ -9,6 +9,7 @@ const ProfessionalDetailPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useData();
   const { listings, isLoading, error } = useProfessionalDirectory(currentUser?.communityId || 'default');
+  const [selectedMedia, setSelectedMedia] = useState(null);
 
   // Find the specific professional by ID
   const activeProfessional = listings.find(p => p.id === id);
@@ -103,6 +104,49 @@ const ProfessionalDetailPage = () => {
           </div>
         )}
 
+        {/* Photos & Videos Gallery */}
+        {activeProfessional.media && activeProfessional.media.length > 0 && (
+          <div className="space-y-2.5">
+            <h4 className="text-[12px] font-black text-gray-400 uppercase tracking-wider">Photos & Videos</h4>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {activeProfessional.media.map((media, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={() => setSelectedMedia(media)}
+                  className="w-[220px] h-[138px] rounded-3xl overflow-hidden border border-gray-100 bg-white shrink-0 shadow-sm relative group flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                >
+                  {media.type === 'video' ? (
+                    <>
+                      <video 
+                        src={media.url} 
+                        className="w-full h-full object-cover pointer-events-none" 
+                        muted
+                        playsInline
+                      />
+                      <div className="absolute inset-0 bg-black/25 flex items-center justify-center group-hover:bg-black/35 transition-colors">
+                        <div className="w-11 h-11 rounded-full bg-white/95 flex items-center justify-center shadow-md transform group-hover:scale-110 transition-transform">
+                          <svg className="w-5 h-5 text-indigo-650 fill-current translate-x-[1px]" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <img 
+                      src={media.url} 
+                      alt="Business gallery" 
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
+                  <span className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-md text-[8px] font-extrabold text-white px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 pointer-events-none">
+                    {media.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Working Hours & Address */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm space-y-1">
@@ -148,6 +192,47 @@ const ProfessionalDetailPage = () => {
           Message
         </button>
       </div>
+
+      {/* Lightbox / Full-screen Media Viewer */}
+      {selectedMedia && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-4 animate-fade-in"
+          onClick={() => setSelectedMedia(null)}
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setSelectedMedia(null)}
+            className="absolute top-5 right-5 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md press-scale border border-white/10 z-[110] transition-colors"
+          >
+            <X size={24} />
+          </button>
+          
+          {/* Media container */}
+          <div 
+            className="w-full max-w-3xl max-h-[80vh] flex items-center justify-center relative select-none animate-zoom-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedMedia.type === 'video' ? (
+              <video 
+                src={selectedMedia.url} 
+                controls 
+                autoPlay
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl" 
+                playsInline
+              />
+            ) : (
+              <img 
+                src={selectedMedia.url} 
+                alt="Full size view" 
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl animate-fade-in"
+              />
+            )}
+          </div>
+          
+          {/* Bottom helper text */}
+          <p className="text-white/60 text-xs font-semibold mt-4 tracking-wide">Tap anywhere outside to close</p>
+        </div>
+      )}
     </div>
   );
 };

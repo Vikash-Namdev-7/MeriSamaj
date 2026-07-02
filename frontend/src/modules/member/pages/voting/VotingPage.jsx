@@ -51,12 +51,12 @@ const VotingPage = () => {
     ].join(':');
   };
 
-  // Hardcoded real-time results matching the bottom-middle block of reference design
+  // Translated names for simulated results
   const simulatedResults = [
-    { name: "राजेश शर्मा", votes: "1,253", percentage: 28, color: "bg-emerald-500", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", initials: "RS" },
-    { name: "सुरेश यादव", votes: "2,145", percentage: 48, color: "bg-purple-600", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face", initials: "SY" },
-    { name: "मनीष गुप्ता", votes: "876", percentage: 19, color: "bg-amber-500", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face", initials: "MG" },
-    { name: "अजय सिंह", votes: "266", percentage: 5, color: "bg-rose-500", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face", initials: "AS" }
+    { name: "Rajesh Sharma", votes: "1,253", percentage: 28, color: "bg-emerald-500", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", initials: "RS" },
+    { name: "Suresh Yadav", votes: "2,145", percentage: 48, color: "bg-purple-600", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face", initials: "SY" },
+    { name: "Manish Gupta", votes: "876", percentage: 19, color: "bg-amber-500", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face", initials: "MG" },
+    { name: "Ajay Singh", votes: "266", percentage: 5, color: "bg-rose-500", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face", initials: "AS" }
   ];
 
   return (
@@ -67,7 +67,7 @@ const VotingPage = () => {
           <button onClick={() => setMobileMenuOpen(true)} className="p-1 -ml-1 press-scale">
             <Menu size={22} className="text-text-primary" />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">जय समाज</h1>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">Samaj Voting</h1>
         </div>
         <button onClick={() => navigate('/member/notifications?module=voting')} className="p-1 press-scale relative">
           <Bell size={22} className="text-text-primary" />
@@ -86,16 +86,16 @@ const VotingPage = () => {
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-4 max-w-[65%]">
               <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">समाज चुनाव</h2>
+                <h2 className="text-xl font-bold text-white tracking-tight">Samaj Elections</h2>
                 <p className="text-xs text-purple-100/80 leading-relaxed mt-1">
-                  अपने समाज के उज्जवल भविष्य के लिए वोट करें
+                  Vote for the bright future of your community
                 </p>
               </div>
               <button 
                 onClick={() => navigate('/member/voting/el1')}
                 className="bg-white text-purple-900 text-xs font-bold px-5 py-2.5 rounded-xl shadow-md press-scale hover:bg-purple-50 transition-all hover:shadow-lg"
               >
-                अभी वोट करें
+                Vote Now
               </button>
             </div>
             
@@ -123,12 +123,12 @@ const VotingPage = () => {
         {activeElections.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary">जल्द आ रहे चुनाव</h3>
+              <h3 className="text-sm font-bold text-text-primary">Upcoming Elections</h3>
               <button 
                 onClick={() => navigate('/member/voting/list')}
                 className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center cursor-pointer"
               >
-                सभी देखें &gt;
+                View All &gt;
               </button>
             </div>
             
@@ -151,7 +151,7 @@ const VotingPage = () => {
                     </div>
                   </div>
                   <Badge variant="warning" className="text-[10px] font-bold uppercase !px-2.5 !py-1">
-                    चालू है
+                    Active
                   </Badge>
                 </div>
               ))}
@@ -162,7 +162,7 @@ const VotingPage = () => {
         {/* 4. Horizontal Candidates Section (उम्मीदवार matching Screen 1) */}
         {firstActiveElection && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-text-primary">उम्मीदवार</h3>
+            <h3 className="text-sm font-bold text-text-primary">Candidates</h3>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {firstActiveElection.candidates.map(candidate => (
                 <div 
@@ -193,8 +193,8 @@ const VotingPage = () => {
         {/* 5. Process Flow Section (वोटिंग करने की प्रक्रिया matching middle section) */}
         <div className="bg-card rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
           <div className="border-b border-gray-100 pb-3">
-            <h3 className="text-sm font-bold text-text-primary">वोटिंग करने की प्रक्रिया</h3>
-            <p className="text-[10px] text-text-secondary">सरल चरणों में समाज निर्वाचन में अपना योगदान दें।</p>
+            <h3 className="text-sm font-bold text-text-primary">Voting Process</h3>
+            <p className="text-[10px] text-text-secondary">Contribute to community elections in simple steps.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-1">
@@ -215,7 +215,7 @@ const VotingPage = () => {
 
         {/* 6. List of Elections (चुनाव सूची matching Screen 3) */}
         <div className="space-y-3">
-          <h3 id="election-list-section" className="text-sm font-bold text-text-primary pt-2 scroll-mt-4">चुनाव सूची</h3>
+          <h3 id="election-list-section" className="text-sm font-bold text-text-primary pt-2 scroll-mt-4">Election List</h3>
           
           {/* Active List */}
           {activeElections.map(active => (
@@ -226,12 +226,12 @@ const VotingPage = () => {
             >
               {votedElections[active.id] && (
                 <div className="absolute right-0 top-0 bg-emerald-600 text-white text-[9px] font-bold uppercase py-0.5 px-3 rounded-bl-lg flex items-center gap-0.5">
-                  वोट किया
+                  Voted
                 </div>
               )}
               <div className="flex justify-between items-start mb-2">
                 <h4 className="text-xs font-bold text-purple-900">{active.title}</h4>
-                <Badge variant="warning" className="text-[9px] font-bold">चालू है</Badge>
+                <Badge variant="warning" className="text-[9px] font-bold">Active</Badge>
               </div>
               <p className="text-[10px] text-text-secondary">
                 {active.startDate} - {active.endDate}
@@ -241,7 +241,7 @@ const VotingPage = () => {
 
           {/* Past Elections */}
           <div className="space-y-2">
-            <h4 className="text-[11px] font-bold text-text-secondary uppercase tracking-wider pt-2">पिछले चुनाव</h4>
+            <h4 className="text-[11px] font-bold text-text-secondary uppercase tracking-wider pt-2">Past Elections</h4>
             {pastElections.map(past => (
               <div 
                 key={past.id}
@@ -255,13 +255,12 @@ const VotingPage = () => {
                   </p>
                 </div>
                 <Badge variant="default" className="text-[9px] font-bold bg-gray-200 text-gray-700">
-                  समाप्त
+                  Completed
                 </Badge>
               </div>
             ))}
           </div>
         </div>
-
 
         {/* Surveys & Polls Entry Card */}
         <div
@@ -274,7 +273,7 @@ const VotingPage = () => {
                 <ClipboardList size={24} className="text-white" />
               </div>
               <div>
-                <h3 className="text-[15px] font-black text-white">सर्वे और पोल</h3>
+                <h3 className="text-[15px] font-black text-white">Surveys &amp; Polls</h3>
                 <p className="text-[12px] text-white/70 mt-0.5">Community Surveys &amp; Opinion Polls</p>
               </div>
             </div>
@@ -283,17 +282,17 @@ const VotingPage = () => {
           <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/10">
             <div className="text-center">
               <p className="text-[18px] font-black text-white leading-none">4</p>
-              <p className="text-[9px] text-white/60 font-bold mt-0.5">कुल सर्वे</p>
+              <p className="text-[9px] text-white/60 font-bold mt-0.5">Total Surveys</p>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div className="text-center">
               <p className="text-[18px] font-black text-amber-300 leading-none">3</p>
-              <p className="text-[9px] text-white/60 font-bold mt-0.5">चालू</p>
+              <p className="text-[9px] text-white/60 font-bold mt-0.5">Active</p>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div className="flex-1 text-right">
               <span className="bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full">
-                भाग लें →
+                Participate →
               </span>
             </div>
           </div>
@@ -302,10 +301,10 @@ const VotingPage = () => {
         {/* 7. Bottom Sections Grid: Guidelines, Results & Security */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Important Information (महत्वपूर्ण जानकारी matching bottom-left) */}
+          {/* Important Information */}
           <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4 flex flex-col justify-between">
             <div className="border-b border-gray-100 pb-2.5">
-              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">महत्वपूर्ण जानकारी</h3>
+              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Important Information</h3>
             </div>
             
             <div className="space-y-3.5 my-2">
@@ -323,16 +322,16 @@ const VotingPage = () => {
             
             <div className="bg-amber-50 rounded-xl p-2.5 border border-amber-100 text-[10px] text-amber-700 flex gap-1.5 items-start mt-2">
               <AlertTriangle size={13} className="text-amber-600 shrink-0 mt-0.5" />
-              <span>सभी नियम समाज कल्याण परिषद द्वारा स्वीकृत हैं।</span>
+              <span>All rules are approved by the Social Welfare Council.</span>
             </div>
           </div>
 
-          {/* Real-time Results (रियल टाइम रिजल्ट matching bottom-middle) */}
+          {/* Real-time Results */}
           <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
             <div className="border-b border-gray-100 pb-2.5 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">रियल टाइम रिजल्ट</h3>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${isVotingEnded ? 'bg-red-55 text-red-600 border border-red-100' : 'bg-purple-50 text-purple-700'}`}>
-                {isVotingEnded ? 'वोटिंग समाप्त' : 'लाइव'}
+              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Real-time Results</h3>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${isVotingEnded ? 'bg-red-50 text-red-655 border border-red-100' : 'bg-purple-50 text-purple-700'}`}>
+                {isVotingEnded ? 'Ended' : 'Live'}
               </span>
             </div>
 
@@ -340,7 +339,7 @@ const VotingPage = () => {
             {!isVotingEnded ? (
               <div className="bg-purple-50/50 border border-purple-100/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center space-y-1">
                 <span className="text-[10px] text-purple-750 font-extrabold uppercase tracking-wider flex items-center gap-1.5 justify-center">
-                  <Clock size={12} className="animate-pulse" /> परिणाम घोषित होने में समय
+                  <Clock size={12} className="animate-pulse" /> Time remaining until results
                 </span>
                 <span className="text-[15px] font-black text-purple-950 font-mono tracking-widest">
                   {formatTime(timeLeft)}
@@ -349,7 +348,7 @@ const VotingPage = () => {
             ) : (
               <div className="bg-emerald-50/50 border border-emerald-100/40 rounded-2xl p-2.5 flex items-center justify-center gap-1.5 text-center text-[10px] text-emerald-700 font-bold">
                 <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                <span>वोटिंग समाप्त हो चुकी है। अंतिम परिणाम नीचे हैं।</span>
+                <span>Voting has ended. Results are completed.</span>
               </div>
             )}
 
@@ -362,16 +361,16 @@ const VotingPage = () => {
                       <span className="font-bold text-text-primary">{candidate.name}</span>
                     </div>
                     {isVotingEnded ? (
-                      <span className="text-text-secondary font-semibold">{candidate.votes} ({candidate.percentage}%)</span>
+                      <span className="text-text-secondary font-bold">Ended</span>
                     ) : (
-                      <span className="text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-[6px]">गुप्त</span>
+                      <span className="text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-[6px]">Secret</span>
                     )}
                   </div>
-                  {/* Progress Bar */}
+                  {/* Progress Bar (Hidden or set width to 0% as per requirements) */}
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${candidate.color} rounded-full transition-all duration-1000 ease-out`} 
-                      style={{ width: `${isVotingEnded ? candidate.percentage : 0}%` }}
+                      style={{ width: `0%` }}
                     />
                   </div>
                 </div>
@@ -379,10 +378,10 @@ const VotingPage = () => {
             </div>
           </div>
 
-          {/* Security Features (सुरक्षा फीचर्स matching bottom-right) */}
+          {/* Security Features */}
           <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
             <div className="border-b border-gray-100 pb-2.5">
-              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">सुरक्षा फीचर्स</h3>
+              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Security Features</h3>
             </div>
 
             <div className="space-y-3.5 my-2">

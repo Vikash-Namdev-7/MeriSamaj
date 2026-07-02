@@ -18,17 +18,17 @@ const ElectionsListPage = () => {
           <button onClick={() => navigate('/member/voting')} className="p-1 -ml-1 press-scale">
             <ArrowLeft size={22} className="text-text-primary" />
           </button>
-          <h1 className="text-base font-bold text-text-primary">चुनाव सूची</h1>
+          <h1 className="text-base font-bold text-text-primary">Election List</h1>
         </div>
         <div className="text-xs font-semibold text-text-secondary bg-gray-100 px-3 py-1 rounded-full">
-          कुल चुनाव ({elections.length})
+          Total Elections ({elections.length})
         </div>
       </div>
 
       <div className="px-4 pt-5 max-w-xl mx-auto space-y-6">
         {/* Active Elections Section */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">चल रहे चुनाव (Active)</h3>
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Active Elections</h3>
           
           <div className="space-y-3">
             {activeElections.map(active => {
@@ -41,12 +41,12 @@ const ElectionsListPage = () => {
                 >
                   {hasVoted && (
                     <div className="absolute right-0 top-0 bg-emerald-600 text-white text-[9px] font-bold uppercase py-0.5 px-3 rounded-bl-lg flex items-center gap-0.5">
-                      <CheckCircle2 size={10} /> वोट किया
+                      <CheckCircle2 size={10} /> Voted
                     </div>
                   )}
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="text-xs font-bold text-purple-900 pr-12 leading-snug">{active.title}</h4>
-                    <Badge variant="warning" className="text-[9px] font-bold">चालू है</Badge>
+                    <Badge variant="warning" className="text-[9px] font-bold">Active</Badge>
                   </div>
                   <p className="text-[10px] text-text-secondary flex items-center gap-1">
                     <Calendar size={11} className="text-amber-500" /> {active.startDate} - {active.endDate}
@@ -59,7 +59,7 @@ const ElectionsListPage = () => {
 
         {/* Past Completed Elections Section */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">पिछले चुनाव (Completed)</h3>
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Past Elections (Completed)</h3>
           
           <div className="space-y-3">
             {pastElections.map(past => (
@@ -75,7 +75,7 @@ const ElectionsListPage = () => {
                   </p>
                 </div>
                 <Badge variant="default" className="text-[9px] font-bold bg-gray-200 text-gray-700">
-                  समाप्त
+                  Completed
                 </Badge>
               </div>
             ))}

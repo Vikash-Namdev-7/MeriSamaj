@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Search, CheckCircle2, Clock, Users, ChevronRight,
-  Star, BarChart2, MessageSquare, Check, AlertCircle, X, Send, ClipboardList
+  Star, BarChart2, Check, AlertCircle, X, Send, ClipboardList
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { mockSurveys } from '../../data/mockSurveys';
@@ -147,11 +147,11 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
           <Users size={11} /> {survey.totalResponses} responses
         </span>
         <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
-          <Clock size={11} /> Deadline: {survey.deadlineHi}
+          <Clock size={11} /> Deadline: {survey.deadline}
         </span>
       </div>
 
-      <p className="text-[13px] text-gray-600 leading-relaxed mb-6">{survey.descriptionHi}</p>
+      <p className="text-[13px] text-gray-600 leading-relaxed mb-6">{survey.description}</p>
 
       {/* Questions */}
       <div className="space-y-6">
@@ -167,16 +167,16 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
                 {qIdx + 1}
               </span>
               <div className="flex-1">
-                <p className="text-[14px] font-bold text-gray-900 leading-snug">{q.questionHi}</p>
+                <p className="text-[14px] font-bold text-gray-900 leading-snug">{q.question}</p>
                 {q.required && (
-                  <span className="text-[10px] text-red-500 font-semibold">* आवश्यक</span>
+                  <span className="text-[10px] text-red-500 font-semibold">* Required</span>
                 )}
               </div>
             </div>
 
             {validationErrors[q.id] && (
               <div className="flex items-center gap-1 text-red-500 text-[11px] font-semibold mb-2">
-                <AlertCircle size={12} /> यह प्रश्न अनिवार्य है
+                <AlertCircle size={12} /> This question is required
               </div>
             )}
 
@@ -201,7 +201,7 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
                       }`}>
                         {isSelected && <div className="w-2 h-2 bg-brand-primary rounded-full" />}
                       </div>
-                      <span className="text-[13px] font-semibold">{opt.labelHi}</span>
+                      <span className="text-[13px] font-semibold">{opt.label}</span>
                     </button>
                   );
                 })}
@@ -229,11 +229,11 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
                       }`}>
                         {selected && <Check size={10} className="text-white" />}
                       </div>
-                      <span className="text-[13px] font-semibold">{opt.labelHi}</span>
+                      <span className="text-[13px] font-semibold">{opt.label}</span>
                     </button>
                   );
                 })}
-                <p className="text-[10px] text-gray-400 pl-1">एक से अधिक विकल्प चुन सकते हैं</p>
+                <p className="text-[10px] text-gray-400 pl-1">You can select multiple options</p>
               </div>
             )}
 
@@ -248,7 +248,7 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
                 />
                 {answers[q.id] > 0 && (
                   <p className="text-[12px] text-brand-primary font-bold mt-2">
-                    {['', 'बहुत खराब', 'खराब', 'ठीक-ठाक', 'अच्छा', 'बहुत अच्छा'][answers[q.id]]}
+                    {['', 'Very Bad', 'Bad', 'Average', 'Good', 'Very Good'][answers[q.id]]}
                   </p>
                 )}
               </div>
@@ -277,7 +277,7 @@ const SurveyFormView = ({ survey, onClose, surveyResponses, submitFullSurvey }) 
           onClick={handleSubmit}
           className="mt-6 w-full py-3.5 bg-brand-primary text-white rounded-2xl text-[14px] font-bold shadow-lg shadow-brand-primary/25 press-scale flex items-center justify-center gap-2"
         >
-          <Send size={16} /> सर्वे सबमिट करें
+          <Send size={16} /> Submit Survey
         </button>
       )}
     </div>
@@ -294,15 +294,14 @@ const SurveysPage = () => {
   const [selectedSurvey, setSelectedSurvey] = useState(null);
 
   const filters = [
-    { id: 'all', label: 'सभी', labelEn: 'All' },
-    { id: 'active', label: 'चालू', labelEn: 'Active' },
-    { id: 'closed', label: 'समाप्त', labelEn: 'Closed' },
+    { id: 'all', label: 'All', labelEn: 'All' },
+    { id: 'active', label: 'Active', labelEn: 'Active' },
+    { id: 'closed', label: 'Completed', labelEn: 'Completed' },
   ];
 
   const filteredSurveys = useMemo(() => {
     return mockSurveys.filter(sv => {
-      const matchesSearch = sv.titleHi.toLowerCase().includes(searchText.toLowerCase()) ||
-                            sv.title.toLowerCase().includes(searchText.toLowerCase());
+      const matchesSearch = sv.title.toLowerCase().includes(searchText.toLowerCase());
       const matchesFilter = activeFilter === 'all' || sv.status === activeFilter;
       return matchesSearch && matchesFilter;
     });
@@ -319,7 +318,7 @@ const SurveysPage = () => {
           <button onClick={() => navigate('/member/voting')} className="p-1 -ml-1 press-scale">
             <ArrowLeft size={22} className="text-gray-800" />
           </button>
-          <h1 className="text-base font-bold text-gray-900">सर्वे और पोल</h1>
+          <h1 className="text-base font-bold text-gray-900">Surveys &amp; Polls</h1>
         </div>
         <span className="text-[11px] font-bold bg-brand-primary/10 text-brand-primary px-2.5 py-1 rounded-full">
           {activeSurveyCount} Active
@@ -327,11 +326,11 @@ const SurveysPage = () => {
       </div>
 
       {selectedSurvey ? (
-        /* ─── Survey Detail Modal View ─── */
+        /* ─── Survey Detail modal ─── */
         <div className="px-4 pt-4 max-w-lg mx-auto">
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-black text-gray-900 flex-1 pr-3">{selectedSurvey.titleHi}</h2>
+              <h2 className="text-[16px] font-black text-gray-900 flex-1 pr-3">{selectedSurvey.title}</h2>
               <button
                 onClick={() => setSelectedSurvey(null)}
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0"
@@ -354,15 +353,15 @@ const SurveysPage = () => {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white rounded-2xl p-3.5 text-center shadow-sm border border-gray-100">
               <p className="text-[22px] font-black text-brand-primary leading-none">{mockSurveys.length}</p>
-              <p className="text-[10px] text-gray-500 font-bold mt-1">कुल सर्वे</p>
+              <p className="text-[10px] text-gray-500 font-bold mt-1">Total Surveys</p>
             </div>
             <div className="bg-white rounded-2xl p-3.5 text-center shadow-sm border border-gray-100">
               <p className="text-[22px] font-black text-emerald-600 leading-none">{activeSurveyCount}</p>
-              <p className="text-[10px] text-gray-500 font-bold mt-1">चालू</p>
+              <p className="text-[10px] text-gray-500 font-bold mt-1">Active</p>
             </div>
             <div className="bg-white rounded-2xl p-3.5 text-center shadow-sm border border-gray-100">
               <p className="text-[22px] font-black text-purple-600 leading-none">{myParticipationCount}</p>
-              <p className="text-[10px] text-gray-500 font-bold mt-1">मेरी भागीदारी</p>
+              <p className="text-[10px] text-gray-500 font-bold mt-1">My Activity</p>
             </div>
           </div>
 
@@ -373,7 +372,7 @@ const SurveysPage = () => {
               type="text"
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder="सर्वे खोजें..."
+              placeholder="Search surveys..."
               className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:border-brand-primary transition-all"
             />
           </div>
@@ -399,7 +398,7 @@ const SurveysPage = () => {
           {filteredSurveys.length === 0 ? (
             <div className="text-center py-16">
               <ClipboardList size={40} className="text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-400">कोई सर्वे नहीं मिला</p>
+              <p className="text-sm font-semibold text-gray-400">No surveys found</p>
             </div>
           ) : (
             filteredSurveys.map(sv => {
@@ -418,15 +417,15 @@ const SurveysPage = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                       <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
                         <span className={`text-[10px] font-bold ${colors.bg} ${colors.text} px-2 py-0.5 rounded-full`}>
-                          {sv.categoryHi}
+                          {sv.category}
                         </span>
                         {sv.status === 'active' ? (
                           <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> चालू
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Active
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold bg-gray-400 text-white px-2 py-0.5 rounded-full">
-                            समाप्त
+                            Completed
                           </span>
                         )}
                       </div>
@@ -437,31 +436,28 @@ const SurveysPage = () => {
                     {!sv.banner && (
                       <div className="flex items-center justify-between mb-2">
                         <span className={`text-[10px] font-bold ${colors.bg} ${colors.text} ${colors.border} border px-2 py-0.5 rounded-full`}>
-                          {sv.categoryHi}
+                          {sv.category}
                         </span>
                         {sv.status === 'active' ? (
                           <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> चालू
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Active
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-gray-400">समाप्त</span>
+                          <span className="text-[10px] font-bold text-gray-400">Completed</span>
                         )}
                       </div>
                     )}
 
-                    <h3 className="text-[14.5px] font-extrabold text-gray-900 leading-snug mb-1">{sv.titleHi}</h3>
-                    <p className="text-[12px] text-gray-500 leading-relaxed mb-3 line-clamp-2">{sv.descriptionHi}</p>
+                    <h3 className="text-[14.5px] font-extrabold text-gray-900 leading-snug mb-1">{sv.title}</h3>
+                    <p className="text-[12px] text-gray-500 leading-relaxed mb-3 line-clamp-2">{sv.description}</p>
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 text-[11px] text-gray-500">
                         <span className="flex items-center gap-1 font-semibold">
-                          <Users size={11} /> {sv.totalResponses} जवाब
+                          <Users size={11} /> {sv.totalResponses} responses
                         </span>
                         <span className="flex items-center gap-1 font-semibold">
-                          <Clock size={11} /> {sv.deadlineHi} तक
-                        </span>
-                        <span className="flex items-center gap-1 font-semibold">
-                          <BarChart2 size={11} /> {sv.questions.length} प्रश्न
+                          <Clock size={11} /> Until {sv.deadline}
                         </span>
                       </div>
                       {isSubmitted ? (

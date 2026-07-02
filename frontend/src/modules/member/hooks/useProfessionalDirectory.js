@@ -41,19 +41,23 @@ const useProfessionalDirectory = (communityId) => {
         await new Promise(resolve => setTimeout(resolve, 300)); // simulate network delay
 
         // Enrich mock data: auto-assign color by index
-        const enriched = mockProfessionals.map((item, idx) => ({
+        const localListingsRaw = localStorage.getItem('merisamaj_custom_professionals');
+        const localListings = localListingsRaw ? JSON.parse(localListingsRaw) : [];
+        const combined = [...localListings, ...mockProfessionals];
+
+        const enriched = combined.map((item, idx) => ({
           ...item,
-          color: cardColors[idx % cardColors.length],
+          color: item.color || cardColors[idx % cardColors.length],
         }));
 
         // Derive unique categories dynamically from data
-        const uniqueCategoryKeys = [...new Set(enriched.map(p => p.categoryKey))];
+        const uniqueCategoryKeys = [...new Set(enriched.map(p => p.categoryKey || p.category?.toLowerCase() || 'others'))];
         const derivedCategories = uniqueCategoryKeys
           .map(key => {
             const config = categoryIconMap[key] || categoryIconMap.others;
             return {
               id: key,
-              name: config.labelHi,
+              name: config.labelHi || key.toUpperCase(),
               categoryKey: key,
               icon: config.icon,
               color: config.color,

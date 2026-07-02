@@ -351,14 +351,12 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
               <Phone size={20} />
             </button>
             <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowMenu(p => !p); }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -mr-2">
+              <button onClick={(e) => { e.stopPropagation(); setShowMenu(p => !p); }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -mr-2 press-scale">
                 <MoreVertical size={20} />
               </button>
               {showMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowMenu(false); setShowMoreMenu(false); }} />
-                  <div className="absolute top-11 right-0 bg-white text-gray-800 rounded-xl shadow-xl py-1.5 w-[220px] z-50 border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                    {!showMoreMenu ? (
+                <div className="absolute top-11 right-2 bg-white text-gray-800 rounded-2xl shadow-2xl py-2 w-[200px] z-50 border border-gray-100 overflow-hidden animate-fade-in">
+                  {!showMoreMenu ? (
                       <>
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/info/${chat.id}`); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
                           {chat.isGroup ? 'Group info' : 'View contact'}
@@ -399,7 +397,6 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
                       </>
                     )}
                   </div>
-                </>
               )}
             </div>
           </div>
@@ -455,7 +452,7 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
 
           return (
             <div key={msg.id}
-              className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
+              className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} ${msgReactions.length > 0 ? 'pb-3.5' : 'pb-1'} ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
               onMouseDown={e => handlePressStart(e, msg.id)}
               onTouchStart={e => handlePressStart(e, msg.id)}
               onMouseMove={handlePressMove}
@@ -518,7 +515,7 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
                 {reactionTarget === msg.id && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={e => { e.stopPropagation(); setReactionTarget(null); }} />
-                    <div className={`absolute z-50 -top-12 ${isMine ? 'right-0' : 'left-0'} bg-white border border-gray-100 rounded-full px-3 py-2 shadow-xl flex items-center gap-3 animate-in zoom-in duration-200`}>
+                    <div className={`absolute z-50 -top-12 ${isMine ? 'right-0' : 'left-0'} bg-white border border-gray-150 rounded-full px-3 py-2 shadow-xl flex items-center gap-3 animate-fade-in`}>
                       {EMOJI_REACTIONS.map(emoji => (
                         <button key={emoji} onClick={e => { e.stopPropagation(); handleReaction(msg.id, emoji); }}
                           className={`text-[22px] hover:scale-125 transition-transform ${msgReactions.includes(emoji) ? 'scale-125 bg-gray-100 rounded-full' : 'opacity-90'}`}>

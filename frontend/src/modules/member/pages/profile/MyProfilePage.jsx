@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity } from 'lucide-react';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
@@ -308,6 +308,23 @@ const MyProfilePage = () => {
                 <div>
                   <span className="text-[13px] font-bold text-text-primary block">Personal Info</span>
                   <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add and update your information</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 1.5: Family Details */}
+            <button 
+              onClick={() => navigate('/member/profile/family')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Users size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Family Details</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage family tree & details</span>
                 </div>
               </div>
               <ChevronRight size={16} className="text-purple-300" />

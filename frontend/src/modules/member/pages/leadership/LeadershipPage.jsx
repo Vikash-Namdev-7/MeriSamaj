@@ -433,75 +433,7 @@ const LeadershipPage = () => {
         </div>
       )}
 
-      {/* ─── AREA DELEGATES: Searchable List ─── */}
-      <div className="px-5">
-        <SectionHeader titleHi={t('Area Delegates', language)} titleEn="Regional Delegates" language={language} />
 
-        {/* Search bar */}
-        <div className="flex gap-2 mb-3">
-          <div className="flex-1 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('Search by name, role or area...', language)}
-              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 text-[12px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300"
-            />
-          </div>
-          <div className="relative">
-            <button 
-              onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); }}
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 active:scale-95 transition-transform ${activeFilter !== 'All' ? 'bg-blue-50 border-blue-200 text-[#1e58b8]' : 'bg-white border-gray-250 text-gray-400'}`}
-            >
-              <SlidersHorizontal size={16} />
-            </button>
-            {showFilterMenu && (
-              <div className="absolute right-0 mt-1 bg-white border border-gray-150 rounded-xl shadow-lg p-1.5 z-30 flex flex-col gap-0.5 text-[11px] font-extrabold w-[160px]">
-                <button type="button" onClick={() => { setActiveFilter('All'); setShowFilterMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${activeFilter === 'All' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>सभी (All)</button>
-                <button type="button" onClick={() => { setActiveFilter('Zonal Head'); setShowFilterMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${activeFilter === 'Zonal Head' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>क्षेत्रीय प्रभारी (Zonal)</button>
-                <button type="button" onClick={() => { setActiveFilter('Area Sub-Head'); setShowFilterMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${activeFilter === 'Area Sub-Head' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>क्षेत्रीय प्रतिनिधि (Area)</button>
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <button 
-              onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); }}
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 active:scale-95 transition-transform ${sortOrder !== 'none' ? 'bg-blue-50 border-blue-200 text-[#1e58b8]' : 'bg-white border-gray-250 text-gray-400'}`}
-            >
-              <ArrowUpDown size={16} />
-            </button>
-            {showSortMenu && (
-              <div className="absolute right-0 mt-1 bg-white border border-gray-155 rounded-xl shadow-lg p-1.5 z-30 flex flex-col gap-0.5 text-[11px] font-extrabold w-[150px]">
-                <button type="button" onClick={() => { setSortOrder('none'); setShowSortMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${sortOrder === 'none' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>डिफ़ॉल्ट (Default)</button>
-                <button type="button" onClick={() => { setSortOrder('name-asc'); setShowSortMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${sortOrder === 'name-asc' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>नाम: A से Z (Name A-Z)</button>
-                <button type="button" onClick={() => { setSortOrder('name-desc'); setShowSortMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${sortOrder === 'name-desc' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>नाम: Z से A (Name Z-A)</button>
-                <button type="button" onClick={() => { setSortOrder('members-desc'); setShowSortMenu(false); }} className={`p-2 text-left rounded-lg transition-colors ${sortOrder === 'members-desc' ? 'bg-blue-50 text-[#1e58b8]' : 'text-gray-600 hover:bg-gray-50'}`}>सदस्य संख्या (Members)</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Delegate list */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4">
-          {filteredDelegates.length > 0 ? (
-            filteredDelegates.map(m => (
-              <DelegateRow 
-                key={m.id} 
-                member={m} 
-                language={language} 
-                isSelected={selectedLeader?.id === m.id}
-                onSelect={() => handleSelectLeader(m.id)}
-                navigate={navigate}
-              />
-            ))
-          ) : (
-            <div className="py-8 text-center">
-              <p className="text-[13px] text-gray-400">{t('No results found', language)}</p>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ─── FOOTER ─── */}
       <div className="mt-8 px-5 text-center">

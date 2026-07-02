@@ -330,17 +330,15 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ─── CENSUS DASHBOARD BANNER ─── */}
+      {/* ─── CENSUS DASHBOARD BANNER (Commented out to hide from UI) ───
       <div className="px-3 mt-5 relative z-10">
         <div
           onClick={() => navigate('/member/census')}
           className="w-full bg-gradient-to-br from-[#4C1D95] via-[#6D28D9] to-[#7C3AED] rounded-[28px] shadow-xl shadow-purple-500/15 border border-purple-400/15 text-white relative overflow-hidden cursor-pointer press-scale"
         >
-          {/* Decorative blobs */}
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-300/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4 pointer-events-none" />
 
-          {/* Top section */}
           <div className="relative z-10 p-4 pb-2 flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
@@ -363,7 +361,6 @@ const HomePage = () => {
               </button>
             </div>
 
-            {/* Premium clipboard illustration */}
             <div className="relative w-[110px] h-[110px] shrink-0 flex items-center justify-center select-none pointer-events-none mr-1">
               <svg viewBox="0 0 160 160" className="w-full h-full">
                 <rect x="35" y="25" width="90" height="110" rx="8" fill="#ffffff" />
@@ -409,7 +406,6 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
           <div className="relative z-10 mx-2 mb-2 bg-white/8 backdrop-blur-md rounded-2xl border border-white/10 grid grid-cols-4 divide-x divide-white/10">
             {[
               {
@@ -445,7 +441,6 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* Info footer */}
           <div className="relative z-10 mx-2 mb-2 px-3 py-1.5 bg-white/6 border border-white/8 rounded-xl flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-white/15 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-white">i</span>
@@ -456,6 +451,7 @@ const HomePage = () => {
           </div>
         </div>
       </div>
+      ─── END CENSUS DASHBOARD BANNER ─── */}
 
       {/* ─── BENTO GRID (QUICK ACTIONS) ─── */}
       <div className="px-5 mt-6 relative z-10">
@@ -552,11 +548,11 @@ const HomePage = () => {
               {/* Core Committee Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-[18px] font-bold text-text-primary tracking-tight">मुख्य पदाधिकारी</h3>
+                  <h3 className="text-[18px] font-bold text-text-primary tracking-tight">Core Members</h3>
                   <p className="text-[12px] text-text-secondary font-medium">Core Committee</p>
                 </div>
                 <button onClick={() => navigate('/member/leadership')} className="text-[13px] text-brand-primary font-bold press-scale flex items-center gap-1">
-                  सभी देखें <ChevronRight size={16} />
+                  View All <ChevronRight size={16} />
                 </button>
               </div>
 
@@ -584,7 +580,7 @@ const HomePage = () => {
                       <Crown size={16} className="text-amber-400 fill-amber-400" />
                     </div>
                     <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30">
-                      अध्यक्ष
+                      President
                     </span>
                   </div>
 
@@ -593,7 +589,7 @@ const HomePage = () => {
                       {president.name}
                     </h4>
                     <p className="text-amber-300/90 text-[11px] font-bold mt-0.5 uppercase tracking-wide">
-                      समाज अध्यक्ष
+                      Samaj President
                     </p>
                   </div>
 
@@ -616,13 +612,13 @@ const HomePage = () => {
                       href={`tel:${president.phone}`}
                       className="flex-1 py-1.5 rounded-xl border border-purple-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-center backdrop-blur-sm"
                     >
-                      <Phone size={11} /> कॉल करें
+                      <Phone size={11} /> Call
                     </a>
                     <button 
                       onClick={() => navigate(`/member/chat/${president.id}`)}
                       className="flex-1 py-1.5 rounded-xl border border-emerald-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm"
                     >
-                      <MessageCircle size={11} /> चैट करें
+                      <MessageCircle size={11} /> Chat
                     </button>
                   </div>
                 </div>
@@ -638,12 +634,12 @@ const HomePage = () => {
                       ? 'bg-purple-600' 
                       : 'bg-emerald-600';
                     const hindiRole = member.role === 'Vice President' 
-                      ? 'उपाध्यक्ष' 
+                      ? 'VP' 
                       : member.role === 'Secretary' 
-                      ? 'सचिव' 
+                      ? 'Secretary' 
                       : member.role === 'Joint Secretary' 
-                      ? 'मंत्री' 
-                      : 'कोषाध्यक्ष';
+                      ? 'Joint Sec' 
+                      : 'Treasurer';
                     return (
                       <div 
                         key={member.id} 
@@ -698,11 +694,11 @@ const HomePage = () => {
       <div className="px-0">
         <div className="px-5 flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-[17px] font-bold text-text-primary tracking-tight">आगामी कार्यक्रम</h3>
+            <h3 className="text-[17px] font-bold text-text-primary tracking-tight">Upcoming Events</h3>
             <p className="text-[11px] text-text-secondary font-medium mt-0.5">Upcoming Events</p>
           </div>
           <button onClick={() => navigate('/member/events')} className="text-[13px] text-brand-primary font-bold press-scale flex items-center gap-0.5">
-            और देखें <ChevronRight size={16} />
+            View More <ChevronRight size={16} />
           </button>
         </div>
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-3 px-5">
@@ -746,11 +742,11 @@ const HomePage = () => {
                   </div>
                   {event.isFeatured && (
                     <span className="absolute top-2 left-2 bg-amber-400 text-amber-900 text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                      ★ विशेष
+                      ★ Featured
                     </span>
                   )}
                   <span className="absolute top-2 right-2 bg-black/30 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/10">
-                    {event.categoryHi || event.category}
+                    {event.category}
                   </span>
                 </div>
                 {/* Card Body */}
@@ -766,15 +762,15 @@ const HomePage = () => {
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-purple-100/20">
                     <span className="text-[10px] text-text-secondary font-medium flex items-center gap-1">
-                      <Users size={10} className="text-text-muted" /> {event.interested || event.attendees}+ रुचि
+                      <Users size={10} className="text-text-muted" /> {event.interested || event.attendees}+ Likes
                     </span>
                     {event.isRegistered ? (
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-0.5">
-                        ✓ पंजीकृत
+                        ✓ RSVP'd
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold text-brand-primary bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100/50">
-                        शामिल हों →
+                        Join →
                       </span>
                     )}
                   </div>
