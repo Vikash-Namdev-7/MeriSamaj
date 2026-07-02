@@ -445,7 +445,7 @@ const OnboardingScreen = () => {
           </button>
           
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-brand-primary">Step {current} of 12</span>
+            <span className="text-xs font-bold text-brand-primary">Step {current} of 11</span>
             <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-100 shadow-xs select-none">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[9.5px] font-black tracking-tight leading-none">{compPct}% done</span>
@@ -457,7 +457,7 @@ const OnboardingScreen = () => {
   };
 
   const renderProgressCard = (current, pct) => {
-    const totalSteps = 12;
+    const totalSteps = 11;
     const remaining = totalSteps - current;
 
     return (
@@ -565,51 +565,14 @@ const OnboardingScreen = () => {
         {renderProgressCard(onboardingStepNum, compPct)}
         
         <SlideIn key={onboardingStepNum}>
-          {/* Step 1: Language selection */}
+          {/* Step 1: Mobile verified */}
           {onboardingStepNum === 1 && (
-            <div className="space-y-5 text-left animate-fade-in">
-              <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center text-[#6D28D9] shrink-0 border border-purple-200/40">
-                <Globe size={26} />
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-slate-800">Step 1: Choose Language</h1>
-                <p className="text-xs text-slate-500 font-semibold mt-1">Select language preference for profile setup</p>
-              </div>
-              <div className="space-y-3 pt-2">
-                {[
-                  { key: 'en', label: 'English', desc: 'Continue in English', badge: 'EN' },
-                  { key: 'hi', label: 'हिंदी', desc: 'हिंदी में जारी रखें', badge: 'HI' }
-                ].map(langOpt => (
-                  <button
-                    key={langOpt.key}
-                    onClick={() => setLanguage(langOpt.key)}
-                    className={`w-full p-4.5 rounded-2xl border-2 flex items-center justify-between text-left transition-all ${
-                      language === langOpt.key ? 'border-[#6D28D9] bg-purple-50/20 shadow-sm' : 'border-purple-100/30 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${language === langOpt.key ? 'border-[#6D28D9]' : 'border-slate-300'}`}>
-                        {language === langOpt.key && <div className="w-2.5 h-2.5 rounded-full bg-[#6D28D9]" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-800">{langOpt.label}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-brand-primary bg-purple-50 px-2 py-0.5 rounded">{langOpt.badge}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Mobile verified */}
-          {onboardingStepNum === 2 && (
             <div className="space-y-5 text-left animate-fade-in">
               <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center text-[#6D28D9] shrink-0 border border-purple-200/40">
                 <Phone size={26} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 2: Mobile Verified</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 1: Mobile Verified</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Verification completed during registration</p>
               </div>
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 mt-4">
@@ -622,14 +585,14 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 3: Community selection */}
-          {onboardingStepNum === 3 && (
+          {/* Step 2: Community selection */}
+          {onboardingStepNum === 2 && (
             <div className="space-y-5 text-left animate-fade-in">
               <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center text-[#6D28D9] shrink-0 border border-purple-200/40">
                 <Users size={26} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 3: Select Community</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 2: Select Community</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Which community do you belong to?</p>
               </div>
               <div className="space-y-4 pt-2">
@@ -689,11 +652,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 4: Personal Information */}
-          {onboardingStepNum === 4 && (
+          {/* Step 3: Personal Information */}
+          {onboardingStepNum === 3 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 4: Personal Information</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 3: Personal Information</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Please provide accurate personal details</p>
               </div>
 
@@ -791,14 +754,14 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 5: Education Details */}
-          {onboardingStepNum === 5 && (
+          {/* Step 4: Education Details */}
+          {onboardingStepNum === 4 && (
             <div className="space-y-5 text-left animate-fade-in">
               <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center text-[#6D28D9] shrink-0 border border-purple-200/40">
                 <GraduationCap size={26} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 5: Education Details</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 4: Education Details</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Add your qualification and school/college details</p>
               </div>
               <div className="space-y-4 pt-2">
@@ -836,14 +799,14 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 6: Profession Details */}
-          {onboardingStepNum === 6 && (
+          {/* Step 5: Profession Details */}
+          {onboardingStepNum === 5 && (
             <div className="space-y-5 text-left animate-fade-in">
               <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center text-[#6D28D9] shrink-0 border border-purple-200/40">
                 <Briefcase size={26} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 6: Profession / Occupation</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 5: Profession / Occupation</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Share your job, business, or occupation details</p>
               </div>
               <div className="space-y-4 pt-2">
@@ -888,11 +851,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 7: Address & Contact */}
-          {onboardingStepNum === 7 && (
+          {/* Step 6: Address & Contact */}
+          {onboardingStepNum === 6 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 7: Address & Contact</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 6: Address & Contact</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Add your address and contact details</p>
               </div>
               <div className="space-y-4 pt-1">
@@ -931,7 +894,7 @@ const OnboardingScreen = () => {
                     <input type="tel" maxLength={10} placeholder="e.g. 98765 43211" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value.replace(/\D/g, ''))} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400">Email ID (Optional)</label>
+                    <label className="text-[10px] font-bold text-slate-450 uppercase">Email ID (Optional)</label>
                     <input type="email" placeholder="example@email.com" value={alternateEmail} onChange={(e) => setAlternateEmail(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none" />
                   </div>
                 </div>
@@ -939,11 +902,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 8: Family Details */}
-          {onboardingStepNum === 8 && (
+          {/* Step 7: Family Details */}
+          {onboardingStepNum === 7 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 8: Family Details</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 7: Family Details</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Add family member details</p>
               </div>
               
@@ -1029,11 +992,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 9: Profile Completion Checklist Summary */}
-          {onboardingStepNum === 9 && (
+          {/* Step 8: Profile Completion Checklist Summary */}
+          {onboardingStepNum === 8 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 9: Your Profile Progress</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 8: Your Profile Progress</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Complete your profile to get better matches</p>
               </div>
               <div className="space-y-4 pt-1">
@@ -1057,7 +1020,6 @@ const OnboardingScreen = () => {
                 <div className="bg-white p-4.5 rounded-3xl border border-purple-100/30 shadow-xs space-y-3.5 text-left">
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Checklist Details</p>
                   {[
-                    { label: 'Language Selection', completed: true },
                     { label: 'Mobile Verification', completed: true },
                     { label: 'Community Details', completed: !!selectedCommunity && !!selectedSubCommunity },
                     { label: 'Personal Information', completed: !!name && !!gender },
@@ -1081,11 +1043,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 10: Verification */}
-          {onboardingStepNum === 10 && (
+          {/* Step 9: Verification */}
+          {onboardingStepNum === 9 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 10: Verification (Optional)</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 9: Verification (Optional)</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Verify your profile for more trust and matches</p>
               </div>
               
@@ -1137,7 +1099,7 @@ const OnboardingScreen = () => {
                       }, 1500);
                     }}
                     className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all border ${
-                      isAadharVerified ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
+                      isAadharVerified ? 'bg-emerald-50 border-[#A7F3D0] text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
                     }`}
                   >
                     {isAadharVerified ? 'Verified ✓' : verifyingAadhar ? 'Verifying...' : 'Verify'}
@@ -1147,11 +1109,11 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 11: Partner Preferences */}
-          {onboardingStepNum === 11 && (
+          {/* Step 10: Partner Preferences */}
+          {onboardingStepNum === 10 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 11: Partner Preferences</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 10: Partner Preferences</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Add preferences to get matching matrimonial profiles</p>
               </div>
               <div className="space-y-4 pt-2">
@@ -1195,8 +1157,8 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 12: Finish Screen */}
-          {onboardingStepNum === 12 && (
+          {/* Step 11: Finish Screen */}
+          {onboardingStepNum === 11 && (
             <div className="py-6 text-center space-y-6 animate-fade-in">
               <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-200/50 scale-110 animate-bounce duration-700">
                 <Check size={36} strokeWidth={3} />
@@ -1224,7 +1186,7 @@ const OnboardingScreen = () => {
 
       {/* Footer Navigation Buttons */}
       <div className="px-6 pb-8 pt-4 shrink-0 bg-white/50 backdrop-blur-md border-t border-purple-100/30 z-10 max-w-sm mx-auto w-full">
-        {onboardingStepNum === 12 ? (
+        {onboardingStepNum === 11 ? (
           <div className="flex flex-col gap-2.5">
             <button 
               onClick={handleGoToHome}
@@ -1238,21 +1200,21 @@ const OnboardingScreen = () => {
                 loginUser(savedUser);
                 navigate('/member/matrimonial');
               }}
-              className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-650 text-sm font-bold rounded-2xl flex items-center justify-center gap-1.5"
+              className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-655 text-sm font-bold rounded-2xl flex items-center justify-center gap-1.5"
             >
               Browse Profiles
             </button>
           </div>
         ) : (
           <div className="space-y-3">
-            {[5, 6, 7, 10, 11].includes(onboardingStepNum) && (
+            {[4, 5, 6, 9, 10].includes(onboardingStepNum) && (
               <button
                 type="button"
                 onClick={() => {
                   setSlideDir('right');
                   setStep(`onboarding-${onboardingStepNum + 1}`);
                 }}
-                className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-xl border border-slate-200 transition-all flex flex-col items-center justify-center"
+                className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-550 text-xs font-bold rounded-xl border border-slate-200 transition-all flex flex-col items-center justify-center"
               >
                 <span>Skip for now</span>
                 <span className="text-[9px] text-slate-400 font-semibold mt-0.5">You can add this later from settings</span>
@@ -1262,24 +1224,24 @@ const OnboardingScreen = () => {
             <button
               type="button"
               onClick={() => {
-                if (onboardingStepNum === 3 && (!selectedCommunity || !selectedSubCommunity || !selectedCity || pincode.length !== 6)) {
+                if (onboardingStepNum === 2 && (!selectedCommunity || !selectedSubCommunity || !selectedCity || pincode.length !== 6)) {
                   setToastMessage('Please complete all mandatory selection fields');
                   setTimeout(() => setToastMessage(''), 2000);
                   return;
                 }
-                if (onboardingStepNum === 4 && (!name.trim() || !gender)) {
+                if (onboardingStepNum === 3 && (!name.trim() || !gender)) {
                   setToastMessage('Full name and gender are required');
                   setTimeout(() => setToastMessage(''), 2000);
                   return;
                 }
-                if (onboardingStepNum === 8 && familyMembers.length === 0) {
+                if (onboardingStepNum === 7 && familyMembers.length === 0) {
                   setToastMessage('Please add at least one family member');
                   setTimeout(() => setToastMessage(''), 2000);
                   return;
                 }
 
                 setSlideDir('right');
-                if (onboardingStepNum === 11) {
+                if (onboardingStepNum === 10) {
                   handleSaveProfile();
                 } else {
                   setStep(`onboarding-${onboardingStepNum + 1}`);

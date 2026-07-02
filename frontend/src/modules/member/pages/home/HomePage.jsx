@@ -134,11 +134,11 @@ const HomePage = () => {
         const getRemainingProfileSections = (user) => {
           if (!user) return [];
           const remaining = [];
-          if (!user.qualification && !user.school) remaining.push({ name: 'Education Details', step: 'onboarding-5' });
-          if (!user.profession && !user.company) remaining.push({ name: 'Profession Details', step: 'onboarding-6' });
-          if (!user.detailedAddress && !user.houseNumber) remaining.push({ name: 'Address Details', step: 'onboarding-7' });
-          if (!user.isAadharVerified && !user.isFaceVerified) remaining.push({ name: 'Verification', step: 'onboarding-10' });
-          if (!user.prefEducation && !user.prefAge) remaining.push({ name: 'Partner Preferences', step: 'onboarding-11' });
+          if (!user.qualification && !user.school) remaining.push({ name: 'Education Details', step: 'onboarding-4' });
+          if (!user.profession && !user.company) remaining.push({ name: 'Profession Details', step: 'onboarding-5' });
+          if (!user.detailedAddress && !user.houseNumber) remaining.push({ name: 'Address Details', step: 'onboarding-6' });
+          if (!user.isAadharVerified && !user.isFaceVerified) remaining.push({ name: 'Verification', step: 'onboarding-9' });
+          if (!user.prefEducation && !user.prefAge) remaining.push({ name: 'Partner Preferences', step: 'onboarding-10' });
           return remaining;
         };
 
