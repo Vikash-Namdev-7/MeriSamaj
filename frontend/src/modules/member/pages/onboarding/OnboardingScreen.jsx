@@ -419,7 +419,7 @@ const OnboardingScreen = () => {
       prefCity: prefCity,
     };
     localStorage.setItem('merisamaj_registered_user', JSON.stringify(newUser));
-    setStep('onboarding-12');
+    setStep('onboarding-11');
   };
 
   const handleGoToHome = () => {

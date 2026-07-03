@@ -6,11 +6,11 @@ import { useData } from '../../context/DataProvider';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
 
 const categoryConfig = {
-  Cultural: { hi: 'सांस्कृतिक', emoji: '🎭', gradient: 'from-purple-500 to-violet-600', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  Education: { hi: 'शिक्षा', emoji: '📚', gradient: 'from-blue-500 to-cyan-600', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  Matrimonial: { hi: 'वैवाहिक', emoji: '💍', gradient: 'from-pink-500 to-rose-600', bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  Health: { hi: 'स्वास्थ्य', emoji: '🏥', gradient: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  Sports: { hi: 'खेल', emoji: '🏆', gradient: 'from-orange-500 to-amber-600', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  Cultural: { label: 'Cultural', emoji: '🎭', gradient: 'from-purple-500 to-violet-600', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  Education: { label: 'Education', emoji: '📚', gradient: 'from-blue-500 to-cyan-600', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  Matrimonial: { label: 'Matrimonial', emoji: '💍', gradient: 'from-pink-500 to-rose-600', bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
+  Health: { label: 'Health', emoji: '🏥', gradient: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  Sports: { label: 'Sports', emoji: '🏆', gradient: 'from-orange-500 to-amber-600', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
 };
 
 /* ─── Featured Event Banner Card ─── */
@@ -43,35 +43,35 @@ const FeaturedEventCard = ({ event, onClick }) => {
       {/* Featured badge */}
       <div className="absolute top-4 left-4 flex items-center gap-1.5">
         <span className="bg-amber-400 text-amber-900 text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm">
-          <Star size={10} fill="currentColor" /> विशेष
+          <Star size={10} fill="currentColor" /> Featured
         </span>
         <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/20">
-          {config.emoji} {config.hi}
+          {config.emoji} {config.label}
         </span>
       </div>
 
       {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 p-5">
         <h3 className="text-white text-[18px] font-extrabold leading-tight drop-shadow-md mb-2">
-          {event.title}
+          {event.titleEn || event.title}
         </h3>
         <div className="flex items-center gap-3 text-white/80 text-[12px] font-medium">
           <span className="flex items-center gap-1">
-            <CalendarDays size={12} /> {event.day} {event.month}
+            <CalendarDays size={12} /> {event.day} {event.monthShort}
           </span>
           <span className="w-[1px] h-3 bg-white/30" />
           <span className="flex items-center gap-1">
-            <MapPin size={12} /> {event.venue.split(',')[0]}
+            <MapPin size={12} /> {(event.venueEn || event.venue).split(',')[0]}
           </span>
         </div>
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
             <UsersIcon size={12} className="text-white" />
-            <span className="text-white text-[11px] font-bold">{event.interested}+ रुचि</span>
+            <span className="text-white text-[11px] font-bold">{event.interested}+ Interested</span>
           </div>
           {event.daysRemaining && (
             <span className="text-white/70 text-[11px] font-bold bg-black/20 px-3 py-1 rounded-full">
-              {event.daysRemaining} दिन शेष
+              {event.daysRemaining} Days Left
             </span>
           )}
         </div>
@@ -106,18 +106,18 @@ const EventCard = ({ event, index, onNavigate }) => {
           {/* Event Details */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="font-bold text-[14px] text-gray-900 leading-snug line-clamp-2">{event.title}</h4>
+              <h4 className="font-bold text-[14px] text-gray-900 leading-snug line-clamp-2">{event.titleEn || event.title}</h4>
               <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${config.bg} ${config.text} border ${config.border}`}>
-                {config.hi}
+                {config.label}
               </span>
             </div>
 
             <div className="flex flex-col gap-1 mt-2">
               <p className="text-[12px] text-gray-500 flex items-center gap-1.5">
-                <Clock size={11} className="text-gray-400 shrink-0" /> {event.time}
+                <Clock size={11} className="text-gray-400 shrink-0" /> {event.timeEn || event.time}
               </p>
               <p className="text-[12px] text-gray-500 flex items-center gap-1.5 line-clamp-1">
-                <MapPin size={11} className="text-gray-400 shrink-0" /> {event.venue}
+                <MapPin size={11} className="text-gray-400 shrink-0" /> {event.venueEn || event.venue}
               </p>
             </div>
           </div>
@@ -127,11 +127,11 @@ const EventCard = ({ event, index, onNavigate }) => {
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1">
-              <UsersIcon size={11} className="text-gray-400" /> {event.attendees} शामिल
+              <UsersIcon size={11} className="text-gray-400" /> {event.attendees} Attending
             </span>
             <span className="text-[11px] text-gray-400">•</span>
             <span className="text-[11px] text-gray-500 font-medium">
-              {event.interested}+ रुचि
+              {event.interested}+ Interested
             </span>
           </div>
 
@@ -146,7 +146,7 @@ const EventCard = ({ event, index, onNavigate }) => {
                 : 'bg-brand-primary text-white shadow-sm shadow-brand-primary/20'
             }`}
           >
-            {event.isRegistered ? <><CheckCircle size={12} /> पंजीकृत</> : 'शामिल हों'}
+            {event.isRegistered ? <><CheckCircle size={12} /> Registered</> : 'Join'}
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
         
         <div className="p-5">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-[17px] font-extrabold text-gray-900">फ़िल्टर</h3>
+            <h3 className="text-[17px] font-extrabold text-gray-900">Filter</h3>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:scale-95">
               <X size={18} className="text-gray-500" />
             </button>
@@ -177,7 +177,7 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
 
           {/* Category Filter */}
           <div className="mb-5">
-            <p className="text-[13px] font-bold text-gray-600 mb-3">श्रेणी</p>
+            <p className="text-[13px] font-bold text-gray-600 mb-3">Category</p>
             <div className="flex flex-wrap gap-2">
               {categories.map(cat => {
                 const config = categoryConfig[cat] || {};
@@ -192,7 +192,7 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
                         : 'bg-gray-50 text-gray-600 border border-gray-100'
                     }`}
                   >
-                    {config.emoji} {config.hi}
+                    {config.emoji} {config.label}
                   </button>
                 );
               })}
@@ -201,12 +201,12 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
 
           {/* Registration Status */}
           <div className="mb-5">
-            <p className="text-[13px] font-bold text-gray-600 mb-3">पंजीकरण स्थिति</p>
+            <p className="text-[13px] font-bold text-gray-600 mb-3">Registration Status</p>
             <div className="flex gap-2">
               {[
-                { key: 'all', label: 'सभी' },
-                { key: 'registered', label: 'पंजीकृत' },
-                { key: 'unregistered', label: 'अपंजीकृत' },
+                { key: 'all', label: 'All' },
+                { key: 'registered', label: 'Registered' },
+                { key: 'unregistered', label: 'Unregistered' },
               ].map(opt => (
                 <button
                   key={opt.key}
@@ -225,11 +225,11 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
 
           {/* Sort */}
           <div className="mb-6">
-            <p className="text-[13px] font-bold text-gray-600 mb-3">क्रमबद्ध करें</p>
+            <p className="text-[13px] font-bold text-gray-600 mb-3">Sort by</p>
             <div className="flex gap-2">
               {[
-                { key: 'date', label: 'तारीख' },
-                { key: 'popular', label: 'लोकप्रिय' },
+                { key: 'date', label: 'Date' },
+                { key: 'popular', label: 'Popular' },
               ].map(opt => (
                 <button
                   key={opt.key}
@@ -254,13 +254,13 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
               }}
               className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-600 text-[13px] font-bold active:scale-95"
             >
-              रीसेट करें
+              Reset
             </button>
             <button
               onClick={onClose}
               className="flex-[2] py-3 rounded-2xl bg-brand-primary text-white text-[13px] font-bold shadow-md shadow-brand-primary/20 active:scale-95"
             >
-              फ़िल्टर लागू करें
+              Apply Filter
             </button>
           </div>
         </div>
@@ -326,7 +326,7 @@ const EventsPage = () => {
           <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale">
             <ArrowLeft size={18} strokeWidth={2.5} />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">कार्यक्रम एवं इवेंट्स</h1>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">Events</h1>
           <button
             onClick={() => setShowFilter(true)}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all press-scale ${hasActiveFilters ? 'bg-purple-50 text-brand-primary border border-purple-200/40' : 'bg-gray-50 text-text-primary hover:bg-purple-50'}`}
@@ -344,7 +344,7 @@ const EventsPage = () => {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
             <input
               type="text"
-              placeholder="इवेंट खोजें..."
+              placeholder="Search events..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-white border border-purple-100/30 rounded-2xl text-[13px] text-text-primary font-bold placeholder:text-text-secondary outline-none focus:border-brand-primary/45 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] focus:bg-white transition-all shadow-sm"
@@ -359,9 +359,9 @@ const EventsPage = () => {
           <div className="px-5 flex items-center justify-between mb-3">
             <div>
               <h3 className="text-[16px] font-extrabold text-gray-900 flex items-center gap-1.5">
-                <Sparkles size={16} className="text-amber-500" /> विशेष कार्यक्रम
+                <Sparkles size={16} className="text-amber-500" /> Featured Events
               </h3>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">हाइलाइटेड इवेंट्स</p>
+              <p className="text-[11px] text-gray-500 font-medium mt-0.5">Highlighted Events</p>
             </div>
           </div>
           <div
@@ -382,14 +382,14 @@ const EventsPage = () => {
       {/* ─── Event Count ─── */}
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
         <p className="text-[13px] text-gray-500 font-medium">
-          कुल <span className="font-bold text-gray-800">{filteredEvents.length}</span> कार्यक्रम
+          Total <span className="font-bold text-gray-800">{filteredEvents.length}</span> Events
         </p>
         {hasActiveFilters && (
           <button
             onClick={() => setFilters({ category: 'all', registration: 'all', sort: 'date' })}
             className="text-[11px] text-brand-primary font-bold flex items-center gap-1 active:scale-95"
           >
-            <X size={12} /> फ़िल्टर हटाएं
+            <X size={12} /> Clear Filter
           </button>
         )}
       </div>
@@ -403,8 +403,8 @@ const EventsPage = () => {
         ) : (
           <div className="text-center py-16">
             <CalendarDays size={48} className="text-gray-200 mx-auto mb-4" />
-            <p className="text-[15px] font-bold text-gray-400">कोई कार्यक्रम नहीं मिला</p>
-            <p className="text-[12px] text-gray-400 mt-1">कृपया अपनी खोज या फ़िल्टर बदलें</p>
+            <p className="text-[15px] font-bold text-gray-400">No events found</p>
+            <p className="text-[12px] text-gray-400 mt-1">Please try a different search or filter</p>
           </div>
         )}
       </div>

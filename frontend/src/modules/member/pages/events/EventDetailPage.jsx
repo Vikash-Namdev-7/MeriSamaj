@@ -6,21 +6,21 @@ import { useData } from '../../context/DataProvider';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
 
 const categoryConfig = {
-  Cultural: { hi: 'सांस्कृतिक', emoji: '🎭', gradient: 'from-purple-500 to-violet-600', lightBg: 'bg-purple-50', lightText: 'text-purple-700' },
-  Education: { hi: 'शिक्षा', emoji: '📚', gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50', lightText: 'text-blue-700' },
-  Matrimonial: { hi: 'वैवाहिक', emoji: '💍', gradient: 'from-pink-500 to-rose-600', lightBg: 'bg-pink-50', lightText: 'text-pink-700' },
-  Health: { hi: 'स्वास्थ्य', emoji: '🏥', gradient: 'from-emerald-500 to-teal-600', lightBg: 'bg-emerald-50', lightText: 'text-emerald-700' },
-  Sports: { hi: 'खेल', emoji: '🏆', gradient: 'from-orange-500 to-amber-600', lightBg: 'bg-orange-50', lightText: 'text-orange-700' },
+  Cultural: { label: 'Cultural', emoji: '🎭', gradient: 'from-purple-500 to-violet-600', lightBg: 'bg-purple-50', lightText: 'text-purple-700' },
+  Education: { label: 'Education', emoji: '📚', gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50', lightText: 'text-blue-700' },
+  Matrimonial: { label: 'Matrimonial', emoji: '💍', gradient: 'from-pink-500 to-rose-600', lightBg: 'bg-pink-50', lightText: 'text-pink-700' },
+  Health: { label: 'Health', emoji: '🏥', gradient: 'from-emerald-500 to-teal-600', lightBg: 'bg-emerald-50', lightText: 'text-emerald-700' },
+  Sports: { label: 'Sports', emoji: '🏆', gradient: 'from-orange-500 to-amber-600', lightBg: 'bg-orange-50', lightText: 'text-orange-700' },
 };
 
 const mockAttendees = [
-  { initials: 'RA', name: 'राजेश अ.' },
-  { initials: 'KA', name: 'कविता अ.' },
-  { initials: 'SM', name: 'सुरेश म.' },
-  { initials: 'AG', name: 'अनिता ग.' },
-  { initials: 'DS', name: 'दीपक श.' },
-  { initials: 'VJ', name: 'विकास ज.' },
-  { initials: 'PK', name: 'प्रियंका क.' },
+  { initials: 'RA', name: 'Rajesh A.' },
+  { initials: 'KA', name: 'Kavita A.' },
+  { initials: 'SM', name: 'Suresh M.' },
+  { initials: 'AG', name: 'Anita G.' },
+  { initials: 'DS', name: 'Deepak S.' },
+  { initials: 'VJ', name: 'Vikas J.' },
+  { initials: 'PK', name: 'Priyanka K.' },
 ];
 
 const EventDetailPage = () => {
@@ -64,7 +64,7 @@ const EventDetailPage = () => {
     if (!event) return;
     toggleEventReminder(event.id);
     const isNowSet = !eventReminders[event.id];
-    setReminderToastMsg(isNowSet ? 'रिमाइंडर सेट किया गया' : 'रिमाइंडर हटाया गया');
+    setReminderToastMsg(isNowSet ? 'Reminder set' : 'Reminder removed');
     setShowReminderToast(true);
     setTimeout(() => setShowReminderToast(false), 2500);
   };
@@ -165,7 +165,7 @@ const EventDetailPage = () => {
           {/* Category Badge */}
           <div className="absolute bottom-4 right-4 z-10">
             <span className="bg-white/20 backdrop-blur-md text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full border border-white/20">
-              {config.emoji} {config.hi}
+              {config.emoji} {config.label}
             </span>
           </div>
         </div>
@@ -182,10 +182,7 @@ const EventDetailPage = () => {
       {/* ─── Event Title Card ─── */}
       <div className="px-4 pt-8 pb-1">
         <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100">
-          <h1 className="text-[20px] font-extrabold text-gray-900 leading-snug">{event.title}</h1>
-          {event.titleEn && (
-            <p className="text-[12px] text-gray-400 font-medium mt-1">{event.titleEn}</p>
-          )}
+          <h1 className="text-[20px] font-extrabold text-gray-900 leading-snug">{event.titleEn || event.title}</h1>
 
           {/* Quick Info Row */}
           <div className="flex flex-col gap-2.5 mt-4">
@@ -194,8 +191,7 @@ const EventDetailPage = () => {
                 <CalendarDays size={15} className="text-blue-600" />
               </div>
               <div>
-                <p className="text-[13px] font-bold text-gray-800">{event.weekday}, {event.day} {event.month}</p>
-                <p className="text-[11px] text-gray-500">{event.date}</p>
+                <p className="text-[13px] font-bold text-gray-800">{event.date}</p>
               </div>
             </div>
 
@@ -204,8 +200,7 @@ const EventDetailPage = () => {
                 <Clock size={15} className="text-orange-600" />
               </div>
               <div>
-                <p className="text-[13px] font-bold text-gray-800">{event.time}</p>
-                <p className="text-[11px] text-gray-500">{event.timeEn}</p>
+                <p className="text-[13px] font-bold text-gray-800">{event.timeEn || event.time}</p>
               </div>
             </div>
 
@@ -214,8 +209,7 @@ const EventDetailPage = () => {
                 <MapPin size={15} className="text-emerald-600" />
               </div>
               <div>
-                <p className="text-[13px] font-bold text-gray-800">{event.venue}</p>
-                {event.venueEn && <p className="text-[11px] text-gray-500">{event.venueEn}</p>}
+                <p className="text-[13px] font-bold text-gray-800">{event.venueEn || event.venue}</p>
               </div>
             </div>
 
@@ -225,7 +219,7 @@ const EventDetailPage = () => {
                   <Star size={15} className="text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-gray-800">प्रवेश: {event.entryFee}</p>
+                  <p className="text-[13px] font-bold text-gray-800">Entry: {event.entryFee}</p>
                 </div>
               </div>
             )}
@@ -238,15 +232,15 @@ const EventDetailPage = () => {
         <div className="grid grid-cols-3 gap-2.5">
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
             <p className="text-[20px] font-black text-brand-primary leading-none">{event.interested || event.attendees}+</p>
-            <p className="text-[10px] text-gray-500 font-bold mt-1.5">रुचि रखने वाले</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">Interested</p>
           </div>
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
             <p className="text-[20px] font-black text-emerald-600 leading-none">{event.attendees}+</p>
-            <p className="text-[10px] text-gray-500 font-bold mt-1.5">शामिल हो चुके</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">Attending</p>
           </div>
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
             <p className="text-[20px] font-black text-orange-500 leading-none">{event.daysRemaining || '–'}</p>
-            <p className="text-[10px] text-gray-500 font-bold mt-1.5">दिन शेष</p>
+            <p className="text-[10px] text-gray-500 font-bold mt-1.5">Days Left</p>
           </div>
         </div>
       </div>
@@ -255,28 +249,28 @@ const EventDetailPage = () => {
       <div className="px-4 pt-4">
         <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
           <h3 className="text-[15px] font-extrabold text-gray-900 mb-3 flex items-center gap-2">
-            📋 इवेंट के बारे में
+            📋 About the Event
           </h3>
-          <p className="text-[13px] text-gray-600 leading-relaxed">{event.description}</p>
+          <p className="text-[13px] text-gray-600 leading-relaxed">{event.descriptionEn || event.description}</p>
 
           <div className="mt-4 space-y-3.5 border-t border-gray-100 pt-4">
-            {event.objectiveHi && (
+            {event.objectiveEn && (
               <div className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
                 <div className="flex-1">
-                  <h4 className="text-[12.5px] font-extrabold text-gray-900">इवेंट का उद्देश्य</h4>
-                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.objectiveHi}</p>
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">Objective</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.objectiveEn}</p>
                 </div>
               </div>
             )}
 
-            {event.programsHi && event.programsHi.length > 0 && (
+            {event.programsEn && event.programsEn.length > 0 && (
               <div className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
                 <div className="flex-1">
-                  <h4 className="text-[12.5px] font-extrabold text-gray-900">क्या-क्या कार्यक्रम होंगे</h4>
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">Programs</h4>
                   <div className="grid grid-cols-1 gap-1 mt-1.5 pl-0.5">
-                    {event.programsHi.map((prog, i) => (
+                    {event.programsEn.map((prog, i) => (
                       <div key={i} className="flex items-center gap-1.5 text-[12px] text-gray-600">
                         <span className="w-1 h-1 bg-gray-400 rounded-full" />
                         <span>{prog}</span>
@@ -287,22 +281,22 @@ const EventDetailPage = () => {
               </div>
             )}
 
-            {event.audienceHi && (
+            {event.audienceEn && (
               <div className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
                 <div className="flex-1">
-                  <h4 className="text-[12.5px] font-extrabold text-gray-900">किसके लिए इवेंट है</h4>
-                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.audienceHi}</p>
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">Target Audience</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.audienceEn}</p>
                 </div>
               </div>
             )}
 
-            {event.importantInfoHi && (
+            {event.importantInfoEn && (
               <div className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0 text-[10px] font-bold">✓</span>
                 <div className="flex-1">
-                  <h4 className="text-[12.5px] font-extrabold text-gray-900">महत्वपूर्ण जानकारी</h4>
-                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.importantInfoHi}</p>
+                  <h4 className="text-[12.5px] font-extrabold text-gray-900">Important Information</h4>
+                  <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">{event.importantInfoEn}</p>
                 </div>
               </div>
             )}
@@ -325,7 +319,7 @@ const EventDetailPage = () => {
         <div className="px-4 pt-3">
           <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
             <h3 className="text-[15px] font-extrabold text-gray-900 mb-3 flex items-center gap-2">
-              👤 आयोजक
+              👤 Organizer
             </h3>
             <div className="flex items-center gap-3">
               <Avatar initials={event.organizer.initials} size="lg" color="bg-brand-primary/10 text-brand-primary border-2 border-brand-primary/20" />
@@ -352,7 +346,7 @@ const EventDetailPage = () => {
               <div className="mt-3 pt-3 border-t border-gray-50">
                 <p className="text-[12px] text-gray-500 flex items-center gap-2">
                   <Phone size={12} className="text-gray-400" />
-                  संपर्क: <span className="font-bold text-gray-700">{event.contact}</span>
+                  Contact: <span className="font-bold text-gray-700">{event.contact}</span>
                 </p>
               </div>
             )}
@@ -365,13 +359,13 @@ const EventDetailPage = () => {
         <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-extrabold text-gray-900 flex items-center gap-2">
-              👥 शामिल सदस्य
+              👥 Attendees
             </h3>
             <span 
               onClick={() => setShowAttendeesModal(true)}
               className="text-[12px] text-brand-primary font-bold flex items-center gap-1 active:scale-95 cursor-pointer"
             >
-              सभी देखें <ChevronRight size={14} />
+              View All <ChevronRight size={14} />
             </span>
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1" ref={attendeesRef}>
@@ -385,7 +379,7 @@ const EventDetailPage = () => {
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-500">
                 +{Math.max(0, event.attendees - 7)}
               </div>
-              <p className="text-[10px] text-gray-400 font-medium mt-1.5">और</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-1.5">More</p>
             </div>
           </div>
 
@@ -399,7 +393,7 @@ const EventDetailPage = () => {
               ))}
             </div>
             <p className="text-[11px] text-gray-500">
-              <span className="font-bold text-gray-700">{mockAttendees[0].name}</span> और <span className="font-bold text-gray-700">{event.attendees - 1} अन्य</span> शामिल हो चुके हैं
+              <span className="font-bold text-gray-700">{mockAttendees[0].name}</span> and <span className="font-bold text-gray-700">{event.attendees - 1} others</span> are attending
             </p>
           </div>
         </div>
@@ -410,7 +404,7 @@ const EventDetailPage = () => {
         <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
           <div className="p-5 pb-3">
             <h3 className="text-[15px] font-extrabold text-gray-900 flex items-center gap-2">
-              📍 स्थान
+              📍 Location
             </h3>
           </div>
           <div className="h-[140px] bg-gradient-to-br from-blue-50 to-emerald-50 mx-4 mb-3 rounded-2xl flex items-center justify-center relative overflow-hidden">
@@ -425,14 +419,14 @@ const EventDetailPage = () => {
               <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 mb-2">
                 <MapPin size={20} className="text-white" fill="currentColor" />
               </div>
-              <p className="text-[11px] text-gray-600 font-bold text-center px-4">{event.venue}</p>
+              <p className="text-[11px] text-gray-600 font-bold text-center px-4">{event.venueEn || event.venue}</p>
             </div>
           </div>
           <button 
-            onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(event.venue)}`, '_blank')}
+            onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(event.venueEn || event.venue)}`, '_blank')}
             className="w-full py-3 text-[12px] font-bold text-blue-600 flex items-center justify-center gap-1 border-t border-gray-50 active:bg-gray-50"
           >
-            <ExternalLink size={13} /> Google Maps में खोलें
+            <ExternalLink size={13} /> Open in Google Maps
           </button>
         </div>
       </div>
@@ -450,7 +444,7 @@ const EventDetailPage = () => {
             }`}
           >
             <Heart size={16} fill={isInterested ? 'currentColor' : 'none'} />
-            {isInterested ? 'रुचि दिखाई' : 'रुचि दिखाएं'}
+            {isInterested ? 'Interested' : 'Interested?'}
           </button>
 
           {/* Register/RSVP Button */}
@@ -463,9 +457,9 @@ const EventDetailPage = () => {
             }`}
           >
             {event.isRegistered ? (
-              <><CheckCircle size={16} /> शामिल हो चुके</>
+              <><CheckCircle size={16} /> Attending</>
             ) : (
-              <>शामिल हों</>
+              <>Join</>
             )}
           </button>
         </div>
@@ -484,7 +478,7 @@ const EventDetailPage = () => {
           <div className="bg-white rounded-t-[28px] max-w-lg w-full h-[60vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 shrink-0" />
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
-              <h3 className="text-[15.5px] font-black text-gray-900">शामिल सदस्य (Attendees)</h3>
+              <h3 className="text-[15.5px] font-black text-gray-900">Attendees</h3>
               <button 
                 onClick={() => setShowAttendeesModal(false)}
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
@@ -504,10 +498,10 @@ const EventDetailPage = () => {
                 </div>
               ))}
               {[
-                { initials: 'MK', name: 'मनोज कुमार' },
-                { initials: 'SS', name: 'संजय सिंह' },
-                { initials: 'VP', name: 'विजय पटेल' },
-                { initials: 'NS', name: 'नवीन शर्मा' }
+                { initials: 'MK', name: 'Manoj Kumar' },
+                { initials: 'SS', name: 'Sanjay Singh' },
+                { initials: 'VP', name: 'Vijay Patel' },
+                { initials: 'NS', name: 'Naveen Sharma' }
               ].map((a, idx) => (
                 <div key={idx + 10} className="py-3.5 flex items-center gap-3">
                   <Avatar initials={a.initials} size="md" />

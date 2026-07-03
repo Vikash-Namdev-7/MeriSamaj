@@ -179,7 +179,7 @@ const HomePage = () => {
               <div className="absolute inset-0 rounded-[18px] pointer-events-none" style={{ boxShadow: '0 0 0 1.5px rgba(167,139,250,0.4), 0 0 12px rgba(124,58,237,0.25)' }} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{t(greeting, language)}</p>
+              <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{greeting}</p>
               <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{currentUser.name.split(' ')[0]}</h1>
             </div>
           </div>
@@ -564,7 +564,7 @@ const HomePage = () => {
       {/* ─── BENTO GRID (QUICK ACTIONS) ─── */}
       <div className="px-5 mt-6 relative z-10">
         <div className="flex items-center justify-between mb-4 px-0.5">
-          <h3 className="text-[13px] font-black text-text-secondary tracking-widest uppercase">{t('Exclusive Features', language)}</h3>
+          <h3 className="text-[13px] font-black text-text-secondary tracking-widest uppercase">Exclusive Features</h3>
           <div className="h-[1.5px] flex-1 mx-3 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.15), transparent)' }} />
           <span className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(124,58,237,0.5)' }}>6 FEATURES</span>
         </div>
@@ -614,10 +614,10 @@ const HomePage = () => {
               {/* Text content */}
               <div className="mt-3 z-10">
                 <span className={`font-extrabold text-gray-900 leading-snug tracking-tight block text-[14px] ${action.hoverText} transition-colors duration-200`}>
-                  {t(action.label, language)}
+                  {action.label}
                 </span>
                 <span className="text-[10px] font-semibold text-gray-400 mt-1 block leading-tight">
-                  {t(action.desc, language)}
+                  {action.desc}
                 </span>
               </div>
             </motion.button>
@@ -631,9 +631,9 @@ const HomePage = () => {
       {/* ─── MATRIMONY SUCCESS STORIES ─── */}
       <div className="px-0 relative z-10">
         <div className="px-5 flex items-center justify-between mb-4">
-          <h3 className="text-[17px] font-bold text-text-primary tracking-tight">{t('Success Stories', language)}</h3>
+          <h3 className="text-[17px] font-bold text-text-primary tracking-tight">Success Stories</h3>
           <button onClick={() => navigate('/member/matrimonial')} className="text-[13px] text-pink-600 font-bold press-scale flex items-center gap-0.5">
-            {t('Find Your Perfect Match', language)} <ChevronRight size={16} />
+            Find Your Perfect Match <ChevronRight size={16} />
           </button>
         </div>
         
@@ -649,11 +649,11 @@ const HomePage = () => {
               
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <div className="bg-pink-500/85 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest inline-flex self-start mb-3 shadow-sm border border-pink-400/40">
-                  {t('Met through Samaj Matrimony', language)}
+                  Met through Samaj Matrimony
                 </div>
                 <h4 className="text-white text-[21px] font-serif font-bold leading-tight drop-shadow-md">{story.groomName}</h4>
                 <p className="text-white/75 text-[12px] font-medium mt-1 drop-shadow-sm flex items-center gap-1.5">
-                  <Heart size={12} className="text-pink-400" fill="currentColor" /> {t('Married in', language)} {story.marriageDate}
+                  <Heart size={12} className="text-pink-400" fill="currentColor" /> Married in {story.marriageDate}
                 </p>
                 <div className="mt-3 pt-3 border-t border-white/15">
                   <p className="text-white/85 text-[13px] italic font-medium leading-snug drop-shadow-sm">
@@ -883,13 +883,13 @@ const HomePage = () => {
                 </div>
                 {/* Card Body */}
                 <div className="p-3 pt-5">
-                  <h4 className="font-bold text-[13px] text-text-primary leading-snug line-clamp-2">{event.title}</h4>
+                  <h4 className="font-bold text-[13px] text-text-primary leading-snug line-clamp-2">{event.titleEn || event.title}</h4>
                   <div className="flex flex-col gap-1 mt-2">
                     <p className="text-[11px] text-text-secondary flex items-center gap-1 line-clamp-1">
-                      <Clock size={10} className="text-text-muted shrink-0" /> {event.time}
+                      <Clock size={10} className="text-text-muted shrink-0" /> {event.timeEn || event.time}
                     </p>
                     <p className="text-[11px] text-text-secondary flex items-center gap-1 line-clamp-1">
-                      <MapPin size={10} className="text-text-muted shrink-0" /> {event.venue.split(',')[0]}
+                      <MapPin size={10} className="text-text-muted shrink-0" /> {(event.venueEn || event.venue).split(',')[0]}
                     </p>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-purple-100/20">

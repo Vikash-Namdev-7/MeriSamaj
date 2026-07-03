@@ -59,9 +59,14 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showMuteDialog, setShowMuteDialog] = useState(false);
   const [showWallpaperDialog, setShowWallpaperDialog] = useState(false);
-  const [wallpaperTheme, setWallpaperTheme] = useState('default');
+  const [wallpaper, setWallpaper] = useState('bg-[#EFEAE2]');
+  
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  const showConfirm = (message, onConfirm) => {
+    setConfirmDialog({ message, onConfirm });
+  };
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -394,12 +399,15 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
                         <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Block
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm("Clear all messages in this chat?")) setLocalMessages([]); setShowMenu(false); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
+                        <button onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setShowMenu(false); 
+                          setShowMoreMenu(false);
+                          showConfirm("Clear all messages in this chat?", () => setLocalMessages([])); 
+                        }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Clear chat
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
-                          Export chat
-                        </button>
+
                       </>
                     )}
                   </div>
@@ -734,6 +742,33 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowWallpaperDialog(false)} className="px-4 py-3 bg-brand-primary text-white font-bold rounded-xl w-full active:scale-95 transition-transform">Apply Wallpaper</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmDialog(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-[320px] overflow-hidden animate-scale-up shadow-2xl border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <h3 className="text-[15.5px] font-bold text-gray-900 leading-snug">{confirmDialog.message}</h3>
+            </div>
+            <div className="p-4 flex gap-3 bg-gray-50 border-t border-gray-100">
+              <button 
+                onClick={() => setConfirmDialog(null)} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold bg-red-500 hover:bg-red-600 text-white transition-colors shadow-sm"
+              >
+                Proceed
+              </button>
             </div>
           </div>
         </div>

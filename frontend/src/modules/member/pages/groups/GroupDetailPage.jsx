@@ -466,9 +466,7 @@ const GroupDetailPage = () => {
                         <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setShowMoreMenu(false); showConfirm("Clear all messages in this group?", () => clearChatMessages(group.id)); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Clear chat
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
-                          Export chat
-                        </button>
+
                         <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); showConfirm("Are you sure you want to exit this group?", () => { navigate('/member/groups'); leaveGroup(group.id); }); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-[#FF3B30] hover:bg-red-50/30 flex items-center gap-2.5 border-t border-slate-100 mt-1 pt-2.5 transition-colors">
                           Exit Group
                         </button>
@@ -513,7 +511,7 @@ const GroupDetailPage = () => {
           )}
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 relative z-10">
+          <div className="flex-1 overflow-y-auto px-3 py-4 relative z-10">
             {groupedMessages.map((item, index) => {
               if (item.type === 'date') {
                 return (
@@ -533,9 +531,12 @@ const GroupDetailPage = () => {
               const hasImageOnly = msg.attachment && msg.attachment.type === 'image' && !msg.text;
               const isOnlyEmojis = msg.text && !msg.attachment && /^\p{Extended_Pictographic}{1,3}$/u.test(msg.text.replace(/\s/g, ''));
               
+              const isFirstInGroup = index === 0 || groupedMessages[index - 1].type === 'date' || groupedMessages[index - 1].senderId !== msg.senderId;
+              const marginTopClass = index === 0 ? '' : (isFirstInGroup ? 'mt-4' : 'mt-1');
+              
               return (
                 <div key={msg.id}
-                  className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
+                  className={`flex flex-col ${marginTopClass} ${isMine ? 'items-end' : 'items-start'} ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
                   onMouseDown={() => handlePressStart(msg.id)}
                   onTouchStart={() => handlePressStart(msg.id)}
                   onMouseUp={handlePressEnd}
@@ -609,7 +610,7 @@ const GroupDetailPage = () => {
                             : 'text-[15px] leading-[22px] font-normal'
                         } whitespace-pre-wrap`}>
                           {msg.text}
-                          {!isOnlyEmojis && <span className="inline-block w-14" />}
+                          {!isOnlyEmojis && <span className="inline-block w-[76px]" />}
                         </div>
                       )}
 
@@ -634,7 +635,7 @@ const GroupDetailPage = () => {
 
                       {/* Reactions */}
                       {msg.reactions && msg.reactions.length > 0 && (
-                        <div className="absolute -bottom-3 left-2 bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-gray-100 flex items-center gap-0.5 z-20">
+                        <div className={`absolute -bottom-3 ${isMine ? 'right-2' : 'left-2'} bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-gray-100 flex items-center gap-0.5 z-20`}>
                           {msg.reactions.map((r, ri) => <span key={ri} className="text-[12px]">{r}</span>)}
                         </div>
                       )}
@@ -1144,7 +1145,11 @@ const GroupDetailPage = () => {
                 const isAdmin = m.name.includes('Rajesh Sharma') || m.name.includes('Amit') || m.name.includes('Ramesh') || idx === 1;
                 
                 return (
-                  <div key={m.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors animate-fade-in">
+                  <div 
+                    key={m.id} 
+                    onClick={() => navigate(`/member/directory/${m.id}`)}
+                    className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors animate-fade-in cursor-pointer press-scale-slight"
+                  >
                     <div className="flex items-center gap-3.5">
                       <Avatar initials={m.initials} size="md" color={isJoined ? "bg-indigo-50 text-indigo-700" : "bg-gray-100 text-gray-700"} />
                       <div>
@@ -1161,7 +1166,8 @@ const GroupDetailPage = () => {
                       </span>
                     ) : (
                       <button 
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleAddMember(m.id);
                         }}
                         className="text-[11.5px] font-extrabold text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white border border-brand-primary/10 px-3.5 py-1.5 rounded-full transition-all press-scale"

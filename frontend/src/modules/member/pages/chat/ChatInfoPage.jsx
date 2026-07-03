@@ -17,6 +17,13 @@ const ChatInfoPage = () => {
 
   const chat = mockChats.find(c => c.id === chatId) || chats.find(c => c.id === chatId);
   
+  const [isMuted, setIsMuted] = useState(chat?.isMuted || false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  const showConfirm = (message, onConfirm) => {
+    setConfirmDialog({ message, onConfirm });
+  };
+  
   if (!chat) {
     return <div className="flex h-screen items-center justify-center">Chat not found</div>;
   }
@@ -163,14 +170,14 @@ const ChatInfoPage = () => {
 
         {/* SETTINGS */}
         <div className="bg-white shadow-sm mb-2">
-          <div className="flex items-center justify-between px-5 py-4 active:bg-gray-50 cursor-pointer">
+          <div onClick={() => setIsMuted(!isMuted)} className="flex items-center justify-between px-5 py-4 active:bg-gray-50 cursor-pointer">
             <div className="flex items-center gap-4">
               <Bell size={22} className="text-gray-500" />
               <span className="text-[15px] font-medium text-gray-900">Mute notifications</span>
             </div>
             {/* Toggle Switch UI */}
-            <div className={`w-11 h-6 rounded-full p-1 transition-colors ${chat.isMuted ? 'bg-brand-primary' : 'bg-gray-300'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${chat.isMuted ? 'translate-x-5' : 'translate-x-0'}`} />
+            <div className={`w-11 h-6 rounded-full p-1 transition-colors ${isMuted ? 'bg-brand-primary' : 'bg-gray-300'}`}>
+              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${isMuted ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
           </div>
         </div>
@@ -221,23 +228,43 @@ const ChatInfoPage = () => {
         <div className="bg-white shadow-sm py-2">
           {!chat.isGroup ? (
             <>
-              <button className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500">
+              <button 
+                onClick={() => {
+                  showConfirm(`Are you sure you want to block ${chat.name}?`, () => navigate('/member/chat'));
+                }}
+                className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500 transition-colors"
+              >
                 <Ban size={22} />
                 <span className="text-[15px] font-semibold">Block {chat.name}</span>
               </button>
-              <button className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500">
+              <button 
+                onClick={() => {
+                  showConfirm("Are you sure you want to delete this chat?", () => navigate('/member/chat'));
+                }}
+                className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500 transition-colors"
+              >
                 <Trash2 size={22} />
                 <span className="text-[15px] font-semibold">Delete Chat</span>
               </button>
             </>
           ) : (
             <>
-              <button className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500">
+              <button 
+                onClick={() => {
+                  showConfirm("Are you sure you want to exit this group?", () => navigate('/member/groups'));
+                }}
+                className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500 transition-colors"
+              >
                 <ArrowLeft size={22} />
                 <span className="text-[15px] font-semibold">Exit Group</span>
               </button>
               {chat.adminIds?.includes('u1') && (
-                <button className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500">
+                <button 
+                  onClick={() => {
+                    showConfirm("Are you sure you want to delete this group?", () => navigate('/member/groups'));
+                  }}
+                  className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 text-red-500 transition-colors"
+                >
                   <Trash2 size={22} />
                   <span className="text-[15px] font-semibold">Delete Group</span>
                 </button>
@@ -247,6 +274,33 @@ const ChatInfoPage = () => {
         </div>
 
       </div>
+
+      {confirmDialog && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmDialog(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-[320px] overflow-hidden animate-scale-up shadow-2xl border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <h3 className="text-[15.5px] font-bold text-gray-900 leading-snug">{confirmDialog.message}</h3>
+            </div>
+            <div className="p-4 flex gap-3 bg-gray-50 border-t border-gray-100">
+              <button 
+                onClick={() => setConfirmDialog(null)} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold bg-red-500 hover:bg-red-600 text-white transition-colors shadow-sm"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
