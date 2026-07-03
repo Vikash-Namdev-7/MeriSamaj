@@ -37,7 +37,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#D500F9]/40',
     hoverText: 'group-hover:text-[#FF1744]',
     hoverChevronBg: 'group-hover:bg-[#D500F9]',
-    desc: 'Find jobs & hire within the community' 
+    desc: 'Find jobs & hire within the community',
+    bgImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80'
   },
   { 
     icon: BookOpen, 
@@ -47,7 +48,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#2979FF]/40',
     hoverText: 'group-hover:text-[#2979FF]',
     hoverChevronBg: 'group-hover:bg-[#2979FF]',
-    desc: 'Browse Samaj Members' 
+    desc: 'Browse Samaj Members',
+    bgImage: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=400&q=80'
   },
   { 
     icon: Users, 
@@ -57,7 +59,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#E91E63]/40',
     hoverText: 'group-hover:text-[#E91E63]',
     hoverChevronBg: 'group-hover:bg-[#E91E63]',
-    desc: 'Discussions' 
+    desc: 'Discussions',
+    bgImage: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?auto=format&fit=crop&w=400&q=80'
   },
   { 
     icon: Vote, 
@@ -67,7 +70,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#651FFF]/40',
     hoverText: 'group-hover:text-[#651FFF]',
     hoverChevronBg: 'group-hover:bg-[#651FFF]',
-    desc: 'Community Polls' 
+    desc: 'Community Polls',
+    bgImage: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=400&q=80'
   },
   { 
     icon: Home, 
@@ -77,7 +81,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#00BFA5]/40',
     hoverText: 'group-hover:text-[#00BFA5]',
     hoverChevronBg: 'group-hover:bg-[#00BFA5]',
-    desc: 'Book Rooms' 
+    desc: 'Book Rooms',
+    bgImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80'
   },
   { 
     icon: Wallet, 
@@ -87,7 +92,8 @@ const quickActions = [
     hoverBorder: 'hover:border-[#FF9100]/40',
     hoverText: 'group-hover:text-[#FF9100]',
     hoverChevronBg: 'group-hover:bg-[#FF9100]',
-    desc: 'Community Fund' 
+    desc: 'Community Fund',
+    bgImage: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=400&q=80'
   }
 ];
 
@@ -578,45 +584,38 @@ const HomePage = () => {
               transition={{ delay: 0.08 + (idx * 0.05), type: 'spring', stiffness: 300, damping: 25 }}
               whileHover={{ y: -5, scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className={`rounded-[28px] bg-white text-left w-full flex flex-col justify-between min-h-[152px] relative overflow-hidden group shine-sweep`}
-              style={{
-                padding: '18px',
-                border: `1px solid rgba(${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(0,2) || '99', 16)}, ${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(2,4) || '99', 16)}, ${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(4,6) || '99', 16)}, 0.08)`,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.9)',
-              }}
+              className={`rounded-[28px] bg-white text-left w-full flex flex-col justify-between min-h-[160px] relative overflow-hidden group shadow-lg`}
+              style={{ padding: '18px' }}
             >
-              {/* Corner gradient tint matching icon */}
-              <div 
-                className="absolute -right-8 -bottom-8 w-24 h-24 rounded-full opacity-[0.08] group-hover:opacity-[0.15] group-hover:scale-150 transition-all duration-500 pointer-events-none"
-                style={{ background: action.iconBg }}
+              {/* Background Image & Overlay */}
+              <img 
+                src={action.bgImage} 
+                alt={action.label} 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
               />
-              <div 
-                className="absolute -left-4 -top-4 w-16 h-16 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none"
-                style={{ background: action.iconBg }}
-              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80 transition-opacity duration-300 group-hover:opacity-90" />
 
               {/* Icon & Arrow Row */}
-              <div className="w-full flex items-center justify-between z-10">
+              <div className="w-full flex items-center justify-between z-10 relative">
                 <div 
-                  className={`w-12 h-12 ${action.iconBg} icon-squircle shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}
-                  style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.25)' }}
+                  className={`w-12 h-12 bg-white/20 backdrop-blur-md border border-white/30 icon-squircle shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 group-hover:bg-white/30`}
+                  style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.4)' }}
                 >
-                  <action.icon size={22} className="text-white relative z-10" strokeWidth={2.2} />
+                  <action.icon size={22} className="text-white relative z-10 drop-shadow-md" strokeWidth={2.2} />
                 </div>
                 <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all duration-300 ${action.hoverChevronBg} group-hover:text-white`}
-                  style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.12)' }}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all duration-300 bg-white/20 backdrop-blur-sm border border-white/30 group-hover:bg-white group-hover:border-white`}
                 >
-                  <ChevronRight size={14} className="text-brand-primary group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
+                  <ChevronRight size={14} className="text-white group-hover:text-brand-primary group-hover:translate-x-0.5 transition-all duration-300" />
                 </div>
               </div>
 
               {/* Text content */}
-              <div className="mt-3 z-10">
-                <span className={`font-extrabold text-gray-900 leading-snug tracking-tight block text-[14px] ${action.hoverText} transition-colors duration-200`}>
+              <div className="mt-4 z-10 relative">
+                <span className={`font-extrabold text-white leading-snug tracking-tight block text-[15px] drop-shadow-md`}>
                   {action.label}
                 </span>
-                <span className="text-[10px] font-semibold text-gray-400 mt-1 block leading-tight">
+                <span className="text-[11px] font-medium text-white/80 mt-1 block leading-tight drop-shadow-sm">
                   {action.desc}
                 </span>
               </div>

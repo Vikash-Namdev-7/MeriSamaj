@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal, User, Settings, LogOut } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 import { PostSkeleton } from '../../components/common/Skeleton';
 import { StoryViewer } from '../../components/common/StoryViewer';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
-import { FeedAnalytics } from './components/FeedAnalytics';
 
 // Local translation dictionary for Feed Redesign
 const localT = {
@@ -419,10 +418,28 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
 
 const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
   const navigate = useNavigate();
-  const { posts, members: mockMembers, currentUser, language, stories = [], getUnreadCountForModule } = useData();
+  const { posts, members: mockMembers, currentUser, language, stories = [], getUnreadCountForModule, logoutUser } = useData();
   const [activeTab, setActiveTab] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('#profile-dropdown-container')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    if (isProfileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isProfileDropdownOpen]);
 
   useEffect(() => {
     setSearchText(searchQuery);
@@ -526,9 +543,6 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
         </div>
       )}
       
-      {/* ─── FEED ANALYTICS ─── */}
-      <FeedAnalytics />
-
       <div className="px-4.5 pt-4">
         {/* ─── SEARCH & FILTER CONTAINER ─── */}
         <div className="flex items-center gap-3 mb-4">
@@ -562,6 +576,65 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
               <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border border-white text-[8px] font-black text-white flex items-center justify-center shadow-sm" />
             )}
           </button>
+
+          {/* Profile Dropdown */}
+          <div id="profile-dropdown-container" className="relative shrink-0">
+            <div 
+              className="w-11 h-11 rounded-2xl border-2 border-transparent hover:border-brand-primary/30 transition-all cursor-pointer overflow-hidden shadow-sm shadow-brand-primary/10 flex items-center justify-center bg-white p-0.5"
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+            >
+              <div className="w-full h-full rounded-xl overflow-hidden pointer-events-none">
+                <Avatar initials={currentUser?.initials || 'U'} src={currentUser?.avatar} size="xs" className="w-full h-full object-cover" color="bg-blue-100 text-blue-700" />
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {isProfileDropdownOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 top-[calc(100%+8px)] w-56 bg-white/95 backdrop-blur-md border border-purple-100/50 rounded-2xl shadow-xl z-50 overflow-hidden"
+                >
+                  <div className="p-3 border-b border-purple-50/50 flex items-center gap-3 bg-purple-50/30">
+                    <Avatar initials={currentUser?.initials || 'U'} src={currentUser?.avatar} size="sm" color="bg-blue-100 text-blue-700" />
+                    <div>
+                      <h4 className="text-[13px] font-bold text-text-primary leading-tight">{currentUser?.name}</h4>
+                      <p className="text-[10px] font-semibold text-text-secondary mt-0.5">{currentUser?.profession || 'Member'}</p>
+                    </div>
+                  </div>
+                  <div className="p-1.5 flex flex-col">
+                    <button 
+                      onClick={() => { setIsProfileDropdownOpen(false); navigate('/member/profile'); }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50/50 text-[12.5px] font-bold text-slate-700 transition-colors flex items-center gap-2.5"
+                    >
+                      <User size={15} className="text-brand-primary" /> View Profile
+                    </button>
+                    <button 
+                      onClick={() => { setIsProfileDropdownOpen(false); navigate('/member/profile'); }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50/50 text-[12.5px] font-bold text-slate-700 transition-colors flex items-center gap-2.5"
+                    >
+                      <Settings size={15} className="text-brand-primary" /> Settings
+                    </button>
+                    <div className="h-[1px] w-full bg-slate-100 my-1"></div>
+                    <button 
+                      onClick={() => { 
+                        setIsProfileDropdownOpen(false); 
+                        if (logoutUser) {
+                          logoutUser();
+                          navigate('/member/login');
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-50/50 text-[12.5px] font-bold text-red-600 transition-colors flex items-center gap-2.5"
+                    >
+                      <LogOut size={15} /> Logout
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* ─── STORY CARDS (FACEBOOK STYLE) ─── */}

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift } from 'lucide-react';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const MyProfilePage = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const MyProfilePage = () => {
     followRelations,
     blockedUsers,
     members,
+    posts,
     acceptFollowRequest,
     rejectFollowRequest,
     removeFollower,
@@ -27,6 +28,8 @@ const MyProfilePage = () => {
     granularPrivacy,
     unblockUser
   } = useData();
+
+  const [activeTab, setActiveTab] = useState('posts');
 
   // Social Links Modal State
   const [showSocialModal, setShowSocialModal] = useState(false);
@@ -102,6 +105,9 @@ const MyProfilePage = () => {
   const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === 'u1').map(b => b.blockedId) || [];
   const blockedMembersList = members.filter(m => blockedMembersIds.includes(m.id));
 
+  // My Posts
+  const myPosts = posts?.filter(p => p.author.name === currentUser.name) || [];
+
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
       {/* Header Bar — Glass morphism */}
@@ -115,57 +121,25 @@ const MyProfilePage = () => {
       </div>
 
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Cover Photo & Profile Avatar Block */}
-        <div className="relative bg-white pb-6 border-b border-purple-100/30 shadow-[0_2px_12px_rgba(124,58,237,0.03)]">
-          {/* Cover Photo Wrapper */}
-          <div className={`h-44 bg-gradient-to-r ${currentUser.isPremium ? 'from-[#F59E0B] via-[#F43F5E] to-[#7C3AED]' : 'from-indigo-400 via-brand-primary to-purple-600'} relative overflow-hidden flex items-center justify-center transition-all duration-300 rounded-b-[2rem]`}>
-            {currentUser.cover ? (
-              <img src={currentUser.cover} alt="Cover" className="w-full h-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 opacity-20">
-                <svg viewBox="0 0 100 100" className="w-full h-full text-white" fill="currentColor">
-                  <path d="M10 80 Q25 50 40 80 T70 80 T100 80 L100 100 L0 100 Z" />
-                </svg>
-              </div>
-            )}
-            
-            {/* Camera trigger for Cover Photo */}
-            <label className="absolute bottom-4 right-4 w-9 h-9 bg-white/85 hover:bg-white backdrop-blur-md rounded-xl flex items-center justify-center press-scale shadow-md cursor-pointer border border-purple-100/30 transition-all">
-              <Camera size={15} className="text-brand-primary" />
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      updateProfile({ cover: event.target.result });
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
-            </label>
-          </div>
-
-          {/* Profile Avatar (Overlapping cover) */}
-          <div className="flex flex-col items-center -mt-16 relative z-10 px-4">
-            <div className="relative">
-              <div className={`w-28 h-28 rounded-3xl border-4 flex items-center justify-center overflow-hidden shadow-xl transition-all ${
+        {/* Instagram-Inspired Profile Header Block */}
+        <div className="bg-white pb-6 pt-4 px-4 shadow-[0_2px_12px_rgba(124,58,237,0.03)] border-b border-purple-100/30">
+          
+          {/* Top Row: Avatar & Stats */}
+          <div className="flex items-center justify-between gap-6">
+            <div className="relative shrink-0">
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center overflow-hidden shadow-sm transition-all ${
                 currentUser.isPremium 
-                  ? 'border-amber-400 bg-gradient-to-tr from-amber-500 to-yellow-300 ring-4 ring-amber-100/40' 
-                  : 'border-white bg-white shadow-md'
+                  ? 'border-amber-400 p-[2px] bg-gradient-to-tr from-amber-500 to-yellow-300' 
+                  : 'border-brand-primary/20 p-[2px] bg-white'
               }`}>
-                <div className="w-full h-full rounded-[22px] overflow-hidden">
+                <div className="w-full h-full rounded-full overflow-hidden bg-white border border-white">
                   <Avatar initials={currentUser.initials} src={currentUser.avatar} size="xl" className="w-full h-full object-cover" />
                 </div>
               </div>
-              <label className={`absolute bottom-0 right-0 w-8.5 h-8.5 text-white rounded-xl shadow-lg flex items-center justify-center press-scale border-2 border-white cursor-pointer ${
-                currentUser.isPremium ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-brand-primary hover:bg-brand-dark'
+              <label className={`absolute bottom-0 right-0 w-7 h-7 text-white rounded-full shadow-md flex items-center justify-center press-scale border-[1.5px] border-white cursor-pointer ${
+                currentUser.isPremium ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-primary hover:bg-brand-dark'
               }`}>
-                <Camera size={13} />
+                <Camera size={11} />
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -183,43 +157,141 @@ const MyProfilePage = () => {
                 />
               </label>
             </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-1.5 mt-4 px-4 text-center">
-              <h2 className="text-xl font-bold text-text-primary tracking-tight leading-none flex items-center gap-1">
-                {currentUser.name}
-                {profilePrivacy?.u1 === 'private' && <span className="text-xs">🔒</span>}
-              </h2>
-              {currentUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
-              {currentUser.isPremium && (
-                <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20 animate-pulse-glow">
-                  👑 {currentUser.membershipPlan || 'PRO MAX'}
-                </span>
-              )}
-            </div>
-            <p className="text-xs font-semibold text-text-secondary mt-1">{currentUser.profession || 'Member'}</p>
-            {(currentUser.city || currentUser.state) && (
-              <p className="text-[11px] font-semibold text-text-secondary mt-1.5 flex items-center justify-center gap-0.5">
-                <span className="text-[10px]">📍</span> {currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}
-              </p>
-            )}
-
-            {/* Followers and Following Counters */}
-            <div className="flex gap-6 mt-4 text-center bg-purple-50/50 border border-purple-100/30 rounded-2xl px-5 py-2.5 shadow-sm">
-              <button onClick={() => setMembersListModalType('followers')} className="press-scale">
-                <span className="text-[16px] font-bold text-text-primary block">{myFollowers.length}</span>
-                <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Followers</span>
+            
+            <div className="flex-1 flex items-center justify-around">
+              <div className="flex flex-col items-center">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{myPosts.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Posts</span>
+              </div>
+              <button onClick={() => setMembersListModalType('followers')} className="flex flex-col items-center press-scale">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{myFollowers.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Followers</span>
               </button>
-              <div className="w-[1px] bg-purple-200/55" />
-              <button onClick={() => setMembersListModalType('following')} className="press-scale">
-                <span className="text-[16px] font-bold text-text-primary block">{myFollowing.length}</span>
-                <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Following</span>
+              <button onClick={() => setMembersListModalType('following')} className="flex flex-col items-center press-scale">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{myFollowing.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Following</span>
               </button>
             </div>
           </div>
+
+          {/* Name & Bio Block */}
+          <div className="mt-4 space-y-1">
+            <h2 className="text-[15px] font-bold text-text-primary tracking-tight leading-tight flex items-center gap-1.5">
+              {currentUser.name}
+              {profilePrivacy?.u1 === 'private' && <span className="text-xs">🔒</span>}
+              {currentUser.isVerified && <CheckCircle size={14} className="text-emerald-500 fill-emerald-50 shrink-0" />}
+              {currentUser.isPremium && (
+                <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
+                  👑 {currentUser.membershipPlan || 'PRO'}
+                </span>
+              )}
+            </h2>
+            <p className="text-[12px] font-semibold text-text-secondary">{currentUser.profession || 'Member'}</p>
+            {(currentUser.city || currentUser.state) && (
+              <p className="text-[11px] font-medium text-text-secondary flex items-center gap-1">
+                📍 {currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}
+              </p>
+            )}
+            {/* Bio - if available, else static placeholder */}
+            <p className="text-[13px] text-text-primary mt-1.5 leading-snug">
+              {currentUser.bio || "Welcome to my profile! Let's connect and build a strong community together. 🌟"}
+            </p>
+            {/* Social Links Summary */}
+            {(currentUser.linkedin || currentUser.twitter || currentUser.facebook) && (
+              <a href={currentUser.linkedin || currentUser.facebook || currentUser.twitter} target="_blank" rel="noreferrer" className="text-[12px] font-semibold text-brand-primary flex items-center gap-1 mt-1 truncate">
+                <Globe size={12} /> {new URL(currentUser.linkedin || currentUser.facebook || currentUser.twitter || 'https://linktr.ee/user').hostname}
+              </a>
+            )}
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-2 mt-4">
+            <button 
+              onClick={() => navigate('/member/profile/edit')}
+              className="flex-1 py-1.5 bg-purple-50 text-brand-primary rounded-lg text-[13px] font-bold border border-purple-100 shadow-sm press-scale transition-colors"
+            >
+              Edit Profile
+            </button>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(`http://localhost:5174/member/directory/u1`);
+              }}
+              className="flex-1 py-1.5 bg-purple-50 text-brand-primary rounded-lg text-[13px] font-bold border border-purple-100 shadow-sm press-scale transition-colors"
+            >
+              Share Profile
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className="px-3 py-1.5 bg-purple-50 text-brand-primary rounded-lg border border-purple-100 shadow-sm press-scale transition-colors"
+            >
+              <SettingsIcon size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Premium Upgrade Promotion Banner */}
-        <div className="px-4">
+        {/* Tabs Below Profile Info */}
+        <div className="flex items-center border-b border-purple-100/30 bg-white sticky top-14 z-20">
+          <button 
+            onClick={() => setActiveTab('posts')}
+            className={`flex-1 py-3 text-[14px] font-bold flex items-center justify-center gap-2 transition-all relative ${
+              activeTab === 'posts' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Grid size={18} />
+            Posts
+            {activeTab === 'posts' && (
+              <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`flex-1 py-3 text-[14px] font-bold flex items-center justify-center gap-2 transition-all relative ${
+              activeTab === 'settings' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <SettingsIcon size={18} />
+            Settings
+            {activeTab === 'settings' && (
+              <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+        </div>
+
+        {/* Posts Tab Content */}
+        {activeTab === 'posts' && (
+          <div className="px-1">
+            <div className="grid grid-cols-3 gap-[2px] md:gap-1">
+              {myPosts.length > 0 ? (
+                myPosts.map((post) => (
+                  <div key={post.id} className="aspect-square bg-purple-50/50 overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate(`/member/social/${post.id}`)}>
+                    {post.image || (post.images && post.images.length > 0) ? (
+                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center border border-purple-100/30">
+                        <span className="text-[9px] font-bold text-brand-primary uppercase tracking-wider mb-1">{post.category}</span>
+                        <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400">
+                  <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center mb-4">
+                    <Camera size={24} className="text-slate-300" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-700">No Posts Yet</h3>
+                  <p className="text-[11px] mt-1">Share a moment with your community.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab Content */}
+        {activeTab === 'settings' && (
+          <>
+            {/* Premium Upgrade Promotion Banner */}
+            <div className="px-4">
           {!currentUser.isPremium ? (
             <div 
               onClick={() => navigate('/member/profile/upgrade')}
@@ -455,6 +527,8 @@ const MyProfilePage = () => {
             </button>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Social Links Modal */}
