@@ -54,7 +54,7 @@ import ApplyProfessionalPage from '../pages/directory/ApplyProfessionalPage';
 import VotingPage from '../pages/voting/VotingPage';
 import PollDetailPage from '../pages/voting/PollDetailPage';
 import ElectionsListPage from '../pages/voting/ElectionsListPage';
-import SurveysPage from '../pages/voting/SurveysPage';
+// import SurveysPage from '../pages/voting/SurveysPage';
 import { VotingProvider } from '../pages/voting/VotingContext';
 import DonationPage from '../pages/donation/DonationPage';
 import DonateSetupPage from '../pages/donation/DonateSetupPage';
@@ -98,7 +98,6 @@ import { CensusPage } from '../pages/census/CensusPage';
 // Feature: Chat
 // import ChatListPage from '../pages/chat/ChatListPage';
 import ChatRouteWrapper from '../pages/chat/ChatRouteWrapper';
-import CallScreen from '../pages/chat/CallScreen';
 import ChatInfoPage from '../pages/chat/ChatInfoPage';
 
 // Feature: Nimantran
@@ -169,8 +168,8 @@ export const MemberRoutes = () => {
           <Route path="voting" element={<VotingProvider />}>
             <Route index element={<AnimatedPage><VotingPage /></AnimatedPage>} />
             <Route path="list" element={<AnimatedPage><ElectionsListPage /></AnimatedPage>} />
-            <Route path="surveys" element={<AnimatedPage><SurveysPage /></AnimatedPage>} />
-            <Route path=":pollId" element={<AnimatedPage><PollDetailPage /></AnimatedPage>} />
+            {/* <Route path="surveys" element={<AnimatedPage><SurveysPage /></AnimatedPage>} /> */}
+            <Route path=":id" element={<AnimatedPage><PollDetailPage /></AnimatedPage>} />
           </Route>
 
           <Route path="donation" element={<DonationProvider />}>
@@ -191,7 +190,6 @@ export const MemberRoutes = () => {
           <Route path="chat" element={<AnimatedPage><SocialHubPage initialTab="chat" /></AnimatedPage>} />
           <Route path="chat/:chatId" element={<AnimatedPage><ChatRouteWrapper /></AnimatedPage>} />
           <Route path="chat/info/:chatId" element={<AnimatedPage><ChatInfoPage /></AnimatedPage>} />
-          <Route path="chat/call/:chatId" element={<AnimatedPage><CallScreen /></AnimatedPage>} />
 
           <Route path="obituaries" element={<AnimatedPage><ObituaryPage /></AnimatedPage>} />
           <Route path="obituaries/create" element={<AnimatedPage><CreateObituaryPage /></AnimatedPage>} />

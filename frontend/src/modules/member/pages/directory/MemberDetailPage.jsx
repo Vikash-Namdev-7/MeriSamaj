@@ -3,48 +3,48 @@ import { ArrowLeft, CheckCircle, MessageCircle, Phone, Mail, MapPin } from 'luci
 import { useData } from '../../context/DataProvider';
 import BranchingFamilyTree from '../../components/family/BranchingFamilyTree';
 
-// Hindi mappings
+// English mappings
 const cityMap = {
-  'Indore': 'इंदौर, मध्य प्रदेश',
-  'Jaipur': 'जयपुर, राजस्थान',
-  'Bhopal': 'भोपाल, मध्य प्रदेश',
-  'Ujjain': 'उज्जैन, मध्य प्रदेश',
-  'Ahmedabad': 'अहमदाबाद, गुजरात',
-  'Lucknow': 'लखनऊ, उत्तर प्रदेश',
-  'Delhi': 'दिल्ली',
-  'Kota': 'कोटा, राजस्थान',
-  'Alwar': 'अलवर, राजस्थान',
-  'Bikaner': 'बीकानेर, राजस्थान',
-  'Udaipur': 'उदयपुर, राजस्थान',
-  'Pune': 'पुणे, महाराष्ट्र',
+  'Indore': 'Indore, Madhya Pradesh',
+  'Jaipur': 'Jaipur, Rajasthan',
+  'Bhopal': 'Bhopal, Madhya Pradesh',
+  'Ujjain': 'Ujjain, Madhya Pradesh',
+  'Ahmedabad': 'Ahmedabad, Gujarat',
+  'Lucknow': 'Lucknow, Uttar Pradesh',
+  'Delhi': 'Delhi',
+  'Kota': 'Kota, Rajasthan',
+  'Alwar': 'Alwar, Rajasthan',
+  'Bikaner': 'Bikaner, Rajasthan',
+  'Udaipur': 'Udaipur, Rajasthan',
+  'Pune': 'Pune, Maharashtra',
 };
 
 const professionMap = {
-  'Architect': 'आर्किटेक्ट',
-  'Doctor': 'चिकित्सक / डॉक्टर',
-  'Software Engineer': 'इंजीनियर',
-  'Teacher': 'शिक्षक',
-  'CA': 'चार्टर्ड अकाउंटेंट / सीए',
-  'Pharmacist': 'फार्मासिस्ट',
-  'Lawyer': 'वकील',
-  'Interior Designer': 'इंटीरियर डिजाइनर',
-  'Marketing Manager': 'मार्केटिंग मैनेजर',
-  'Homemaker': 'गृहणी',
-  'Business Owner': 'व्यवसायी / उद्योगपति',
+  'Architect': 'Architect',
+  'Doctor': 'Doctor',
+  'Software Engineer': 'Software Engineer',
+  'Teacher': 'Teacher',
+  'CA': 'CA',
+  'Pharmacist': 'Pharmacist',
+  'Lawyer': 'Lawyer',
+  'Interior Designer': 'Interior Designer',
+  'Marketing Manager': 'Marketing Manager',
+  'Homemaker': 'Homemaker',
+  'Business Owner': 'Business Owner',
 };
 
 const businessTypeMap = {
-  'Architect': 'कंस्ट्रक्शन और डिजाइनिंग',
-  'Doctor': 'चिकित्सा / स्वास्थ्य सेवा',
-  'Software Engineer': 'आईटी / सॉफ्टवेयर सेवा',
-  'Teacher': 'शिक्षा सेवा',
-  'CA': 'वित्तीय ऑडिट और कर परामर्श',
-  'Pharmacist': 'औषधि निर्माण व विक्रय',
-  'Lawyer': 'कानूनी सेवा और परामर्श',
-  'Interior Designer': 'गृह सज्जा और डिजाइन',
-  'Marketing Manager': 'विपणन और विज्ञापन',
-  'Homemaker': 'पारिवारिक देखभाल',
-  'Business Owner': 'विनिर्माण और व्यापार',
+  'Architect': 'Construction & Designing',
+  'Doctor': 'Healthcare & Medical',
+  'Software Engineer': 'IT & Software Services',
+  'Teacher': 'Education Services',
+  'CA': 'Financial Audits & Advisory',
+  'Pharmacist': 'Pharma Manufacturing & Retail',
+  'Lawyer': 'Legal Services & Advisory',
+  'Interior Designer': 'Home Decor & Design',
+  'Marketing Manager': 'Marketing & Advertising',
+  'Homemaker': 'Family Care',
+  'Business Owner': 'Manufacturing & Trading',
 };
 
 const MemberDetailPage = () => {
@@ -89,26 +89,26 @@ const MemberDetailPage = () => {
 
   const phoneNum = member.phone || `98765${(10000 + (hash % 89999))}`;
   const emailAddr = member.email || `${member.name.toLowerCase().replace(/\s+/g, '')}@email.com`;
-  const hindiCity = cityMap[member.city] || `${member.city}, राजस्थान`;
+  const englishCity = cityMap[member.city] || `${member.city}, Rajasthan`;
 
   // Professional details
-  const hindiProfession = professionMap[member.profession] || member.role || 'व्यवसायी';
-  const companyName = member.company || `${member.name.split(' ')[1] || 'शर्मा'} इंडस्ट्रीज`;
-  const businessSector = businessTypeMap[member.profession] || 'विनिर्माण';
+  const englishProfession = professionMap[member.profession] || member.role || 'Business Owner';
+  const companyName = member.company || `${member.name.split(' ')[1] || 'Sharma'} Industries`;
+  const businessSector = businessTypeMap[member.profession] || 'Manufacturing & Trading';
   const estYear = 2000 + (hash % 24);
 
   // Full Address
-  const fullAddress = member.address || `${10 + (hash % 200)}, वैशाली नगर, ${hindiCity} - ${302000 + (hash % 999)}`;
+  const fullAddress = member.address || `${10 + (hash % 200)}, Vaishali Nagar, ${englishCity} - ${302000 + (hash % 999)}`;
 
   // Set up mock family list if not present
   const getMockFamilyMembers = (m) => {
     if (m.familyMembers && m.familyMembers.length > 0) {
       return m.familyMembers;
     }
-    const lastName = m.name.split(' ')[1] || 'शर्मा';
+    const lastName = m.name.split(' ')[1] || 'Sharma';
     return [
-      { id: `${m.id}-f1`, name: `सुनीता ${lastName}`, relation: 'Wife', age: m.age - 3, initials: 'SA' },
-      { id: `${m.id}-f2`, name: `आरव ${lastName}`, relation: 'Son', age: Math.max(5, m.age - 25), initials: 'AA' }
+      { id: `${m.id}-f1`, name: `Sunita ${lastName}`, relation: 'Wife', age: m.age - 3, initials: 'SA' },
+      { id: `${m.id}-f2`, name: `Aarav ${lastName}`, relation: 'Son', age: Math.max(5, m.age - 25), initials: 'AA' }
     ];
   };
 
@@ -167,8 +167,8 @@ const MemberDetailPage = () => {
             )}
           </div>
           
-          <p className="text-xs font-semibold text-text-secondary mt-1">{hindiProfession}</p>
-          <p className="text-[10px] font-medium text-text-secondary mt-0.5">{hindiCity}</p>
+          <p className="text-xs font-semibold text-text-secondary mt-1">{englishProfession}</p>
+          <p className="text-[10px] font-medium text-text-secondary mt-0.5">{englishCity}</p>
 
           {/* Follow Button */}
           {member.id !== 'u1' && (
@@ -221,7 +221,7 @@ const MemberDetailPage = () => {
             </div>
           )}
 
-          {/* Action Buttons (Only visible if canAccess and not blocked) */}
+          {/* Action Buttons */}
           {canAccess && !isBlocked && (
             <div className="w-full grid grid-cols-3 gap-2.5 mt-5 pt-5 border-t border-gray-50">
               <button 
@@ -295,7 +295,7 @@ const MemberDetailPage = () => {
                 <InfoField label="Date of Birth" value={dobStr} />
                 <InfoField label="Mobile Number" value={showPhone ? phoneNum : (memberGranular.phone === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
                 <InfoField label="Email" value={showEmail ? emailAddr : (memberGranular.email === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
-                <InfoField label="City" value={hindiCity} />
+                <InfoField label="City" value={englishCity} />
               </div>
             </div>
 
@@ -303,7 +303,7 @@ const MemberDetailPage = () => {
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider pl-1">Professional Information</h3>
               <div className="bg-card rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
-                <InfoField label="Profession" value={hindiProfession} />
+                <InfoField label="Profession" value={englishProfession} />
                 <InfoField label="Company" value={companyName} />
                 <InfoField label="Business" value={businessSector} />
                 <InfoField label="Est. Year" value={estYear.toString()} />

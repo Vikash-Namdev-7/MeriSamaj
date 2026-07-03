@@ -1,8 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Check } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
+
+const INDIAN_STATES_AND_CITIES = {
+  'Madhya Pradesh': [
+    'Indore', 'Bhopal', 'Ujjain', 'Jabalpur', 'Gwalior', 'Dewas', 'Ratlam', 
+    'Sanawad', 'Khargone', 'Dhamnod', 'Dhar', 'Maheshwar', 'Khandwa', 'Sagar', 'Satna', 'Rewa'
+  ],
+  'Rajasthan': [
+    'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Sikar', 'Alwar', 'Bhilwara'
+  ],
+  'Maharashtra': [
+    'Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 'Solapur', 'Amravati', 'Navi Mumbai', 'Kolhapur', 'Akola'
+  ],
+  'Gujarat': [
+    'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Anand', 'Nadiad', 'Morbi'
+  ],
+  'Delhi': [
+    'New Delhi', 'Delhi', 'Dwarka', 'Rohini', 'Vasant Kunj', 'Saket', 'Karol Bagh'
+  ],
+  'Uttar Pradesh': [
+    'Lucknow', 'Kanpur', 'Noida', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut', 'Prayagraj', 'Bareilly', 'Aligarh', 'Gorakhpur'
+  ],
+  'Karnataka': [
+    'Bengaluru', 'Mysuru', 'Hubballi', 'Mangaluru', 'Belagavi', 'Davangere', 'Ballari'
+  ],
+  'Tamil Nadu': [
+    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tiruppur', 'Erode'
+  ],
+  'Telangana': [
+    'Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam'
+  ],
+  'Andhra Pradesh': [
+    'Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Tirupati'
+  ]
+};
 
 const EditProfilePage = () => {
   const navigate = useNavigate();
@@ -15,10 +49,95 @@ const EditProfilePage = () => {
     dob: currentUser.dob || '1995-08-15',
     profession: currentUser.profession || '',
     company: currentUser.company || 'Agrawal Enterprises',
-    address: currentUser.city || ''
+    state: currentUser.state || (currentUser.city === 'Indore' || currentUser.city === 'Bhopal' || currentUser.city === 'Ujjain' ? 'Madhya Pradesh' : (currentUser.city === 'Jaipur' ? 'Rajasthan' : '')),
+    city: currentUser.city || '',
+    address: currentUser.address || ''
   });
 
+  const [showGenderDropdown, setShowGenderDropdown] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Parse date string 'YYYY-MM-DD'
+  const [pickerDate, setPickerDate] = useState(() => {
+    const parts = (formData.dob || '1995-08-15').split('-');
+    const y = parts[0] ? Number(parts[0]) : 1995;
+    const m = parts[1] ? Number(parts[1]) - 1 : 7;
+    const d = parts[2] ? Number(parts[2]) : 15;
+    return { year: y, month: m, day: d };
+  });
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  // Years range from 1940 to 2026
+  const years = Array.from({ length: 2027 - 1940 }, (_, i) => 2026 - i);
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const daysInMonth = getDaysInMonth(pickerDate.year, pickerDate.month);
+  const firstDay = getFirstDayOfMonth(pickerDate.year, pickerDate.month);
+  const calendarDays = [];
+
+  for (let i = 0; i < firstDay; i++) {
+    calendarDays.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendarDays.push(i);
+  }
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleStateChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => {
+      const allowedCities = INDIAN_STATES_AND_CITIES[val] || [];
+      const isCityValid = allowedCities.includes(prev.city);
+      return {
+        ...prev,
+        state: val,
+        city: isCityValid ? prev.city : '',
+      };
+    });
+  };
+
+  const handleSelectState = (stateVal) => {
+    setFormData((prev) => {
+      const allowedCities = INDIAN_STATES_AND_CITIES[stateVal] || [];
+      const isCityValid = allowedCities.includes(prev.city);
+      return {
+        ...prev,
+        state: stateVal,
+        city: isCityValid ? prev.city : '',
+      };
+    });
+  };
+
+  const handleCityChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => ({ ...prev, city: val }));
+  };
+
+  const handleSelectCity = (cityVal) => {
+    setFormData((prev) => {
+      let newState = prev.state;
+      if (!newState) {
+        const foundState = Object.keys(INDIAN_STATES_AND_CITIES).find(st =>
+          INDIAN_STATES_AND_CITIES[st].includes(cityVal)
+        );
+        if (foundState) {
+          newState = foundState;
+        }
+      }
+      return {
+        ...prev,
+        city: cityVal,
+        state: newState
+      };
+    });
+  };
 
   const handleSave = () => {
     // Basic validation
@@ -29,6 +148,13 @@ const EditProfilePage = () => {
     
     // Navigate back to profile
     navigate(-1);
+  };
+
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY format
   };
 
   return (
@@ -76,19 +202,157 @@ const EditProfilePage = () => {
           <InputField label="Full Name" name="name" value={formData.name} onChange={handleChange} />
           
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            {/* Custom Gender Select */}
+            <div className="relative">
               <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Gender</label>
-              <select 
-                name="gender" 
-                value={formData.gender} 
-                onChange={handleChange}
-                className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all"
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGenderDropdown(!showGenderDropdown);
+                  setShowDatePicker(false);
+                }}
+                className="w-full mt-1.5 flex items-center justify-between bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all text-left"
               >
-                <option>Male</option>
-                <option>Female</option>
-              </select>
+                <span>{formData.gender}</span>
+                <ChevronDown size={16} className="text-text-secondary shrink-0" />
+              </button>
+              
+              {showGenderDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowGenderDropdown(false)} />
+                  <div className="absolute top-[72px] left-0 right-0 bg-card border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden py-1 animate-slide-up">
+                    {['Male', 'Female'].map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, gender: g }));
+                          setShowGenderDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 text-xs font-semibold text-text-primary flex items-center justify-between border-b border-gray-50 last:border-0"
+                      >
+                        <span className={formData.gender === g ? 'text-brand-primary' : ''}>{g}</span>
+                        {formData.gender === g && <Check size={14} className="text-brand-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-            <InputField label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} />
+
+            {/* Custom Date Picker */}
+            <div className="relative">
+              <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Date of Birth</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDatePicker(!showDatePicker);
+                  setShowGenderDropdown(false);
+                }}
+                className="w-full mt-1.5 flex items-center justify-between bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all text-left"
+              >
+                <span>{formatDateDisplay(formData.dob)}</span>
+                <CalendarIcon size={16} className="text-text-secondary shrink-0" />
+              </button>
+              
+              {showDatePicker && (
+                <>
+                  <div className="fixed inset-0 z-45" onClick={() => setShowDatePicker(false)} />
+                  <div className="absolute top-[72px] right-0 bg-card border border-gray-200 rounded-2xl shadow-2xl p-4 z-50 w-[270px] animate-slide-up">
+                    {/* Header: Month & Year Selector */}
+                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPickerDate(prev => {
+                            let newMonth = prev.month - 1;
+                            let newYear = prev.year;
+                            if (newMonth < 0) {
+                              newMonth = 11;
+                              newYear -= 1;
+                            }
+                            return { ...prev, month: newMonth, year: newYear };
+                          });
+                        }}
+                        className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <ChevronLeft size={16} className="text-text-primary" />
+                      </button>
+                      
+                      <div className="flex gap-1">
+                        <select
+                          value={pickerDate.month}
+                          onChange={(e) => setPickerDate(prev => ({ ...prev, month: Number(e.target.value) }))}
+                          className="text-xs font-bold bg-transparent outline-none cursor-pointer text-brand-primary"
+                        >
+                          {months.map((m, idx) => (
+                            <option key={idx} value={idx}>{m.slice(0, 3)}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={pickerDate.year}
+                          onChange={(e) => setPickerDate(prev => ({ ...prev, year: Number(e.target.value) }))}
+                          className="text-xs font-bold bg-transparent outline-none cursor-pointer text-brand-primary"
+                        >
+                          {years.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPickerDate(prev => {
+                            let newMonth = prev.month + 1;
+                            let newYear = prev.year;
+                            if (newMonth > 11) {
+                              newMonth = 0;
+                              newYear += 1;
+                            }
+                            return { ...prev, month: newMonth, year: newYear };
+                          });
+                        }}
+                        className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <ChevronRight size={16} className="text-text-primary" />
+                      </button>
+                    </div>
+
+                    {/* Days Grid */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] mb-2">
+                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                        <div key={d} className="font-bold text-text-secondary py-0.5">{d}</div>
+                      ))}
+                      {calendarDays.map((day, idx) => (
+                        <div key={idx} className="flex justify-center items-center">
+                          {day ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const formattedDob = `${pickerDate.year}-${String(pickerDate.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                setFormData(prev => ({ ...prev, dob: formattedDob }));
+                                setPickerDate(prev => ({ ...prev, day }));
+                                setShowDatePicker(false);
+                              }}
+                              className={`w-7 h-7 rounded-full flex items-center justify-center font-bold transition-all ${
+                                pickerDate.day === day
+                                  ? 'bg-brand-primary text-white shadow-md'
+                                  : 'hover:bg-purple-50 text-text-primary'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          ) : (
+                            <div className="w-7 h-7" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <InputField label="Mobile Number" name="phone" value={formData.phone} onChange={handleChange} disabled />
@@ -99,9 +363,94 @@ const EditProfilePage = () => {
           
           <InputField label="Company / Business Name" name="company" value={formData.company} onChange={handleChange} />
           
-          <InputField label="City / Address" name="address" value={formData.address} onChange={handleChange} />
+          <div className="grid grid-cols-2 gap-3">
+            <AutocompleteField
+              label="State"
+              name="state"
+              value={formData.state}
+              onChange={handleStateChange}
+              suggestions={Object.keys(INDIAN_STATES_AND_CITIES)}
+              placeholder="Search / select state"
+              onSelect={handleSelectState}
+            />
+            <AutocompleteField
+              label="City"
+              name="city"
+              value={formData.city}
+              onChange={handleCityChange}
+              suggestions={
+                formData.state
+                  ? INDIAN_STATES_AND_CITIES[formData.state] || []
+                  : Object.values(INDIAN_STATES_AND_CITIES).flat()
+              }
+              placeholder={formData.state ? "Search / select city" : "Select state first"}
+              onSelect={handleSelectCity}
+            />
+          </div>
+          
+          <InputField label="Detailed Address" name="address" value={formData.address} placeholder="Enter your home address" onChange={handleChange} />
         </div>
       </div>
+    </div>
+  );
+};
+
+const AutocompleteField = ({ label, name, value, onChange, suggestions, placeholder, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+
+  useEffect(() => {
+    if (!value) {
+      setFilteredSuggestions(suggestions);
+    } else {
+      const query = value.toLowerCase();
+      setFilteredSuggestions(
+        suggestions.filter((item) => item.toLowerCase().includes(query))
+      );
+    }
+  }, [value, suggestions]);
+
+  return (
+    <div className="relative">
+      <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+        {label}
+      </label>
+      <input
+        type="text"
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        onFocus={() => setIsOpen(true)}
+        className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder-gray-400 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10"
+      />
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 right-0 mt-1.5 bg-card border border-gray-200 rounded-2xl shadow-xl z-50 max-h-48 overflow-y-auto py-1 divide-y divide-gray-55">
+            {filteredSuggestions.length > 0 ? (
+              filteredSuggestions.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    onSelect(item);
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50/50 text-xs font-semibold text-text-primary transition-colors flex items-center justify-between"
+                >
+                  <span className={value === item ? 'text-brand-primary font-bold' : ''}>{item}</span>
+                  {value === item && <Check size={14} className="text-brand-primary shrink-0" />}
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-xs text-text-secondary italic">
+                No matches found.
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

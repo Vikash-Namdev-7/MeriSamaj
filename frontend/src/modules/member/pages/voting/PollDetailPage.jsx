@@ -15,7 +15,7 @@ const PollDetailPage = () => {
   const { 
     elections, 
     votedElections, 
-    submitVote, 
+    castVote, 
     getElectionResult 
   } = useVoting();
 
@@ -87,7 +87,7 @@ const PollDetailPage = () => {
 
   const handleVoteSubmit = () => {
     if (selectedCandidateId) {
-      submitVote(election.id, selectedCandidateId);
+      castVote(election.id, selectedCandidateId);
       setShowConfirmModal(false);
       setViewState('success');
     }

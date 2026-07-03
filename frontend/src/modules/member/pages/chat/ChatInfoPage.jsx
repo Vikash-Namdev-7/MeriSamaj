@@ -68,20 +68,7 @@ const ChatInfoPage = () => {
               ? `Group • ${chat.participants?.length || 0} participants` 
               : '+91 98765 43210'}
           </p>
-          
           <div className="flex items-center gap-6 mt-6">
-            <button onClick={() => navigate(`/member/chat/call/${chat.id}?type=voice&name=${encodeURIComponent(chat.name)}`)} className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-brand-primary active:bg-gray-50 transition-colors">
-                <Phone size={22} />
-              </div>
-              <span className="text-[12px] font-semibold text-gray-600">Audio</span>
-            </button>
-            <button onClick={() => navigate(`/member/chat/call/${chat.id}?type=video&name=${encodeURIComponent(chat.name)}`)} className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-brand-primary active:bg-gray-50 transition-colors">
-                <Video size={22} />
-              </div>
-              <span className="text-[12px] font-semibold text-gray-600">Video</span>
-            </button>
             <button onClick={() => navigate(-1)} className="flex flex-col items-center gap-2">
               <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-brand-primary active:bg-gray-50 transition-colors">
                 <Search size={22} />

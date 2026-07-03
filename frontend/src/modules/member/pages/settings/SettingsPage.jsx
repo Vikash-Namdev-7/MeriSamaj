@@ -44,6 +44,8 @@ const SettingsPage = () => {
   const [phoneSetting, setPhoneSetting] = useState(userGranular.phone || 'followers');
   const [emailSetting, setEmailSetting] = useState(userGranular.email || 'followers');
   const [familySetting, setFamilySetting] = useState(userGranular.familyTree || 'followers');
+  const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
+  const [showEmailDropdown, setShowEmailDropdown] = useState(false);
 
   // Help form state
   const [supportMessage, setSupportMessage] = useState('');
@@ -110,25 +112,25 @@ const SettingsPage = () => {
       <div className="p-4 space-y-6 max-w-md mx-auto w-full">
         {settingsGroups.map((group, idx) => (
           <div key={idx} className="animate-stagger-fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
-            <h3 className="text-[12px] font-bold text-text-secondary uppercase tracking-wider mb-2.5 px-2">
+            <h3 className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest mb-3 px-2">
               {group.title}
             </h3>
-            <div className="card-neo overflow-hidden">
+            <div className="bg-white rounded-[24px] border border-purple-100/20 overflow-hidden shadow-[0_4px_16px_rgba(109,40,217,0.02)]">
               {group.items.map((item, i) => (
                 <div 
                   key={item.id} 
                   onClick={() => handleItemClick(item.id)}
-                  className={`flex items-center justify-between p-4 press-scale cursor-pointer transition-all hover:bg-purple-50/20 ${i !== group.items.length - 1 ? 'border-b border-purple-100/10' : ''}`}
+                  className={`flex items-center justify-between p-4 press-scale cursor-pointer transition-all duration-200 hover:bg-purple-50/30 ${i !== group.items.length - 1 ? 'border-b border-purple-100/10' : ''}`}
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className={`w-9 h-9 rounded-xl ${item.bg} flex items-center justify-center border border-purple-150/15`}>
-                      <item.icon size={18} className={item.color} />
+                    <div className={`w-9 h-9 rounded-xl ${item.bg} flex items-center justify-center border border-purple-150/15 shadow-sm`}>
+                      <item.icon size={17} className={item.color} strokeWidth={2.2} />
                     </div>
-                    <span className="text-[14px] font-bold text-text-primary">{item.label}</span>
+                    <span className="text-[14px] font-extrabold text-text-primary">{item.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {item.extra && <span className="text-[12px] font-semibold text-text-muted">{item.extra}</span>}
-                    <ChevronRight size={18} className="text-purple-300" />
+                    {item.extra && <span className="text-[11px] font-bold text-text-muted">{item.extra}</span>}
+                    <ChevronRight size={16} className="text-purple-300" />
                   </div>
                 </div>
               ))}
@@ -140,15 +142,16 @@ const SettingsPage = () => {
         <div className="mt-8 mb-4 animate-stagger-fade-in" style={{ animationDelay: '180ms' }}>
           <button 
             onClick={logoutUser}
-            className="w-full bg-white border border-rose-100/60 shadow-sm p-4 flex items-center justify-center gap-2 rounded-2xl press-scale cursor-pointer hover:bg-rose-50/40 transition-colors"
+            className="w-full bg-white border border-rose-100/60 shadow-[0_4px_12px_rgba(239,68,68,0.03)] p-4 flex items-center justify-center gap-2 rounded-[20px] press-scale cursor-pointer hover:bg-rose-50/20 transition-all duration-200"
+            style={{ border: '1px solid rgba(239,68,68,0.15)' }}
           >
-            <LogOut size={18} className="text-rose-600" />
-            <span className="text-[14px] font-bold text-rose-600">Log out</span>
+            <LogOut size={16} className="text-rose-600" strokeWidth={2.5} />
+            <span className="text-[14px] font-black text-rose-600 uppercase tracking-wider">Log out</span>
           </button>
         </div>
         
         <div className="text-center mt-6">
-          <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider">MeriSamaj App Version 1.2.0</p>
+          <p className="text-[9px] font-extrabold text-text-muted uppercase tracking-widest">MeriSamaj App Version 1.2.0</p>
         </div>
       </div>
 
@@ -185,31 +188,85 @@ const SettingsPage = () => {
               </div>
 
               {/* Phone Visibility */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number Visibility</label>
-                <select 
-                  value={phoneSetting}
-                  onChange={(e) => setPhoneSetting(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPhoneDropdown(!showPhoneDropdown);
+                    setShowEmailDropdown(false);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all text-left flex items-center justify-between"
                 >
-                  <option value="everyone">Everyone</option>
-                  <option value="followers">Followers Only</option>
-                  <option value="none">Only Me</option>
-                </select>
+                  <span>{phoneSetting === 'everyone' ? 'Everyone' : phoneSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
+                  <ChevronRight size={16} className={`text-slate-400 shrink-0 transition-transform ${showPhoneDropdown ? 'rotate-90' : ''}`} />
+                </button>
+                {showPhoneDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowPhoneDropdown(false)} />
+                    <div className="absolute top-[70px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                      {[
+                        { value: 'everyone', label: 'Everyone' },
+                        { value: 'followers', label: 'Followers Only' },
+                        { value: 'none', label: 'Only Me' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setPhoneSetting(opt.value);
+                            setShowPhoneDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-purple-50 text-[13px] font-bold text-slate-700 flex items-center justify-between border-b border-slate-50 last:border-0"
+                        >
+                          <span className={phoneSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
+                          {phoneSetting === opt.value && <Check size={14} className="text-brand-primary" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Email Visibility */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Visibility</label>
-                <select 
-                  value={emailSetting}
-                  onChange={(e) => setEmailSetting(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailDropdown(!showEmailDropdown);
+                    setShowPhoneDropdown(false);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all text-left flex items-center justify-between"
                 >
-                  <option value="everyone">Everyone</option>
-                  <option value="followers">Followers Only</option>
-                  <option value="none">Only Me</option>
-                </select>
+                  <span>{emailSetting === 'everyone' ? 'Everyone' : emailSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
+                  <ChevronRight size={16} className={`text-slate-400 shrink-0 transition-transform ${showEmailDropdown ? 'rotate-90' : ''}`} />
+                </button>
+                {showEmailDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowEmailDropdown(false)} />
+                    <div className="absolute top-[70px] left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                      {[
+                        { value: 'everyone', label: 'Everyone' },
+                        { value: 'followers', label: 'Followers Only' },
+                        { value: 'none', label: 'Only Me' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setEmailSetting(opt.value);
+                            setShowEmailDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-purple-50 text-[13px] font-bold text-slate-700 flex items-center justify-between border-b border-slate-50 last:border-0"
+                        >
+                          <span className={emailSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
+                          {emailSetting === opt.value && <Check size={14} className="text-brand-primary" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <button 

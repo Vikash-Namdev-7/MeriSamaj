@@ -52,7 +52,7 @@ const useProfessionalDirectory = (communityId) => {
 
         // Derive unique categories dynamically from data
         const uniqueCategoryKeys = [...new Set(enriched.map(p => p.categoryKey || p.category?.toLowerCase() || 'others'))];
-        const derivedCategories = uniqueCategoryKeys
+        let derivedCategories = uniqueCategoryKeys
           .map(key => {
             const config = categoryIconMap[key] || categoryIconMap.others;
             return {
@@ -63,6 +63,10 @@ const useProfessionalDirectory = (communityId) => {
               color: config.color,
             };
           });
+
+        if (derivedCategories.length > 0 && (derivedCategories[0].id === 'others' || derivedCategories[0].name === 'Others')) {
+          derivedCategories.shift();
+        }
 
         // Derive unique cities dynamically from data
         const uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).sort())];

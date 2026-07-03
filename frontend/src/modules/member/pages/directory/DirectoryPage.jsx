@@ -27,11 +27,11 @@ const DirectoryPage = () => {
 
   // Categories with hardcoded display counts matching the mockup
   const categories = [
-    { id: 'executive', name: 'कार्यकारी सदस्य', count: 120, icon: Award, iconColor: 'text-amber-600 bg-amber-50', filterVal: 'Executive' },
-    { id: 'business', name: 'व्यवसायी', count: 350, icon: Briefcase, iconColor: 'text-purple-600 bg-purple-50', filterVal: 'Business Owner' },
-    { id: 'teacher', name: 'शिक्षक', count: 85, icon: BookOpen, iconColor: 'text-blue-600 bg-blue-50', filterVal: 'Teacher' },
-    { id: 'doctor', name: 'डॉक्टर', count: 45, icon: Heart, iconColor: 'text-rose-600 bg-rose-50', filterVal: 'Doctor' },
-    { id: 'engineer', name: 'इंजीनियर', count: 60, icon: Cpu, iconColor: 'text-emerald-600 bg-emerald-50', filterVal: 'Software Engineer' }
+    { id: 'executive', name: 'Executive Members', count: 120, icon: Award, iconColor: 'text-amber-600 bg-amber-50', filterVal: 'Executive' },
+    { id: 'business', name: 'Business Owners', count: 350, icon: Briefcase, iconColor: 'text-purple-600 bg-purple-50', filterVal: 'Business Owner' },
+    { id: 'teacher', name: 'Teachers', count: 85, icon: BookOpen, iconColor: 'text-blue-600 bg-blue-50', filterVal: 'Teacher' },
+    { id: 'doctor', name: 'Doctors', count: 45, icon: Heart, iconColor: 'text-rose-600 bg-rose-50', filterVal: 'Doctor' },
+    { id: 'engineer', name: 'Engineers', count: 60, icon: Cpu, iconColor: 'text-emerald-600 bg-emerald-50', filterVal: 'Software Engineer' }
   ];
 
   const handleSearchSubmit = (e) => {
@@ -51,7 +51,7 @@ const DirectoryPage = () => {
           <button onClick={() => setMobileMenuOpen(true)} className="p-1 -ml-1 press-scale">
             <Menu size={22} className="text-text-primary" />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">डायरेक्टरी</h1>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">Directory</h1>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -59,7 +59,7 @@ const DirectoryPage = () => {
             className="text-xs font-bold text-brand-primary bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100/50 press-scale flex items-center gap-1 hover:bg-purple-100/50 transition-colors"
           >
             <Users size={13} />
-            मेरा परिवार
+            My Family
           </button>
           <button onClick={() => navigate('/member/notifications?module=community')} className="p-1 press-scale relative">
             <Bell size={22} className="text-text-primary" />
@@ -78,8 +78,8 @@ const DirectoryPage = () => {
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-300/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4 pointer-events-none" />
           
           <div className="space-y-1 relative z-10">
-            <h2 className="text-[20px] font-bold text-white tracking-tight">हमारा समाज, हमारा परिवार</h2>
-            <p className="text-xs text-purple-200/80 font-medium">जुड़ें, सहयोग करें, आगे बढ़ें</p>
+            <h2 className="text-[20px] font-bold text-white tracking-tight">Our Community, Our Family</h2>
+            <p className="text-xs text-purple-200/80 font-medium">Connect, Collaborate, Grow</p>
           </div>
 
           {/* Community Illustration */}
@@ -105,7 +105,7 @@ const DirectoryPage = () => {
             <Search size={18} className="text-text-secondary shrink-0" />
             <input 
               type="text" 
-              placeholder="सदस्य का नाम, व्यवसाय, शहर खोजें..." 
+              placeholder="Search member name, profession, city..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent text-xs font-semibold text-text-primary flex-1 outline-none placeholder-text-secondary"
@@ -118,14 +118,14 @@ const DirectoryPage = () => {
               <Filter size={18} />
             </button>
             <button type="submit" className="p-1 -mr-1 press-scale text-brand-primary font-bold text-xs ml-1 border-l border-purple-100/30 pl-2">
-              खोजें
+              Search
             </button>
           </div>
         </form>
 
         {/* Quick Filters */}
         <div className="space-y-3">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">त्वरित फ़िल्टर</label>
+          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Quick Filters</label>
           
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" ref={scrollRef}>
             <button
@@ -135,7 +135,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-50 flex items-center justify-center text-brand-primary">
                 <MapPin size={16} />
               </div>
-              <span className="text-[10px] font-bold text-text-primary">शहर</span>
+              <span className="text-[10px] font-bold text-text-primary">City</span>
             </button>
 
             <button
@@ -145,7 +145,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-100 to-violet-50 flex items-center justify-center text-purple-600">
                 <Briefcase size={16} />
               </div>
-              <span className="text-[10px] font-bold text-text-primary">पेशा</span>
+              <span className="text-[10px] font-bold text-text-primary">Profession</span>
             </button>
 
             <button
@@ -155,7 +155,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center text-amber-600">
                 <Store size={16} />
               </div>
-              <span className="text-[10px] font-bold text-text-primary">व्यवसाय</span>
+              <span className="text-[10px] font-bold text-text-primary">Business</span>
             </button>
 
             <button
@@ -165,7 +165,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-100 to-green-50 flex items-center justify-center text-emerald-600">
                 <Users size={16} />
               </div>
-              <span className="text-[10px] font-bold text-text-primary">युवा सदस्य</span>
+              <span className="text-[10px] font-bold text-text-primary">Youth</span>
             </button>
 
             <button
@@ -175,7 +175,7 @@ const DirectoryPage = () => {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-100 to-pink-50 flex items-center justify-center text-rose-600">
                 <GraduationCap size={16} />
               </div>
-              <span className="text-[10px] font-bold text-text-primary">वरिष्ठ नागरिक</span>
+              <span className="text-[10px] font-bold text-text-primary">Seniors</span>
             </button>
           </div>
         </div>
@@ -183,12 +183,12 @@ const DirectoryPage = () => {
         {/* Categories Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">श्रेणियाँ</h3>
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Categories</h3>
             <button 
               onClick={() => navigate('/member/directory/list')}
               className="text-xs font-bold text-brand-primary hover:text-purple-800 flex items-center gap-0.5 cursor-pointer"
             >
-              सभी देखें <ArrowRight size={13} />
+              View All <ArrowRight size={13} />
             </button>
           </div>
 

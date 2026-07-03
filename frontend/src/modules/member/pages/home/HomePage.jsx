@@ -29,15 +29,66 @@ const DiyaIcon = ({ size, className }) => (
 );
 
 const quickActions = [
-  { icon: Briefcase, label: 'Professional Network', path: '/member/professional', bg: 'bg-gradient-to-br from-orange-50 to-amber-50', text: 'text-orange-600', iconBg: 'bg-gradient-to-br from-orange-400 to-amber-500', desc: 'Find jobs & hire within the community', span: 'col-span-2' },
-  { icon: BookOpen, label: 'Directory', path: '/member/directory', bg: 'bg-gradient-to-br from-emerald-50 to-green-50', text: 'text-emerald-600', iconBg: 'bg-gradient-to-br from-emerald-400 to-green-500', desc: 'Browse Samaj Members', span: 'col-span-2' },
-  { icon: Users, label: 'Groups', path: '/member/groups', bg: 'bg-gradient-to-br from-blue-50 to-sky-50', text: 'text-blue-600', iconBg: 'bg-gradient-to-br from-blue-400 to-sky-500', desc: 'Discussions', span: 'col-span-1' },
-  { icon: Vote, label: 'Voting', path: '/member/voting', bg: 'bg-gradient-to-br from-purple-50 to-violet-50', text: 'text-purple-600', iconBg: 'bg-gradient-to-br from-purple-400 to-violet-500', desc: 'Community Polls', span: 'col-span-1' },
-  { icon: Home, label: 'Dharmashala', path: '/member/dharmashala', bg: 'bg-gradient-to-br from-emerald-50 to-teal-50', text: 'text-emerald-700', iconBg: 'bg-gradient-to-br from-emerald-400 to-teal-500', desc: 'Book Rooms', span: 'col-span-1' },
-  { icon: Wallet, label: 'Samaj Fund', path: '/member/fund', bg: 'bg-gradient-to-br from-indigo-50 to-violet-50', text: 'text-indigo-700', iconBg: 'bg-gradient-to-br from-indigo-400 to-violet-500', desc: 'Community Fund', span: 'col-span-1' },
-  { icon: Mail, label: 'Nimantran', path: '/member/nimantran', bg: 'bg-gradient-to-br from-indigo-50 to-purple-50', text: 'text-indigo-600', iconBg: 'bg-gradient-to-br from-indigo-400 to-purple-500', desc: 'Event Invitations', span: 'col-span-2' },
-  { icon: OmIcon, label: 'Shraddhanjali', path: '/member/shradhanjali', bg: 'bg-gradient-to-br from-amber-50 to-orange-50', text: 'text-orange-600', iconBg: 'bg-gradient-to-br from-amber-400 to-orange-500', desc: 'Om Shanti & Condolences', span: 'col-span-2' },
-  { icon: HeartHandshake, label: 'Donation', path: '/member/donation', bg: 'bg-gradient-to-br from-rose-50 to-pink-50', text: 'text-rose-600', iconBg: 'bg-gradient-to-br from-rose-400 to-pink-500', desc: 'Contribute to Samaj', span: 'col-span-2' },
+  { 
+    icon: Briefcase, 
+    label: 'Professional Network', 
+    path: '/member/professional', 
+    iconBg: 'bg-gradient-to-br from-[#D500F9] to-[#FF1744]', 
+    hoverBorder: 'hover:border-[#D500F9]/40',
+    hoverText: 'group-hover:text-[#FF1744]',
+    hoverChevronBg: 'group-hover:bg-[#D500F9]',
+    desc: 'Find jobs & hire within the community' 
+  },
+  { 
+    icon: BookOpen, 
+    label: 'Directory', 
+    path: '/member/directory', 
+    iconBg: 'bg-gradient-to-br from-[#2979FF] to-[#00E5FF]', 
+    hoverBorder: 'hover:border-[#2979FF]/40',
+    hoverText: 'group-hover:text-[#2979FF]',
+    hoverChevronBg: 'group-hover:bg-[#2979FF]',
+    desc: 'Browse Samaj Members' 
+  },
+  { 
+    icon: Users, 
+    label: 'Groups', 
+    path: '/member/groups', 
+    iconBg: 'bg-gradient-to-br from-[#E91E63] to-[#9C27B0]', 
+    hoverBorder: 'hover:border-[#E91E63]/40',
+    hoverText: 'group-hover:text-[#E91E63]',
+    hoverChevronBg: 'group-hover:bg-[#E91E63]',
+    desc: 'Discussions' 
+  },
+  { 
+    icon: Vote, 
+    label: 'Voting', 
+    path: '/member/voting', 
+    iconBg: 'bg-gradient-to-br from-[#651FFF] to-[#3D5AFE]', 
+    hoverBorder: 'hover:border-[#651FFF]/40',
+    hoverText: 'group-hover:text-[#651FFF]',
+    hoverChevronBg: 'group-hover:bg-[#651FFF]',
+    desc: 'Community Polls' 
+  },
+  { 
+    icon: Home, 
+    label: 'Dharmashala', 
+    path: '/member/dharmashala', 
+    iconBg: 'bg-gradient-to-br from-[#00BFA5] to-[#00E676]', 
+    hoverBorder: 'hover:border-[#00BFA5]/40',
+    hoverText: 'group-hover:text-[#00BFA5]',
+    hoverChevronBg: 'group-hover:bg-[#00BFA5]',
+    desc: 'Book Rooms' 
+  },
+  { 
+    icon: Wallet, 
+    label: 'Samaj Fund', 
+    path: '/member/fund', 
+    iconBg: 'bg-gradient-to-br from-[#FF9100] to-[#FFD600]', 
+    hoverBorder: 'hover:border-[#FF9100]/40',
+    hoverText: 'group-hover:text-[#FF9100]',
+    hoverChevronBg: 'group-hover:bg-[#FF9100]',
+    desc: 'Community Fund' 
+  }
 ];
 
 const HomePage = () => {
@@ -82,40 +133,73 @@ const HomePage = () => {
     <div className="min-h-screen bg-surface pb-28">
 
       {/* ─── SAMAJ HERO BANNER ─── */}
-      <div className="relative w-full overflow-hidden" style={{ minHeight: '280px' }}>
+      <div className="relative w-full overflow-hidden" style={{ minHeight: '290px' }}>
         {/* Background Image — Cultural landmark */}
         <img 
           src={getSamajImage(currentUser.community)} 
           alt={currentUser.community}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover scale-105"
+          style={{ filter: 'saturate(1.1)' }}
         />
-        {/* Gradient overlays — purple-tinted for brand cohesion */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4C1D95]/60 via-[#4C1D95]/25 to-[#1e1145]/80 z-[1]" />
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#1e1145]/90 to-transparent z-[1]" />
+        {/* Gradient overlays — layered depth */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#3C1777]/70 via-[#4C1D95]/30 to-[#1e1145]/85 z-[1]" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#1a0e45] to-transparent z-[1]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1e1145]/20 via-transparent to-[#1e1145]/10 z-[1]" />
+
+        {/* Floating ambient orbs */}
+        <div className="absolute top-8 right-12 w-24 h-24 rounded-full z-[2] pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.25) 0%, transparent 70%)', filter: 'blur(16px)', animation: 'float-orb 8s ease-in-out infinite' }} 
+        />
+        <div className="absolute bottom-16 left-8 w-16 h-16 rounded-full z-[2] pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%)', filter: 'blur(12px)', animation: 'float-orb 6s ease-in-out infinite 2s' }} 
+        />
+        <div className="absolute top-20 left-1/3 w-12 h-12 rounded-full z-[2] pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)', filter: 'blur(10px)', animation: 'float-orb 10s ease-in-out infinite 4s' }} 
+        />
 
         {/* Floating Navbar */}
         <div className="relative z-10 px-5 pt-6 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer press-scale" onClick={() => navigate('/member/settings')}>
-            <div className="w-[44px] h-[44px] rounded-2xl bg-white/15 backdrop-blur-xl text-white flex items-center justify-center text-[18px] font-serif shadow-lg border border-white/20">
-              {currentUser.community.substring(0, 1)}
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/member/settings')}>
+            {/* Avatar with premium glow ring */}
+            <div className="relative">
+              <div 
+                className="w-[46px] h-[46px] rounded-[18px] text-white flex items-center justify-center text-[20px] font-serif relative overflow-hidden group-hover:scale-105 transition-transform duration-300"
+                style={{ 
+                  background: 'linear-gradient(135deg, rgba(124,58,237,0.5), rgba(167,139,250,0.3))',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  boxShadow: '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                }}
+              >
+                {/* Inner shine */}
+                <div className="absolute inset-0 rounded-[18px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
+                <span className="relative z-10">{currentUser.community.substring(0, 1)}</span>
+              </div>
+              {/* Glow ring pulse */}
+              <div className="absolute inset-0 rounded-[18px] pointer-events-none" style={{ boxShadow: '0 0 0 1.5px rgba(167,139,250,0.4), 0 0 12px rgba(124,58,237,0.25)' }} />
             </div>
             <div>
-              <p className="text-[11px] font-medium text-white/60 tracking-wide">{t(greeting, language)}</p>
-              <h1 className="text-[20px] font-bold text-white tracking-tight leading-tight drop-shadow-md">{currentUser.name.split(' ')[0]}</h1>
+              <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{t(greeting, language)}</p>
+              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{currentUser.name.split(' ')[0]}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-              className="w-10 h-10 rounded-xl bg-white/12 backdrop-blur-xl shadow-sm border border-white/15 flex items-center justify-center text-white text-[11px] font-bold uppercase press-scale transition-all hover:bg-white/20"
+              className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white text-[11px] font-black uppercase press-scale transition-all"
+              style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}
             >
               {language === 'en' ? 'HI' : 'EN'}
             </button>
-            <button className="relative w-10 h-10 rounded-xl bg-white/12 backdrop-blur-xl shadow-sm border border-white/15 flex items-center justify-center press-scale transition-all hover:bg-white/20" onClick={() => navigate('/member/notifications?module=home')}>
+            <button 
+              className="relative w-10 h-10 rounded-[14px] flex items-center justify-center press-scale transition-all"
+              style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}
+              onClick={() => navigate('/member/notifications?module=home')}
+            >
               <Bell size={19} className="text-white" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#4C1D95]/60 flex items-center justify-center">
-                  <span className="text-[7px] text-white font-bold">{unreadCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-gradient-to-br from-red-400 to-rose-600 rounded-full border-2 border-[#1e1145] flex items-center justify-center shadow-md">
+                  <span className="text-[7px] text-white font-black">{unreadCount}</span>
                 </span>
               )}
             </button>
@@ -205,55 +289,67 @@ const HomePage = () => {
       {/* ─── INTERACTIVE HIGHLIGHTS MODULE ─── */}
       <div className="px-5 mt-3 relative z-10 flex gap-3">
         {/* Invitations (Nimantran) */}
-        <div 
+        <motion.div 
           onClick={() => navigate('/member/nimantran')}
-          className="flex-1 card-neo p-3 pb-3.5 flex flex-col items-center justify-center text-center cursor-pointer press-scale relative overflow-hidden"
+          whileHover={{ y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
         >
-          {nimantranCount > 0 && (
-            <div className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-              {nimantranCount}
+          <div className="relative">
+            <div className="w-13 h-13 bg-gradient-to-br from-indigo-400 to-purple-600 shadow-lg shadow-purple-500/25 rounded-[22px] flex items-center justify-center">
+              <Mail className="text-white" size={22} strokeWidth={2} />
             </div>
-          )}
-          <div className="w-13 h-13 bg-gradient-to-br from-indigo-400 to-purple-600 shadow-lg shadow-purple-500/30 rounded-2xl flex items-center justify-center mb-2.5">
-            <Mail className="text-white" size={22} strokeWidth={2} />
+            {nimantranCount > 0 && (
+              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                {nimantranCount}
+              </div>
+            )}
           </div>
-          <h4 className="text-[12px] font-bold text-text-primary leading-tight">Invitations</h4>
-          <p className="text-[8px] font-medium text-text-muted mt-0.5 leading-tight">View new invites</p>
-        </div>
+          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Invitations</h4>
+          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">View new invites</p>
+        </motion.div>
 
         {/* Contributions (Yogdan) */}
-        <div 
+        <motion.div 
           onClick={() => navigate('/member/donation')}
-          className="flex-1 card-neo p-3 pb-3.5 flex flex-col items-center justify-center text-center cursor-pointer press-scale relative overflow-hidden"
+          whileHover={{ y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
         >
-          {donationCount > 0 && (
-            <div className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-              {donationCount}
+          <div className="relative">
+            <div className="w-13 h-13 bg-gradient-to-br from-[#FF4D85] to-[#FF2162] shadow-lg shadow-rose-500/25 rounded-[22px] flex items-center justify-center">
+              <HeartHandshake className="text-white" size={22} strokeWidth={2} />
             </div>
-          )}
-          <div className="w-13 h-13 bg-gradient-to-br from-pink-400 to-rose-500 shadow-lg shadow-rose-500/30 rounded-2xl flex items-center justify-center mb-2.5">
-            <HeartHandshake className="text-white" size={22} strokeWidth={2} />
+            {donationCount > 0 && (
+              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                {donationCount}
+              </div>
+            )}
           </div>
-          <h4 className="text-[12px] font-bold text-text-primary leading-tight">Contributions</h4>
-          <p className="text-[8px] font-medium text-text-muted mt-0.5 leading-tight">Support the Samaj</p>
-        </div>
+          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Contributions</h4>
+          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">Support the Samaj</p>
+        </motion.div>
 
         {/* Obituary (Shradhanjali) */}
-        <div 
+        <motion.div 
           onClick={() => navigate('/member/shradhanjali')}
-          className="flex-1 card-neo p-3 pb-3.5 flex flex-col items-center justify-center text-center cursor-pointer press-scale relative overflow-hidden"
+          whileHover={{ y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
         >
-          {shradhanjaliCount > 0 && (
-            <div className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-              {shradhanjaliCount}
+          <div className="relative">
+            <div className="w-13 h-13 bg-gradient-to-br from-[#FFAD00] to-[#FF6200] shadow-lg shadow-orange-500/25 rounded-[22px] flex items-center justify-center">
+              <DiyaIcon className="text-white" size={24} />
             </div>
-          )}
-          <div className="w-13 h-13 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-500/30 rounded-2xl flex items-center justify-center mb-2.5">
-            <DiyaIcon className="text-white" size={24} />
+            {shradhanjaliCount > 0 && (
+              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                {shradhanjaliCount}
+              </div>
+            )}
           </div>
-          <h4 className="text-[12px] font-bold text-text-primary leading-tight">Obituary</h4>
-          <p className="text-[8px] font-medium text-text-muted mt-0.5 leading-tight">Heartfelt tributes</p>
-        </div>
+          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Obituary</h4>
+          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">Heartfelt tributes</p>
+        </motion.div>
       </div>
 
       {/* ─── TODAY'S UPDATES SECTION ─── */}
@@ -262,71 +358,83 @@ const HomePage = () => {
         <div className="px-5 flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Bell className="text-brand-primary" size={17} strokeWidth={2.5} />
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                <Bell className="text-brand-primary" size={14} strokeWidth={2.5} />
+              </div>
               {totalUpdatesCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-surface rounded-full"></div>
+                <div className="absolute -top-1 -right-1 w-[14px] h-[14px] rounded-full bg-gradient-to-br from-red-400 to-rose-600 border border-white flex items-center justify-center">
+                  <span className="text-[7px] text-white font-black">{totalUpdatesCount > 9 ? '9+' : totalUpdatesCount}</span>
+                </div>
               )}
             </div>
             <h3 className="text-[15px] font-bold text-text-primary tracking-tight">Today's Updates</h3>
-            {totalUpdatesCount > 0 && (
-              <span className="bg-purple-50 text-brand-primary text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-purple-100/50">
-                {totalUpdatesCount}
-              </span>
-            )}
           </div>
-          <button onClick={() => navigate('/member/notifications')} className="text-[11px] font-bold text-brand-primary flex items-center press-scale">
-            View All <ChevronRight size={14} />
+          <button onClick={() => navigate('/member/notifications')} className="flex items-center gap-1 text-[11px] font-bold text-brand-primary press-scale px-2.5 py-1 rounded-xl" style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.12)' }}>
+            View All <ChevronRight size={13} />
           </button>
         </div>
 
-        {/* Compact Summary Cards */}
-        <div className="card-neo p-3 mx-5 mb-2 flex items-center justify-between">
-          
-          {/* New Bookings */}
-          <div onClick={() => navigate('/member/dharmashala')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 border-r border-purple-100/30 last:border-0 px-0.5">
-            <div className="flex items-center gap-1 mb-1">
-              <Home className="text-emerald-500" size={13} strokeWidth={2.5} />
-              <span className="text-[11px] font-bold text-text-primary leading-none">2</span>
+        {/* Premium metric pill cards */}
+        <div className="mx-5 rounded-[24px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(124,58,237,0.06)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 20px -4px rgba(124,58,237,0.08), 0 12px 32px -8px rgba(124,58,237,0.05)' }}>
+          <div className="flex items-stretch">
+            {/* New Bookings */}
+            <div onClick={() => navigate('/member/dharmashala')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.06) 0%, transparent 70%)' }} />
+              <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                <Home className="text-emerald-500" size={14} strokeWidth={2.5} />
+              </div>
+              <span className="text-[14px] font-black text-text-primary leading-none">2</span>
+              <span className="text-[8px] font-semibold text-text-muted leading-tight">Bookings</span>
             </div>
-            <span className="text-[8px] font-medium text-text-muted leading-tight">New Bookings</span>
-          </div>
 
-          {/* New Funds Received */}
-          <div onClick={() => navigate('/member/fund')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 border-r border-purple-100/30 last:border-0 px-0.5">
-            <div className="flex items-center gap-0.5 mb-1">
-              <Wallet className="text-brand-primary" size={12} strokeWidth={2.5} />
-              <span className="text-[10px] font-bold text-text-primary leading-none tracking-tighter">₹245k</span>
-            </div>
-            <span className="text-[8px] font-medium text-text-muted leading-tight">New Funds Received</span>
-          </div>
+            <div className="w-[1px] self-stretch my-3" style={{ background: 'linear-gradient(180deg, transparent, rgba(124,58,237,0.1), transparent)' }} />
 
-          {/* New Contributions */}
-          <div onClick={() => navigate('/member/donation')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 border-r border-purple-100/30 last:border-0 px-0.5">
-            <div className="flex items-center gap-1 mb-1">
-              <Heart className="text-rose-500" size={13} strokeWidth={2.5} />
-              <span className="text-[11px] font-bold text-text-primary leading-none">{newDonationsCount > 0 ? newDonationsCount : '5'}</span>
+            {/* New Funds Received */}
+            <div onClick={() => navigate('/member/fund')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.06) 0%, transparent 70%)' }} />
+              <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                <Wallet className="text-brand-primary" size={14} strokeWidth={2.5} />
+              </div>
+              <span className="text-[14px] font-black text-text-primary leading-none tracking-tight">₹245k</span>
+              <span className="text-[8px] font-semibold text-text-muted leading-tight">Funds</span>
             </div>
-            <span className="text-[8px] font-medium text-text-muted leading-tight">New Contributions</span>
-          </div>
 
-          {/* Important Notice */}
-          <div onClick={() => navigate('/member/notifications')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 border-r border-purple-100/30 last:border-0 px-0.5">
-            <div className="flex items-center gap-1 mb-1">
-              <Megaphone className="text-amber-500" size={13} strokeWidth={2.5} />
-              <span className="text-[11px] font-bold text-text-primary leading-none">{newNoticesCount > 0 ? newNoticesCount : '1'}</span>
-            </div>
-            <span className="text-[8px] font-medium text-text-muted leading-tight">Important Notice</span>
-          </div>
+            <div className="w-[1px] self-stretch my-3" style={{ background: 'linear-gradient(180deg, transparent, rgba(124,58,237,0.1), transparent)' }} />
 
-          {/* New Events */}
-          <div onClick={() => navigate('/member/events')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 border-r border-purple-100/30 last:border-0 px-0.5">
-            <div className="flex items-center gap-1 mb-1">
-              <Calendar className="text-blue-500" size={13} strokeWidth={2.5} />
-              <span className="text-[11px] font-bold text-text-primary leading-none">{newEventsCount > 0 ? newEventsCount : '3'}</span>
+            {/* New Contributions */}
+            <div onClick={() => navigate('/member/donation')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'radial-gradient(ellipse at center, rgba(244,63,94,0.06) 0%, transparent 70%)' }} />
+              <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.15)' }}>
+                <Heart className="text-rose-500" size={14} strokeWidth={2.5} />
+              </div>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newDonationsCount > 0 ? newDonationsCount : '5'}</span>
+              <span className="text-[8px] font-semibold text-text-muted leading-tight">Donations</span>
             </div>
-            <span className="text-[8px] font-medium text-text-muted leading-tight">New Events</span>
+
+            <div className="w-[1px] self-stretch my-3" style={{ background: 'linear-gradient(180deg, transparent, rgba(124,58,237,0.1), transparent)' }} />
+
+            {/* Important Notice */}
+            <div onClick={() => navigate('/member/notifications')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'radial-gradient(ellipse at center, rgba(245,158,11,0.06) 0%, transparent 70%)' }} />
+              <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <Megaphone className="text-amber-500" size={14} strokeWidth={2.5} />
+              </div>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newNoticesCount > 0 ? newNoticesCount : '1'}</span>
+              <span className="text-[8px] font-semibold text-text-muted leading-tight">Notices</span>
+            </div>
+
+            <div className="w-[1px] self-stretch my-3" style={{ background: 'linear-gradient(180deg, transparent, rgba(124,58,237,0.1), transparent)' }} />
+
+            {/* New Events */}
+            <div onClick={() => navigate('/member/events')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'radial-gradient(ellipse at center, rgba(59,130,246,0.06) 0%, transparent 70%)' }} />
+              <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                <Calendar className="text-blue-500" size={14} strokeWidth={2.5} />
+              </div>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newEventsCount > 0 ? newEventsCount : '3'}</span>
+              <span className="text-[8px] font-semibold text-text-muted leading-tight">Events</span>
+            </div>
           </div>
-          
         </div>
       </div>
 
@@ -450,44 +558,68 @@ const HomePage = () => {
             </p>
           </div>
         </div>
-      </div>
+      ...
       ─── END CENSUS DASHBOARD BANNER ─── */}
 
       {/* ─── BENTO GRID (QUICK ACTIONS) ─── */}
       <div className="px-5 mt-6 relative z-10">
-        <h3 className="text-[13px] font-bold text-text-secondary tracking-widest uppercase mb-3 px-1">{t('Exclusive Features', language)}</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center justify-between mb-4 px-0.5">
+          <h3 className="text-[13px] font-black text-text-secondary tracking-widest uppercase">{t('Exclusive Features', language)}</h3>
+          <div className="h-[1.5px] flex-1 mx-3 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.15), transparent)' }} />
+          <span className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(124,58,237,0.5)' }}>6 FEATURES</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3.5">
           {quickActions.map((action, idx) => (
             <motion.button
               key={action.label}
               onClick={() => navigate(action.path)}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + (idx * 0.08) }}
+              transition={{ delay: 0.08 + (idx * 0.05), type: 'spring', stiffness: 300, damping: 25 }}
+              whileHover={{ y: -5, scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className={`p-4 rounded-[24px] border border-white/60 ${action.bg} shadow-[0_2px_12px_rgba(124,58,237,0.04)] hover:shadow-[0_4px_20px_rgba(124,58,237,0.08)] transition-all text-left w-full flex ${action.span === 'col-span-2' ? 'flex-row items-center justify-between col-span-2' : 'flex-col items-start col-span-1'}`}
+              className={`rounded-[28px] bg-white text-left w-full flex flex-col justify-between min-h-[152px] relative overflow-hidden group shine-sweep`}
+              style={{
+                padding: '18px',
+                border: `1px solid rgba(${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(0,2) || '99', 16)}, ${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(2,4) || '99', 16)}, ${parseInt(action.iconBg.match(/#([0-9A-F]{6})/i)?.[1]?.slice(4,6) || '99', 16)}, 0.08)`,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.9)',
+              }}
             >
-              {action.span === 'col-span-2' ? (
-                <>
-                  <div className="pr-4">
-                    <span className="font-serif font-bold text-text-primary tracking-tight block text-[19px]">{t(action.label, language)}</span>
-                    <span className="text-[12px] font-medium text-text-secondary mt-1 block leading-tight">{t(action.desc, language)}</span>
-                  </div>
-                  <div className={`w-14 h-14 rounded-2xl ${action.iconBg} flex items-center justify-center shrink-0 shadow-lg`}>
-                    <action.icon size={24} className="text-white" strokeWidth={2.5} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={`w-12 h-12 rounded-2xl ${action.iconBg} flex items-center justify-center shrink-0 mb-3.5 shadow-lg`}>
-                    <action.icon size={22} className="text-white" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <span className="font-serif font-bold text-text-primary tracking-tight block text-[15px]">{t(action.label, language)}</span>
-                    <span className="text-[11px] font-medium text-text-secondary mt-0.5 block leading-tight">{t(action.desc, language)}</span>
-                  </div>
-                </>
-              )}
+              {/* Corner gradient tint matching icon */}
+              <div 
+                className="absolute -right-8 -bottom-8 w-24 h-24 rounded-full opacity-[0.08] group-hover:opacity-[0.15] group-hover:scale-150 transition-all duration-500 pointer-events-none"
+                style={{ background: action.iconBg }}
+              />
+              <div 
+                className="absolute -left-4 -top-4 w-16 h-16 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none"
+                style={{ background: action.iconBg }}
+              />
+
+              {/* Icon & Arrow Row */}
+              <div className="w-full flex items-center justify-between z-10">
+                <div 
+                  className={`w-12 h-12 ${action.iconBg} icon-squircle shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}
+                  style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.25)' }}
+                >
+                  <action.icon size={22} className="text-white relative z-10" strokeWidth={2.2} />
+                </div>
+                <div 
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all duration-300 ${action.hoverChevronBg} group-hover:text-white`}
+                  style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.12)' }}
+                >
+                  <ChevronRight size={14} className="text-brand-primary group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
+                </div>
+              </div>
+
+              {/* Text content */}
+              <div className="mt-3 z-10">
+                <span className={`font-extrabold text-gray-900 leading-snug tracking-tight block text-[14px] ${action.hoverText} transition-colors duration-200`}>
+                  {t(action.label, language)}
+                </span>
+                <span className="text-[10px] font-semibold text-gray-400 mt-1 block leading-tight">
+                  {t(action.desc, language)}
+                </span>
+              </div>
             </motion.button>
           ))}
         </div>

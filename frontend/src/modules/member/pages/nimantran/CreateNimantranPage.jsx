@@ -18,7 +18,7 @@ export default function CreateNimantranPage() {
     location: '',
     mapLink: '',
     contact: '',
-    message: 'आप सादर आमंत्रित हैं।',
+    message: 'You are cordially invited.',
     image: null,
   });
 
@@ -47,7 +47,7 @@ export default function CreateNimantranPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.groomName || !formData.brideName || !formData.date) {
-      alert('कृपया दूल्हा, दुल्हन का नाम और तारीख भरें।');
+      alert("Please fill in Groom's name, Bride's name, and Date.");
       return;
     }
     
@@ -65,7 +65,7 @@ export default function CreateNimantranPage() {
         >
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-[17px] font-bold text-slate-800">नया निमंत्रण भेजें</h1>
+        <h1 className="text-[17px] font-bold text-slate-800">Send New Invitation</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24">
@@ -73,7 +73,7 @@ export default function CreateNimantranPage() {
           
           {/* File Upload */}
           <div className="space-y-2">
-            <label className="text-[13px] font-bold text-slate-700 block">शादी का कार्ड अपलोड करें (Image)</label>
+            <label className="text-[13px] font-bold text-slate-700 block">Upload Wedding Card (Image)</label>
             <label className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-50 transition-colors relative overflow-hidden h-48 block w-full">
               <input 
                 type="file" 
@@ -88,53 +88,53 @@ export default function CreateNimantranPage() {
                   <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-indigo-500 mb-3">
                     <Upload size={20} />
                   </div>
-                  <p className="text-indigo-900 text-[13px] font-bold">कार्ड की फोटो अपलोड करें</p>
+                  <p className="text-indigo-900 text-[13px] font-bold">Upload Card Photo</p>
                 </>
               )}
             </label>
           </div>
 
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-            <h3 className="font-bold text-slate-800 text-[15px] border-b border-slate-100 pb-2">2. जानकारी भरें</h3>
+            <h3 className="font-bold text-slate-800 text-[15px] border-b border-slate-100 pb-2">2. Enter Invitation Details</h3>
             
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">दूल्हा का नाम *</label>
+              <label className="text-[12px] font-bold text-slate-500">Groom's Name *</label>
               <input 
                 type="text"
                 name="groomName"
                 value={formData.groomName}
                 onChange={handleChange}
-                placeholder="उदा. राहुल शर्मा"
+                placeholder="e.g. Rahul Sharma"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
               />
             </div>
             
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">दुल्हन का नाम *</label>
+              <label className="text-[12px] font-bold text-slate-500">Bride's Name *</label>
               <input 
                 type="text"
                 name="brideName"
                 value={formData.brideName}
                 onChange={handleChange}
-                placeholder="उदा. प्रिया वर्मा"
+                placeholder="e.g. Priya Verma"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">परिवार का नाम *</label>
+              <label className="text-[12px] font-bold text-slate-500">Family Name *</label>
               <input 
                 type="text"
                 name="familyName"
                 value={formData.familyName}
                 onChange={handleChange}
-                placeholder="उदा. श्री मोतीलाल शर्मा"
+                placeholder="e.g. Shri Motilal Sharma"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">शादी की तारीख *</label>
+              <label className="text-[12px] font-bold text-slate-500">Wedding Date *</label>
               <input 
                 type="date"
                 name="date"
@@ -146,7 +146,7 @@ export default function CreateNimantranPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500">भोजन का समय</label>
+                <label className="text-[11px] font-bold text-slate-500">Reception Time</label>
                 <input 
                   type="time"
                   name="timeFood"
@@ -156,7 +156,7 @@ export default function CreateNimantranPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500">बारात का समय</label>
+                <label className="text-[11px] font-bold text-slate-500">Baraat Time</label>
                 <input 
                   type="time"
                   name="timeBaraat"
@@ -166,7 +166,7 @@ export default function CreateNimantranPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500">फेरे का समय</label>
+                <label className="text-[11px] font-bold text-slate-500">Phere Time</label>
                 <input 
                   type="time"
                   name="timePhere"
@@ -178,13 +178,13 @@ export default function CreateNimantranPage() {
             </div>
 
             <div className="space-y-1 pt-2">
-              <label className="text-[12px] font-bold text-slate-500">स्थान *</label>
+              <label className="text-[12px] font-bold text-slate-500">Venue *</label>
               <textarea 
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
                 rows={2}
-                placeholder="उदा. श्रीराम गार्डन, इंदौर, म.प्र."
+                placeholder="e.g. Shriram Garden, Indore, MP"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800 resize-none"
               />
             </div>
@@ -205,7 +205,7 @@ export default function CreateNimantranPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">संपर्क नंबर *</label>
+              <label className="text-[12px] font-bold text-slate-500">Contact Number *</label>
               <input 
                 type="tel"
                 name="contact"
@@ -218,13 +218,13 @@ export default function CreateNimantranPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-bold text-slate-500">संदेश (वैकल्पिक)</label>
+              <label className="text-[12px] font-bold text-slate-500">Message (Optional)</label>
               <input 
                 type="text"
                 name="message"
                 value={formData.message}
                 onChange={handleChange}
-                placeholder="आप सादर आमंत्रित हैं।"
+                placeholder="You are cordially invited."
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
               />
             </div>
@@ -235,7 +235,7 @@ export default function CreateNimantranPage() {
             type="submit"
             className="w-full bg-indigo-600 text-white font-black text-[15px] py-4 rounded-xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
           >
-            निमंत्रण भेजें
+            Send Invitation
           </button>
         </form>
       </div>

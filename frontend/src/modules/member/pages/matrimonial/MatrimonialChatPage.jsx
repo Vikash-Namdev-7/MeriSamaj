@@ -317,10 +317,6 @@ const MatrimonialChatPage = () => {
               className="w-9 h-9 rounded-full flex items-center justify-center active:bg-white/10">
               <Search size={18} className="text-white" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/call/${chatId}?type=video&name=${encodeURIComponent(profile.name)}`); }}
-              className="w-9 h-9 rounded-full flex items-center justify-center active:bg-white/10">
-              <Video size={19} className="text-white" />
-            </button>
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setShowMenu(p => !p); }}
                 className="w-9 h-9 rounded-full flex items-center justify-center active:bg-white/10">
@@ -333,8 +329,6 @@ const MatrimonialChatPage = () => {
                     {[
                       { icon: UserCheck, label: 'View Full Profile', action: () => { navigate(`/member/matrimonial/${profile.id}`); setShowMenu(false); }, color: 'text-rose-600' },
                       { icon: BookHeart, label: 'Share Horoscope', action: () => setShowMenu(false), color: 'text-purple-600' },
-                      { icon: Phone, label: 'Request Contact', action: () => setShowMenu(false), color: 'text-emerald-600' },
-                      { icon: Calendar, label: 'Schedule Video Meet', action: () => setShowMenu(false), color: 'text-blue-600' },
                       { icon: Star, label: 'Shortlist Profile', action: () => setShowMenu(false), color: 'text-amber-600' },
                     ].map(item => (
                       <button key={item.label} onClick={item.action}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Briefcase, FileText, CheckCircle, ChevronDown, Check, Trash2, Image, Video, Plus } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 const ApplyProfessionalPage = () => {
   const navigate = useNavigate();
@@ -101,42 +102,38 @@ const ApplyProfessionalPage = () => {
   return (
     <div className="min-h-screen bg-surface flex flex-col pb-6">
       {/* Header */}
-      <div className="bg-card border-b border-gray-100 flex items-center gap-3 px-4 h-14 sticky top-0 z-30 shadow-sm">
-        <button onClick={() => navigate(-1)} className="p-1 -ml-1 press-scale">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-base font-semibold text-text-primary">List Your Business</h1>
-      </div>
+      <PageHeader title="List Your Business" subtitle="Grow your reach" />
 
-      <div className="flex-1 overflow-y-auto px-4 pt-6">
-        <div className="bg-purple-50 rounded-2xl p-4 flex gap-3 mb-6 border border-purple-100">
-          <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center shrink-0">
-            <Briefcase size={20} className="text-purple-700" />
+      <div className="flex-1 overflow-y-auto px-5 pt-6 max-w-md mx-auto w-full">
+        {/* Grow your reach info card */}
+        <div className="bg-[#7C3AED]/5 rounded-[24px] p-4.5 flex gap-3.5 mb-6 border border-purple-100/50 shadow-[0_4px_16px_rgba(109,40,217,0.01)]">
+          <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-purple-600 rounded-xl flex items-center justify-center shrink-0 shadow-md shadow-purple-500/10">
+            <Briefcase size={18} className="text-white" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-purple-900 mb-1">Grow your reach</h3>
-            <p className="text-xs text-purple-700 leading-relaxed">
+            <h3 className="text-sm font-black text-purple-900 mb-1 tracking-tight">Grow your reach</h3>
+            <p className="text-[11.5px] text-purple-700 leading-relaxed font-medium">
               Join the community's professional directory to offer your services. Verified listings build trust and attract local business.
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="relative">
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Category</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Category</label>
             <button
               type="button"
               onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-              className="w-full mt-1.5 flex items-center justify-between bg-card border border-gray-200 rounded-xl px-4 py-3 text-xs font-semibold text-text-primary outline-none focus:border-brand-primary transition-all text-left"
+              className="w-full flex items-center justify-between premium-input text-left"
             >
-              <span className={selectedCategory ? "text-text-primary" : "text-text-secondary"}>
+              <span className={selectedCategory ? "text-text-primary font-bold" : "text-text-secondary font-semibold"}>
                 {selectedCategory || 'Select Category'}
               </span>
-              <ChevronDown size={16} className={`text-text-secondary transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown size={16} className={`text-text-secondary transition-transform duration-200 ${showCategoryDropdown ? 'rotate-180' : ''}`} />
             </button>
             
             {showCategoryDropdown && (
-              <div className="absolute top-[68px] left-0 right-0 bg-card border border-gray-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto py-1">
+              <div className="absolute top-[72px] left-0 right-0 bg-white border border-purple-100/20 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto py-1">
                 {categories.map((cat) => (
                   <button
                     key={cat}
@@ -145,7 +142,7 @@ const ApplyProfessionalPage = () => {
                       setSelectedCategory(cat);
                       setShowCategoryDropdown(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-text-primary flex items-center justify-between"
+                    className="w-full text-left px-4 py-2.5 hover:bg-purple-50/30 text-xs font-bold text-text-primary flex items-center justify-between transition-colors"
                   >
                     <span className={selectedCategory === cat ? 'text-[#7C3AED]' : ''}>{cat}</span>
                     {selectedCategory === cat && <Check size={14} className="text-[#7C3AED]" />}
@@ -157,73 +154,73 @@ const ApplyProfessionalPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Profession / Title</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Profession / Title</label>
             <input 
               required 
               type="text" 
               value={profession} 
               onChange={(e) => setProfession(e.target.value)} 
               placeholder="e.g. Chartered Accountant" 
-              className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all" 
+              className="w-full premium-input font-semibold" 
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Company / Business Name</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Company / Business Name</label>
             <input 
               required 
               type="text" 
               value={companyName} 
               onChange={(e) => setCompanyName(e.target.value)} 
               placeholder="e.g. Agrawal & Associates" 
-              className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all" 
+              className="w-full premium-input font-semibold" 
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Years of Experience</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Years of Experience</label>
             <input 
               required 
               type="number" 
               value={experience} 
               onChange={(e) => setExperience(e.target.value)} 
               placeholder="e.g. 5" 
-              className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all" 
+              className="w-full premium-input font-semibold" 
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Work Address / City</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Work Address / City</label>
             <input 
               required 
               type="text" 
               value={address} 
               onChange={(e) => setAddress(e.target.value)} 
               placeholder="e.g. MG Road, Indore" 
-              className="w-full mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all" 
+              className="w-full premium-input font-semibold" 
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">About Your Service</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">About Your Service</label>
             <textarea 
               required 
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
               placeholder="Briefly describe what you do..." 
-              className="w-full h-24 mt-1.5 bg-card border border-gray-200 rounded-xl px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary transition-all resize-none" 
+              className="w-full h-24 premium-input font-semibold resize-none" 
             />
           </div>
 
           {/* New Media Upload Section */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider block">Photos & Videos</label>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block px-0.5">Photos & Videos</label>
             
             {/* Horizontal preview list */}
             {mediaFiles.length > 0 && (
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {mediaFiles.map((media, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shrink-0 group">
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-purple-100 shrink-0 group">
                     {media.type === 'video' ? (
                       <video src={media.url} className="w-full h-full object-cover" muted />
                     ) : (
@@ -232,7 +229,7 @@ const ApplyProfessionalPage = () => {
                     <button
                       type="button"
                       onClick={() => removeMedia(idx)}
-                      className="absolute top-1 right-1 bg-black/75 hover:bg-red-600 text-white rounded-full p-1 transition-all"
+                      className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white rounded-full p-1 transition-all"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -245,7 +242,7 @@ const ApplyProfessionalPage = () => {
               </div>
             )}
 
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 bg-card cursor-pointer hover:border-[#7C3AED] hover:bg-[#7C3AED]/5 transition-all text-center">
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-purple-200/50 rounded-2xl p-6 bg-white cursor-pointer hover:border-brand-primary hover:bg-brand-primary/5 transition-all text-center group shadow-sm">
               <input
                 type="file"
                 multiple
@@ -253,8 +250,8 @@ const ApplyProfessionalPage = () => {
                 onChange={handleMediaUpload}
                 className="hidden"
               />
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-2 shadow-sm border border-slate-100 group-hover:bg-[#7C3AED]/10 transition-colors">
-                <Plus size={20} className="text-slate-500" />
+              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-2 shadow-sm border border-slate-100 group-hover:bg-brand-primary/10 transition-colors">
+                <Plus size={20} className="text-slate-500 group-hover:text-brand-primary transition-colors" />
               </div>
               <span className="text-xs font-bold text-text-primary">Add Images or Videos</span>
               <span className="text-[10px] text-text-muted mt-0.5">Upload product photos, work videos, or certificates</span>
@@ -262,10 +259,13 @@ const ApplyProfessionalPage = () => {
           </div>
 
           <div className="pt-4 pb-12">
-            <button type="submit" className="w-full py-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-sm font-semibold press-scale shadow-md flex justify-center items-center gap-2">
+            <button 
+              type="submit" 
+              className="w-full py-3.5 bg-gradient-to-r from-brand-primary to-purple-600 hover:from-purple-600 hover:to-brand-primary text-white rounded-xl text-sm font-bold uppercase tracking-wider press-scale shadow-[0_4px_16px_rgba(124,58,237,0.25)] flex justify-center items-center gap-2 transition-all duration-300"
+            >
               <FileText size={16} /> Submit Application
             </button>
-            <p className="text-xs text-center text-text-secondary mt-3">
+            <p className="text-[10px] font-bold text-center text-text-muted mt-3 uppercase tracking-wider">
               By submitting, you agree to the community verification process.
             </p>
           </div>

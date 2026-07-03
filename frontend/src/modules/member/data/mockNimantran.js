@@ -12,7 +12,7 @@ export const mockNimantran = [
     location: 'Shriram Garden, Aerodrome Road, Indore, MP',
     mapLink: 'https://maps.google.com',
     contact: '9999999999',
-    message: 'आप सादर आमंत्रित हैं।',
+    message: 'You are cordially invited.',
     status: 'Pending', // Pending, Approved, Rejected
     image: null,
     rsvps: [
@@ -23,7 +23,7 @@ export const mockNimantran = [
   {
     id: 'nim2',
     creatorId: 'm2',
-    groomName: 'Ankit',
+    groomName: 'Ravi',
     brideName: 'Neha',
     familyName: 'Shri Verma Ji',
     date: '2027-02-21',
@@ -33,7 +33,7 @@ export const mockNimantran = [
     location: 'Ujjain, MP',
     mapLink: 'https://maps.google.com',
     contact: '9876543210',
-    message: 'सभी का स्वागत है।',
+    message: 'Everyone is welcome.',
     status: 'Approved',
     image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
     rsvps: [
@@ -53,7 +53,7 @@ export const mockNimantran = [
     location: 'Dewas, MP',
     mapLink: 'https://maps.google.com',
     contact: '9123456789',
-    message: 'कृपया पधारें।',
+    message: 'Please grace the occasion with your presence.',
     status: 'Rejected',
     image: null,
     rsvps: []
@@ -71,7 +71,7 @@ export const mockNimantran = [
     location: 'Namdev Bhawan, Bhopal, MP',
     mapLink: 'https://maps.google.com',
     contact: '8888888888',
-    message: 'आप सपरिवार आमंत्रित हैं।',
+    message: 'You are invited with your family.',
     status: 'Approved',
     image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=800&auto=format&fit=crop',
     rsvps: [

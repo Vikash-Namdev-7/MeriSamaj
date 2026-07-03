@@ -21,12 +21,12 @@ const getCommunitySurname = (community) => {
 };
 
 const initialGroups = [
-  { id: 'g1', name: 'Community General Group', initials: 'CG', members: 125, online: 8, posts: 28, category: 'General', lastActivity: '10:30 AM', isJoined: true, description: 'General discussion and announcement group for all community members.', isMuted: false, unread: 5 },
-  { id: 'g2', name: 'Youth Group', initials: 'YG', members: 85, online: 4, posts: 15, category: 'Youth', lastActivity: '09:15 AM', isJoined: true, description: 'For networking, career, and creative activities among community youth.', isMuted: false, unread: 2 },
-  { id: 'g3', name: 'Women Group', initials: 'WG', members: 60, online: 2, posts: 45, category: 'Women', lastActivity: 'Yesterday', isJoined: true, description: 'Dialogue on women welfare, empowerment, and cottage industry.', isMuted: false, unread: 0 },
-  { id: 'g4', name: 'Business Group', initials: 'BG', members: 45, online: 5, posts: 8, category: 'Business', lastActivity: 'Yesterday', isJoined: false, description: 'Business platform for community traders, entrepreneurs, and professionals.', isMuted: false, unread: 0 },
-  { id: 'g5', name: 'Education Group', initials: 'EG', members: 55, online: 3, posts: 22, category: 'Education', lastActivity: '18/05/24', isJoined: false, description: 'Information on scholarship, school/college admission, and career guidance.', isMuted: false, unread: 0 },
-  { id: 'g6', name: 'Religious & Spiritual Group', initials: 'RG', members: 75, online: 6, posts: 19, category: 'Religious', lastActivity: '17/05/24', isJoined: false, description: 'Group for Satsang, religious festivals, and spiritual discussion.', isMuted: false, unread: 0 }
+  { id: 'g1', name: 'Community General Group', initials: 'CG', members: 125, online: 8, posts: 28, category: 'General', lastActivity: '10:30 AM', isJoined: true, description: 'General discussion and announcement group for all community members.', isMuted: false, unread: 5, creatorId: 's1' },
+  { id: 'g2', name: 'Youth Group', initials: 'YG', members: 85, online: 4, posts: 15, category: 'Youth', lastActivity: '09:15 AM', isJoined: true, description: 'For networking, career, and creative activities among community youth.', isMuted: false, unread: 2, creatorId: 'u1' },
+  { id: 'g3', name: 'Women Group', initials: 'WG', members: 60, online: 2, posts: 45, category: 'Women', lastActivity: 'Yesterday', isJoined: true, description: 'Dialogue on women welfare, empowerment, and cottage industry.', isMuted: false, unread: 0, creatorId: 'm2' },
+  { id: 'g4', name: 'Business Group', initials: 'BG', members: 45, online: 5, posts: 8, category: 'Business', lastActivity: 'Yesterday', isJoined: false, description: 'Business platform for community traders, entrepreneurs, and professionals.', isMuted: false, unread: 0, creatorId: 'm3' },
+  { id: 'g5', name: 'Education Group', initials: 'EG', members: 55, online: 3, posts: 22, category: 'Education', lastActivity: '18/05/24', isJoined: false, description: 'Information on scholarship, school/college admission, and career guidance.', isMuted: false, unread: 0, creatorId: 's2' },
+  { id: 'g6', name: 'Religious & Spiritual Group', initials: 'RG', members: 75, online: 6, posts: 19, category: 'Religious', lastActivity: '17/05/24', isJoined: false, description: 'Group for Satsang, religious festivals, and spiritual discussion.', isMuted: false, unread: 0, creatorId: 's7' }
 ];
 
 const initialGroupMessages = {
@@ -1130,7 +1130,8 @@ export const DataProvider = ({ children }) => {
       isMuted: false,
       unread: 0,
       privacy: groupData.privacy,
-      chatSettings: groupData.chatSettings
+      chatSettings: groupData.chatSettings,
+      creatorId: currentUser.id
     };
     setGroups(prev => [newGroup, ...prev]);
     setGroupMessages(prev => ({
@@ -1209,7 +1210,7 @@ export const DataProvider = ({ children }) => {
     });
   };
 
-  const sendGroupMessage = (groupId, text, attachment = null) => {
+  const sendGroupMessage = (groupId, text, attachment = null, replyTo = null) => {
     const newMsg = {
       id: Date.now(),
       senderId: 'me',
@@ -1218,7 +1219,8 @@ export const DataProvider = ({ children }) => {
       text: text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isMe: true,
-      attachment: attachment
+      attachment: attachment,
+      replyTo: replyTo
     };
     setGroupMessages(prev => ({
       ...prev,

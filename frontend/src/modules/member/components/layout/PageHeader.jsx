@@ -2,8 +2,9 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useScrollDirection } from '../../hooks/useScrollDirection';
+import { motion } from 'framer-motion';
 
-export const PageHeader = ({ title, showBack = true, rightContent = null, autoHide = false }) => {
+export const PageHeader = ({ title, subtitle = null, showBack = true, rightContent = null, autoHide = false }) => {
   const navigate = useNavigate();
   const scrollDirection = useScrollDirection();
   
@@ -16,26 +17,56 @@ export const PageHeader = ({ title, showBack = true, rightContent = null, autoHi
       }`}
       style={{ paddingTop: 'var(--spacing-safe-top)' }}
     >
-      {/* Glass header with subtle purple tint */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30">
-        <div className="flex items-center justify-between h-[56px] px-5">
-          <div className="flex items-center gap-3">
+      {/* Premium glass header */}
+      <div 
+        style={{
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(28px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(200%)',
+          borderBottom: '1px solid rgba(124,58,237,0.07)',
+          boxShadow: '0 2px 20px rgba(124,58,237,0.05), 0 1px 0 rgba(255,255,255,0.9)',
+        }}
+      >
+        <div className="flex items-center justify-between h-[58px] px-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {showBack && (
-              <button 
+              <motion.button 
                 onClick={() => navigate(-1)} 
-                className="press-scale w-9 h-9 -ml-1.5 rounded-xl bg-gray-50/80 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors"
+                whileTap={{ scale: 0.9 }}
+                className="shrink-0 w-9 h-9 -ml-1 rounded-2xl flex items-center justify-center transition-all duration-200 relative group"
+                style={{
+                  background: 'rgba(124,58,237,0.06)',
+                  border: '1px solid rgba(124,58,237,0.10)',
+                }}
               >
-                <ArrowLeft size={20} strokeWidth={2.5} />
-              </button>
+                {/* Hover fill */}
+                <div className="absolute inset-0 rounded-2xl bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <ArrowLeft 
+                  size={18} 
+                  strokeWidth={2.5} 
+                  className="text-brand-primary group-hover:text-white transition-colors duration-200 relative z-10" 
+                />
+              </motion.button>
             )}
-            <h1 className="text-[17px] font-bold text-text-primary tracking-tight truncate">{title}</h1>
+            <div className="min-w-0">
+              <h1 className="text-[17px] font-bold text-text-primary tracking-tight truncate leading-tight">{title}</h1>
+              {subtitle && (
+                <p className="text-[11px] font-medium text-text-muted leading-none mt-0.5 truncate">{subtitle}</p>
+              )}
+            </div>
           </div>
           {rightContent && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 ml-3">
               {rightContent}
             </div>
           )}
         </div>
+
+        {/* Gradient bottom accent line */}
+        <div 
+          className="h-[1.5px] w-full"
+          style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(124,58,237,0.12) 30%, rgba(167,139,250,0.15) 60%, transparent 100%)' }}
+        />
       </div>
     </div>
   );

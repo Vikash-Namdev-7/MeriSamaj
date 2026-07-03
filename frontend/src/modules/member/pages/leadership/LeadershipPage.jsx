@@ -60,25 +60,35 @@ const HeroBanner = ({ leader, language, onBack, navigate }) => {
   if (!leader) return null;
 
   return (
-    <div className="bg-gradient-to-b from-[#1e1145] via-[#25175a] to-surface pt-12 pb-6 px-5 relative">
+    <div className="bg-gradient-to-b from-[#1e1145] via-[#25175a] to-surface pt-12 pb-6 px-5 relative overflow-hidden">
+      {/* Background ambient float-orbs */}
+      <div className="absolute top-4 right-10 w-24 h-24 rounded-full z-0 pointer-events-none" 
+        style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.2) 0%, transparent 70%)', filter: 'blur(16px)', animation: 'float-orb 7s ease-in-out infinite' }} 
+      />
+      <div className="absolute bottom-10 left-4 w-20 h-20 rounded-full z-0 pointer-events-none" 
+        style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', filter: 'blur(12px)', animation: 'float-orb 9s ease-in-out infinite 1s' }} 
+      />
+
       {/* Header */}
       <div className="flex items-center gap-4 mb-6 relative z-20">
-        <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform shrink-0 hover:bg-white/15 press-scale">
+        <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center text-white active:scale-95 transition-transform shrink-0 press-scale"
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >
           <ArrowLeft size={18} strokeWidth={2.5} />
         </button>
         <div>
-          <h1 className="text-white text-[22px] font-bold tracking-tight">{t('Samaj Netrutva', language)}</h1>
-          <p className="text-purple-200/70 text-[12px] font-medium mt-0.5">{t('Our Leadership, Our Pride', language)}</p>
+          <h1 className="text-white text-[22px] font-black tracking-tight">{t('Samaj Netrutva', language)}</h1>
+          <p className="text-purple-200/70 text-[12px] font-bold mt-0.5">{t('Our Leadership, Our Pride', language)}</p>
         </div>
       </div>
       
       {/* Split Details Container Card */}
-      <div className="card-neo bg-white/95 p-5 flex flex-col gap-5 shadow-xl shadow-purple-900/10">
+      <div className="bg-white rounded-[28px] border border-purple-100/20 p-5 flex flex-col gap-5 shadow-[0_12px_32px_rgba(30,17,69,0.06)] relative z-10">
         
         {/* Top Info Split: Photo on left, Info on right */}
         <div className="flex gap-5 items-start">
           {/* Left: Portrait Photo */}
-          <div className="w-[125px] h-[150px] shrink-0 rounded-2xl overflow-hidden bg-slate-50 border border-purple-100/20 relative shadow-sm">
+          <div className="w-[125px] h-[150px] shrink-0 rounded-2xl overflow-hidden bg-slate-50 border border-purple-100/10 relative shadow-[0_4px_16px_rgba(0,0,0,0.05)]">
             <img 
               src={`https://i.pravatar.cc/300?u=${leader.initials}`} 
               className="w-full h-full object-cover" 
@@ -92,12 +102,12 @@ const HeroBanner = ({ leader, language, onBack, navigate }) => {
               {['President', 'Patron'].includes(leader.role) && (
                 <Crown size={18} className="text-amber-500 fill-amber-500 shrink-0" />
               )}
-              <span className={`text-white text-[10px] font-black px-3.5 py-0.5 rounded-full uppercase tracking-wider ${getBadgeColor(leader.role)} shadow-sm`}>
+              <span className={`text-white text-[9px] font-black px-3.5 py-0.5 rounded-full uppercase tracking-wider ${getBadgeColor(leader.role)} shadow-sm`}>
                 {getHindiRole(leader.role)}
               </span>
             </div>
             
-            <h2 className="text-[19px] font-bold text-text-primary leading-tight tracking-tight">
+            <h2 className="text-[19px] font-black text-text-primary leading-tight tracking-tight">
               {leader.name}
             </h2>
             
@@ -106,7 +116,7 @@ const HeroBanner = ({ leader, language, onBack, navigate }) => {
             </p>
             
             {/* Phone & Location */}
-            <div className="flex flex-col gap-1.5 mt-3.5 text-text-secondary text-[12px] font-medium">
+            <div className="flex flex-col gap-1.5 mt-3.5 text-text-secondary text-[12px] font-bold">
               {leader.phone && (
                 <div className="flex items-center gap-2">
                   <Phone size={13} className="text-purple-400 shrink-0" />
@@ -122,21 +132,15 @@ const HeroBanner = ({ leader, language, onBack, navigate }) => {
         </div>
         
         {/* Divider */}
-        <div className="h-[1px] bg-purple-100/20 w-full" />
+        <div className="h-[1px] bg-purple-100/15 w-full" />
         
-        {/* Bottom Actions: Call and Chat */}
-        <div className="flex gap-4 w-full">
-          <a 
-            href={`tel:${leader.phone}`} 
-            className="flex-1 py-3 rounded-xl border border-purple-200/60 text-brand-primary text-[13px] font-bold flex items-center justify-center gap-2 hover:bg-purple-50/50 active:scale-95 transition-all text-center press-scale"
-          >
-            <Phone size={15} /> कॉल करें
-          </a>
+        {/* Bottom Actions: Chat Only */}
+        <div className="w-full">
           <button 
             onClick={() => navigate(`/member/chat/${leader.id}`)} 
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[13px] font-bold flex items-center justify-center gap-2 hover:shadow-lg shadow-emerald-500/20 active:scale-95 transition-all press-scale"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[13px] font-black flex items-center justify-center gap-2 hover:shadow-lg shadow-emerald-500/20 active:scale-95 transition-all press-scale"
           >
-            <MessageCircle size={15} /> चैट करें
+            <MessageCircle size={14} strokeWidth={2.5} /> चैट करें
           </button>
         </div>
       </div>
@@ -166,41 +170,40 @@ const CoreCommitteeCard = ({ member, language, isSelected, onSelect, navigate })
   return (
     <div 
       onClick={onSelect}
-      className={`shrink-0 w-[108px] sm:w-[118px] bg-white rounded-[16px] overflow-hidden shadow-[0_3px_12px_rgba(0,0,0,0.04)] border flex flex-col items-center cursor-pointer active:scale-[0.98] transition-transform pb-2 ${isSelected ? 'border-brand-primary ring-2 ring-brand-primary/20' : 'border-gray-100'}`}
+      className={`shrink-0 w-[114px] sm:w-[124px] bg-white rounded-[24px] overflow-hidden flex flex-col items-center cursor-pointer transition-all duration-300 pb-3.5 border ${
+        isSelected 
+          ? 'border-brand-primary ring-4 ring-brand-primary/10 shadow-[0_8px_24px_rgba(124,58,237,0.12)] scale-[1.02]' 
+          : 'border-purple-100/20 shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:border-purple-200'
+      }`}
     >
       {/* Full Width Portrait Photo */}
-      <div className="w-full aspect-square overflow-hidden bg-gray-50 shrink-0 mb-1.5 relative">
+      <div className="w-full aspect-square overflow-hidden bg-gray-50 shrink-0 mb-2 relative border-b border-purple-50">
         <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
       </div>
       
       {/* Role Badge - below photo, above name */}
-      <div className="mb-1 shrink-0">
-        <span className={`text-white text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm ${badgeColor}`}>
+      <div className="mb-1.5 shrink-0">
+        <span className={`text-white text-[7.5px] sm:text-[8px] font-black px-2 py-0.5 rounded-full shadow-sm ${badgeColor}`}>
           {hindiRole}
         </span>
       </div>
       
       {/* Office Bearer Name */}
-      <h4 className="text-slate-800 text-[9px] sm:text-[9.5px] font-black text-center leading-tight mb-1.5 px-1 line-clamp-2">
+      <h4 className="text-slate-800 text-[9.5px] sm:text-[10.5px] font-extrabold text-center leading-tight mb-2 px-1.5 line-clamp-2">
         {member.name.replace(' Agrawal', '').replace(' Sharma', '').replace(' Patel', '')}
       </h4>
 
       {/* Centered Short purple divider line */}
-      <div className="w-4.5 h-[1.2px] bg-purple-600 rounded-full mb-1.5" />
+      <div className="w-5 h-[1.5px] bg-brand-primary/30 rounded-full mb-2" />
       
-      {/* Call / Chat Action Buttons */}
-      <div className="flex gap-1 justify-center w-full mt-auto" onClick={(e) => e.stopPropagation()}>
-        <a 
-          href={`tel:${member.phone}`} 
-          className="w-6 h-6 rounded-full border border-purple-200 flex items-center justify-center hover:bg-purple-50 transition-colors text-purple-600 shrink-0"
-        >
-          <Phone size={10} />
-        </a>
+      {/* Chat Action Button */}
+      <div className="flex justify-center w-full mt-auto" onClick={(e) => e.stopPropagation()}>
         <button 
           onClick={() => navigate(`/member/chat/${member.id}`)} 
-          className="w-6 h-6 rounded-full border border-emerald-200 flex items-center justify-center hover:bg-emerald-50 transition-colors text-emerald-600 shrink-0"
+          className="w-8 h-8 rounded-xl border border-emerald-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all duration-200 text-emerald-600 shrink-0 press-scale"
+          style={{ background: 'rgba(16,185,129,0.04)' }}
         >
-          <MessageCircle size={10} />
+          <MessageCircle size={12} strokeWidth={2.5} />
         </button>
       </div>
     </div>
@@ -211,31 +214,37 @@ const CoreCommitteeCard = ({ member, language, isSelected, onSelect, navigate })
 const MinisterCard = ({ member, language, isSelected, onSelect, navigate }) => (
   <div 
     onClick={onSelect}
-    className={`bg-white rounded-2xl border shadow-sm p-3 cursor-pointer transition-all active:scale-[0.99] ${isSelected ? 'border-brand-primary ring-2 ring-brand-primary/20' : 'border-gray-100'}`}
+    className={`bg-white rounded-[24px] p-4 cursor-pointer transition-all duration-300 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+      isSelected 
+        ? 'border-brand-primary ring-4 ring-brand-primary/10 shadow-[0_8px_24px_rgba(124,58,237,0.12)] scale-[1.01]' 
+        : 'border-purple-100/20 shadow-[0_4px_16px_rgba(0,0,0,0.02)] hover:border-purple-200'
+    }`}
   >
     <div className="flex items-center gap-3">
-      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-100 shadow-sm relative">
+      <div className="w-13 h-13 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-purple-50 shadow-sm relative">
         <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-1">
-          <span className={`text-[9px] font-bold text-white px-2 py-0.5 rounded-full shadow-sm ${getBadgeColor(member.role)}`}>
+          <span className={`text-[8.5px] font-black text-white px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider ${getBadgeColor(member.role)}`}>
             {getHindiRole(member.role)}
           </span>
         </div>
-        <h4 className="text-[14px] font-extrabold text-gray-900 truncate leading-tight">{member.name}</h4>
+        <h4 className="text-[14.5px] font-extrabold text-gray-900 truncate leading-tight">{member.name}</h4>
         {member.phone && (
-          <p className="text-[11px] text-gray-500 mt-0.5 font-medium">{member.phone}</p>
+          <p className="text-[11px] font-bold text-gray-400 mt-0.5">{member.phone}</p>
         )}
       </div>
-      <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        <a href={`tel:${member.phone}`} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#1e58b8] active:scale-90 transition-transform">
-          <Phone size={14} />
-        </a>
-        <button onClick={() => navigate(`/member/chat/${member.id}`)} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform">
-          <MessageCircle size={14} />
-        </button>
-      </div>
+    </div>
+    
+    <div className="flex gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
+      <button 
+        onClick={() => navigate(`/member/chat/${member.id}`)} 
+        className="w-9 h-9 rounded-xl border border-emerald-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all duration-200 text-emerald-600 press-scale shadow-sm"
+        style={{ background: 'rgba(16,185,129,0.04)' }}
+      >
+        <MessageCircle size={13} strokeWidth={2.2} />
+      </button>
     </div>
   </div>
 );
@@ -257,9 +266,6 @@ const DelegateRow = ({ member, language, isSelected, onSelect, navigate }) => (
       </p>
     </div>
     <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-      <a href={`tel:${member.phone}`} className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#1e58b8] active:scale-90 transition-transform">
-        <Phone size={14} />
-      </a>
       <button onClick={() => navigate(`/member/chat/${member.id}`)} className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform">
         <MessageCircle size={14} />
       </button>
@@ -381,9 +387,6 @@ const LeadershipPage = () => {
                 {patron.phone && <p className="text-[11px] font-medium text-gray-500">{patron.phone}</p>}
               </div>
               <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                <a href={`tel:${patron.phone}`} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#1e58b8] active:scale-90 transition-transform">
-                  <Phone size={14} />
-                </a>
                 <button onClick={() => navigate(`/member/chat/${patron.id}`)} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform">
                   <MessageCircle size={14} />
                 </button>

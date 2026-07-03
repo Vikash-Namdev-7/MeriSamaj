@@ -262,41 +262,7 @@ const VotingPage = () => {
           </div>
         </div>
 
-        {/* Surveys & Polls Entry Card */}
-        <div
-          onClick={() => navigate('/member/voting/surveys')}
-          className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 cursor-pointer active:scale-[0.98] transition-transform shadow-lg border border-indigo-500/30"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center">
-                <ClipboardList size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-[15px] font-black text-white">Surveys &amp; Polls</h3>
-                <p className="text-[12px] text-white/70 mt-0.5">Community Surveys &amp; Opinion Polls</p>
-              </div>
-            </div>
-            <ChevronRight size={20} className="text-white/70" />
-          </div>
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/10">
-            <div className="text-center">
-              <p className="text-[18px] font-black text-white leading-none">4</p>
-              <p className="text-[9px] text-white/60 font-bold mt-0.5">Total Surveys</p>
-            </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-center">
-              <p className="text-[18px] font-black text-amber-300 leading-none">3</p>
-              <p className="text-[9px] text-white/60 font-bold mt-0.5">Active</p>
-            </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="flex-1 text-right">
-              <span className="bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full">
-                Participate →
-              </span>
-            </div>
-          </div>
-        </div>
+
 
         {/* 7. Bottom Sections Grid: Guidelines, Results & Security */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -7,11 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function NimantranHomePage() {
   const navigate = useNavigate();
   const { invitations, currentUser, setMobileMenuOpen, getUnreadCountForModule } = useData();
-  const [activeFilter, setActiveFilter] = useState('आने वाले');
+  const [activeFilter, setActiveFilter] = useState('Upcoming');
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const filters = ['आज के', 'इस सप्ताह', 'इस महीने', 'आने वाले', 'बीते हुए'];
+  const filters = ['Today', 'This Week', 'This Month', 'Upcoming', 'Past'];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -35,13 +35,13 @@ export default function NimantranHomePage() {
       }
     }
 
-    if (activeFilter === 'आने वाले') {
+    if (activeFilter === 'Upcoming') {
       return invDate >= today;
     }
-    if (activeFilter === 'बीते हुए') {
+    if (activeFilter === 'Past') {
       return invDate < today;
     }
-    if (activeFilter === 'आज के') {
+    if (activeFilter === 'Today') {
       return invDate.getTime() === today.getTime();
     }
     // Simple mock filters for this week/month
@@ -60,7 +60,7 @@ export default function NimantranHomePage() {
             <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100/30 flex items-center justify-center text-brand-primary">
               <Mail size={16} />
             </div>
-            <h1 className="text-base font-bold text-text-primary tracking-tight">निमंत्रण</h1>
+            <h1 className="text-base font-bold text-text-primary tracking-tight">Invitations</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export default function NimantranHomePage() {
             <div className="relative">
               <input 
                 type="text" 
-                placeholder="खोजें (नाम, जगह...)" 
+                placeholder="Search (Name, Venue...)" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white border border-purple-100/30 rounded-2xl pl-10 pr-4 py-3 text-[13px] font-bold outline-none focus:border-brand-primary/45 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] transition-all"
@@ -138,7 +138,7 @@ export default function NimantranHomePage() {
                 ) : (
                   <>
                     <div className="absolute top-0 left-0 w-full h-full opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#7C3AED 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
-                    <h3 className="text-brand-primary font-bold text-[13px] mb-3.5 z-10 tracking-widest mt-6 uppercase">शुभ विवाह</h3>
+                    <h3 className="text-brand-primary font-bold text-[13px] mb-3.5 z-10 tracking-widest mt-6 uppercase">Wedding Invitation</h3>
                     <div className="flex items-center justify-center gap-3.5 text-2xl font-black text-rose-500 z-10">
                       <span>{inv.groomName}</span>
                       <div className="w-9 h-9 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shadow-sm">
@@ -147,7 +147,7 @@ export default function NimantranHomePage() {
                       <span>{inv.brideName}</span>
                     </div>
                     <p className="text-text-secondary text-[11px] font-bold mt-3.5 z-10 border-t border-rose-150/40 pt-2 px-8 mb-6">
-                      - सादर आमंत्रण -
+                      - Cordially Invited -
                     </p>
                   </>
                 )}
@@ -161,7 +161,7 @@ export default function NimantranHomePage() {
                     <span className="text-brand-primary text-[16px] font-black leading-none">{new Date(inv.date).getDate()}</span>
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <h4 className="font-bold text-text-primary text-[15px] truncate">{inv.groomName} एवं {inv.brideName} का विवाह</h4>
+                    <h4 className="font-bold text-text-primary text-[15px] truncate">Wedding of {inv.groomName} &amp; {inv.brideName}</h4>
                     <p className="text-text-secondary text-[12px] font-semibold mt-1 truncate">
                       {inv.familyName}
                     </p>
@@ -203,8 +203,8 @@ export default function NimantranHomePage() {
         {filteredInvitations.length === 0 && (
           <div className="text-center text-text-secondary py-20 flex flex-col items-center card-neo border-dashed">
             <Mail size={48} className="mb-4 text-purple-200" />
-            <h3 className="text-text-primary font-bold text-lg">कोई निमंत्रण नहीं</h3>
-            <p className="text-sm mt-1">इस फ़िल्टर के लिए कोई निमंत्रण नहीं मिला।</p>
+            <h3 className="text-text-primary font-bold text-lg">No Invitations</h3>
+            <p className="text-sm mt-1">No invitations found for this filter.</p>
           </div>
         )}
       </div>

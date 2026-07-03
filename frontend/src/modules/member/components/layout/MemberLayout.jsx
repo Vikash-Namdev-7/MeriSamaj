@@ -57,43 +57,62 @@ export const MemberLayout = () => {
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Drawer Panel — Dark Purple Glass */}
+          {/* Drawer Panel — Deep Premium Dark Glass */}
           <div 
-            className="fixed top-0 left-0 bottom-0 z-55 w-[280px] bg-gradient-to-b from-[#1e1145] via-[#25175a] to-[#2d1b69] flex flex-col shadow-2xl md:hidden animate-slide-right pb-safe"
+            className="fixed top-0 left-0 bottom-0 z-55 w-[288px] flex flex-col shadow-2xl md:hidden animate-slide-right pb-safe"
+            style={{
+              background: 'linear-gradient(160deg, #13093a 0%, #1e1145 30%, #25175a 65%, #2d1b69 100%)',
+              borderRight: '1px solid rgba(167,139,250,0.12)',
+              boxShadow: '4px 0 48px rgba(0,0,0,0.3), inset -1px 0 0 rgba(167,139,250,0.08)',
+            }}
           >
             {/* Top User Profile Header */}
             <div className="p-5 pb-4 flex flex-col gap-3 relative">
               <button 
                 onClick={() => setMobileMenuOpen(false)}
-                className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 active:scale-95 transition-all"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-white/60 transition-all active:scale-90"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
               >
                 <X size={14} />
               </button>
               
               {/* Brand mark */}
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-violet-600 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-purple-500/30">
-                  म
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white font-black text-lg relative overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                >
+                  <span className="relative z-10">म</span>
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
                 </div>
-                <h2 className="text-[16px] font-bold text-white tracking-tight">MeriSamaj</h2>
+                <div>
+                  <h2 className="text-[17px] font-black text-white tracking-tight leading-none">MeriSamaj</h2>
+                  <p className="text-[9px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: 'rgba(167,139,250,0.6)' }}>Community Platform</p>
+                </div>
               </div>
 
-              {/* User card */}
-              <div className="flex items-center gap-3 bg-white/8 rounded-2xl p-3 border border-white/8">
-                <Avatar 
-                  initials={currentUser?.initials || 'U'} 
-                  size="md" 
-                  color="bg-gradient-to-br from-purple-400 to-violet-600 text-white font-bold border-2 border-purple-300/30" 
-                  imageUrl={currentUser?.avatar}
-                />
+              {/* User card — premium glass */}
+              <div className="flex items-center gap-3 rounded-2xl p-3"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
+              >
+                <div className="relative shrink-0">
+                  <Avatar 
+                    initials={currentUser?.initials || 'U'} 
+                    size="md" 
+                    color="bg-gradient-to-br from-purple-400 to-violet-600 text-white font-bold" 
+                    imageUrl={currentUser?.avatar}
+                  />
+                  {/* Online dot */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#1e1145]" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-[14px] font-bold text-white truncate leading-tight">
                     {currentUser?.name || 'User Profile'}
                   </h4>
-                  <p className="text-[10px] font-medium text-purple-300/60 mt-0.5 uppercase tracking-wider leading-none">
+                  <p className="text-[10px] font-semibold mt-0.5 uppercase tracking-wider leading-none" style={{ color: 'rgba(167,139,250,0.55)' }}>
                     {currentUser?.community || 'Samaj Member'}
                   </p>
                 </div>
+                <div className="shrink-0 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider" style={{ background: 'rgba(124,58,237,0.25)', color: 'rgba(196,181,253,0.9)', border: '1px solid rgba(124,58,237,0.3)' }}>Member</div>
               </div>
             </div>
 
@@ -109,18 +128,41 @@ export const MemberLayout = () => {
                   <button
                     key={item.name}
                     onClick={() => handleMenuLinkClick(item.path)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all active:scale-98 relative ${
+                    className={`w-full flex items-center gap-3 px-4 py-[10px] rounded-[14px] text-[13px] tracking-wide transition-all duration-200 active:scale-[0.98] relative overflow-hidden ${
                       isActive 
-                        ? 'bg-white/12 text-white font-semibold' 
-                        : 'text-purple-200/50 hover:bg-white/5 hover:text-purple-100'
+                        ? 'font-semibold' 
+                        : 'hover:bg-white/5'
                     }`}
+                    style={isActive ? {
+                      background: 'rgba(124,58,237,0.18)',
+                      border: '1px solid rgba(124,58,237,0.25)',
+                      color: 'rgba(255,255,255,0.95)',
+                    } : {
+                      border: '1px solid transparent',
+                      color: 'rgba(167,139,250,0.45)',
+                    }}
                   >
-                    {/* Active left bar */}
+                    {/* Active left glow bar */}
                     {isActive && (
-                      <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-gradient-to-b from-purple-400 to-violet-400" />
+                      <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full" style={{ background: 'linear-gradient(180deg, #A78BFA, #7C3AED)', boxShadow: '0 0 8px rgba(124,58,237,0.6)' }} />
                     )}
-                    <Icon size={18} className={isActive ? 'text-purple-300' : 'text-purple-400/40'} />
-                    <span>{item.name}</span>
+                    {/* Subtle shine overlay on active */}
+                    {isActive && (
+                      <div className="absolute inset-0 rounded-[14px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)' }} />
+                    )}
+                    <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                      isActive ? '' : ''
+                    }`}
+                      style={isActive ? {
+                        background: 'rgba(124,58,237,0.25)',
+                        boxShadow: '0 2px 8px rgba(124,58,237,0.2)'
+                      } : {
+                        background: 'rgba(255,255,255,0.04)',
+                      }}
+                    >
+                      <Icon size={16} style={{ color: isActive ? 'rgba(196,181,253,0.95)' : 'rgba(167,139,250,0.35)' }} />
+                    </div>
+                    <span className="relative z-10">{item.name}</span>
                   </button>
                 );
               })}
@@ -135,9 +177,16 @@ export const MemberLayout = () => {
                   logoutUser();
                   navigate('/member/login');
                 }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-rose-500/15 text-rose-300 hover:bg-rose-500/20 active:scale-95 transition-all rounded-xl text-[12px] font-bold uppercase tracking-wider border border-rose-400/15"
+                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-[14px] text-[12px] font-bold uppercase tracking-wider transition-all active:scale-95"
+                style={{
+                  background: 'rgba(239,68,68,0.12)',
+                  color: 'rgba(252,165,165,0.9)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
               >
-                <LogOut size={15} /> Logout
+                <LogOut size={14} /> Sign Out
               </button>
             </div>
           </div>

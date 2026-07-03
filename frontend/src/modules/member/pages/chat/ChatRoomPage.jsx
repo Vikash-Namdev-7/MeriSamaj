@@ -69,6 +69,7 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [reactionTarget, setReactionTarget] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [reactionPosition, setReactionPosition] = useState('top');
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
@@ -245,6 +246,12 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
     if (selectedMessages.length > 0) {
       toggleSelection(msgId);
     } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (rect.top < 150) {
+        setReactionPosition('bottom');
+      } else {
+        setReactionPosition('top');
+      }
       setReactionTarget(reactionTarget === msgId ? null : msgId);
     }
   };
@@ -256,6 +263,8 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
       setLocalMessages(prev => prev.map(m => m.id === selectedMessages[0] ? { ...m, isPinned: !m.isPinned } : m));
     } else if (action === 'reply' && selectedMessages.length === 1) {
       setReplyTarget(localMessages.find(m => m.id === selectedMessages[0]));
+    } else if (action === 'unpin' && pinnedMessage) {
+      setLocalMessages(prev => prev.map(m => m.id === pinnedMessage.id ? { ...m, isPinned: false } : m));
     }
     setSelectedMessages([]);
   };
@@ -344,59 +353,57 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
             </div>
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
-            <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/call/${chat.id}?type=video&name=${encodeURIComponent(chat.name)}`); }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
-              <Video size={20} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/call/${chat.id}?type=voice&name=${encodeURIComponent(chat.name)}`); }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
-              <Phone size={20} />
-            </button>
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setShowMenu(p => !p); }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -mr-2 press-scale">
                 <MoreVertical size={20} />
               </button>
               {showMenu && (
-                <div className="absolute top-11 right-2 bg-white text-gray-800 rounded-2xl shadow-2xl py-2 w-[200px] z-50 border border-gray-100 overflow-hidden animate-fade-in">
-                  {!showMoreMenu ? (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowMenu(false); setShowMoreMenu(false); }} />
+                  <div className="absolute top-11 right-2 bg-white text-gray-800 rounded-3xl shadow-2xl py-2 w-[220px] z-50 border border-gray-100 overflow-hidden animate-scale-up">
+                    {!showMoreMenu ? (
                       <>
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/info/${chat.id}`); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); navigate(`/member/chat/info/${chat.id}`); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           {chat.isGroup ? 'Group info' : 'View contact'}
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/info/${chat.id}`); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); navigate(`/member/chat/info/${chat.id}`); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors leading-tight">
                           Media, links, and docs
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setIsSearchOpen(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setIsSearchOpen(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Search
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMuteDialog(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMuteDialog(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Mute notifications
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowWallpaperDialog(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowWallpaperDialog(true); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Wallpaper
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(true); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 border-t border-gray-100 mt-1 flex items-center justify-between">
-                          More <ArrowLeft size={16} className="rotate-180" />
+                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(true); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors border-t border-gray-100 mt-1 flex items-center justify-between">
+                          <span>More</span>
+                          <span className="text-slate-400 font-normal">→</span>
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-bold text-brand-primary flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 mb-1">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-brand-primary flex items-center gap-2 hover:bg-purple-50/40 active:bg-purple-50 transition-colors border-b border-gray-100 mb-1">
                           <ArrowLeft size={18} /> Back
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Report
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Block
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setLocalMessages([]); setShowMenu(false); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm("Clear all messages in this chat?")) setLocalMessages([]); setShowMenu(false); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Clear chat
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Export chat
                         </button>
                       </>
                     )}
                   </div>
+                </>
               )}
             </div>
           </div>
@@ -515,7 +522,9 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
                 {reactionTarget === msg.id && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={e => { e.stopPropagation(); setReactionTarget(null); }} />
-                    <div className={`absolute z-50 -top-12 ${isMine ? 'right-0' : 'left-0'} bg-white border border-gray-150 rounded-full px-3 py-2 shadow-xl flex items-center gap-3 animate-fade-in`}>
+                    <div className={`absolute z-50 ${isMine ? 'right-0' : 'left-0'} bg-white border border-gray-150 rounded-full px-3 py-2 shadow-xl flex items-center gap-3 animate-fade-in ${
+                      reactionPosition === 'bottom' ? 'top-full mt-1.5' : '-top-12'
+                    }`}>
                       {EMOJI_REACTIONS.map(emoji => (
                         <button key={emoji} onClick={e => { e.stopPropagation(); handleReaction(msg.id, emoji); }}
                           className={`text-[22px] hover:scale-125 transition-transform ${msgReactions.includes(emoji) ? 'scale-125 bg-gray-100 rounded-full' : 'opacity-90'}`}>

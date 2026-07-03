@@ -185,6 +185,11 @@ const MyProfilePage = () => {
               )}
             </div>
             <p className="text-xs font-semibold text-text-secondary mt-1">{currentUser.profession || 'Member'}</p>
+            {(currentUser.city || currentUser.state) && (
+              <p className="text-[11px] font-semibold text-text-secondary mt-1.5 flex items-center justify-center gap-0.5">
+                <span className="text-[10px]">📍</span> {currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}
+              </p>
+            )}
 
             {/* Followers and Following Counters */}
             <div className="flex gap-6 mt-4 text-center bg-purple-50/50 border border-purple-100/30 rounded-2xl px-5 py-2.5 shadow-sm">
@@ -279,22 +284,7 @@ const MyProfilePage = () => {
         {/* Profile Menu Actions List */}
         <div className="px-4">
           <div className="card-neo overflow-hidden divide-y divide-purple-100/20">
-            {/* Action 0: Activity Dashboard */}
-            <button 
-              onClick={() => setShowActivityDashboard(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-glow text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Activity size={18} />
-                </div>
-                <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Activity Dashboard</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">View your engagement and growth</span>
-                </div>
-              </div>
-              <ChevronRight size={16} className="text-purple-300" />
-            </button>
+
 
             {/* Action 1: Personal Info */}
             <button 

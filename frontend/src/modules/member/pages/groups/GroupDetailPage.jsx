@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Send, Paperclip, Image as ImageIcon, X, FileText, Phone, Info, Users, Bell, BellOff, Settings, Search, Check, CheckCheck, Shield, Mic, Plus, LogOut, Star, ChevronRight, Video, Trash, Camera, Edit, Smile, Square, MapPin, UserSquare, Headphones, Copy, Forward, Trash2, CornerUpLeft } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Send, Paperclip, Image as ImageIcon, X, FileText, Link2, Phone, Info, Users, Bell, BellOff, Settings, Search, Check, CheckCheck, Shield, Mic, Plus, LogOut, Star, ChevronRight, Video, Trash, Camera, Edit, Smile, Square, MapPin, UserSquare, Headphones, Copy, Forward, Trash2, CornerUpLeft } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 
@@ -14,6 +14,26 @@ const groupColors = {
   Religious: 'bg-orange-100 text-orange-700'
 };
 
+const getSenderColor = (senderName, role) => {
+  if (role === 'Admin') return 'text-orange-600';
+  const colors = [
+    'text-rose-500',
+    'text-emerald-600',
+    'text-blue-500',
+    'text-purple-600',
+    'text-teal-600',
+    'text-indigo-500',
+    'text-amber-600',
+    'text-pink-500'
+  ];
+  let hash = 0;
+  for (let i = 0; i < senderName.length; i++) {
+    hash = senderName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
 const GroupDetailPage = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
@@ -22,6 +42,7 @@ const GroupDetailPage = () => {
   // View State: chat | info | members | settings
   const [viewState, setViewState] = useState('chat');
   const [prevViewState, setPrevViewState] = useState('chat');
+  const [infoActiveTab, setInfoActiveTab] = useState('media');
   const [newMessage, setNewMessage] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [memberSearch, setMemberSearch] = useState('');
@@ -51,6 +72,22 @@ const GroupDetailPage = () => {
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState(null);
   const [isGroupTyping, setIsGroupTyping] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const toastTimeoutRef = useRef(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [reactionPosition, setReactionPosition] = useState('top');
+
+  const showToast = (msg) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage('');
+    }, 2500);
+  };
+
+  const showConfirm = (message, onConfirm) => {
+    setConfirmDialog({ message, onConfirm });
+  };
   
   const longPressTimerRef = useRef(null);
   const recordingIntervalRef = useRef(null);
@@ -137,7 +174,16 @@ const GroupDetailPage = () => {
   const fileInputRef = useRef(null);
 
   const group = groups.find(g => g.id === groupId);
-  const messages = groupMessages[groupId] || [];
+  const isGroupCreator = group?.creatorId === currentUser.id;
+  const messagesFromProvider = groupMessages[groupId] || [];
+  const [localMessages, setLocalMessages] = useState([]);
+  const [starredMessageIds, setStarredMessageIds] = useState([]);
+
+  useEffect(() => {
+    setLocalMessages(messagesFromProvider);
+  }, [messagesFromProvider, groupId]);
+
+  const messages = localMessages;
 
   // Group settings state (local copy for toggle interaction)
   const [privacySettings, setPrivacySettings] = useState({
@@ -218,9 +264,10 @@ const GroupDetailPage = () => {
 
   const handleSend = () => {
     if (!newMessage.trim() && !pendingAttachment) return;
-    sendGroupMessage(groupId, newMessage, pendingAttachment);
+    sendGroupMessage(groupId, newMessage, pendingAttachment, replyTarget?.id);
     setNewMessage('');
     setPendingAttachment(null);
+    setReplyTarget(null);
     setIsGroupTyping(true);
     setTimeout(() => setIsGroupTyping(false), 1500);
   };
@@ -272,25 +319,69 @@ const GroupDetailPage = () => {
               </div>
               <div className="flex items-center gap-1">
                 {selectedMessages.length === 1 && (
-                  <button className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
+                  <button 
+                    onClick={() => {
+                      const selectedMsg = messages.find(m => m.id === selectedMessages[0]);
+                      if (selectedMsg) {
+                        setReplyTarget(selectedMsg);
+                        setSelectedMessages([]);
+                      }
+                    }} 
+                    className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
+                  >
                     <CornerUpLeft size={20} />
                   </button>
                 )}
-                <button className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
-                  <Star size={20} />
+                <button 
+                  onClick={() => {
+                    let starredCount = 0;
+                    selectedMessages.forEach(msgId => {
+                      if (starredMessageIds.includes(msgId)) {
+                        setStarredMessageIds(prev => prev.filter(id => id !== msgId));
+                      } else {
+                        setStarredMessageIds(prev => [...prev, msgId]);
+                        starredCount++;
+                      }
+                    });
+                    showToast(starredCount > 0 ? `${starredCount} messages starred` : 'Messages unstarred');
+                    setSelectedMessages([]);
+                  }} 
+                  className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
+                >
+                  <Star size={20} className={selectedMessages.every(id => starredMessageIds.includes(id)) ? 'fill-white text-white' : ''} />
                 </button>
                 <button onClick={() => {
-                  if (window.confirm('Delete selected messages?')) {
-                    // Placeholder for delete logic
+                  showConfirm('Delete selected messages?', () => {
+                    setLocalMessages(prev => prev.filter(m => !selectedMessages.includes(m.id)));
                     setSelectedMessages([]);
-                  }
+                    showToast('Messages deleted');
+                  });
                 }} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
                   <Trash2 size={20} />
                 </button>
-                <button className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
+                <button 
+                  onClick={() => {
+                    const texts = selectedMessages.map(msgId => {
+                      const msg = messages.find(m => m.id === msgId);
+                      return msg ? msg.text || '[Attachment]' : '';
+                    }).filter(t => t);
+                    if (texts.length > 0) {
+                      navigator.clipboard.writeText(texts.join('\n'));
+                      showToast(texts.length === 1 ? 'Message copied' : 'Messages copied');
+                    }
+                    setSelectedMessages([]);
+                  }} 
+                  className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
+                >
                   <Copy size={20} />
                 </button>
-                <button className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
+                <button 
+                  onClick={() => {
+                    showToast('Forwarding message...');
+                    setSelectedMessages([]);
+                  }} 
+                  className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
+                >
                   <Forward size={20} />
                 </button>
               </div>
@@ -324,22 +415,9 @@ const GroupDetailPage = () => {
                 </div>
               </div>
             </div>
-            
             <div className="flex items-center gap-0.5 shrink-0 relative">
               <button 
-                onClick={() => setActiveCall('video')}
-                className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
-              >
-                <Video size={20} className="text-white" />
-              </button>
-              <button 
-                onClick={() => setActiveCall('voice')}
-                className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10"
-              >
-                <Phone size={20} className="text-white" />
-              </button>
-              <button 
-                onClick={() => setShowChatMenu(!showChatMenu)}
+                onClick={(e) => { e.stopPropagation(); setShowChatMenu(!showChatMenu); }}
                 className={`w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 ${
                   showChatMenu ? 'bg-white/10' : ''
                 }`}
@@ -351,46 +429,47 @@ const GroupDetailPage = () => {
               {showChatMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => { setShowChatMenu(false); setShowMoreMenu(false); }} />
-                  <div className="absolute right-0 top-11 w-[220px] bg-white border border-gray-150 rounded-xl shadow-xl py-1.5 z-50 animate-scale-up">
+                  <div className="absolute right-0 top-11 w-[220px] bg-white text-gray-800 rounded-3xl shadow-2xl py-2 z-50 border border-gray-100 overflow-hidden animate-scale-up">
                     {!showMoreMenu ? (
                       <>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setPrevViewState('chat'); setViewState('info'); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2.5">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setPrevViewState('chat'); setViewState('info'); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Group Info
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setShowMediaModal(true); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2.5">
-                          Group Media
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setShowMediaModal(true); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors leading-tight">
+                          Media, links, and docs
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setIsSearchingChat(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2.5">
+                        <button onClick={(e) => { e.stopPropagation(); setIsSearchingChat(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Search
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMuteDialog(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2.5">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMuteDialog(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Mute notifications
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowWallpaperDialog(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2.5">
+                        <button onClick={(e) => { e.stopPropagation(); setShowWallpaperDialog(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Wallpaper
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(true); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 border-t border-gray-100 mt-1 flex items-center justify-between">
-                          More <ArrowLeft size={16} className="rotate-180" />
+                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(true); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors border-t border-gray-100 mt-1 flex items-center justify-between">
+                          <span>More</span>
+                          <span className="text-slate-400 font-normal">→</span>
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-bold text-brand-primary flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 mb-1">
+                        <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-brand-primary flex items-center gap-2 hover:bg-purple-50/40 active:bg-purple-50 transition-colors border-b border-gray-100 mb-1">
                           <ArrowLeft size={18} /> Back
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Report
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Block
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm("Clear all messages in this group?")) clearChatMessages(group.id); setShowChatMenu(false); setShowMoreMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100 text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setShowMoreMenu(false); showConfirm("Clear all messages in this group?", () => clearChatMessages(group.id)); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 active:bg-red-50 transition-colors">
                           Clear chat
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[15px] font-semibold hover:bg-gray-50 active:bg-gray-100">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Export chat
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); if (window.confirm("Are you sure you want to exit this group?")) { navigate('/member/groups'); leaveGroup(group.id); } }} className="w-full text-left px-5 py-3 text-[15px] font-semibold text-[#FF3B30] hover:bg-red-50/30 flex items-center gap-2.5 border-t border-slate-100 mt-1 pt-2.5">
+                        <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); showConfirm("Are you sure you want to exit this group?", () => { navigate('/member/groups'); leaveGroup(group.id); }); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-[#FF3B30] hover:bg-red-50/30 flex items-center gap-2.5 border-t border-slate-100 mt-1 pt-2.5 transition-colors">
                           Exit Group
                         </button>
                       </>
@@ -451,6 +530,9 @@ const GroupDetailPage = () => {
               const isSelected = selectedMessages.includes(msg.id);
               const showSenderName = !isMine && (!groupedMessages[index - 1] || groupedMessages[index - 1].senderId !== msg.senderId || groupedMessages[index - 1].type === 'date');
               
+              const hasImageOnly = msg.attachment && msg.attachment.type === 'image' && !msg.text;
+              const isOnlyEmojis = msg.text && !msg.attachment && /^\p{Extended_Pictographic}{1,3}$/u.test(msg.text.replace(/\s/g, ''));
+              
               return (
                 <div key={msg.id}
                   className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
@@ -459,21 +541,47 @@ const GroupDetailPage = () => {
                   onMouseUp={handlePressEnd}
                   onTouchEnd={handlePressEnd}>
 
-                  <div className="relative max-w-[80%]">
+                  <div className="relative max-w-[85%]">
                     {showSenderName && (
-                      <p className={`text-[11.5px] font-bold mb-0.5 ml-1 ${msg.role === 'Admin' ? 'text-orange-500' : 'text-indigo-500'}`}>
-                        {msg.senderName} {msg.role === 'Admin' && <span className="opacity-75 font-normal text-[10px]">({msg.role})</span>}
+                      <p className={`text-[11.5px] font-bold mb-0.5 ml-1.5 ${getSenderColor(msg.senderName, msg.role)}`}>
+                        {msg.senderName} {msg.role === 'Admin' && <span className="opacity-75 font-normal text-[9.5px] bg-orange-50 text-orange-600 px-1 py-0.2 rounded-md">Admin</span>}
                       </p>
                     )}
 
                     <div onClick={(e) => {
                         if (isSelectionMode) return toggleSelection(msg.id);
                         e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        if (rect.top < 150) {
+                          setReactionPosition('bottom');
+                        } else {
+                          setReactionPosition('top');
+                        }
                         setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id);
                       }}
-                      className={`px-3 py-2 rounded-2xl shadow-sm relative cursor-pointer select-none border transition-all ${
-                        isMine ? 'bg-[#d9fdd3] rounded-tr-sm border-[#c8e6c9] text-gray-900' : 'bg-white rounded-tl-sm border-gray-100 text-gray-900'
+                      className={`relative cursor-pointer select-none transition-all ${
+                        isOnlyEmojis 
+                          ? 'bg-transparent border-none shadow-none px-1 py-1' 
+                          : hasImageOnly 
+                            ? 'p-[3.5px] rounded-2xl bg-white border border-gray-150/40 shadow-sm' 
+                            : isMine 
+                              ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm px-3 py-2 text-gray-900 border-none shadow-sm' 
+                              : 'bg-white rounded-2xl rounded-tl-sm px-3 py-2 text-gray-900 border-none shadow-sm'
                       }`}>
+
+                      {/* Replied Message Preview inside bubble */}
+                      {msg.replyTo && (
+                        (() => {
+                          const repliedMsg = messages.find(m => m.id === msg.replyTo);
+                          if (!repliedMsg) return null;
+                          return (
+                            <div className="bg-black/5 rounded-lg p-2 mb-1.5 border-l-4 border-brand-primary text-left">
+                              <p className="text-[12px] font-bold text-brand-primary mb-0.5">{repliedMsg.isMe ? 'You' : repliedMsg.senderName}</p>
+                              <p className="text-[13px] text-gray-600 truncate">{repliedMsg.text || 'Attachment'}</p>
+                            </div>
+                          );
+                        })()
+                      )}
 
                       {/* File Attachment */}
                       {msg.attachment && msg.attachment.type === 'file' && (
@@ -495,22 +603,38 @@ const GroupDetailPage = () => {
 
                       {/* Text */}
                       {msg.text && (
-                        <div className="text-[15px] leading-[22px] font-normal whitespace-pre-wrap">
+                        <div className={`${
+                          isOnlyEmojis 
+                            ? 'text-[38px] leading-normal' 
+                            : 'text-[15px] leading-[22px] font-normal'
+                        } whitespace-pre-wrap`}>
                           {msg.text}
-                          {/* Space for timestamp inline if short, but we will block it */}
-                          <span className="inline-block w-14" />
+                          {!isOnlyEmojis && <span className="inline-block w-14" />}
                         </div>
                       )}
 
                       {/* Info Row (Time & Read Receipts) */}
-                      <div className="absolute bottom-1 right-2 flex items-center gap-1">
-                        <span className="text-[10px] text-gray-500 font-medium">{msg.time}</span>
-                        {isMine && <CheckCheck size={14} className="text-[#53bdeb]" />}
-                      </div>
+                      {isOnlyEmojis ? (
+                        <div className="flex items-center gap-1.5 mt-1 ml-1 select-none">
+                          <span className="text-[10px] text-gray-400 font-medium">{msg.time}</span>
+                          {isMine && <CheckCheck size={13} className="text-[#53bdeb]" />}
+                        </div>
+                      ) : (
+                        <div className={`absolute bottom-1 right-2 flex items-center gap-1 ${
+                          hasImageOnly 
+                            ? 'bg-black/45 backdrop-blur-[2px] px-1.5 py-0.5 rounded-full z-10 text-white' 
+                            : ''
+                        }`}>
+                          <span className={`text-[10px] font-medium ${
+                            hasImageOnly ? 'text-white/90' : 'text-gray-400'
+                          }`}>{msg.time}</span>
+                          {isMine && <CheckCheck size={14} className={hasImageOnly ? 'text-cyan-300' : 'text-[#53bdeb]'} />}
+                        </div>
+                      )}
 
                       {/* Reactions */}
                       {msg.reactions && msg.reactions.length > 0 && (
-                        <div className="absolute -bottom-3 left-2 bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-gray-100 flex items-center gap-0.5">
+                        <div className="absolute -bottom-3 left-2 bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-gray-100 flex items-center gap-0.5 z-20">
                           {msg.reactions.map((r, ri) => <span key={ri} className="text-[12px]">{r}</span>)}
                         </div>
                       )}
@@ -521,8 +645,10 @@ const GroupDetailPage = () => {
                     {activeReactionMsgId === msg.id && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveReactionMsgId(null); }} />
-                        <div className={`absolute z-50 top-[-44px] bg-white border border-slate-150 rounded-full px-2.5 py-1.5 shadow-xl flex items-center gap-2 animate-scale-up ${
+                        <div className={`absolute z-50 bg-white border border-slate-150 rounded-full px-2.5 py-1.5 shadow-xl flex items-center gap-2 animate-scale-up ${
                           isMine ? 'right-0' : 'left-0'
+                        } ${
+                          reactionPosition === 'bottom' ? 'top-full mt-1.5' : 'top-[-44px]'
                         }`}>
                           {['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥'].map(emoji => (
                             <button 
@@ -599,6 +725,18 @@ const GroupDetailPage = () => {
           <div className="bg-transparent px-2 pb-4 pt-1 flex flex-col gap-1.5 z-10 shrink-0" onClick={e => e.stopPropagation()}>
             <input type="file" ref={imageInputRef} accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+
+            {/* Reply preview */}
+            {replyTarget && (
+              <div className="mx-1 flex items-center gap-3 bg-white/95 backdrop-blur rounded-xl px-3 py-2.5 border-l-4 border-brand-primary shadow-sm">
+                <CornerUpLeft size={16} className="text-brand-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-bold text-brand-primary mb-0.5">{replyTarget.isMe ? 'You' : replyTarget.senderName}</p>
+                  <p className="text-[13px] font-medium text-gray-600 truncate">{replyTarget.text || 'Attachment'}</p>
+                </div>
+                <button onClick={() => setReplyTarget(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"><X size={16} /></button>
+              </div>
+            )}
 
             {/* Pending Attachment Preview */}
             {pendingAttachment && (
@@ -681,37 +819,45 @@ const GroupDetailPage = () => {
 
       {/* ─── VIEW 2: GROUP INFO SCREEN ─── */}
       {viewState === 'info' && (
-        <div className="flex flex-col flex-1 h-full overflow-hidden bg-[#F5F6FA]">
+        <div className="flex flex-col flex-1 h-full overflow-hidden bg-gray-55">
           {/* Header */}
-          <div className="bg-white px-4 h-16 flex items-center border-b border-gray-150/40 shrink-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-            <button onClick={() => setViewState('chat')} className="p-1 -ml-1 press-scale">
-              <ArrowLeft size={22} className="text-slate-800" />
-            </button>
+          <div className="bg-white px-3 flex items-center justify-between sticky top-0 z-20 shadow-sm border-b border-gray-100 pb-3"
+               style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 12px, 12px)' }}>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setViewState('chat')} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 -ml-2">
+                <ArrowLeft size={22} className="text-gray-800" />
+              </button>
+              <span className="font-bold text-[18px] text-gray-900">Group Info</span>
+            </div>
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto pb-12">
-            {/* Group Details Hero Card */}
-            <div className="bg-white pt-8 pb-7 px-5 flex flex-col items-center text-center border-b border-gray-150/20 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-              <div className="mb-4 relative group/avatar cursor-pointer" onClick={() => groupAvatarInputRef.current?.click()}>
+          <div className="flex-1 overflow-y-auto pb-8">
+            {/* PROFILE HEADER */}
+            <div className="bg-white flex flex-col items-center pt-8 pb-6 px-6 shadow-sm mb-2 text-center relative">
+              <div className={`relative mb-4 ${isGroupCreator ? 'cursor-pointer' : ''}`} onClick={() => { if (isGroupCreator) groupAvatarInputRef.current?.click(); }}>
                 <Avatar 
                   initials={group.initials} 
-                  src={group.avatarUrl}
+                  src={group.avatarUrl} 
                   size="xl" 
-                  color={groupColors[group.category] || 'bg-gray-100 text-gray-700'} 
-                  className="shadow-sm ring-4 ring-indigo-50/50 border border-indigo-100/30" 
+                  className="w-32 h-32 text-4xl shadow-lg border-4 border-white"
+                  color={groupColors[group.category] || 'bg-violet-100 text-violet-600'} 
                 />
-                <div className="absolute bottom-0 right-0 w-7 h-7 bg-brand-primary text-white rounded-full flex items-center justify-center shadow-md border border-white hover:scale-110 active:scale-95 transition-transform">
-                  <Camera size={13} />
-                </div>
-                <input 
-                  type="file" 
-                  ref={groupAvatarInputRef} 
-                  accept="image/*" 
-                  onChange={handleGroupAvatarChange} 
-                  className="hidden" 
-                  onClick={(e) => e.stopPropagation()}
-                />
+                {isGroupCreator && (
+                  <>
+                    <button className="absolute bottom-0 right-0 w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center border-[3px] border-white shadow-sm active:scale-95">
+                      <Camera size={18} />
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={groupAvatarInputRef} 
+                      accept="image/*" 
+                      onChange={handleGroupAvatarChange} 
+                      className="hidden" 
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </>
+                )}
               </div>
 
               {isEditingNameInline ? (
@@ -724,7 +870,7 @@ const GroupDetailPage = () => {
                       if (e.key === 'Enter') handleSaveGroupNameInline();
                       if (e.key === 'Escape') setIsEditingNameInline(false);
                     }}
-                    className="border-b-2 border-brand-primary outline-none text-[18px] font-bold text-slate-800 bg-transparent py-0.5 text-center flex-1 max-w-[240px]"
+                    className="border-b-2 border-brand-primary outline-none text-[22px] font-bold text-slate-800 bg-transparent py-0.5 text-center flex-1 max-w-[240px]"
                     autoFocus
                   />
                   <button 
@@ -742,110 +888,161 @@ const GroupDetailPage = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2 group/name mt-1">
-                  <h2 className="text-[20px] font-black text-slate-800 leading-snug tracking-tight select-none">
+                  <h1 className="text-[22px] font-bold text-gray-900 mb-1 leading-snug tracking-tight">
                     {group.name}
-                  </h2>
-                  <button 
-                    onClick={() => {
-                      setInlineGroupName(group.name);
-                      setIsEditingNameInline(true);
-                    }}
-                    className="p-1 text-slate-400 hover:text-brand-primary active:scale-90 transition-all opacity-100 md:opacity-0 md:group-hover/name:opacity-100"
-                  >
-                    <Edit size={14} className="cursor-pointer" />
-                  </button>
+                  </h1>
+                  {isGroupCreator && (
+                    <button 
+                      onClick={() => {
+                        setInlineGroupName(group.name);
+                        setIsEditingNameInline(true);
+                      }}
+                      className="p-1 text-slate-400 hover:text-brand-primary active:scale-90 transition-all opacity-100"
+                    >
+                      <Edit size={14} className="cursor-pointer" />
+                    </button>
+                  )}
                 </div>
               )}
 
-              <p className="text-[12.5px] text-slate-400 font-bold mt-1.5">Public Group · {group.members} members</p>
-              <p className="text-[13px] text-slate-500 mt-4 leading-relaxed max-w-sm font-medium text-center px-4">
-                {group.description || 'This group is created for establishing key communication and mutual support among all society members.'}
+              <p className="text-gray-500 text-[14px]">
+                Group • {displayMemberCount} members
               </p>
-            </div>
 
-            {/* Divider Gap */}
-            <div className="h-3.5 bg-[#F5F6FA] border-y border-slate-100/40" />
-
-            {/* SECTION 1: MEDIA, STARRED, SEARCH */}
-            <div className="bg-white border-y border-slate-100/40 flex flex-col">
-              {/* Media */}
-              <div 
-                onClick={() => setShowMediaModal(true)}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
-              >
-                <FileText size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-b border-slate-100">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Media, Links and Documents</span>
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <span className="text-[13px] font-semibold pr-0.5">342</span>
-                    <ChevronRight size={16} className="text-slate-300" />
+              <div className="flex items-center gap-6 mt-6">
+                <button onClick={() => { setViewState('chat'); setIsSearchingChat(true); }} className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-brand-primary active:bg-gray-50 transition-colors">
+                    <Search size={22} />
                   </div>
-                </div>
-              </div>
-
-              {/* Starred */}
-              <div 
-                onClick={() => setShowStarredModal(true)}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
-              >
-                <Star size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-b border-slate-100">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Starred Messages</span>
-                  <span className="text-[13px] font-semibold text-slate-400 pr-1">18</span>
-                </div>
-              </div>
-
-              {/* Search */}
-              <div 
-                onClick={() => {
-                  setViewState('chat');
-                  setIsSearchingChat(true);
-                }}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
-              >
-                <Search size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-transparent">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Search in Chat</span>
-                </div>
+                  <span className="text-[12px] font-semibold text-gray-600">Search</span>
+                </button>
               </div>
             </div>
 
-            {/* Divider Gap */}
-            <div className="h-3.5 bg-[#F5F6FA] border-y border-slate-100/40" />
+            {/* DESCRIPTION */}
+            <div className="bg-white px-5 py-4 shadow-sm mb-2 text-left">
+              <p className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Description
+              </p>
+              <p className="text-[15px] text-gray-900 leading-relaxed">
+                {group.description || 'General discussion and announcement group for all community members.'}
+              </p>
+              {group.createdAt && (
+                <p className="text-[12px] text-gray-400 mt-2">
+                  Created on {new Date(group.createdAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
 
-            {/* SECTION 2: SETTINGS & NOTIFICATIONS */}
-            <div className="bg-white border-y border-slate-100/40 flex flex-col">
+            {/* MEDIA, LINKS, DOCS */}
+            <div className="bg-white shadow-sm mb-2 text-left">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50" onClick={() => setShowMediaModal(true)}>
+                <p className="text-[15px] font-bold text-gray-900">Media, links, and docs</p>
+                <div className="flex items-center gap-1 text-gray-400">
+                  <span className="text-[14px]">6</span>
+                  <ChevronRight size={20} />
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="flex gap-2 mb-4">
+                  {['media', 'docs', 'links'].map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setInfoActiveTab(tab)}
+                      className={`px-4 py-1.5 rounded-full text-[13px] font-bold capitalize transition-colors ${
+                        infoActiveTab === tab ? 'bg-brand-primary/10 text-brand-primary' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                {infoActiveTab === 'media' && (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=120',
+                      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=120',
+                      'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=120',
+                      'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=120',
+                      'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=120',
+                      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=120'
+                    ].map((url, i) => (
+                      <div key={i} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
+                        <img src={url} alt="media" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {infoActiveTab === 'docs' && (
+                  <div className="space-y-3">
+                    {[
+                      { name: 'Samaj_Executive_List_2026.pdf', size: '1.4 MB', date: 'Yesterday' },
+                      { name: 'Diwali_Milan_Sammelan_Form.pdf', size: '840 KB', date: '12 May' }
+                    ].map((doc, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                          <FileText size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-semibold text-gray-900 truncate">{doc.name}</p>
+                          <p className="text-[12px] text-gray-500">{doc.size} • {doc.date}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {infoActiveTab === 'links' && (
+                  <div className="space-y-3">
+                    {[
+                      { url: 'https://merisamaj.com/announcements', title: 'Community Updates and Portal', domain: 'merisamaj.com' },
+                      { url: 'https://youtube.com/watch?v=s83nJ', title: 'Dharmashala Opening Highlights', domain: 'youtube.com' }
+                    ].map((link, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                          <Link2 size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-brand-primary hover:underline block truncate">{link.title}</a>
+                          <p className="text-[12px] text-gray-500 truncate">{link.domain}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* SETTINGS & NOTIFICATIONS */}
+            <div className="bg-white shadow-sm mb-2 text-left">
               {/* Mute Notifications */}
               <div 
                 onClick={() => toggleGroupMute(group.id)}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
+                className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50"
               >
-                <Bell size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-b border-slate-100">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Mute Notifications</span>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); toggleGroupMute(group.id); }}
-                    className={`w-11 h-6 rounded-full transition-colors duration-200 relative focus:outline-none shrink-0 ${
-                      group.isMuted ? 'bg-[#4CD964]' : 'bg-[#E5E5EA]'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 shadow-sm transition-all duration-200 ${
-                      group.isMuted ? 'left-[22px]' : 'left-0.5'
-                    }`} />
-                  </button>
-                </div>
+                <p className="text-[15px] font-bold text-gray-900">Mute Notifications</p>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleGroupMute(group.id); }}
+                  className={`w-11 h-6 rounded-full transition-colors duration-200 relative focus:outline-none shrink-0 ${
+                    group.isMuted ? 'bg-[#4CD964]' : 'bg-[#E5E5EA]'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 shadow-sm transition-all duration-200 ${
+                    group.isMuted ? 'left-[22px]' : 'left-0.5'
+                  }`} />
+                </button>
               </div>
 
               {/* Custom Alert */}
               <div 
-                onClick={() => alert("Custom Notifications: default ringtone active.")}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
+                onClick={() => showToast("Custom Notifications: default ringtone active.")}
+                className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50"
               >
-                <BellOff size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-b border-slate-100">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Custom Notifications</span>
-                  <ChevronRight size={16} className="text-slate-300" />
-                </div>
+                <p className="text-[15px] font-bold text-gray-900">Custom Notifications</p>
+                <ChevronRight size={20} className="text-gray-400" />
               </div>
 
               {/* Members list */}
@@ -854,50 +1051,41 @@ const GroupDetailPage = () => {
                   setPrevViewState('info');
                   setViewState('members');
                 }}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
+                className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50"
               >
-                <Users size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-b border-slate-100">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Members List ({displayMemberCount})</span>
-                  <ChevronRight size={16} className="text-slate-300" />
-                </div>
+                <p className="text-[15px] font-bold text-gray-900">Members List ({displayMemberCount})</p>
+                <ChevronRight size={20} className="text-gray-400" />
               </div>
 
               {/* Group Settings */}
-              <div 
-                onClick={() => {
-                  setPrevViewState('info');
-                  setViewState('settings');
-                }}
-                className="flex items-center gap-4 px-5 hover:bg-slate-50/50 active:bg-slate-100 transition-colors cursor-pointer group"
-              >
-                <Settings size={20} className="text-slate-400 group-hover:text-slate-500 transition-colors shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-transparent">
-                  <span className="text-[14.5px] font-semibold text-slate-800">Group Settings</span>
-                  <ChevronRight size={16} className="text-slate-300" />
+              {isGroupCreator && (
+                <div 
+                  onClick={() => {
+                    setPrevViewState('info');
+                    setViewState('settings');
+                  }}
+                  className="flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 border-t border-gray-100"
+                >
+                  <p className="text-[15px] font-bold text-gray-900">Group Settings</p>
+                  <ChevronRight size={20} className="text-gray-400" />
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Divider Gap */}
-            <div className="h-3.5 bg-[#F5F6FA] border-y border-slate-100/40" />
-
-            {/* SECTION 3: EXIT GROUP */}
-            <div className="bg-white border-y border-slate-100/40 flex flex-col">
-              <div 
+            {/* EXIT GROUP */}
+            <div className="bg-white shadow-sm mb-2 text-left">
+              <button 
                 onClick={() => {
-                  if (window.confirm("Are you sure you want to exit this group?")) {
+                  showConfirm("Are you sure you want to exit this group?", () => {
                     navigate('/member/groups');
                     leaveGroup(group.id);
-                  }
+                  });
                 }}
-                className="flex items-center gap-4 px-5 hover:bg-red-50/30 active:bg-red-50/60 transition-colors cursor-pointer group"
+                className="w-full text-left px-5 py-4 text-[15px] font-bold text-red-500 hover:bg-red-50/20 active:bg-red-50 transition-colors flex items-center gap-2"
               >
-                <LogOut size={20} className="text-[#FF3B30] shrink-0" />
-                <div className="flex-1 py-4 flex items-center justify-between border-transparent">
-                  <span className="text-[14.5px] font-semibold text-[#FF3B30]">Exit Group</span>
-                </div>
-              </div>
+                <LogOut size={20} className="text-red-500" />
+                <span>Exit Group</span>
+              </button>
             </div>
           </div>
         </div>
@@ -935,9 +1123,9 @@ const GroupDetailPage = () => {
                   const unjoined = members.find(m => !joinedMemberIds.includes(m.id));
                   if (unjoined) {
                     handleAddMember(unjoined.id);
-                    alert(`${unjoined.name} has been added to the group!`);
+                    showToast(`${unjoined.name} has been added to the group!`);
                   } else {
-                    alert('All members are already in the group!');
+                    showToast('All members are already in the group!');
                   }
                 }}
                 className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center press-scale shrink-0 hover:bg-brand-primary/20 transition-all"
@@ -1466,9 +1654,9 @@ const GroupDetailPage = () => {
             </div>
             
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {messages.length > 0 ? (
-                messages.slice(0, 2).map((msg, idx) => (
-                  <div key={idx} className="p-4 bg-slate-50 border border-gray-150 rounded-2xl relative shadow-sm">
+              {messages.filter(m => starredMessageIds.includes(m.id)).length > 0 ? (
+                messages.filter(m => starredMessageIds.includes(m.id)).map((msg, idx) => (
+                  <div key={idx} className="p-4 bg-slate-50 border border-gray-150 rounded-2xl relative shadow-sm text-left">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Avatar initials={msg.initials} size="xs" />
@@ -1541,6 +1729,39 @@ const GroupDetailPage = () => {
               </button>
               <button onClick={() => { setWallpaperTheme('solid-pink'); setShowWallpaperDialog(false); }} className={`aspect-square rounded-xl flex flex-col items-center justify-center border-2 transition-all ${wallpaperTheme === 'solid-pink' ? 'border-brand-primary scale-95 shadow-sm' : 'border-gray-100 hover:border-gray-200'} bg-pink-100`}>
                 <span className="text-[11px] font-bold text-pink-800 bg-white/80 px-2 py-0.5 rounded-full">Solid Pink</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[13.5px] font-bold py-2.5 px-5 rounded-full z-[100] shadow-xl flex items-center gap-2 animate-scale-up whitespace-nowrap">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmDialog(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-[320px] overflow-hidden animate-scale-up shadow-2xl border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <h3 className="text-[15.5px] font-bold text-gray-900 leading-snug">{confirmDialog.message}</h3>
+            </div>
+            <div className="p-4 flex gap-3 bg-gray-50 border-t border-gray-100">
+              <button 
+                onClick={() => setConfirmDialog(null)} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }} 
+                className="flex-1 py-2 rounded-xl text-[13px] font-bold bg-red-500 hover:bg-red-600 text-white transition-colors shadow-sm"
+              >
+                Proceed
               </button>
             </div>
           </div>
