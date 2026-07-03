@@ -8,6 +8,7 @@ import { useVoting } from './VotingContext';
 import { Badge } from '../../components/common/Badge';
 import { Avatar } from '../../components/common/Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 const PollDetailPage = () => {
   const { id } = useParams();
@@ -24,6 +25,17 @@ const PollDetailPage = () => {
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [candidateToShowDetails, setCandidateToShowDetails] = useState(null);
+
+  useEffect(() => {
+    if (candidateToShowDetails || showConfirmModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [candidateToShowDetails, showConfirmModal]);
   
   // Timer countdown
   const [timeLeft, setTimeLeft] = useState(15); // 15 seconds countdown
@@ -408,25 +420,33 @@ const PollDetailPage = () => {
       {/* ==========================================================
           MODAL 1: CANDIDATE DETAIL OVERLAY
          ========================================================== */}
-      <AnimatePresence>
-        {candidateToShowDetails && (
-          <>
-            {/* Backdrop */}
+      {createPortal(
+        <AnimatePresence>
+          {candidateToShowDetails && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setCandidateToShowDetails(null)}
-              className="fixed inset-0 bg-black z-50"
-            />
-            {/* Modal Drawer */}
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-card rounded-t-[32px] border-t border-gray-100 z-50 shadow-2xl overflow-y-auto max-h-[80vh] scrollbar-hide"
+              key="modal-candidate" 
+              className="fixed inset-0 z-[9999]" 
+              style={{ touchAction: 'none' }} 
+              onWheel={e => e.stopPropagation()} 
+              onTouchMove={e => e.stopPropagation()}
             >
+              {/* Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setCandidateToShowDetails(null)}
+                className="absolute inset-0 bg-black"
+              />
+              {/* Modal Drawer */}
+              <motion.div 
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto bg-card rounded-t-[32px] border-t border-gray-100 shadow-2xl overflow-y-auto max-h-[80vh] scrollbar-hide"
+                style={{ touchAction: 'auto' }}
+              >
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Candidate Profile Card</span>
@@ -507,30 +527,38 @@ const PollDetailPage = () => {
                 )}
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ==========================================================
           MODAL 2: VOTE CONFIRMATION POPUP
          ========================================================== */}
-      <AnimatePresence>
-        {showConfirmModal && selectedCandidate && (
-          <>
-            {/* Backdrop */}
+      {createPortal(
+        <AnimatePresence>
+          {showConfirmModal && selectedCandidate && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.55 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-50"
-            />
-            {/* Confirmation Dialog Box */}
-            <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+              key="modal-confirm" 
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4" 
+              style={{ touchAction: 'none' }} 
+              onWheel={e => e.stopPropagation()} 
+              onTouchMove={e => e.stopPropagation()}
+            >
+              {/* Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.55 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60"
+              />
+              {/* Confirmation Dialog Box */}
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-card w-full max-w-sm rounded-[28px] border border-gray-100 p-6 shadow-2xl space-y-5 text-center"
+                className="bg-card w-full max-w-sm rounded-[28px] border border-gray-100 p-6 shadow-2xl space-y-5 text-center relative z-10"
+                style={{ touchAction: 'auto' }}
               >
                 {/* Green check shield circle */}
                 <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
@@ -570,10 +598,11 @@ const PollDetailPage = () => {
                   </button>
                 </div>
               </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

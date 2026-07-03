@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -344,6 +345,17 @@ export const CensusPage = () => {
 
   // Print Preview Mode
   const [printPreviewMode, setPrintPreviewMode] = useState(false);
+
+  useEffect(() => {
+    if (isFilterModalOpen || isUpdateModalOpen || showRecentModal || showBloodCampsModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFilterModalOpen, isUpdateModalOpen, showRecentModal, showBloodCampsModal]);
 
   // Filter logic helper
   const filterMember = (m, genderGroup) => {
@@ -1748,15 +1760,25 @@ export const CensusPage = () => {
 
 
       {/* ─── FILTER OPTION MODAL ─── */}
-      <AnimatePresence>
-        {isFilterModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center print:hidden">
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="bg-white rounded-t-[32px] w-full max-w-[480px] p-5 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto"
+      {createPortal(
+        <AnimatePresence>
+          {isFilterModalOpen && (
+            <motion.div
+              key="filter-modal"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-end justify-center print:hidden"
+              style={{ touchAction: 'none' }}
+              onClick={() => setIsFilterModalOpen(false)}
+              onWheel={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
             >
+              <motion.div 
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                className="bg-white rounded-t-[32px] w-full max-w-[480px] p-5 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto"
+                style={{ touchAction: 'auto' }}
+                onClick={e => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Filter size={16} className="text-brand-primary" />
@@ -1937,21 +1959,34 @@ export const CensusPage = () => {
                 </div>
               </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
 
       {/* ─── DATA CORRECTION REQUEST MODAL ─── */}
-      <AnimatePresence>
-        {isUpdateModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:hidden">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100"
+      {createPortal(
+        <AnimatePresence>
+          {isUpdateModalOpen && (
+            <motion.div
+              key="update-modal"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-5 print:hidden"
+              style={{ touchAction: 'none' }}
+              onClick={() => setIsUpdateModalOpen(false)}
+              onWheel={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
             >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+                style={{ touchAction: 'auto' }}
+                onClick={e => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4.5">
                 <div className="flex items-center gap-2">
                   <RefreshCw size={15} className="text-orange-500 animate-spin-slow" />
@@ -2071,21 +2106,33 @@ export const CensusPage = () => {
                   </p>
                 </div>
               )}
+              </motion.div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ─── RECENT MEMBERS MODAL ─── */}
-      <AnimatePresence>
-        {showRecentModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:hidden">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100"
+      {createPortal(
+        <AnimatePresence>
+          {showRecentModal && (
+            <motion.div
+              key="recent-modal"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-5 print:hidden"
+              style={{ touchAction: 'none' }}
+              onClick={() => setShowRecentModal(false)}
+              onWheel={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
             >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+                style={{ touchAction: 'auto' }}
+                onClick={e => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Users size={16} className="text-blue-500" />
@@ -2125,21 +2172,33 @@ export const CensusPage = () => {
                   </div>
                 ))}
               </div>
+              </motion.div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ─── BLOOD DONATION CAMPS MODAL ─── */}
-      <AnimatePresence>
-        {showBloodCampsModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:hidden">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100"
+      {createPortal(
+        <AnimatePresence>
+          {showBloodCampsModal && (
+            <motion.div
+              key="blood-modal"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-5 print:hidden"
+              style={{ touchAction: 'none' }}
+              onClick={() => setShowBloodCampsModal(false)}
+              onWheel={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
             >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-[32px] w-full max-w-[400px] p-5 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+                style={{ touchAction: 'auto' }}
+                onClick={e => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Shield size={16} className="text-orange-500" />
@@ -2175,10 +2234,12 @@ export const CensusPage = () => {
                   </div>
                 ))}
               </div>
+              </motion.div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

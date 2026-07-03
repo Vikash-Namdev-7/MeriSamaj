@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Send } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '../../context/DataProvider';
+import { createPortal } from 'react-dom';
 
 const slideVariants = {
   enter: (direction) => ({
@@ -183,7 +184,7 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {story && (
       <motion.div 
@@ -332,6 +333,7 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
 
       </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

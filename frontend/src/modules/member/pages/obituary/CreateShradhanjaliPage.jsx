@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -67,6 +68,17 @@ const CreateShradhanjaliPage = () => {
   const [posted, setPosted] = useState(false);
   const fileInputRef = useRef(null);
   const [showCeremonyPicker, setShowCeremonyPicker] = useState(false);
+
+  useEffect(() => {
+    if (showCeremonyPicker) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showCeremonyPicker]);
 
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }));
@@ -379,25 +391,29 @@ const CreateShradhanjaliPage = () => {
       </div>
 
       {/* Ceremony type bottom-sheet picker */}
-      <AnimatePresence>
-        {showCeremonyPicker && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center"
-            style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setShowCeremonyPicker(false)}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {showCeremonyPicker && (
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-              className="w-full max-w-md rounded-t-[28px] overflow-hidden"
-              style={{ background: 'white' }}
-              onClick={e => e.stopPropagation()}
+              key="ceremony-picker"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-end justify-center"
+              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', touchAction: 'none' }}
+              onClick={() => setShowCeremonyPicker(false)}
+              onWheel={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
             >
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+                className="w-full max-w-md rounded-t-[28px] overflow-hidden"
+                style={{ background: 'white', touchAction: 'auto' }}
+                onClick={e => e.stopPropagation()}
+              >
               {/* Handle */}
               <div className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-gray-200" />
@@ -456,8 +472,10 @@ const CreateShradhanjaliPage = () => {
               </div>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Date + Time */}
       <div className="grid grid-cols-2 gap-3">

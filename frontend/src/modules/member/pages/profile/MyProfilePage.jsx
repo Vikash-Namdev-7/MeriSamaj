@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
@@ -61,6 +62,17 @@ const MyProfilePage = () => {
 
   // Members lists Modal State (Followers/Following)
   const [membersListModalType, setMembersListModalType] = useState(null); // 'followers', 'following', or null
+
+  useEffect(() => {
+    if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showSocialModal, showPrivacyModal, membersListModalType, showBlockedModal, showActivityDashboard]);
 
   const handleSaveSocials = () => {
     updateProfile({ facebook, twitter, linkedin });
@@ -446,9 +458,9 @@ const MyProfilePage = () => {
       </div>
 
       {/* Social Links Modal */}
-      {showSocialModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl space-y-4 animate-scale-pop border border-purple-100/20">
+      {showSocialModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl space-y-4 animate-scale-pop border border-purple-100/20" style={{ touchAction: 'auto' }}>
             <h3 className="text-[16px] font-bold text-text-primary">Add Social Media Links</h3>
             <div className="space-y-3">
               <div>
@@ -494,13 +506,14 @@ const MyProfilePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Privacy Settings Modal */}
-      {showPrivacyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl space-y-4 animate-scale-pop border border-purple-100/20 max-h-[85vh] overflow-y-auto">
+      {showPrivacyModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl space-y-4 animate-scale-pop border border-purple-100/20 max-h-[85vh] overflow-y-auto" style={{ touchAction: 'auto' }}>
             <div className="flex items-center justify-between border-b border-purple-100/20 pb-2.5">
               <h3 className="text-[16px] font-bold text-text-primary">Privacy Settings</h3>
               <button onClick={() => setShowPrivacyModal(false)} className="text-purple-300 hover:text-brand-primary w-7 h-7 bg-purple-50 rounded-full flex items-center justify-center font-bold">✕</button>
@@ -592,13 +605,14 @@ const MyProfilePage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Members List Modal (Followers / Following) */}
-      {membersListModalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[75vh] animate-scale-pop border border-purple-100/20">
+      {membersListModalType && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[75vh] animate-scale-pop border border-purple-100/20" style={{ touchAction: 'auto' }}>
             <div className="flex items-center justify-between pb-3 border-b border-purple-100/20 shrink-0">
               <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">
                 {membersListModalType === 'followers' ? 'Followers' : 'Following'}
@@ -648,13 +662,14 @@ const MyProfilePage = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Blocked Users Modal */}
-      {showBlockedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[75vh] animate-scale-pop border border-purple-100/20">
+      {showBlockedModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[75vh] animate-scale-pop border border-purple-100/20" style={{ touchAction: 'auto' }}>
             <div className="flex items-center justify-between pb-3 border-b border-purple-100/20 shrink-0">
               <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">
                 Blocked Users
@@ -695,7 +710,8 @@ const MyProfilePage = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <AnimatePresence>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal } from 'lucide-react';
@@ -441,6 +442,17 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
     return () => clearTimeout(timer);
   }, [activeTab]);
 
+  useEffect(() => {
+    if (isFilterOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFilterOpen]);
+
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
@@ -472,21 +484,25 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
   return (
     <div className="min-h-screen bg-[#F5F6FA] pb-28">
       {/* Toast Alert Popup */}
-      <AnimatePresence>
-        {toastMessage && (
-          <div className="fixed bottom-20 left-4 right-4 z-50 flex justify-center pointer-events-none">
+      {createPortal(
+        <AnimatePresence>
+          {toastMessage && (
             <motion.div 
+              key="toast"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="bg-slate-900/95 text-white font-semibold text-[12.5px] px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 backdrop-blur-xs"
+              className="fixed bottom-20 left-4 right-4 z-[9999] flex justify-center pointer-events-none"
             >
-              <Sparkles size={16} className="text-yellow-400 animate-pulse" />
-              {toastMessage}
+              <div className="bg-slate-900/95 text-white font-semibold text-[12.5px] px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 backdrop-blur-xs pointer-events-auto">
+                <Sparkles size={16} className="text-yellow-400 animate-pulse" />
+                {toastMessage}
+              </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Global Header (Hide if in Hub) */}
       {!isHub && (
@@ -664,28 +680,36 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
       />
 
       {/* Category Filter Bottom Sheet */}
-      <AnimatePresence>
-        {isFilterOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center">
-            {/* Backdrop */}
+      {createPortal(
+        <AnimatePresence>
+          {isFilterOpen && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsFilterOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
-            />
-            
-            {/* Sheet Container */}
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 250 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white w-full rounded-t-[32px] max-w-md flex flex-col overflow-hidden max-h-[80vh] shadow-2xl relative z-10"
-              data-swipe-block="true"
+              key="filter-sheet"
+              className="fixed inset-0 z-[9999] flex items-end justify-center" 
+              style={{ touchAction: 'none' }} 
+              onWheel={e => e.stopPropagation()} 
+              onTouchMove={e => e.stopPropagation()}
             >
+              {/* Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsFilterOpen(false)}
+                className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+              />
+              
+              {/* Sheet Container */}
+              <motion.div 
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white w-full rounded-t-[32px] max-w-md flex flex-col overflow-hidden max-h-[80vh] shadow-2xl relative z-10"
+                data-swipe-block="true"
+                style={{ touchAction: 'auto' }}
+              >
               {/* Drag Handle Indicator */}
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-3 shrink-0" />
               
@@ -747,9 +771,11 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
                 })}
               </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
