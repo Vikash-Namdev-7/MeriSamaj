@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, Users, User, Heart, Sparkles, MapPin, 
+  ArrowLeft, Users, User, Heart, Sparkles, MapPin, Menu,
   ChevronRight, ChevronDown, FileText, Download, Printer, 
   RefreshCw, Search, Filter, Phone, MessageCircle, X, Check,
   TrendingUp, BarChart2, PieChart, Home, Info, AlertCircle,
@@ -281,7 +281,7 @@ const getMockData = (surname, userCity) => {
 export const CensusPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, language } = useData();
+  const { currentUser, language, setMobileMenuOpen } = useData();
   const surname = getCommunitySurname(currentUser?.community);
   
   // States
@@ -495,14 +495,18 @@ export const CensusPage = () => {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => {
-                if (currentView === 'dashboard') navigate('/member/home');
+                if (currentView === 'dashboard') setMobileMenuOpen(true);
                 else if (currentView === 'family-details') {
                   setCurrentView(selectedFamily.type === 'Joint' ? 'joint-families' : 'nuclear-families');
                 } else setCurrentView('dashboard');
               }}
               className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale"
             >
-              <ArrowLeft size={18} strokeWidth={2.5} />
+              {currentView === 'dashboard' ? (
+                <Menu size={22} strokeWidth={2.5} />
+              ) : (
+                <ArrowLeft size={18} strokeWidth={2.5} />
+              )}
             </button>
             <div>
               <h1 className="text-[17px] font-bold text-text-primary leading-tight tracking-tight">

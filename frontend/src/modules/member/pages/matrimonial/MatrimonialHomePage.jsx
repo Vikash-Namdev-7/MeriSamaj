@@ -344,7 +344,17 @@ const MatrimonialHomePage = () => {
   const [myGotra, setMyGotra] = useState(currentUser?.gotra || "Garg");
   const [myDiet, setMyDiet] = useState(currentUser?.diet || "Vegetarian");
   const [myIncome, setMyIncome] = useState(currentUser?.income || "₹10-15 Lacs p.a");
-  const [activePickerSheet, setActivePickerSheet] = useState(null); // null | 'gotra' | 'diet' | 'income' | 'partner-gotra' | 'partner-diet'
+  
+  // New Basic Details
+  const [myHeight, setMyHeight] = useState(currentUser?.height || "");
+  const [myWeight, setMyWeight] = useState(currentUser?.weight || "");
+  const [myBodyType, setMyBodyType] = useState(currentUser?.bodyType || "Not specified");
+  const [myComplexion, setMyComplexion] = useState(currentUser?.complexion || "Not specified");
+  const [myBloodGroup, setMyBloodGroup] = useState(currentUser?.bloodGroup || "Not specified");
+  const [myMaritalStatus, setMyMaritalStatus] = useState(currentUser?.maritalStatus || "Not specified");
+  const [myMotherTongue, setMyMotherTongue] = useState(currentUser?.motherTongue || "");
+  
+  const [activePickerSheet, setActivePickerSheet] = useState(null); // null | 'gotra' | 'diet' | 'income' | 'partner-gotra' | 'partner-diet' | 'bodyType' | 'complexion' | 'bloodGroup' | 'maritalStatus'
 
   // Matrimony Subscription state helpers
   const sub = currentUser?.matrimonySubscription;
@@ -367,17 +377,31 @@ const MatrimonialHomePage = () => {
   useEffect(() => {
     if (isCombo && sub?.profiles?.[sub.activeProfileType]) {
       const p = sub.profiles[sub.activeProfileType];
-      setMyMatrimonialBio(p.bio || '');
+      setMyMatrimonialBio(p.bio || p.matrimonialBio || '');
       setMyGotra(p.gotra || 'Garg');
       setMyDiet(p.diet || 'Vegetarian');
       setMyIncome(p.income || '₹10-15 Lacs p.a');
       setMyPhotosCount(p.photosCount || 3);
+      setMyHeight(p.height || '');
+      setMyWeight(p.weight || '');
+      setMyBodyType(p.bodyType || 'Not specified');
+      setMyComplexion(p.complexion || 'Not specified');
+      setMyBloodGroup(p.bloodGroup || 'Not specified');
+      setMyMaritalStatus(p.maritalStatus || 'Not specified');
+      setMyMotherTongue(p.motherTongue || '');
     } else {
       setMyMatrimonialBio(currentUser?.matrimonialBio || '');
       setMyGotra(currentUser?.gotra || 'Garg');
       setMyDiet(currentUser?.diet || 'Vegetarian');
       setMyIncome(currentUser?.income || '₹10-15 Lacs p.a');
       setMyPhotosCount(currentUser?.photosCount || 3);
+      setMyHeight(currentUser?.height || '');
+      setMyWeight(currentUser?.weight || '');
+      setMyBodyType(currentUser?.bodyType || 'Not specified');
+      setMyComplexion(currentUser?.complexion || 'Not specified');
+      setMyBloodGroup(currentUser?.bloodGroup || 'Not specified');
+      setMyMaritalStatus(currentUser?.maritalStatus || 'Not specified');
+      setMyMotherTongue(currentUser?.motherTongue || '');
     }
   }, [sub?.activeProfileType, currentUser, isCombo]);
 
@@ -446,6 +470,22 @@ const MatrimonialHomePage = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 2500);
   };
+
+  // Scroll lock effect for overlays
+  useEffect(() => {
+    const isOverlayOpen = activePickerSheet || isMembershipPopupOpen || isFilterDrawerOpen;
+    if (isOverlayOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [activePickerSheet, isMembershipPopupOpen, isFilterDrawerOpen]);
 
   // Sync state with currentUser changes
   useEffect(() => {
@@ -1986,6 +2026,108 @@ const MatrimonialHomePage = () => {
                 Save Bio Description
               </button>
             </div>
+            {/* Basic Details Config */}
+            <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+              <h4 className="text-[13.5px] font-black text-slate-800 mb-4 uppercase tracking-wider">Basic Details</h4>
+              <div className="space-y-3.5">
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Height</label>
+                    <input 
+                      type="text" 
+                      value={myHeight} 
+                      onChange={(e) => setMyHeight(e.target.value)}
+                      placeholder="e.g. 5'6&quot;"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-[12.5px] font-bold text-slate-750 focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Weight</label>
+                    <input 
+                      type="text" 
+                      value={myWeight} 
+                      onChange={(e) => setMyWeight(e.target.value)}
+                      placeholder="e.g. 65 kg"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-[12.5px] font-bold text-slate-750 focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Body Type</label>
+                    <button 
+                      onClick={() => setActivePickerSheet('bodyType')}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] font-bold text-slate-750 flex items-center justify-between hover:bg-slate-100/30"
+                    >
+                      <span className="truncate mr-2">{myBodyType}</span>
+                      <ChevronRight size={14} className="text-slate-400 rotate-90 shrink-0" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Complexion</label>
+                    <button 
+                      onClick={() => setActivePickerSheet('complexion')}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] font-bold text-slate-750 flex items-center justify-between hover:bg-slate-100/30"
+                    >
+                      <span className="truncate mr-2">{myComplexion}</span>
+                      <ChevronRight size={14} className="text-slate-400 rotate-90 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Blood Group</label>
+                    <button 
+                      onClick={() => setActivePickerSheet('bloodGroup')}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] font-bold text-slate-750 flex items-center justify-between hover:bg-slate-100/30"
+                    >
+                      <span className="truncate mr-2">{myBloodGroup}</span>
+                      <ChevronRight size={14} className="text-slate-400 rotate-90 shrink-0" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Marital Status</label>
+                    <button 
+                      onClick={() => setActivePickerSheet('maritalStatus')}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] font-bold text-slate-750 flex items-center justify-between hover:bg-slate-100/30"
+                    >
+                      <span className="truncate mr-2">{myMaritalStatus}</span>
+                      <ChevronRight size={14} className="text-slate-400 rotate-90 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10.5px] text-slate-400 font-extrabold uppercase tracking-wide block mb-1.5">Mother Tongue</label>
+                  <input 
+                    type="text" 
+                    value={myMotherTongue} 
+                    onChange={(e) => setMyMotherTongue(e.target.value)}
+                    placeholder="e.g. Hindi, Marwari"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-[12.5px] font-bold text-slate-750 focus:outline-none focus:border-rose-400"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  handleSaveDetails({
+                    height: myHeight,
+                    weight: myWeight,
+                    bodyType: myBodyType,
+                    complexion: myComplexion,
+                    bloodGroup: myBloodGroup,
+                    maritalStatus: myMaritalStatus,
+                    motherTongue: myMotherTongue
+                  });
+                  showToast('Basic Details Saved successfully! ✨');
+                }}
+                className="mt-4 w-full py-2.5 bg-rose-500 text-white rounded-xl text-[12px] font-black shadow-xs active:scale-95 transition-transform uppercase tracking-wider"
+              >
+                Save Basic Details
+              </button>
+            </div>
 
             {/* Detailed Parameters Config */}
             <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
@@ -2106,6 +2248,10 @@ const MatrimonialHomePage = () => {
                 {activePickerSheet === 'income' && 'Select Annual Income'}
                 {activePickerSheet === 'partner-gotra' && 'Preferred Gotra Filter'}
                 {activePickerSheet === 'partner-diet' && 'Preferred Diet Filter'}
+                {activePickerSheet === 'bodyType' && 'Select Body Type'}
+                {activePickerSheet === 'complexion' && 'Select Complexion'}
+                {activePickerSheet === 'bloodGroup' && 'Select Blood Group'}
+                {activePickerSheet === 'maritalStatus' && 'Select Marital Status'}
               </h3>
               <button 
                 onClick={() => setActivePickerSheet(null)}
@@ -2174,6 +2320,54 @@ const MatrimonialHomePage = () => {
                   }`}
                 >
                   {d === 'All' ? 'Show All Diets' : `${d} Only`}
+                </button>
+              ))}
+
+              {activePickerSheet === 'bodyType' && ['Average', 'Slim', 'Athletic', 'Heavy'].map(b => (
+                <button
+                  key={b}
+                  onClick={() => { setMyBodyType(b); setActivePickerSheet(null); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-[13.5px] font-extrabold transition-all border ${
+                    myBodyType === b ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-150 text-slate-650 hover:bg-slate-50'
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+
+              {activePickerSheet === 'complexion' && ['Fair', 'Very Fair', 'Wheatish', 'Dark'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => { setMyComplexion(c); setActivePickerSheet(null); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-[13.5px] font-extrabold transition-all border ${
+                    myComplexion === c ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-150 text-slate-650 hover:bg-slate-50'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+
+              {activePickerSheet === 'bloodGroup' && ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                <button
+                  key={bg}
+                  onClick={() => { setMyBloodGroup(bg); setActivePickerSheet(null); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-[13.5px] font-extrabold transition-all border ${
+                    myBloodGroup === bg ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-150 text-slate-650 hover:bg-slate-50'
+                  }`}
+                >
+                  {bg}
+                </button>
+              ))}
+
+              {activePickerSheet === 'maritalStatus' && ['Never Married', 'Divorced', 'Widowed'].map(ms => (
+                <button
+                  key={ms}
+                  onClick={() => { setMyMaritalStatus(ms); setActivePickerSheet(null); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-[13.5px] font-extrabold transition-all border ${
+                    myMaritalStatus === ms ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-150 text-slate-650 hover:bg-slate-50'
+                  }`}
+                >
+                  {ms}
                 </button>
               ))}
             </div>

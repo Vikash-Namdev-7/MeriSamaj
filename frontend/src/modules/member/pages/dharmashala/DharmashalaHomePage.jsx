@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, ChevronLeft, Filter, Plus } from 'lucide-react';
+import { Search, MapPin, Menu, Filter, Plus } from 'lucide-react';
 import { mockDharamshalas } from '../../data/mockDharmashala';
+import { useData } from '../../context/DataProvider';
 
 export default function DharmashalaHomePage() {
   const navigate = useNavigate();
+  const { setMobileMenuOpen } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -58,10 +60,10 @@ export default function DharmashalaHomePage() {
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 px-4 h-14 flex items-center justify-between sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)] shrink-0">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/member')} 
+            onClick={() => setMobileMenuOpen(true)} 
             className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale"
           >
-            <ChevronLeft size={20} strokeWidth={2.5} />
+            <Menu size={22} strokeWidth={2.5} />
           </button>
           <h1 className="text-[17px] font-bold text-text-primary tracking-tight">धर्मशाला बुकिंग</h1>
         </div>

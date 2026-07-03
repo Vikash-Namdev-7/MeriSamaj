@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Check, HelpCircle, Info, CreditCard, ShieldCheck, 
@@ -84,6 +84,22 @@ const MatrimonialSubscriptionPage = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
+  // Scroll lock effect for overlays
+  useEffect(() => {
+    const isOverlayOpen = showCheckout || showCancelModal || showInvoiceHistory;
+    if (isOverlayOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [showCheckout, showCancelModal, showInvoiceHistory]);
 
   const sub = currentUser?.matrimonySubscription;
   const isCurrentlySubscribed = sub && sub.status === 'active';
@@ -534,7 +550,7 @@ const MatrimonialSubscriptionPage = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="flex gap-2.5 pt-3 mt-auto shrink-0 font-sans">
+                  <div className="flex gap-2.5 pt-3 pb-4 mt-auto shrink-0 font-sans">
                     <button onClick={() => setShowCheckout(false)} className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-150 text-slate-500 rounded-xl text-xs font-black">Cancel</button>
                     <button onClick={handleConfirmPayment} disabled={!paymentMethod} className={`flex-1 py-3.5 text-white rounded-xl text-xs font-black shadow-md ${paymentMethod ? 'bg-rose-500 hover:bg-rose-600' : 'bg-slate-350 cursor-not-allowed'}`}>Confirm & Pay</button>
                   </div>

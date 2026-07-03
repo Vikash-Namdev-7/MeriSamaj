@@ -46,6 +46,21 @@ const MatrimonialProfilePage = () => {
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 2500); };
 
+  // Scroll lock effect for overlays
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [isMenuOpen]);
+
   const photos = profile?.photos || [profile?.avatar];
 
   if (!profile) {
@@ -380,7 +395,7 @@ const MatrimonialProfilePage = () => {
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center animate-fade-in" data-swipe-block="true">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setIsMenuOpen(false)} />
-          <div className="bg-white w-full rounded-t-[28px] p-5 pb-safe z-50 shadow-2xl max-w-md animate-slide-up">
+          <div className="bg-white w-full rounded-t-[28px] p-5 pb-safe z-50 relative shadow-2xl max-w-md animate-slide-up">
             <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
             <h3 className="text-[15px] font-black text-slate-800 text-center mb-5">Profile Options</h3>
             <div className="space-y-2.5 mb-5">

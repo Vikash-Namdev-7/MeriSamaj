@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Plus, Wallet, IndianRupee, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Plus, Wallet, IndianRupee, Users, TrendingUp, AlertCircle, Menu } from 'lucide-react';
 import { useFund } from '../../context/FundContext';
+import { useData } from '../../context/DataProvider';
 
 export default function FundListingPage() {
   const navigate = useNavigate();
   const { funds, currentUserId, isAdmin, getUserFunds, contributions } = useFund();
+  const { setMobileMenuOpen } = useData();
 
   // If Admin, they see all funds. If member, they see only assigned funds.
   const displayFunds = isAdmin ? funds : getUserFunds(currentUserId);
@@ -34,10 +36,10 @@ export default function FundListingPage() {
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 px-4 h-14 flex items-center justify-between sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)] shrink-0">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate(-1)} 
+            onClick={() => setMobileMenuOpen(true)} 
             className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale"
           >
-            <ChevronLeft size={20} strokeWidth={2.5} />
+            <Menu size={22} strokeWidth={2.5} />
           </button>
           <h1 className="text-base font-bold text-text-primary tracking-tight">Community Funds</h1>
         </div>

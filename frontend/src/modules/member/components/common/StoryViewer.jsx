@@ -25,6 +25,12 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
   const { sendChatMessage, getOrCreateChat } = useData();
   const [replyText, setReplyText] = useState('');
   const [showToast, setShowToast] = useState(false);
+  
+  // State to hold fixed window height, ignoring dynamic keyboard resizing on mobile
+  const [fixedHeight, setFixedHeight] = useState('100vh');
+  useEffect(() => {
+    setFixedHeight(`${window.innerHeight}px`);
+  }, []);
 
   const isCurrentStoryLiked = story ? !!likedStories[story.id] : false;
 
@@ -86,6 +92,18 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
   useEffect(() => {
     setProgress(0);
   }, [story?.id]);
+
+  // Lock body scroll when story viewer is open to prevent page scrolling behind it
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, []);
 
   // Auto advance timeline (5 seconds total)
   useEffect(() => {
@@ -169,7 +187,7 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
     <AnimatePresence>
       {story && (
       <motion.div 
-        drag="y"
+        drag={!isPaused ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.8 }}
         onDragEnd={(event, info) => {
@@ -198,8 +216,16 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
               x: { type: "spring", stiffness: 280, damping: 28 },
               opacity: { duration: 0.18 }
             }}
-            className="absolute inset-0 w-full h-full flex flex-col bg-black"
+            className="absolute inset-0 w-full h-full bg-black overflow-hidden"
           >
+            {/* Story Image Background */}
+            <div className="absolute top-0 left-0 w-full bg-gray-900 pointer-events-none" style={{ height: fixedHeight }}>
+              <img 
+                src={mockStoryImage} 
+                alt="Story" 
+                className="w-full h-full object-cover"
+              />
+            </div>
             {/* Progress Bar Container - ONLY for the current member's stories */}
             <div className="absolute top-0 pt-4 left-0 right-0 z-20 px-2 flex gap-1.5">
               {currentMemberStories.map((s, idx) => {
@@ -235,25 +261,18 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
               </button>
             </div>
 
-            {/* Story Image & Text overlay */}
-            <div className="flex-1 relative w-full h-full bg-gray-900">
-              <img 
-                src={mockStoryImage} 
-                alt="Story" 
-                className="w-full h-full object-cover rounded-b-3xl"
-              />
-              {/* Text Overlay */}
-              {story.text && (
-                <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-10 pointer-events-none">
-                  <span className="text-white text-[19px] font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/40 px-6 py-4 rounded-3xl backdrop-blur-xs leading-relaxed max-w-[85%]">
-                    {story.text}
-                  </span>
-                </div>
-              )}
-              {/* Gradient overlays for legibility */}
-              <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-            </div>
+            {/* Text Overlay */}
+            {story.text && (
+              <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-10 pointer-events-none">
+                <span className="text-white text-[19px] font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/40 px-6 py-4 rounded-3xl backdrop-blur-xs leading-relaxed max-w-[85%]">
+                  {story.text}
+                </span>
+              </div>
+            )}
+            
+            {/* Gradient overlays for legibility */}
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
 
             {/* Story Reply Footer */}
             <div className="absolute bottom-0 pb-6 left-0 right-0 z-20 px-4">

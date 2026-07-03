@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Camera, Trash2, Edit3, Phone, Calendar, Heart, Briefcase } from 'lucide-react';
+import { ArrowLeft, UserPlus, Camera, Trash2, Edit3, Phone, Calendar, Heart, Briefcase, Network, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 import { t } from '../../utils/translations';
 import { PageHeader } from '../../components/layout/PageHeader';
+import InteractiveFamilyTree from '../../components/family/InteractiveFamilyTree';
 
 const CustomSelect = ({ value, onChange, options }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +45,7 @@ const CustomSelect = ({ value, onChange, options }) => {
 const FamilyPage = () => {
   const navigate = useNavigate();
   const { currentUser, addFamilyMember, deleteFamilyMember, updateFamilyMember, language, setLanguage } = useData();
-  const [activeTab, setActiveTab] = useState('list'); // list | add
+  const [activeTab, setActiveTab] = useState('tree'); // tree | list | add
   const [editingMember, setEditingMember] = useState(null);
   const [memberToDelete, setMemberToDelete] = useState(null);
 
@@ -80,30 +81,48 @@ const FamilyPage = () => {
         }
       />
 
-      <div className="flex-1 px-5 pt-5 pb-20 max-w-md mx-auto w-full">
+      <div className="flex-1 px-5 pt-24 pb-20 max-w-md mx-auto w-full">
         <div className="flex flex-col h-full gap-4">
           {/* Tab Switcher */}
           <div className="flex bg-[#7C3AED]/5 p-1 rounded-2xl border border-purple-100/30 shrink-0">
             <button 
               onClick={() => {
-                setActiveTab('list');
+                setActiveTab('tree');
                 setEditingMember(null);
               }}
-              className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'list' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary'}`}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'tree' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
             >
-              Family Members
+              <Network size={16} className="mb-0.5" />
+              Family Tree
             </button>
             <button 
               onClick={() => {
                 setActiveTab('add');
               }}
-              className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'add' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary'}`}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'add' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
             >
-              {editingMember ? 'Edit Member' : 'Add New Member'}
+              <UserPlus size={16} className="mb-0.5" />
+              {editingMember ? 'Edit' : 'Add Member'}
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('list');
+                setEditingMember(null);
+              }}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'list' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
+            >
+              <Briefcase size={16} className="mb-0.5" />
+              List View
             </button>
           </div>
 
-          {activeTab === 'list' ? (
+          {activeTab === 'tree' ? (
+            <InteractiveFamilyTree 
+              members={currentUser.familyMembers} 
+              currentUser={currentUser} 
+              onEditMember={(member) => { setEditingMember(member); setActiveTab('add'); }}
+            />
+          ) : activeTab === 'list' ? (
             <div className="space-y-3">
               {currentUser.familyMembers.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-3xl border border-purple-100/20 shadow-sm px-4 animate-fade-in">
@@ -239,8 +258,35 @@ const FamilyMemberForm = ({ initialMember, onCancel, onSave, language }) => {
     occupation: initialMember?.occupation || ''
   });
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(() => {
+    const parts = (initialMember?.dob || '1995-08-15').split('-');
+    const y = parts[0] ? Number(parts[0]) : 1995;
+    const m = parts[1] ? Number(parts[1]) - 1 : 7;
+    const d = parts[2] ? Number(parts[2]) : 15;
+    return { year: y, month: m, day: d };
+  });
+
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const years = Array.from({ length: 2027 - 1940 }, (_, i) => 2026 - i);
+
+  const calendarDays = useMemo(() => {
+    const daysInMonth = new Date(pickerDate.year, pickerDate.month + 1, 0).getDate();
+    const firstDay = new Date(pickerDate.year, pickerDate.month, 1).getDay();
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
+  }, [pickerDate.year, pickerDate.month]);
+
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return 'dd-mm-yyyy';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}-${m}-${y}`;
+  };
+
   return (
-    <div className="animate-fade-in-up bg-white rounded-[28px] p-5 border border-purple-100/20 shadow-[0_4px_20px_rgba(109,40,217,0.02)] pb-12">
+    <div className="animate-fade-in-up bg-white rounded-[28px] p-5 border border-purple-100/20 shadow-[0_4px_20px_rgba(109,40,217,0.02)] pb-24">
       <h2 className="text-[17px] font-black text-text-primary mb-5 tracking-tight border-b border-purple-50 pb-3">
         {initialMember ? t('Edit', language) + ' ' + t('Family Member', language) : t('Add Family Member', language)}
       </h2>
@@ -311,14 +357,60 @@ const FamilyMemberForm = ({ initialMember, onCancel, onSave, language }) => {
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Date of Birth</label>
-          <input 
-            type="date" 
-            value={form.dob} 
-            onChange={(e) => setForm({...form, dob: e.target.value})} 
-            className="w-full premium-input font-semibold text-text-primary" 
-          />
+          <button
+            type="button"
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="w-full premium-input font-semibold text-text-primary text-left flex items-center justify-between"
+          >
+            <span>{formatDateDisplay(form.dob)}</span>
+            <Calendar size={14} className="text-text-secondary" />
+          </button>
+          
+          {showDatePicker && (
+            <>
+              <div className="fixed inset-0 z-[45]" onClick={() => setShowDatePicker(false)} />
+              <div className="absolute top-[72px] right-0 bg-white border border-purple-100/30 rounded-2xl shadow-[0_8px_30px_rgba(109,40,217,0.12)] p-4 z-[50] w-[270px] animate-fade-in-up">
+                <div className="flex items-center justify-between mb-3 border-b border-purple-50 pb-2">
+                  <button type="button" onClick={() => setPickerDate(p => ({ ...p, month: p.month - 1 < 0 ? 11 : p.month - 1, year: p.month - 1 < 0 ? p.year - 1 : p.year }))} className="p-1 hover:bg-purple-50 rounded-lg"><ChevronLeft size={16} /></button>
+                  <div className="flex gap-1">
+                    <select value={pickerDate.month} onChange={(e) => setPickerDate(p => ({ ...p, month: Number(e.target.value) }))} className="text-xs font-bold text-brand-primary outline-none cursor-pointer bg-transparent">
+                      {months.map((m, i) => <option key={i} value={i}>{m.substring(0,3)}</option>)}
+                    </select>
+                    <select value={pickerDate.year} onChange={(e) => setPickerDate(p => ({ ...p, year: Number(e.target.value) }))} className="text-xs font-bold text-brand-primary outline-none cursor-pointer bg-transparent">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
+                  <button type="button" onClick={() => setPickerDate(p => ({ ...p, month: p.month + 1 > 11 ? 0 : p.month + 1, year: p.month + 1 > 11 ? p.year + 1 : p.year }))} className="p-1 hover:bg-purple-50 rounded-lg"><ChevronRight size={16} /></button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px] mb-2">
+                  {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => <div key={d} className="font-bold text-slate-400 py-0.5">{d}</div>)}
+                  {calendarDays.map((day, idx) => (
+                    <div key={idx} className="flex justify-center items-center">
+                      {day && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const dateStr = `${pickerDate.year}-${String(pickerDate.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            setForm(f => ({ ...f, dob: dateStr }));
+                            setShowDatePicker(false);
+                          }}
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                            form.dob === `${pickerDate.year}-${String(pickerDate.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                              ? 'bg-brand-primary text-white shadow-md'
+                              : 'hover:bg-purple-50 text-slate-700'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div>
@@ -341,7 +433,7 @@ const FamilyMemberForm = ({ initialMember, onCancel, onSave, language }) => {
           />
         </div>
 
-        <div className="flex gap-3 mt-8">
+        <div className="flex gap-3 mt-14">
           <button onClick={onCancel} className="flex-1 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-50 border border-slate-100 hover:bg-slate-100 press-scale transition-all duration-200">
             Cancel
           </button>

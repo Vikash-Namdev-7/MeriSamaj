@@ -226,6 +226,22 @@ const MatrimonialChatPage = () => {
     if (messages.length > 0) setShowIcebreakers(false);
   }, [messages.length]);
 
+  // Scroll lock effect for overlays
+  useEffect(() => {
+    const isOverlayOpen = showProfileCard || showMenu || reactionTarget;
+    if (isOverlayOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [showProfileCard, showMenu, reactionTarget]);
+
   const handleSend = (text) => {
     const trimmed = (text || newMessage).trim();
     if (!trimmed && !pendingImage) return;
