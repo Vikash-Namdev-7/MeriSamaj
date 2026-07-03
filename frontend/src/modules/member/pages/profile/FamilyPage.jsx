@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Camera, Trash2, Edit3, Phone, Calendar, Heart, Briefcase, Network, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Camera, Trash2, Edit3, Phone, Calendar, Heart, Briefcase, Network, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 import { t } from '../../utils/translations';
@@ -98,11 +98,22 @@ const FamilyPage = () => {
             <button 
               onClick={() => {
                 setActiveTab('add');
+                setEditingMember(null);
               }}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'add' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
             >
               <UserPlus size={16} className="mb-0.5" />
               {editingMember ? 'Edit' : 'Add Member'}
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('list');
+                setEditingMember(null);
+              }}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'list' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
+            >
+              <Users size={16} className="mb-0.5" />
+              List View
             </button>
           </div>
 
@@ -111,6 +122,13 @@ const FamilyPage = () => {
               members={currentUser.familyMembers} 
               currentUser={currentUser} 
               onEditMember={(member) => { setEditingMember(member); setActiveTab('add'); }}
+            />
+          ) : activeTab === 'list' ? (
+            <FamilyListView 
+              members={currentUser.familyMembers} 
+              onEdit={(member) => { setEditingMember(member); setActiveTab('add'); }}
+              onDelete={(member) => setMemberToDelete(member)}
+              language={language}
             />
           ) : (
             <FamilyMemberForm 
@@ -368,3 +386,90 @@ const FamilyMemberForm = ({ initialMember, onCancel, onSave, language }) => {
 };
 
 export default FamilyPage;
+
+const FamilyListView = ({ members, onEdit, onDelete, language }) => {
+  const [filterRelation, setFilterRelation] = useState('All');
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  const relations = ['All', ...new Set(members.map(m => m.relation))];
+  
+  const filteredMembers = filterRelation === 'All' 
+    ? members 
+    : members.filter(m => m.relation === filterRelation);
+
+  return (
+    <div className="animate-fade-in-up space-y-4 pb-24">
+      <div className="flex items-center justify-between mb-2 px-1 relative">
+        <h2 className="text-[15px] font-black text-slate-800">Family Members <span className="text-brand-primary text-xs ml-1 bg-purple-100/50 px-2 py-0.5 rounded-full">{filteredMembers.length}</span></h2>
+        
+        <div className="relative z-20">
+          <button 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 bg-white border border-purple-100/50 text-slate-700 text-[11px] font-bold rounded-xl px-3 py-1.5 shadow-sm hover:border-brand-primary transition-colors"
+          >
+            {filterRelation}
+            <ChevronRight size={14} className={`text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-36 bg-white border border-purple-100/50 rounded-2xl shadow-xl py-1.5 max-h-48 overflow-y-auto animate-fade-in divide-y divide-purple-50">
+              {relations.map(rel => (
+                <button
+                  key={rel}
+                  onClick={() => {
+                    setFilterRelation(rel);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-[11px] font-bold transition-colors ${filterRelation === rel ? 'text-brand-primary bg-purple-50/50' : 'text-slate-600 hover:bg-slate-50'}`}
+                >
+                  {rel}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {filteredMembers.length === 0 ? (
+        <div className="bg-white rounded-2xl p-6 text-center border border-purple-100/20 shadow-sm flex flex-col items-center justify-center h-48">
+          <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-3">
+            <Users size={24} className="text-brand-primary/40" />
+          </div>
+          <p className="text-slate-500 text-sm font-semibold">No family members found.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredMembers.map((member) => (
+            <div key={member.id} className="bg-white rounded-[20px] p-4 border border-purple-100/20 shadow-sm flex items-center gap-4 transition-transform hover:scale-[1.01]">
+              <Avatar src={member.avatar} initials={member.name} size="lg" className="border-2 border-purple-100 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[15px] font-bold text-slate-800 truncate">{member.name}</h3>
+                <div className="flex items-center gap-2 mt-1 mb-1.5 flex-wrap">
+                  <span className="inline-block px-2 py-0.5 bg-purple-50 text-brand-primary text-[10px] font-bold rounded-md uppercase tracking-wider">{member.relation}</span>
+                  {member.maritalStatus && member.maritalStatus !== 'Single' && (
+                    <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md uppercase tracking-wider">{member.maritalStatus}</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium space-y-1">
+                  {member.dob && <p className="flex items-center gap-1.5"><Calendar size={12} className="text-slate-400" /> {member.dob}</p>}
+                  {member.phone && <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400" /> {member.phone}</p>}
+                  {member.occupation && <p className="flex items-center gap-1.5"><Briefcase size={12} className="text-slate-400" /> {member.occupation}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => onEdit(member)} className="w-9 h-9 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-white hover:text-brand-primary hover:shadow-sm border border-transparent hover:border-purple-100 transition-all active:scale-95">
+                  <Edit3 size={15} />
+                </button>
+                <button onClick={() => onDelete(member)} className="w-9 h-9 rounded-[14px] bg-red-50 flex items-center justify-center text-red-400 hover:bg-white hover:text-red-500 hover:shadow-sm border border-transparent hover:border-red-100 transition-all active:scale-95">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
