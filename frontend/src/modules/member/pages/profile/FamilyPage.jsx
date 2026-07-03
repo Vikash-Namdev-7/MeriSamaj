@@ -104,16 +104,6 @@ const FamilyPage = () => {
               <UserPlus size={16} className="mb-0.5" />
               {editingMember ? 'Edit' : 'Add Member'}
             </button>
-            <button 
-              onClick={() => {
-                setActiveTab('list');
-                setEditingMember(null);
-              }}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-black rounded-xl transition-all duration-200 press-scale ${activeTab === 'list' ? 'bg-white text-[#7C3AED] shadow-sm' : 'text-text-secondary hover:bg-white/50'}`}
-            >
-              <Briefcase size={16} className="mb-0.5" />
-              List View
-            </button>
           </div>
 
           {activeTab === 'tree' ? (
@@ -122,83 +112,6 @@ const FamilyPage = () => {
               currentUser={currentUser} 
               onEditMember={(member) => { setEditingMember(member); setActiveTab('add'); }}
             />
-          ) : activeTab === 'list' ? (
-            <div className="space-y-3">
-              {currentUser.familyMembers.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-3xl border border-purple-100/20 shadow-sm px-4 animate-fade-in">
-                  <p className="text-sm font-semibold text-text-secondary">No family members added yet.</p>
-                  <button 
-                    onClick={() => setActiveTab('add')}
-                    className="mt-3 px-4.5 py-2.5 bg-[#7C3AED]/10 text-[#7C3AED] text-xs font-bold rounded-xl press-scale border border-purple-100/20"
-                  >
-                    + Add Family Member
-                  </button>
-                </div>
-              ) : (
-                currentUser.familyMembers.map((fm) => (
-                  <div key={fm.id} className="bg-white rounded-[26px] border border-purple-100/10 p-4.5 shadow-[0_4px_16px_rgba(109,40,217,0.01)] flex items-start gap-4 hover:border-purple-200/50 hover:shadow-[0_8px_24px_rgba(109,40,217,0.05)] hover:-translate-y-0.5 transition-all duration-300 animate-fade-in-up">
-                    <Avatar initials={fm.initials} src={fm.avatar} size="lg" className="shrink-0 rounded-[20px]" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-black text-text-primary truncate leading-tight">{fm.name}</h4>
-                        <span className="bg-purple-50 text-[#7C3AED] text-[9px] font-black px-2.5 py-0.5 rounded-full border border-purple-150/15 uppercase tracking-wider shrink-0">
-                          {fm.relation}
-                        </span>
-                      </div>
-                      
-                      {/* Sub Info Row list */}
-                      <div className="mt-2.5 space-y-1.5">
-                        {fm.phone && (
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                            <Phone size={11} className="text-purple-300 shrink-0" />
-                            <span>{fm.phone}</span>
-                          </div>
-                        )}
-                        {fm.dob && (
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                            <Calendar size={11} className="text-purple-300 shrink-0" />
-                            <span>Born {new Date(fm.dob).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          </div>
-                        )}
-                        {fm.maritalStatus && (
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                            <Heart size={11} className="text-purple-300 shrink-0" />
-                            <span>{fm.maritalStatus}</span>
-                          </div>
-                        )}
-                        {fm.occupation && (
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                            <Briefcase size={11} className="text-purple-300 shrink-0" />
-                            <span>{fm.occupation}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-purple-100/10">
-                        <button 
-                          onClick={() => {
-                            setEditingMember(fm);
-                            setActiveTab('add');
-                          }}
-                          className="px-3.5 py-1.5 bg-slate-50 text-slate-500 border border-slate-100 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/20 text-[10px] font-black uppercase tracking-wider rounded-xl press-scale flex items-center gap-1 transition-all duration-200"
-                        >
-                          <Edit3 size={11} strokeWidth={2.5} /> Edit
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setMemberToDelete(fm);
-                          }}
-                          className="px-3.5 py-1.5 bg-rose-50 text-rose-500 border border-rose-100/50 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/20 text-[10px] font-black uppercase tracking-wider rounded-xl press-scale flex items-center gap-1 transition-all duration-200"
-                        >
-                          <Trash2 size={11} strokeWidth={2.5} /> Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           ) : (
             <FamilyMemberForm 
               initialMember={editingMember} 
