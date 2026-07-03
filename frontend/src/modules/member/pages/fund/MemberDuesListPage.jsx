@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Search, Filter, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Search, Filter, CheckCircle2, Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useFund } from '../../context/FundContext';
 
 export default function MemberDuesListPage() {
@@ -57,6 +57,12 @@ export default function MemberDuesListPage() {
     const matchesSearch = m.name?.toLowerCase().includes(searchQuery.toLowerCase()) || m.phone?.includes(searchQuery);
     const matchesFilter = filter === 'All' ? true : m.status === filter;
     return matchesSearch && matchesFilter;
+  }).sort((a, b) => {
+    const statusWeight = { 'Paid': 3, 'Partial': 2, 'Pending': 1 };
+    if (statusWeight[a.status] !== statusWeight[b.status]) {
+      return statusWeight[b.status] - statusWeight[a.status];
+    }
+    return b.paidAmount - a.paidAmount;
   });
 
   const getStatusColor = (status) => {

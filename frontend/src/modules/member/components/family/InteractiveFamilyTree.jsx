@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZoomIn, ZoomOut, Maximize, User, Phone, MessageSquare, ExternalLink, Calendar, Heart, Briefcase, X, MapPin, HeartPulse } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
@@ -158,6 +159,9 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
 
 
   // 2. Pan & Zoom Handlers
+  const initialDistance = useRef(null);
+  const initialScale = useRef(1);
+
   const handleWheel = (e) => {
     e.preventDefault();
     const scaleAdjust = e.deltaY > 0 ? 0.9 : 1.1;
@@ -168,13 +172,15 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
   };
 
   const handlePointerDown = (e) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (e.isPrimary) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
   };
 
   const handlePointerMove = (e) => {
-    if (!isDragging) return;
+    if (!isDragging || !e.isPrimary) return;
     setTransform(prev => ({
       ...prev,
       x: e.clientX - dragStart.x,
@@ -183,14 +189,57 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
   };
 
   const handlePointerUp = (e) => {
-    setIsDragging(false);
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.isPrimary) {
+      setIsDragging(false);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      setIsDragging(false);
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+      initialDistance.current = dist;
+      initialScale.current = transform.scale;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && initialDistance.current !== null) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+      const scaleAdjust = dist / initialDistance.current;
+      setTransform(prev => ({
+        ...prev,
+        scale: Math.min(Math.max(0.3, initialScale.current * scaleAdjust), 2.5)
+      }));
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) {
+      initialDistance.current = null;
+    }
   };
 
   // 3. UI Controls
   const zoomIn = () => setTransform(p => ({ ...p, scale: Math.min(2.5, p.scale * 1.2) }));
   const zoomOut = () => setTransform(p => ({ ...p, scale: Math.max(0.3, p.scale * 0.8) }));
   const resetZoom = () => setTransform({ x: 0, y: 0, scale: 1 });
+
+  useEffect(() => {
+    if (selectedNode) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedNode]);
 
   return (
     <div className="relative -mx-5 w-[calc(100%+2.5rem)] h-[75vh] min-h-[500px] bg-slate-50/50 rounded-3xl sm:rounded-[36px] border border-purple-100/30 overflow-hidden shadow-inner flex flex-col animate-fade-in-up mt-2">
@@ -216,6 +265,9 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <motion.div 
           className="w-full h-full origin-center relative flex items-center justify-center"
@@ -300,18 +352,19 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
       </div>
 
       {/* Member Detail Modal */}
-      <AnimatePresence>
-        {selectedNode && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-end justify-center p-4 bg-slate-900/40 backdrop-blur-sm sm:items-center"
-            onClick={() => setSelectedNode(null)}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {selectedNode && (
             <motion.div 
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={e => e.stopPropagation()}
-              className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl overflow-hidden relative"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setSelectedNode(null)}
             >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={e => e.stopPropagation()}
+                className="w-full max-w-sm bg-white rounded-[32px] p-6 shadow-2xl overflow-y-auto relative max-h-[90vh]"
+              >
               <button onClick={() => setSelectedNode(null)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
                 <X size={16} />
               </button>
@@ -363,10 +416,12 @@ export default function InteractiveFamilyTree({ members, currentUser, onEditMemb
                   )}
                 </div>
               )}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
