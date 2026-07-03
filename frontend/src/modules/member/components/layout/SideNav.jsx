@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Users, Heart, BookOpen, User, Settings, LogOut, MessageCircle } from 'lucide-react';
+import { Home, Users, Heart, BookOpen, User, Settings, LogOut, MessageCircle, Gift } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 
 const tabPaths = ['/member/home', '/member/social', '/member/matrimonial', '/member/directory', '/member/profile'];
@@ -22,6 +22,7 @@ export const SideNav = () => {
     { name: 'Matrimony', path: '/member/matrimonial', icon: Heart },
     { name: 'Chat', path: '/member/chat', icon: MessageCircle },
     { name: 'Directory', path: '/member/directory', icon: BookOpen },
+    { name: 'Refer & Earn', path: '/member/referral', icon: Gift },
     { name: 'Profile', path: '/member/profile', icon: User },
   ];
 

@@ -59,9 +59,10 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMuteDialog, setShowMuteDialog] = useState(false);
   const [showWallpaperDialog, setShowWallpaperDialog] = useState(false);
+  const [wallpaperTheme, setWallpaperTheme] = useState('default');
   const [wallpaper, setWallpaper] = useState('bg-[#EFEAE2]');
-  
   const [confirmDialog, setConfirmDialog] = useState(null);
 
   const showConfirm = (message, onConfirm) => {
@@ -90,6 +91,7 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const longPressTimerRef = useRef(null);
 
   const filteredMessages = isSearchOpen && searchQuery.trim()
@@ -223,7 +225,9 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   const handlePressStart = (e, msgId) => { 
     if (e.type === 'mousedown' && e.button !== 0) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     touchStartX.current = clientX;
+    touchStartY.current = clientY;
     
     longPressTimerRef.current = setTimeout(() => {
       if (selectedMessages.length === 0) {
@@ -233,8 +237,13 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
     }, 500);
   };
   
-  const handlePressMove = () => {
-    clearTimeout(longPressTimerRef.current);
+  const handlePressMove = (e) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    if (Math.abs(clientX - touchStartX.current) > 10 || Math.abs(clientY - touchStartY.current) > 10) {
+      clearTimeout(longPressTimerRef.current);
+    }
   };
 
   const handlePressEnd = (e, msgId) => {
@@ -263,7 +272,11 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
 
   const handleAction = (action) => {
     if (action === 'delete') {
-      setLocalMessages(prev => prev.filter(m => !selectedMessages.includes(m.id)));
+      showConfirm("Delete selected messages?", () => {
+        setLocalMessages(prev => prev.filter(m => !selectedMessages.includes(m.id)));
+        setSelectedMessages([]);
+      });
+      return; // Do not clear selection yet
     } else if (action === 'pin' && selectedMessages.length === 1) {
       setLocalMessages(prev => prev.map(m => m.id === selectedMessages[0] ? { ...m, isPinned: !m.isPinned } : m));
     } else if (action === 'reply' && selectedMessages.length === 1) {
@@ -557,41 +570,41 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
           <div className="fixed inset-0 z-40" onClick={() => setShowAttachmentMenu(false)} />
           <div className="absolute bottom-[72px] left-2 right-2 bg-white rounded-[24px] p-6 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
             <div className="grid grid-cols-3 gap-y-6 gap-x-2">
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform" onClick={() => docInputRef.current?.click()}>
-                <div className="w-14 h-14 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-indigo-400 to-indigo-600">
-                  <FileText size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => docInputRef.current?.click()}>
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-indigo-400 to-indigo-600">
+                  <FileText size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Document</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Document</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-14 h-14 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-pink-400 to-pink-600">
-                  <Camera size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-pink-400 to-pink-600">
+                  <Camera size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Camera</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Camera</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-14 h-14 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-purple-400 to-purple-600">
-                  <ImageIcon size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-purple-400 to-purple-600">
+                  <ImageIcon size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Gallery</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Gallery</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform">
-                <div className="w-14 h-14 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-orange-400 to-orange-600">
-                  <Headphones size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-orange-400 to-orange-600">
+                  <Headphones size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Audio</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Audio</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform">
-                <div className="w-14 h-14 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-green-400 to-green-600">
-                  <MapPin size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-green-400 to-green-600">
+                  <MapPin size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Location</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Location</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform">
-                <div className="w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md bg-gradient-to-br from-blue-400 to-blue-600">
-                  <UserSquare size={24} fill="currentColor" className="text-white/20" />
+              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
+                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-blue-400 to-blue-600">
+                  <UserSquare size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700">Contact</span>
+                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Contact</span>
               </div>
             </div>
           </div>

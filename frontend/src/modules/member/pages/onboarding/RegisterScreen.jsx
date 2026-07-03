@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Phone, ArrowRight, Bell, Eye, EyeOff, Lock, Check, AlertCircle
+  Phone, ArrowRight, Bell, Eye, EyeOff, Lock, Check, AlertCircle, Gift, CheckCircle2, Loader2
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { useReferral } from '../referral/ReferralContext';
 
 // ─── SLIDE WRAPPER ────────────────────────────────────────────────────────────
 const SlideIn = ({ children, dir = 'right' }) => {
@@ -58,6 +59,12 @@ const RegisterScreen = () => {
   const [otpError, setOtpError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
+  // Referral State
+  const { validateReferralCode } = useReferral();
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [referralStatus, setReferralStatus] = useState(null); // null, 'loading', 'success', 'error'
+  const [referralMessage, setReferralMessage] = useState('');
+
   const isRegOtpComplete = registerOtp.every(d => d !== '');
 
   const triggerOtpBanner = () => {
@@ -98,14 +105,29 @@ const RegisterScreen = () => {
       setTimeout(() => setToastMessage(''), 3000);
       return;
     }
+    
     // Store phone/email to sessionStorage/localStorage for OnboardingScreen to use
     localStorage.setItem('merisamaj_register_phone', registerPhone);
     localStorage.setItem('merisamaj_register_email', registerEmail);
 
     setToastMessage('Registration successful! Launching profile setup.');
     setTimeout(() => {
+      loginUser({ name: 'New User', mobile: registerPhone, email: registerEmail, isVerified: true });
       navigate('/member/onboarding');
     }, 1000);
+  };
+
+  const handleValidateReferral = async () => {
+    if (!referralCodeInput.trim()) return;
+    setReferralStatus('loading');
+    const result = await validateReferralCode(referralCodeInput);
+    if (result.valid) {
+      setReferralStatus('success');
+      setReferralMessage(result.message);
+    } else {
+      setReferralStatus('error');
+      setReferralMessage(result.message);
+    }
   };
 
   const renderToast = () => toastMessage && (
@@ -267,6 +289,52 @@ const RegisterScreen = () => {
                   {showRegConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+            </div>
+
+            {/* Referral Code (Optional) */}
+            <div className="pt-2 border-t border-purple-100/50 mt-4">
+              <label className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-2">
+                <Gift size={14} className="text-brand-primary" /> Have a Referral Code? <span className="text-slate-300 normal-case">(Optional)</span>
+              </label>
+              
+              {!referralStatus || referralStatus === 'error' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Enter Referral Code" 
+                      value={referralCodeInput}
+                      onChange={(e) => {
+                        setReferralCodeInput(e.target.value.toUpperCase());
+                        setReferralStatus(null);
+                        setReferralMessage('');
+                      }}
+                      className={`flex-1 bg-slate-50 border ${referralStatus === 'error' ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-brand-primary'} rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none uppercase tracking-wider`}
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleValidateReferral}
+                      disabled={!referralCodeInput || referralStatus === 'loading'}
+                      className="bg-brand-primary text-white text-[11px] font-bold px-4 py-2.5 rounded-xl disabled:opacity-50 active:scale-95 transition-all w-[80px] flex justify-center"
+                    >
+                      {referralStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+                    </button>
+                  </div>
+                  {referralStatus === 'error' && (
+                    <p className="text-[10px] text-red-500 font-bold ml-1">{referralMessage}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100/60 rounded-xl p-3 flex items-start gap-3 animate-fade-in shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm border border-emerald-200/50">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[12px] font-black text-emerald-800">{referralMessage}</h4>
+                    <p className="text-[10px] font-bold text-emerald-600/80 mt-0.5">Code Applied: {referralCodeInput}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

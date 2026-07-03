@@ -171,7 +171,7 @@ const ChatListPage = ({ isHub = false }) => {
   };
 
   return (
-    <div className={`flex flex-col bg-surface ${isHub ? 'h-full' : 'min-h-screen pb-20'}`}>
+    <div className={`flex flex-col bg-white ${isHub ? 'h-full' : 'min-h-screen pb-20'}`}>
       
       {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 pb-3 px-4 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
@@ -209,8 +209,8 @@ const ChatListPage = ({ isHub = false }) => {
           </div>
         )}
 
-        {/* Search & Filters */}
-        <div className="mt-2 space-y-3">
+        {/* Search */}
+        <div className="mt-2">
           <div className="relative">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
             <input
@@ -220,22 +220,6 @@ const ChatListPage = ({ isHub = false }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-2xl py-2.5 pl-10 pr-4 text-[13px] font-bold outline-none transition-all bg-white border border-purple-100/30 focus:border-brand-primary/45 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] focus:bg-white text-text-primary placeholder:text-text-secondary shadow-sm"
             />
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-            {['all', 'unread', 'groups'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilterType(f)}
-                className={`px-4 py-1.5 rounded-xl text-[12px] font-bold capitalize whitespace-nowrap transition-colors press-scale ${
-                  filterType === f 
-                    ? 'bg-brand-primary text-white shadow-md shadow-purple-300/40' 
-                    : 'bg-purple-50 text-brand-primary border border-purple-100/30 hover:bg-purple-100/40'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
           </div>
         </div>
       </div>

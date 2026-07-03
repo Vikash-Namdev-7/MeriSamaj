@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, HelpCircle, Info, CreditCard, ShieldCheck, CheckCircle2, QrCode, Landmark, Sparkles, X, Heart } from 'lucide-react';
+import { ArrowLeft, Check, HelpCircle, Info, CreditCard, ShieldCheck, CheckCircle2, QrCode, Landmark, Sparkles, X, Heart, Gift, Loader2 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { useReferral } from '../referral/ReferralContext';
 
 const UpgradeMembershipPage = () => {
   const navigate = useNavigate();
   const { currentUser, updateProfile } = useData();
+  const { validateReferralCode, calculateCheckoutDiscount, availablePoints, redeemPoints } = useReferral();
 
   // Selected State
   const [activeTab, setActiveTab] = useState('self-service'); // 'self-service' | 'premier'
@@ -31,6 +33,12 @@ const UpgradeMembershipPage = () => {
   const [selectedBank, setSelectedBank] = useState('SBI');
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const [showPremierSuccess, setShowPremierSuccess] = useState(false);
+
+  // Referral / Points State in Checkout
+  const [checkoutReferralCode, setCheckoutReferralCode] = useState('');
+  const [checkoutReferralStatus, setCheckoutReferralStatus] = useState(null); // null, 'loading', 'success', 'error'
+  const [checkoutReferralMessage, setCheckoutReferralMessage] = useState('');
+  const [usePoints, setUsePoints] = useState(false);
 
   const banksList = [
     { id: 'SBI', name: 'State Bank of India (SBI)' },
@@ -97,6 +105,7 @@ const UpgradeMembershipPage = () => {
   };
 
   const currentPriceObj = pricingData[selectedPlan][selectedDuration];
+  const pricing = calculateCheckoutDiscount(currentPriceObj.final, usePoints, checkoutReferralStatus === 'success' ? checkoutReferralCode : null);
 
   const handleOpenInfo = (featureName, tooltipText) => {
     setInfoModalContent({ title: featureName, desc: tooltipText });
@@ -105,6 +114,19 @@ const UpgradeMembershipPage = () => {
   const handleStartPayment = () => {
     setShowCheckout(true);
     setCheckoutStep('select-method');
+  };
+
+  const handleValidateCheckoutReferral = async () => {
+    if (!checkoutReferralCode.trim()) return;
+    setCheckoutReferralStatus('loading');
+    const result = await validateReferralCode(checkoutReferralCode);
+    if (result.valid) {
+      setCheckoutReferralStatus('success');
+      setCheckoutReferralMessage(result.message);
+    } else {
+      setCheckoutReferralStatus('error');
+      setCheckoutReferralMessage(result.message);
+    }
   };
 
   const handleConfirmPayment = () => {
@@ -580,13 +602,97 @@ const UpgradeMembershipPage = () => {
               
               {checkoutStep === 'select-method' ? (
                 <>
-                  {/* Summary Box */}
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex justify-between items-center text-xs font-bold text-text-primary">
-                    <div className="text-left">
-                      <span className="text-[10px] text-text-secondary font-bold block">{selectedPlan} · {selectedDuration}</span>
-                      <span className="text-rose-950 text-sm mt-0.5 block">Access Premium Features</span>
-                    </div>
-                    <span className="text-rose-600 text-base font-black">₹{currentPriceObj.final}</span>
+                  {/* Summary Box with Referral calculations */}
+                  {(() => {
+                    return (
+                      <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col gap-3 text-xs font-bold text-text-primary">
+                        <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                          <div className="text-left">
+                            <span className="text-[10px] text-text-secondary font-bold block">{selectedPlan} · {selectedDuration}</span>
+                            <span className="text-rose-950 text-sm mt-0.5 block">Access Premium Features</span>
+                          </div>
+                          <span className="text-text-primary text-sm font-black">₹{pricing.originalPrice}</span>
+                        </div>
+                        
+                        {pricing.codeDiscount > 0 && (
+                          <div className="flex justify-between items-center text-emerald-600">
+                            <span>Referral Discount</span>
+                            <span>-₹{pricing.codeDiscount}</span>
+                          </div>
+                        )}
+                        
+                        {pricing.pointsRedeemed > 0 && (
+                          <div className="flex justify-between items-center text-brand-primary">
+                            <span>Points Redeemed</span>
+                            <span>-₹{pricing.pointsRedeemed}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-sm font-black text-rose-950">Final Amount</span>
+                          <span className="text-rose-600 text-lg font-black">₹{pricing.finalAmount}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Gamification / Referral Entry in Checkout */}
+                  <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl space-y-4">
+                    <label className="text-[10px] font-black text-brand-primary uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <Gift size={14} /> Refer & Earn Benefits
+                    </label>
+                    
+                    {/* Enter Code */}
+                    {!checkoutReferralStatus || checkoutReferralStatus === 'error' ? (
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Have a Referral Code?"
+                          value={checkoutReferralCode}
+                          onChange={(e) => {
+                            setCheckoutReferralCode(e.target.value.toUpperCase());
+                            setCheckoutReferralStatus(null);
+                            setCheckoutReferralMessage('');
+                          }}
+                          className={`flex-1 bg-white border ${checkoutReferralStatus === 'error' ? 'border-red-300' : 'border-purple-200'} rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none uppercase tracking-wider shadow-sm`}
+                        />
+                        <button 
+                          type="button"
+                          onClick={handleValidateCheckoutReferral}
+                          disabled={!checkoutReferralCode || checkoutReferralStatus === 'loading'}
+                          className="bg-brand-primary text-white text-[11px] font-bold px-4 py-2 rounded-xl disabled:opacity-50 w-[70px] flex justify-center items-center shadow-sm"
+                        >
+                          {checkoutReferralStatus === 'loading' ? <Loader2 size={14} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 flex items-start gap-2 shadow-sm">
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-[11px] font-bold text-emerald-800">{checkoutReferralMessage}</h4>
+                          <p className="text-[9px] font-bold text-emerald-600/80 mt-0.5">Applied: {checkoutReferralCode}</p>
+                        </div>
+                      </div>
+                    )}
+                    {checkoutReferralStatus === 'error' && (
+                      <p className="text-[9px] text-red-500 font-bold ml-1">{checkoutReferralMessage}</p>
+                    )}
+
+                    {/* Use Points Toggle */}
+                    {availablePoints > 0 && (
+                      <div className="flex items-center justify-between bg-white border border-purple-100 rounded-xl p-3 shadow-sm mt-3">
+                        <div>
+                          <p className="text-[11px] font-bold text-text-primary">Redeem Points Balance</p>
+                          <p className="text-[9px] text-text-secondary mt-0.5">Available: <span className="font-bold text-brand-primary">{availablePoints} Points</span></p>
+                        </div>
+                        <button
+                          onClick={() => setUsePoints(!usePoints)}
+                          className={`w-10 h-5 rounded-full flex items-center transition-colors p-0.5 ${usePoints ? 'bg-brand-primary' : 'bg-gray-200'}`}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${usePoints ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Payment Channel Options */}
@@ -806,7 +912,7 @@ const UpgradeMembershipPage = () => {
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                       }`}
                     >
-                      Pay ₹{currentPriceObj.final} securely
+                      Pay ₹{pricing.finalAmount} securely
                     </button>
                     <p className="text-[9px] text-center text-text-secondary mt-2.5">
                       🔒 Your transaction is secured with 256-bit SSL encryption.

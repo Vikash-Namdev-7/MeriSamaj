@@ -597,154 +597,176 @@ export const CensusPage = () => {
             <div className="grid grid-cols-2 gap-3 mb-6">
               
               {/* Card: Total Members */}
-              <div className="bg-gradient-to-tr from-white to-indigo-50/10 border border-gray-150/80 p-4 rounded-[28px] shadow-sm/5 flex flex-col justify-between min-h-[108px] transition-all duration-300 hover:border-indigo-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-extrabold text-gray-500">{language === 'en' ? 'Total Members' : 'कुल सदस्य'}</span>
-                  <div className="w-7 h-7 rounded-full bg-indigo-50/80 border border-indigo-100/20 flex items-center justify-center text-indigo-600">
-                    <Users size={14} />
+              <motion.div 
+                whileHover={{ y: -4 }}
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-between min-h-[116px] relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider">{language === 'en' ? 'Total Members' : 'कुल सदस्य'}</span>
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                    <Users size={15} />
                   </div>
                 </div>
-                <div className="mt-2.5">
-                  <h4 className="text-[25px] font-black text-gray-900 tracking-tight leading-none">{totalMembers.toLocaleString()}</h4>
-                  <span className="text-[9.5px] font-extrabold text-emerald-600 bg-emerald-50/80 border border-emerald-100/30 px-2 py-0.5 rounded-full mt-1.5 inline-block">100% Samaj</span>
+                <div className="relative z-10 mt-3">
+                  <h4 className="text-[28px] font-black bg-clip-text text-transparent bg-gradient-to-br from-indigo-950 to-indigo-700 tracking-tight leading-none">{totalMembers.toLocaleString()}</h4>
+                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100/50 px-2.5 py-0.5 rounded-full mt-2 inline-block shadow-sm">100% Samaj</span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card: Male Members */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -4, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentView('males')}
-                className="bg-gradient-to-tr from-white to-blue-50/10 border border-gray-150/80 p-4 rounded-[28px] shadow-sm/5 flex flex-col justify-between min-h-[108px] cursor-pointer transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50/30 group active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgb(59,130,246,0.1)] flex flex-col justify-between min-h-[116px] cursor-pointer group relative overflow-hidden"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-extrabold text-gray-500 group-hover:text-blue-600 transition-colors">{language === 'en' ? 'Males' : 'पुरुष सदस्य'}</span>
-                  <div className="w-7 h-7 rounded-full bg-blue-50/80 border border-blue-100/20 flex items-center justify-center text-blue-600">
-                    <User size={14} />
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 transition-colors group-hover:bg-blue-500/10" />
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="text-[12px] font-extrabold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-wider">{language === 'en' ? 'Males' : 'पुरुष सदस्य'}</span>
+                  <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">
+                    <User size={15} />
                   </div>
                 </div>
-                <div className="mt-2.5">
-                  <h4 className="text-[25px] font-black text-gray-900 tracking-tight leading-none">{males.length}</h4>
-                  <span className="text-[9.5px] font-extrabold text-gray-400 group-hover:text-[#1e58b8] flex items-center gap-0.5 mt-1.5 transition-colors">
-                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={10} />
+                <div className="relative z-10 mt-3">
+                  <h4 className="text-[28px] font-black text-slate-800 group-hover:text-blue-700 tracking-tight leading-none transition-colors">{males.length}</h4>
+                  <span className="text-[10px] font-extrabold text-slate-400 group-hover:text-blue-500 flex items-center gap-1 mt-2 transition-colors">
+                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card: Female Members */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -4, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentView('females')}
-                className="bg-gradient-to-tr from-white to-pink-50/10 border border-gray-150/80 p-4 rounded-[28px] shadow-sm/5 flex flex-col justify-between min-h-[108px] cursor-pointer transition-all duration-300 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-50/30 group active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgb(236,72,153,0.1)] flex flex-col justify-between min-h-[116px] cursor-pointer group relative overflow-hidden"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-extrabold text-gray-500 group-hover:text-pink-600 transition-colors">{language === 'en' ? 'Females' : 'महिला सदस्य'}</span>
-                  <div className="w-7 h-7 rounded-full bg-pink-50/80 border border-pink-100/20 flex items-center justify-center text-pink-500">
-                    <User size={14} />
+                <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 transition-colors group-hover:bg-pink-500/10" />
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="text-[12px] font-extrabold text-slate-500 group-hover:text-pink-600 transition-colors uppercase tracking-wider">{language === 'en' ? 'Females' : 'महिला सदस्य'}</span>
+                  <div className="w-8 h-8 rounded-full bg-pink-50 border border-pink-100 flex items-center justify-center text-pink-500 shadow-sm group-hover:bg-pink-500 group-hover:text-white transition-all">
+                    <User size={15} />
                   </div>
                 </div>
-                <div className="mt-2.5">
-                  <h4 className="text-[25px] font-black text-gray-900 tracking-tight leading-none">{females.length}</h4>
-                  <span className="text-[9.5px] font-extrabold text-gray-400 group-hover:text-pink-500 flex items-center gap-0.5 mt-1.5 transition-colors">
-                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={10} />
+                <div className="relative z-10 mt-3">
+                  <h4 className="text-[28px] font-black text-slate-800 group-hover:text-pink-600 tracking-tight leading-none transition-colors">{females.length}</h4>
+                  <span className="text-[10px] font-extrabold text-slate-400 group-hover:text-pink-500 flex items-center gap-1 mt-2 transition-colors">
+                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card: Children */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -4, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentView('kids')}
-                className="bg-gradient-to-tr from-white to-emerald-50/10 border border-gray-150/80 p-4 rounded-[28px] shadow-sm/5 flex flex-col justify-between min-h-[108px] cursor-pointer transition-all duration-300 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-50/30 group active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgb(16,185,129,0.1)] flex flex-col justify-between min-h-[116px] cursor-pointer group relative overflow-hidden"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-extrabold text-gray-500 group-hover:text-emerald-600 transition-colors">{language === 'en' ? 'Children (0-17)' : 'बच्चे (0-17 वर्ष)'}</span>
-                  <div className="w-7 h-7 rounded-full bg-emerald-50/80 border border-emerald-100/20 flex items-center justify-center text-emerald-600">
-                    <Sparkles size={13} />
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 transition-colors group-hover:bg-emerald-500/10" />
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="text-[12px] font-extrabold text-slate-500 group-hover:text-emerald-600 transition-colors uppercase tracking-wider">{language === 'en' ? 'Children' : 'बच्चे (0-17)'}</span>
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                    <Sparkles size={14} />
                   </div>
                 </div>
-                <div className="mt-2.5">
-                  <h4 className="text-[25px] font-black text-gray-900 tracking-tight leading-none">{kids.length}</h4>
-                  <span className="text-[9.5px] font-extrabold text-gray-400 group-hover:text-emerald-500 flex items-center gap-0.5 mt-1.5 transition-colors">
-                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={10} />
+                <div className="relative z-10 mt-3">
+                  <h4 className="text-[28px] font-black text-slate-800 group-hover:text-emerald-700 tracking-tight leading-none transition-colors">{kids.length}</h4>
+                  <span className="text-[10px] font-extrabold text-slate-400 group-hover:text-emerald-500 flex items-center gap-1 mt-2 transition-colors">
+                    {language === 'en' ? 'View Directory' : 'पूरी सूची देखें'} <ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card: Total Families */}
-              <div className="bg-gradient-to-tr from-white to-purple-50/10 border border-gray-150/80 p-4.5 rounded-[28px] shadow-sm/5 flex flex-col justify-between min-h-[112px] col-span-2 transition-all duration-300 hover:border-purple-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12px] font-extrabold text-gray-500">{language === 'en' ? 'Samaj Families' : 'कुल परिवार'}</span>
-                  <span className="text-[15px] font-black text-gray-900">{totalFamiliesCount} {language === 'en' ? 'Families' : 'परिवार'}</span>
+              <motion.div 
+                whileHover={{ y: -2 }}
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgb(124,58,237,0.08)] flex flex-col justify-between min-h-[120px] col-span-2 relative overflow-hidden transition-shadow"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4" />
+                <div className="relative z-10 flex items-center justify-between mb-3">
+                  <span className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider">{language === 'en' ? 'Samaj Families' : 'कुल परिवार'}</span>
+                  <span className="text-[16px] font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-700 to-purple-500">{totalFamiliesCount} {language === 'en' ? 'Families' : 'परिवार'}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 border-t border-gray-50 pt-2.5">
-                  <div 
+                <div className="relative z-10 grid grid-cols-3 gap-2.5">
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
                     onClick={() => setCurrentView('joint-families')}
-                    className="bg-purple-50/40 border border-purple-100/60 hover:bg-purple-50 hover:border-purple-200 rounded-xl p-2 text-center cursor-pointer transition-all active:scale-95"
+                    className="bg-purple-50 border border-purple-100 hover:bg-purple-100 hover:border-purple-200 rounded-2xl p-2.5 text-center cursor-pointer transition-all shadow-sm"
                   >
-                    <span className="text-[10px] font-bold text-purple-700 block">{language === 'en' ? 'Joint' : 'संयुक्त'}</span>
-                    <span className="text-[13px] font-black text-purple-900">{jointFamiliesCount}</span>
-                  </div>
-                  <div 
+                    <span className="text-[10px] font-bold text-purple-600 block uppercase tracking-wider">{language === 'en' ? 'Joint' : 'संयुक्त'}</span>
+                    <span className="text-[15px] font-black text-purple-900 mt-0.5 block">{jointFamiliesCount}</span>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
                     onClick={() => setCurrentView('nuclear-families')}
-                    className="bg-emerald-50/40 border border-emerald-100/60 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl p-2 text-center cursor-pointer transition-all active:scale-95"
+                    className="bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200 rounded-2xl p-2.5 text-center cursor-pointer transition-all shadow-sm"
                   >
-                    <span className="text-[10px] font-bold text-emerald-700 block">{language === 'en' ? 'Nuclear' : 'एकल'}</span>
-                    <span className="text-[13px] font-black text-emerald-900">{nuclearFamiliesCount}</span>
-                  </div>
-                  <div className="bg-gray-50/40 border border-gray-100 rounded-xl p-2 text-center">
-                    <span className="text-[10px] font-bold text-gray-500 block">{language === 'en' ? 'Others' : 'अन्य'}</span>
-                    <span className="text-[13px] font-black text-gray-700">{otherFamiliesCount}</span>
+                    <span className="text-[10px] font-bold text-emerald-600 block uppercase tracking-wider">{language === 'en' ? 'Nuclear' : 'एकल'}</span>
+                    <span className="text-[15px] font-black text-emerald-900 mt-0.5 block">{nuclearFamiliesCount}</span>
+                  </motion.div>
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center shadow-sm opacity-80">
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">{language === 'en' ? 'Others' : 'अन्य'}</span>
+                    <span className="text-[15px] font-black text-slate-700 mt-0.5 block">{otherFamiliesCount}</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card: Active Cities */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }}
                 onClick={() => setCurrentView('cities')}
-                className="bg-gradient-to-tr from-white to-orange-50/10 border border-gray-150/80 p-4 rounded-[26px] shadow-sm/5 flex items-center justify-between min-h-[84px] cursor-pointer transition-all duration-300 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-50/30 active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-4.5 rounded-[24px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgb(249,115,22,0.08)] flex items-center justify-between min-h-[88px] cursor-pointer group transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-orange-50/80 border border-orange-100/20 text-orange-600 flex items-center justify-center">
-                    <MapPin size={16} />
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-[14px] bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center shadow-sm group-hover:bg-orange-500 group-hover:text-white transition-all">
+                    <MapPin size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 block tracking-wider uppercase">{language === 'en' ? 'Active Cities' : 'स्थान / सक्रिय शहर'}</span>
-                    <h4 className="text-[18px] font-black text-gray-800 leading-none mt-0.5">12 {language === 'en' ? 'Cities' : 'शहर'}</h4>
+                    <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Active Cities' : 'सक्रिय शहर'}</span>
+                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-orange-600 transition-colors">12 {language === 'en' ? 'Cities' : 'शहर'}</h4>
                   </div>
                 </div>
-                <ChevronRight size={14} className="text-gray-400" />
-              </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+              </motion.div>
 
               {/* Card: Events this Month */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/member/events')}
-                className="bg-gradient-to-tr from-white to-blue-50/10 border border-gray-150/80 p-4 rounded-[26px] shadow-sm/5 flex items-center justify-between min-h-[84px] cursor-pointer transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50/30 active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-4.5 rounded-[24px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgb(59,130,246,0.08)] flex items-center justify-between min-h-[88px] cursor-pointer group transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50/80 border border-blue-100/20 text-[#1e58b8] flex items-center justify-center">
-                    <Calendar size={16} />
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-[14px] bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">
+                    <Calendar size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 block tracking-wider uppercase">{language === 'en' ? 'Events (Month)' : 'इस महीने कार्यक्रम'}</span>
-                    <h4 className="text-[18px] font-black text-gray-800 leading-none mt-0.5">4 {language === 'en' ? 'Events' : 'आयोजन'}</h4>
+                    <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Events (Month)' : 'इस महीने'}</span>
+                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-blue-600 transition-colors">4 {language === 'en' ? 'Events' : 'आयोजन'}</h4>
                   </div>
                 </div>
-                <ChevronRight size={14} className="text-gray-400" />
-              </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+              </motion.div>
 
               {/* Card: Matrimonial Interest */}
-              <div 
+              <motion.div 
+                whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/member/matrimonial')}
-                className="bg-gradient-to-tr from-white to-rose-50/10 border border-gray-150/80 p-4 rounded-[26px] shadow-sm/5 flex items-center justify-between min-h-[84px] col-span-2 cursor-pointer transition-all duration-300 hover:border-rose-300 hover:shadow-lg hover:shadow-rose-50/30 active:scale-98"
+                className="bg-white/90 backdrop-blur-xl border border-white/60 p-4.5 rounded-[24px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgb(244,63,94,0.08)] flex items-center justify-between min-h-[88px] col-span-2 cursor-pointer group transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-50/80 border border-rose-100/20 text-rose-500 flex items-center justify-center">
-                    <Heart size={16} className="fill-rose-500" />
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-[14px] bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center shadow-sm group-hover:bg-rose-500 group-hover:text-white transition-all">
+                    <Heart size={18} className="group-hover:fill-white transition-colors" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 block tracking-wider uppercase">{language === 'en' ? 'Matrimony Profiles' : 'विवाह हेतु रुचि (मैटरिमोनियल)'}</span>
-                    <h4 className="text-[16px] font-black text-gray-800 leading-none mt-1">186 {language === 'en' ? 'Profiles' : 'प्रकार के बायोडाटा उपलब्ध'}</h4>
+                    <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Matrimony Profiles' : 'विवाह हेतु रुचि'}</span>
+                    <h4 className="text-[16px] font-black text-slate-800 leading-none mt-1.5 group-hover:text-rose-600 transition-colors">186 {language === 'en' ? 'Verified Profiles' : 'प्रकार के बायोडाटा'}</h4>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-gray-400" />
-              </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-rose-500 group-hover:translate-x-1 transition-all" />
+              </motion.div>
 
             </div>
 
@@ -953,73 +975,7 @@ export const CensusPage = () => {
                 </div>
               </div>
 
-              {/* Activity Report List */}
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
-                <h4 className="text-[14.5px] font-black text-gray-900">{language === 'en' ? 'Samaj Activity Feed' : 'समाज गतिविधि रिपोर्ट'}</h4>
-                <p className="text-[11px] text-gray-500 font-semibold mb-4">{language === 'en' ? 'Key community achievements' : 'नवीनतम सामुदायिक उपलब्धियाँ'}</p>
-                
-                <div className="flex flex-col gap-3">
-                  {/* Item 1: Events Organized */}
-                  <div 
-                    onClick={() => navigate('/member/events')}
-                    className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98 group"
-                  >
-                    <div className="w-8.5 h-8.5 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm shadow-purple-100 group-hover:scale-105 transition-transform">
-                      <Calendar size={13} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-[12px] font-extrabold text-gray-800 group-hover:text-purple-600 transition-colors">{language === 'en' ? 'Events Organized' : 'सफलतापूर्वक आयोजित कार्यक्रम'}</h5>
-                      <span className="text-[9.5px] text-gray-400 font-bold block">{language === 'en' ? 'Click to view events feed' : 'कार्यक्रमों की सूची देखने के लिए क्लिक करें'}</span>
-                    </div>
-                    <span className="text-[13px] font-black text-gray-900 bg-purple-50/50 border border-purple-100/30 px-2.5 py-0.5 rounded-full">24</span>
-                  </div>
 
-                  {/* Item 2: New Members Registered */}
-                  <div 
-                    onClick={() => setShowRecentModal(true)}
-                    className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98 group"
-                  >
-                    <div className="w-8.5 h-8.5 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-100 group-hover:scale-105 transition-transform">
-                      <Users size={13} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-[12px] font-extrabold text-gray-800 group-hover:text-blue-600 transition-colors">{language === 'en' ? 'New Members Registered' : 'सामुदायिक सदस्य जोड़े गए'}</h5>
-                      <span className="text-[9.5px] text-gray-400 font-bold block">{language === 'en' ? 'Click to see recently registered' : 'हाल ही में पंजीकृत सदस्य देखें'}</span>
-                    </div>
-                    <span className="text-[13px] font-black text-gray-900 bg-blue-50/50 border border-blue-100/30 px-2.5 py-0.5 rounded-full">78</span>
-                  </div>
-
-                  {/* Item 3: Marriages Setup Completed */}
-                  <div 
-                    onClick={() => navigate('/member/matrimonial')}
-                    className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98 group"
-                  >
-                    <div className="w-8.5 h-8.5 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 shadow-sm shadow-rose-100 group-hover:scale-105 transition-transform">
-                      <Heart size={13} className="fill-rose-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-[12px] font-extrabold text-gray-800 group-hover:text-rose-600 transition-colors">{language === 'en' ? 'Marriages Setup Completed' : 'सम्पन्न कराए गए विवाह सम्बंध'}</h5>
-                      <span className="text-[9.5px] text-gray-400 font-bold block">{language === 'en' ? 'Click to view biodatas' : 'बायोडाटा सूची पर जाने के लिए क्लिक करें'}</span>
-                    </div>
-                    <span className="text-[13px] font-black text-gray-900 bg-rose-50/50 border border-rose-100/30 px-2.5 py-0.5 rounded-full">18</span>
-                  </div>
-
-                  {/* Item 4: Blood Donation Camps */}
-                  <div 
-                    onClick={() => setShowBloodCampsModal(true)}
-                    className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 active:scale-98 group"
-                  >
-                    <div className="w-8.5 h-8.5 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 shadow-sm shadow-orange-100 group-hover:scale-105 transition-transform">
-                      <Shield size={13} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-[12px] font-extrabold text-gray-800 group-hover:text-orange-600 transition-colors">{language === 'en' ? 'Blood Donation Camps' : 'आयोजित रक्तदान शिविर'}</h5>
-                      <span className="text-[9.5px] text-gray-400 font-bold block">{language === 'en' ? 'Click to see camp reports' : 'रक्तदान शिविर रिपोर्ट देखने के लिए क्लिक करें'}</span>
-                    </div>
-                    <span className="text-[13px] font-black text-gray-900 bg-orange-50/50 border border-orange-100/30 px-2.5 py-0.5 rounded-full">6</span>
-                  </div>
-                </div>
-              </div>
 
             </div>
 
@@ -1298,9 +1254,11 @@ export const CensusPage = () => {
             {/* List Render */}
             <div className="flex flex-col gap-2.5">
               {(currentView === 'males' ? filteredMales : filteredFemales).map(member => (
-                <div 
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4, scale: 1.01 }} whileTap={{ scale: 0.98 }}
                   key={member.id}
-                  className="bg-white border border-gray-150/70 p-4 rounded-2xl shadow-sm/5 relative overflow-hidden flex items-center gap-3.5 cursor-pointer hover:border-brand-primary/40 transition-colors"
+                  className="bg-white/90 backdrop-blur-xl border border-white/60 p-4 rounded-[20px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_12px_30px_rgb(124,58,237,0.08)] relative overflow-hidden flex items-center gap-3.5 cursor-pointer transition-all group"
                   onClick={() => navigate('/member/directory/' + member.id)}
                 >
                   <div className="w-13 h-13 rounded-full bg-gray-50 border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center relative shadow-inner">
@@ -1313,8 +1271,8 @@ export const CensusPage = () => {
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[14.5px] font-extrabold text-gray-900 leading-tight truncate">{member.name}</h4>
-                    <p className="text-[11.5px] font-medium text-gray-500 mt-0.5">
+                    <h4 className="text-[14.5px] font-black text-slate-900 leading-tight truncate group-hover:text-brand-primary transition-colors">{member.name}</h4>
+                    <p className="text-[11.5px] font-semibold text-slate-500 mt-0.5">
                       {currentView === 'males' ? 'पिता' : 'पति/पिता'}: {member.fatherName}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-gray-400 font-semibold">
@@ -1323,15 +1281,15 @@ export const CensusPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                    <a href={`tel:${member.phone}`} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm flex items-center justify-center text-[#1e58b8] active:scale-90 transition-transform bg-white">
+                  <div className="flex gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    <motion.a whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} href={`tel:${member.phone}`} className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 transition-colors hover:bg-blue-600 hover:text-white shadow-sm">
                       <Phone size={13} />
-                    </a>
-                    <button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/${member.id}`); }} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform bg-white">
+                    </motion.a>
+                    <motion.button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/${member.id}`); }} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white shadow-sm">
                       <MessageCircle size={13} />
-                    </button>
+                    </motion.button>
                   </div>
-                </div>
+                </motion.div>
               ))}
               {(currentView === 'males' ? filteredMales : filteredFemales).length === 0 && (
                 <div className="text-center py-10 bg-white border border-gray-100 rounded-3xl p-6 text-gray-400">
@@ -1507,50 +1465,53 @@ export const CensusPage = () => {
             {/* Render List */}
             <div className="flex flex-col gap-3">
               {(currentView === 'joint-families' ? jointFamiliesList : nuclearFamiliesList).map(fam => (
-                <div 
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4, scale: 1.01 }} whileTap={{ scale: 0.98 }}
                   key={fam.id}
                   onClick={() => {
                     setSelectedFamily(fam);
                     setCurrentView('family-details');
                   }}
-                  className="bg-white border border-gray-150/70 p-4.5 rounded-3xl shadow-sm/5 relative overflow-hidden cursor-pointer hover:border-brand-primary transition-all active:scale-98"
+                  className="bg-white/90 backdrop-blur-xl border border-white/60 p-5 rounded-[28px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_12px_30px_rgb(139,92,246,0.08)] relative overflow-hidden cursor-pointer transition-all group"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 transition-colors group-hover:bg-brand-primary/10" />
+                  <div className="flex items-start justify-between gap-3 relative z-10">
                     <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${currentView === 'joint-families' ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center shrink-0 shadow-sm transition-colors ${currentView === 'joint-families' ? 'bg-purple-50 border border-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white' : 'bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'}`}>
                         <Home size={18} />
                       </div>
                       <div>
-                        <h4 className="text-[15.5px] font-black text-gray-900 leading-tight">{fam.name}</h4>
-                        <p className="text-[11.5px] font-semibold text-gray-500 mt-1">
+                        <h4 className="text-[16px] font-black text-slate-900 leading-tight group-hover:text-brand-primary transition-colors">{fam.name}</h4>
+                        <p className="text-[11.5px] font-semibold text-slate-500 mt-1">
                           {language === 'en' ? 'Family Head' : 'परिवार मुखिया'}: {fam.headName}
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-extrabold text-gray-400 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-0.5 tracking-wider uppercase">
+                    <span className="text-[10px] font-extrabold text-brand-primary bg-brand-primary/5 border border-brand-primary/20 rounded-full px-2.5 py-1 tracking-widest uppercase shadow-sm">
                       {fam.city}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 text-center mt-4 pt-3.5 border-t border-gray-50">
-                    <div>
-                      <span className="text-[9px] font-semibold text-gray-400 block uppercase">{language === 'en' ? 'Total' : 'सदस्य'}</span>
-                      <span className="text-[13px] font-black text-gray-800">{fam.membersCount}</span>
+                  <div className="grid grid-cols-4 gap-2 text-center mt-5 pt-4 border-t border-slate-100 relative z-10">
+                    <div className="bg-slate-50 rounded-2xl p-2.5">
+                      <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">{language === 'en' ? 'Total' : 'सदस्य'}</span>
+                      <span className="text-[15px] font-black text-slate-800">{fam.membersCount}</span>
                     </div>
-                    <div>
-                      <span className="text-[9px] font-semibold text-gray-400 block uppercase">{language === 'en' ? 'Males' : 'पुरुष'}</span>
-                      <span className="text-[13px] font-black text-blue-600">{fam.malesCount}</span>
+                    <div className="bg-blue-50/50 rounded-2xl p-2.5">
+                      <span className="text-[9px] font-bold text-blue-500 block uppercase tracking-wider">{language === 'en' ? 'Males' : 'पुरुष'}</span>
+                      <span className="text-[15px] font-black text-blue-700">{fam.malesCount}</span>
                     </div>
-                    <div>
-                      <span className="text-[9px] font-semibold text-gray-400 block uppercase">{language === 'en' ? 'Females' : 'महिला'}</span>
-                      <span className="text-[13px] font-black text-pink-500">{fam.femalesCount}</span>
+                    <div className="bg-pink-50/50 rounded-2xl p-2.5">
+                      <span className="text-[9px] font-bold text-pink-500 block uppercase tracking-wider">{language === 'en' ? 'Females' : 'महिला'}</span>
+                      <span className="text-[15px] font-black text-pink-600">{fam.femalesCount}</span>
                     </div>
-                    <div>
-                      <span className="text-[9px] font-semibold text-gray-400 block uppercase">{language === 'en' ? 'Kids' : 'बच्चे'}</span>
-                      <span className="text-[13px] font-black text-emerald-600">{fam.kidsCount}</span>
+                    <div className="bg-emerald-50/50 rounded-2xl p-2.5">
+                      <span className="text-[9px] font-bold text-emerald-500 block uppercase tracking-wider">{language === 'en' ? 'Kids' : 'बच्चे'}</span>
+                      <span className="text-[15px] font-black text-emerald-700">{fam.kidsCount}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -1563,47 +1524,47 @@ export const CensusPage = () => {
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             
             {/* Header / Head Card */}
-            <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow-sm relative overflow-hidden mb-5">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-50 to-transparent rounded-bl-[80px]" />
-              <div className="flex items-center gap-4 relative z-10">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md bg-gray-50 relative shrink-0">
+            <div className="bg-white/90 backdrop-blur-xl border border-white/60 rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden mb-5">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-[80px] blur-xl" />
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="w-18 h-18 rounded-[20px] overflow-hidden shadow-lg bg-gray-50 relative shrink-0 border border-white">
                   <img src={`https://i.pravatar.cc/150?u=${selectedFamily.headId}`} className="w-full h-full object-cover" alt="" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="bg-purple-100 text-purple-700 text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
                     {language === 'en' ? 'Family Head' : 'परिवार मुखिया'}
                   </span>
-                  <h4 className="text-[17px] font-black text-gray-900 mt-1 leading-tight">{selectedFamily.headName}</h4>
-                  <div className="flex flex-wrap gap-x-2 text-[11px] font-semibold text-gray-400 mt-1">
-                    <span>{language === 'en' ? 'Age' : 'उम्र'}: 68 {language === 'en' ? 'yrs' : 'वर्ष'}</span>
-                    <span>·</span>
-                    <span>{selectedFamily.city}</span>
+                  <h4 className="text-[20px] font-black text-slate-900 mt-2 leading-tight">{selectedFamily.headName}</h4>
+                  <div className="flex flex-wrap items-center gap-x-2 text-[11px] font-semibold text-slate-500 mt-1.5">
+                    <span className="bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{language === 'en' ? 'Age' : 'उम्र'}: 68 {language === 'en' ? 'yrs' : 'वर्ष'}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{selectedFamily.city}</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5" onClick={e => e.stopPropagation()}>
-                  <a href={`tel:${selectedFamily.phone}`} className="w-8 h-8 rounded-full border border-gray-150 flex items-center justify-center text-[#1e58b8] bg-white active:scale-90 transition-transform">
-                    <Phone size={13} />
-                  </a>
+                <div className="flex flex-col gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                  <motion.a whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} href={`tel:${selectedFamily.phone}`} className="w-9 h-9 rounded-[14px] shadow-sm flex items-center justify-center text-blue-600 bg-blue-50 border border-blue-100 transition-colors hover:bg-blue-600 hover:text-white">
+                    <Phone size={14} />
+                  </motion.a>
                 </div>
               </div>
 
               {/* Counts inside Detail */}
-              <div className="grid grid-cols-4 gap-2 text-center mt-5 pt-4 border-t border-gray-50">
-                <div className="bg-gray-50 rounded-xl p-2">
-                  <span className="text-[9.5px] font-bold text-gray-400 block">{language === 'en' ? 'Total' : 'कुल सदस्य'}</span>
-                  <span className="text-[16px] font-black text-gray-800">{selectedFamily.membersCount}</span>
+              <div className="grid grid-cols-4 gap-2.5 text-center mt-5 pt-5 border-t border-slate-100 relative z-10">
+                <div className="bg-slate-50/80 rounded-[18px] p-2.5 shadow-sm">
+                  <span className="text-[9.5px] font-bold text-slate-400 block uppercase tracking-wider">{language === 'en' ? 'Total' : 'कुल सदस्य'}</span>
+                  <span className="text-[18px] font-black text-slate-800 leading-tight">{selectedFamily.membersCount}</span>
                 </div>
-                <div className="bg-blue-50/30 rounded-xl p-2 border border-blue-100/10">
-                  <span className="text-[9.5px] font-bold text-blue-500 block">{language === 'en' ? 'Males' : 'पुरुष'}</span>
-                  <span className="text-[16px] font-black text-blue-600">{selectedFamily.malesCount}</span>
+                <div className="bg-blue-50/50 rounded-[18px] p-2.5 border border-blue-100/50 shadow-sm">
+                  <span className="text-[9.5px] font-bold text-blue-500 block uppercase tracking-wider">{language === 'en' ? 'Males' : 'पुरुष'}</span>
+                  <span className="text-[18px] font-black text-blue-600 leading-tight">{selectedFamily.malesCount}</span>
                 </div>
-                <div className="bg-pink-50/30 rounded-xl p-2 border border-pink-100/10">
-                  <span className="text-[9.5px] font-bold text-pink-500 block">{language === 'en' ? 'Females' : 'महिला'}</span>
-                  <span className="text-[16px] font-black text-pink-600">{selectedFamily.femalesCount}</span>
+                <div className="bg-pink-50/50 rounded-[18px] p-2.5 border border-pink-100/50 shadow-sm">
+                  <span className="text-[9.5px] font-bold text-pink-500 block uppercase tracking-wider">{language === 'en' ? 'Females' : 'महिला'}</span>
+                  <span className="text-[18px] font-black text-pink-600 leading-tight">{selectedFamily.femalesCount}</span>
                 </div>
-                <div className="bg-emerald-50/30 rounded-xl p-2 border border-emerald-100/10">
-                  <span className="text-[9.5px] font-bold text-emerald-500 block">{language === 'en' ? 'Kids' : 'बच्चे'}</span>
-                  <span className="text-[16px] font-black text-emerald-600">{selectedFamily.kidsCount}</span>
+                <div className="bg-emerald-50/50 rounded-[18px] p-2.5 border border-emerald-100/50 shadow-sm">
+                  <span className="text-[9.5px] font-bold text-emerald-500 block uppercase tracking-wider">{language === 'en' ? 'Kids' : 'बच्चे'}</span>
+                  <span className="text-[18px] font-black text-emerald-600 leading-tight">{selectedFamily.kidsCount}</span>
                 </div>
               </div>
             </div>
@@ -1616,7 +1577,7 @@ export const CensusPage = () => {
             {/* Group 1: Male Members */}
             {selectedFamily.members.males.length > 0 && (
               <div className="mb-5">
-                <h4 className="text-[12px] font-black text-blue-600 mb-2 px-1 flex items-center gap-1.5">
+                <h4 className="text-[12px] font-black text-slate-600 mb-2 px-1 flex items-center gap-1.5">
                   <User size={13} /> {language === 'en' ? 'MALE MEMBERS' : 'पुरुष सदस्य'}
                 </h4>
                 <div className="bg-white border border-gray-100 rounded-3xl divide-y divide-gray-50 overflow-hidden shadow-sm">
@@ -1626,7 +1587,7 @@ export const CensusPage = () => {
                         <span className="text-gray-400 font-extrabold text-[12.5px] w-5">{i + 1}.</span>
                         <div>
                           <span className="font-extrabold text-gray-800">{member.name}</span>
-                          <span className="text-[10px] font-bold bg-blue-50 text-blue-600 rounded px-1.5 py-0.5 ml-2 uppercase">
+                          <span className="text-[10px] font-bold border border-slate-200 text-slate-500 rounded px-1.5 py-0.5 ml-2 uppercase">
                             {member.relation}
                           </span>
                         </div>
@@ -1641,7 +1602,7 @@ export const CensusPage = () => {
             {/* Group 2: Female Members */}
             {selectedFamily.members.females.length > 0 && (
               <div className="mb-5">
-                <h4 className="text-[12px] font-black text-pink-500 mb-2 px-1 flex items-center gap-1.5">
+                <h4 className="text-[12px] font-black text-slate-600 mb-2 px-1 flex items-center gap-1.5">
                   <User size={13} /> {language === 'en' ? 'FEMALE MEMBERS' : 'महिला सदस्य'}
                 </h4>
                 <div className="bg-white border border-gray-100 rounded-3xl divide-y divide-gray-50 overflow-hidden shadow-sm">
@@ -1651,7 +1612,7 @@ export const CensusPage = () => {
                         <span className="text-gray-400 font-extrabold text-[12.5px] w-5">{i + 1}.</span>
                         <div>
                           <span className="font-extrabold text-gray-800">{member.name}</span>
-                          <span className="text-[10px] font-bold bg-pink-50 text-pink-600 rounded px-1.5 py-0.5 ml-2 uppercase">
+                          <span className="text-[10px] font-bold border border-slate-200 text-slate-500 rounded px-1.5 py-0.5 ml-2 uppercase">
                             {member.relation}
                           </span>
                         </div>
@@ -1666,7 +1627,7 @@ export const CensusPage = () => {
             {/* Group 3: Kids */}
             {selectedFamily.members.kids.length > 0 && (
               <div className="mb-6">
-                <h4 className="text-[12px] font-black text-emerald-600 mb-2 px-1 flex items-center gap-1.5">
+                <h4 className="text-[12px] font-black text-slate-600 mb-2 px-1 flex items-center gap-1.5">
                   <Sparkles size={13} /> {language === 'en' ? 'CHILDREN (0-17 YRS)' : 'बच्चे (0-17 वर्ष)'}
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -1681,7 +1642,7 @@ export const CensusPage = () => {
                       <div className="min-w-0">
                         <h5 className="text-[12.5px] font-black text-gray-800 truncate leading-tight">{kid.name}</h5>
                         <p className="text-[10.5px] text-gray-400 font-bold uppercase mt-0.5">{kid.relation}</p>
-                        <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded mt-1 inline-block">
+                        <span className="text-[10.5px] font-bold text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded mt-1 inline-block">
                           {kid.age} {language === 'en' ? 'Yrs' : 'वर्ष'}
                         </span>
                       </div>
@@ -1697,14 +1658,14 @@ export const CensusPage = () => {
         {/* VIEW 8: ACTIVE CITIES LIST */}
         {currentView === 'cities' && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-            <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow-sm mb-5">
-              <div className="flex items-center gap-3 border-b border-gray-50 pb-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <MapPin size={16} />
+            <div className="bg-white/90 backdrop-blur-xl border border-white/60 rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5">
+              <div className="flex items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+                <div className="w-12 h-12 rounded-[18px] bg-orange-50 border border-orange-100 text-orange-500 flex items-center justify-center shadow-sm">
+                  <MapPin size={20} />
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-black text-gray-900">{language === 'en' ? 'Active Cities (12)' : 'सक्रिय शहर विवरण'}</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{language === 'en' ? 'Members active per regional chapter' : 'सक्रिय क्षेत्रीय इकाइयाँ'}</p>
+                  <h3 className="text-[18px] font-black text-slate-900 leading-tight">{language === 'en' ? 'Active Cities (12)' : 'सक्रिय शहर विवरण'}</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{language === 'en' ? 'Members active per regional chapter' : 'सक्रिय क्षेत्रीय इकाइयाँ'}</p>
                 </div>
               </div>
               <p className="text-[11.5px] text-gray-400 font-semibold mb-4 leading-relaxed">
@@ -1726,26 +1687,28 @@ export const CensusPage = () => {
                   { name: 'Khategaon', count: 15, region: 'Madhya Pradesh' },
                   { name: 'Maheshwar', count: 12, region: 'Madhya Pradesh' }
                 ].map((city, idx) => (
-                  <div 
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.01, x: 4 }} whileTap={{ scale: 0.98 }}
                     key={idx}
                     onClick={() => {
                       setSelectedCity(city.name);
                       setCurrentView('males'); // Switch to males view with selected city filter applied
                     }}
-                    className="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 hover:border-brand-primary rounded-2xl cursor-pointer transition-all active:scale-99"
+                    className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100/50 hover:bg-white hover:border-orange-200 hover:shadow-[0_8px_20px_rgb(249,115,22,0.08)] rounded-2xl cursor-pointer transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-[12px] font-extrabold text-gray-400 w-5 text-center">{idx + 1}.</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[13px] font-black text-slate-300 w-6 text-center group-hover:text-orange-300 transition-colors">{idx + 1}.</span>
                       <div>
-                        <h4 className="text-[14px] font-black text-gray-800 leading-none">{city.name}</h4>
-                        <span className="text-[10px] font-bold text-gray-400 mt-1 block">{city.region}</span>
+                        <h4 className="text-[15px] font-black text-slate-800 leading-none group-hover:text-orange-600 transition-colors">{city.name}</h4>
+                        <span className="text-[10px] font-bold text-slate-400 mt-1.5 block tracking-wide uppercase">{city.region}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[12px] font-bold text-gray-600 bg-white border border-gray-150 rounded-lg px-2.5 py-1">{city.count} {language === 'en' ? 'Members' : 'सदस्य'}</span>
-                      <ChevronRight size={14} className="text-gray-400" />
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[12px] font-bold text-slate-600 bg-white border border-slate-150 rounded-[10px] px-3 py-1 shadow-sm group-hover:border-orange-100 group-hover:text-orange-700 transition-colors">{city.count} {language === 'en' ? 'Members' : 'सदस्य'}</span>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>

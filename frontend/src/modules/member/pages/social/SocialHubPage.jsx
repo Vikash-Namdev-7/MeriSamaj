@@ -142,10 +142,15 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
     const tabIndex = tabs.findIndex(t => t.id === passedTabId);
     if (tabIndex !== -1 && scrollContainerRef.current) {
       setActiveTab(tabIndex);
-      scrollContainerRef.current.scrollTo({
-        left: tabIndex * scrollContainerRef.current.clientWidth,
-        behavior: 'instant'
-      });
+      // Use setTimeout to ensure the DOM is fully rendered and clientWidth is available
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            left: tabIndex * scrollContainerRef.current.clientWidth,
+            behavior: 'instant'
+          });
+        }
+      }, 50);
     }
   }, [initialTab, location.state]);
 
@@ -382,7 +387,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
             onGroupCreateTriggered: () => setTriggerCreateGroup(false)
           } : {};
           return (
-            <div key={tab.id} className="w-full h-full flex-shrink-0 overflow-y-auto pb-28">
+            <div key={tab.id} className={`w-full h-full flex-shrink-0 overflow-y-auto pb-28 ${tab.id === 'chat' ? 'bg-white' : ''}`}>
               <Component isHub={true} {...extraProps} {...groupsProps} searchQuery={searchQuery} />
             </div>
           );

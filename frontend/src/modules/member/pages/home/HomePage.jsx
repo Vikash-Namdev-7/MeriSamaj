@@ -438,7 +438,7 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ─── CENSUS DASHBOARD BANNER (Commented out to hide from UI) ───
+      {/* ─── CENSUS DASHBOARD BANNER ─── */}
       <div className="px-3 mt-5 relative z-10">
         <div
           onClick={() => navigate('/member/census')}
@@ -558,8 +558,8 @@ const HomePage = () => {
             </p>
           </div>
         </div>
-      ...
-      ─── END CENSUS DASHBOARD BANNER ─── */}
+      </div>
+      {/* ─── END CENSUS DASHBOARD BANNER ─── */}
 
       {/* ─── BENTO GRID (QUICK ACTIONS) ─── */}
       <div className="px-5 mt-6 relative z-10">

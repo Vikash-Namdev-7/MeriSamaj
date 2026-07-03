@@ -5,7 +5,7 @@ import { SideNav } from './SideNav';
 import { useData } from '../../context/DataProvider';
 import { 
   Home, Users, Heart, BookOpen, MessageCircle, User, Vote, 
-  HeartHandshake, Briefcase, Shield, X, LogOut, Award, Mail, Settings
+  HeartHandshake, Briefcase, Shield, X, LogOut, Award, Mail, Settings, Gift
 } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
 
@@ -33,6 +33,7 @@ export const MemberLayout = () => {
     { name: 'Voting / Polls', path: '/member/voting', icon: Vote },
     { name: 'Donations', path: '/member/donation', icon: HeartHandshake },
     { name: 'Condolences', path: '/member/shradhanjali', icon: Award },
+    { name: 'Refer & Earn', path: '/member/referral', icon: Gift },
     { name: 'Professional Network', path: '/member/professional', icon: Briefcase },
     { name: 'Leadership & Board', path: '/member/leadership', icon: Shield },
     { name: 'My Profile', path: '/member/profile', icon: User },
@@ -139,7 +140,7 @@ export const MemberLayout = () => {
                       color: 'rgba(255,255,255,0.95)',
                     } : {
                       border: '1px solid transparent',
-                      color: 'rgba(167,139,250,0.45)',
+                      color: 'rgba(255,255,255,0.65)',
                     }}
                   >
                     {/* Active left glow bar */}
@@ -160,7 +161,7 @@ export const MemberLayout = () => {
                         background: 'rgba(255,255,255,0.04)',
                       }}
                     >
-                      <Icon size={16} style={{ color: isActive ? 'rgba(196,181,253,0.95)' : 'rgba(167,139,250,0.35)' }} />
+                      <Icon size={16} style={{ color: isActive ? 'rgba(196,181,253,0.95)' : 'rgba(255,255,255,0.55)' }} />
                     </div>
                     <span className="relative z-10">{item.name}</span>
                   </button>
