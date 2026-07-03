@@ -1959,8 +1959,7 @@ export const CensusPage = () => {
                 </div>
               </div>
             </motion.div>
-              </motion.div>
-            </motion.div>
+          </motion.div>
           )}
         </AnimatePresence>,
         document.body

@@ -315,7 +315,7 @@ const ChatRoomPage = ({ chatId: propChatId }) => {
   });
 
   return (
-    <div className="flex flex-col h-[100dvh] relative overflow-hidden" onClick={() => { setReactionTarget(null); setShowMenu(false); setShowMoreMenu(false); setShowAttachmentMenu(false); setShowEmojiPicker(false); setShowMuteDialog(false); setShowWallpaperDialog(false); }}>
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden" onClick={() => { setReactionTarget(null); setShowMenu(false); setShowMoreMenu(false); setShowAttachmentMenu(false); setShowEmojiPicker(false); setShowMuteDialog(false); setShowWallpaperDialog(false); }}>
       {/* Background with WhatsApp-like pattern effect */}
       <div className={`absolute inset-0 z-0 ${wallpaperTheme === 'dark' ? 'bg-[#0b141a]' : wallpaperTheme === 'solid-blue' ? 'bg-blue-100' : wallpaperTheme === 'solid-pink' ? 'bg-pink-100' : 'bg-[#EFEAE2]'}`} style={{ opacity: wallpaperTheme === 'dark' ? 0.9 : 0.7, backgroundImage: 'radial-gradient(#cfc6b8 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 

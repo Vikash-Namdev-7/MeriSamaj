@@ -301,7 +301,7 @@ const GroupDetailPage = () => {
     });
 
   return (
-    <div className="h-screen bg-[#F5F6FA] flex flex-col overflow-hidden relative pb-0">
+    <div className="fixed inset-0 z-50 bg-[#F5F6FA] flex flex-col overflow-hidden pb-0">
       
       {/* ─── VIEW 1: CHAT INTERFACE ─── */}
       {viewState === 'chat' && (

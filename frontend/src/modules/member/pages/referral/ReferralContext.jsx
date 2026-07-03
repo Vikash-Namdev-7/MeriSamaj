@@ -28,49 +28,76 @@ export const LEVELS = [
 
 export const ReferralProvider = ({ children }) => {
   // Mock Data
-  const [referralCode, setReferralCode] = useState('MERI123');
+  const [referralCode] = useState('MERI123');
   const [totalPoints, setTotalPoints] = useState(2450);
-  const [pendingPoints, setPendingPoints] = useState(1200);
+  const [pendingPoints] = useState(1200);
+  const [totalEarned] = useState(3450);
   const [redeemedPoints, setRedeemedPoints] = useState(1250);
   const conversionRate = 1; // 1 Point = 1 INR
   
-  // Gamification State
-  const [totalReferrals, setTotalReferrals] = useState(12);
-  const [successfulReferrals, setSuccessfulReferrals] = useState(8);
-  const [monthlyRank, setMonthlyRank] = useState(42);
+  // Gamification & Stats
+  const [totalReferrals] = useState(28);
+  const [registeredUsers] = useState(24);
+  const [paidSubscribers] = useState(17);
+  const referralConversionRate = ((paidSubscribers / registeredUsers) * 100).toFixed(2);
+  const [monthlyRank] = useState(42);
   
-  // Badges array: id, name, icon (emoji or string), date
-  const [unlockedBadges, setUnlockedBadges] = useState([
-    { id: 'b1', name: 'First Blood', icon: '🎯', date: '2026-01-10T10:00:00Z' },
-    { id: 'b2', name: 'High Five', icon: '🖐️', date: '2026-02-15T10:00:00Z' },
-    { id: 'b3', name: 'Gold Member', icon: '👑', date: '2026-04-20T10:00:00Z' }
+  // Badges array
+  const [unlockedBadges] = useState([
+    { id: 'b1', name: 'High Five', icon: '🖐️', desc: '5 Referrals', date: '2026-01-10T10:00:00Z', progress: '5/5', completed: true },
+    { id: 'b2', name: 'Gold Member', icon: '👑', desc: '25 Referrals', date: '2026-04-20T10:00:00Z', progress: '28/25', completed: true },
+    { id: 'b3', name: 'Super Referrer', icon: '⭐', desc: '50 Referrals', date: null, progress: '28/50', completed: false },
   ]);
 
-  const currentLevel = LEVELS.slice().reverse().find(l => successfulReferrals >= l.minReferrals) || LEVELS[0];
-  const nextLevel = LEVELS.find(l => l.minReferrals > successfulReferrals) || null;
+  const currentLevel = LEVELS.slice().reverse().find(l => paidSubscribers >= l.minReferrals) || LEVELS[0];
+  const nextLevel = LEVELS.find(l => l.minReferrals > paidSubscribers) || null;
 
-  // Extended History Data (Categorized by type)
-  const [referralHistory, setReferralHistory] = useState([
+  // Chart Data
+  const [earningsOverview] = useState([
+    { month: 'Jan', value: 500 },
+    { month: 'Feb', value: 800 },
+    { month: 'Mar', value: 1100 },
+    { month: 'Apr', value: 1500 },
+    { month: 'May', value: 2000 },
+    { month: 'Jun', value: 2450 },
+  ]);
+
+  // Earnings Summary (for secondary views)
+  const earningsSummary = [
+    { title: 'Registration Reward', count: '9 Referrals', amount: 450, icon: 'Users' },
+    { title: 'Subscription Reward', count: '8 Subscribers', amount: 700, icon: 'Crown' },
+    { title: 'Bonus Reward', count: 'Campaign', amount: 100, icon: 'Gift' },
+    { title: 'Cashback Earned', count: '2 Transactions', amount: 50, icon: 'Wallet' }
+  ];
+
+  // Top Earners (Leaderboard)
+  const topEarners = [
+    { id: 1, name: 'Amit Sharma', points: 12450, avatar: 'https://i.pravatar.cc/150?u=amit' },
+    { id: 2, name: 'Neha Verma', points: 9850, avatar: 'https://i.pravatar.cc/150?u=neha' },
+    { id: 3, name: 'Rohit Singh', points: 8600, avatar: 'https://i.pravatar.cc/150?u=rohit' },
+  ];
+
+  // Recent Activity Feed
+  const recentActivity = [
+    { id: 1, name: 'Rohit Sharma', date: '2 May 2026', action: 'Joined using your code', points: 50, type: 'join', avatar: 'https://i.pravatar.cc/150?u=rohit' },
+    { id: 2, name: 'Anjali Verma', date: '1 May 2026', action: 'Premium Subscription', points: 100, type: 'subscription', avatar: 'https://i.pravatar.cc/150?u=anjali' },
+    { id: 3, name: 'Vikash Kumar', date: '30 Apr 2026', action: 'Joined using your code', points: 50, type: 'join', avatar: 'https://i.pravatar.cc/150?u=vikash' },
+    { id: 4, name: 'System', date: '28 Apr 2026', action: 'Rewards Credited', points: 200, type: 'bonus', avatar: null },
+  ];
+
+  const [referralHistory] = useState([
     { id: 1, name: 'Rohit Sharma', date: '2026-05-02T10:30:00Z', action: 'Joined using your code', points: POINTS_CONFIG.REGISTRATION, status: 'earned', type: 'registration' },
     { id: 2, name: 'Anjali Verma', date: '2026-05-01T14:15:00Z', action: 'Premium Subscription', points: POINTS_CONFIG.SUBSCRIPTION, status: 'earned', type: 'subscription' },
-    { id: 3, name: 'Vikash Kumar', date: '2026-04-30T09:00:00Z', action: 'Joined using your code', points: POINTS_CONFIG.REGISTRATION, status: 'earned', type: 'registration' },
-    { id: 4, name: 'Neha Singh', date: '2026-04-28T16:45:00Z', action: 'Membership Purchase', points: POINTS_CONFIG.MEMBERSHIP, status: 'earned', type: 'membership' },
-    { id: 5, name: 'Amit Patel', date: '2026-04-25T11:20:00Z', action: 'Joined using your code', points: POINTS_CONFIG.REGISTRATION, status: 'pending', type: 'registration' },
   ]);
 
   const [redemptionHistory, setRedemptionHistory] = useState([
     { id: 101, amount: 500, date: '2026-04-15T12:00:00Z', method: 'UPI', status: 'Completed', type: 'redeemed' },
-    { id: 102, amount: 750, date: '2026-03-10T09:30:00Z', method: 'Bank Transfer', status: 'Completed', type: 'redeemed' },
   ]);
 
-  // Validation function for registration & subscription flow
+  // Validation function
   const validateReferralCode = async (code) => {
-    // Simulate network request
     return new Promise((resolve) => {
-      setTimeout(() => {
-        // ALWAYS return true for demonstration purposes
-        resolve({ valid: true, discountValue: 100, message: 'Code Applied! Flat ₹100 OFF.' });
-      }, 800);
+      setTimeout(() => resolve({ valid: true, discountValue: 100, message: 'Code Applied! Flat ₹100 OFF.' }), 800);
     });
   };
 
@@ -86,15 +113,14 @@ export const ReferralProvider = ({ children }) => {
           return;
         }
         
-        // Success
         setTotalPoints(prev => prev - amount);
         setRedeemedPoints(prev => prev + amount);
         
         const newRedemption = {
           id: Date.now(),
-          amount: amount,
+          amount,
           date: new Date().toISOString(),
-          method: method,
+          method,
           status: method === 'Subscription Checkout' ? 'Completed' : 'Processing',
           type: 'redeemed'
         };
@@ -104,46 +130,38 @@ export const ReferralProvider = ({ children }) => {
     });
   };
 
-  // Logic for Subscription Checkout
   const calculateCheckoutDiscount = (originalPrice, applyPoints = false, appliedCode = null) => {
-    let codeDiscount = 0;
-    if (appliedCode) {
-      codeDiscount = 100; // Flat ₹100 off based on mock validation
-    }
-    
+    let codeDiscount = appliedCode ? 100 : 0;
     let subtotal = originalPrice - codeDiscount;
-    let pointsRedeemed = 0;
-    
-    if (applyPoints) {
-      const maxPointsUsable = Math.min(totalPoints, subtotal);
-      pointsRedeemed = maxPointsUsable;
-    }
-    
-    const finalAmount = Math.max(0, subtotal - pointsRedeemed);
-    
+    let pointsRedeemed = applyPoints ? Math.min(totalPoints, subtotal) : 0;
     return {
       originalPrice,
       codeDiscount,
       pointsRedeemed,
-      finalAmount
+      finalAmount: Math.max(0, subtotal - pointsRedeemed)
     };
   };
-
-  const availablePoints = totalPoints;
 
   const value = {
     referralCode,
     totalPoints,
     pendingPoints,
+    totalEarned,
     redeemedPoints,
-    availablePoints,
+    availablePoints: totalPoints,
     conversionRate,
     totalReferrals,
-    successfulReferrals,
+    registeredUsers,
+    paidSubscribers,
+    referralConversionRate,
     monthlyRank,
     unlockedBadges,
     currentLevel,
     nextLevel,
+    earningsOverview,
+    earningsSummary,
+    topEarners,
+    recentActivity,
     referralHistory,
     redemptionHistory,
     validateReferralCode,
@@ -157,3 +175,4 @@ export const ReferralProvider = ({ children }) => {
     </ReferralContext.Provider>
   );
 };
+

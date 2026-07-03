@@ -527,6 +527,7 @@ const PollDetailPage = () => {
                 )}
               </div>
             </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>,
         document.body
