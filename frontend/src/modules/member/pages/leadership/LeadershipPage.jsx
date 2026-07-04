@@ -362,18 +362,18 @@ const LeadershipPage = () => {
         navigate={navigate} 
       />
 
-      {/* ─── PATRON (if different from selected leader) ─── */}
-      {patron && selectedLeader?.id !== patron.id && (
+      {/* ─── PRESIDENT CARD (Always shown) ─── */}
+      {president && (
         <div className="px-5 mb-6">
           <div 
-            onClick={() => handleSelectLeader(patron.id)}
+            onClick={() => handleSelectLeader(president.id)}
             className="bg-white border border-[#f08c35]/30 rounded-2xl p-4 shadow-sm relative overflow-hidden cursor-pointer active:scale-[0.99] transition-transform hover:border-[#f08c35]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-50 to-transparent rounded-bl-[100px]" />
             <div className="flex items-center gap-3.5 relative z-10">
               <div className="relative shrink-0">
                 <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-sm bg-amber-50">
-                  <img src={`https://i.pravatar.cc/150?u=${patron.initials}`} className="w-full h-full object-cover" alt={patron.name} />
+                  <img src={`https://i.pravatar.cc/150?u=${president.initials}`} className="w-full h-full object-cover" alt={president.name} />
                 </div>
                 <div className="absolute -top-2 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
                   <Crown size={12} className="text-amber-500 fill-amber-500" />
@@ -381,13 +381,13 @@ const LeadershipPage = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[9px] font-bold text-[#f08c35] bg-amber-50 px-2.5 py-0.5 rounded-full uppercase tracking-widest border border-amber-100/50">{t('Patron', language)}</span>
+                  <span className="text-[9px] font-bold text-[#f08c35] bg-amber-50 px-2.5 py-0.5 rounded-full uppercase tracking-widest border border-amber-100/50">{t('President', language)}</span>
                 </div>
-                <h4 className="text-[15px] font-extrabold text-gray-900 leading-tight truncate mb-0.5">{patron.name}</h4>
-                {patron.phone && <p className="text-[11px] font-medium text-gray-500">{patron.phone}</p>}
+                <h4 className="text-[15px] font-extrabold text-gray-900 leading-tight truncate mb-0.5">{president.name}</h4>
+                {president.phone && <p className="text-[11px] font-medium text-gray-500">{president.phone}</p>}
               </div>
               <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => navigate(`/member/chat/${patron.id}`)} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform">
+                <button onClick={() => navigate(`/member/chat/${president.id}`)} className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[#00a651] active:scale-90 transition-transform">
                   <MessageCircle size={14} />
                 </button>
               </div>

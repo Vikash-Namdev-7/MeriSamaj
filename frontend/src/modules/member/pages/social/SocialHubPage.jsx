@@ -340,9 +340,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
                     </span>
                   )}
                 </button>
-                <div className="cursor-pointer active:scale-95 transition-transform" onClick={() => navigate('/member/profile')}>
-                  <Avatar initials={currentUser?.initials || 'U'} size="sm" />
-                </div>
+
               </div>
             </>
           )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark } from 'lucide-react';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark, Plus } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
@@ -46,6 +46,18 @@ const MyProfilePage = () => {
   // Activity Dashboard State
   const [showActivityDashboard, setShowActivityDashboard] = useState(false);
   
+  // Highlights State
+  const [highlights, setHighlights] = useState([
+    { id: 1, title: 'indore ✨', cover: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=150&q=80' },
+    { id: 2, title: '💥', cover: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=150&q=80' },
+    { id: 3, title: '🤍', cover: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=150&q=80' },
+  ]);
+  const [showHighlightSelectionModal, setShowHighlightSelectionModal] = useState(false);
+  const [showHighlightCreationModal, setShowHighlightCreationModal] = useState(false);
+  const [selectedHighlightItems, setSelectedHighlightItems] = useState([]);
+  const [newHighlightTitle, setNewHighlightTitle] = useState('Highlights');
+
+  
   const userGranular = granularPrivacy?.u1 || granularPrivacy || {};
   const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.u1 || 'public');
   const [myPhoneSetting, setMyPhoneSetting] = useState(userGranular.phone || 'followers');
@@ -67,7 +79,7 @@ const MyProfilePage = () => {
   const [membersListModalType, setMembersListModalType] = useState(null); // 'followers', 'following', or null
 
   useEffect(() => {
-    if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard) {
+    if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard || showHighlightSelectionModal || showHighlightCreationModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -75,7 +87,7 @@ const MyProfilePage = () => {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showSocialModal, showPrivacyModal, membersListModalType, showBlockedModal, showActivityDashboard]);
+  }, [showSocialModal, showPrivacyModal, membersListModalType, showBlockedModal, showActivityDashboard, showHighlightSelectionModal, showHighlightCreationModal]);
 
   const handleSaveSocials = () => {
     updateProfile({ facebook, twitter, linkedin });
@@ -115,7 +127,7 @@ const MyProfilePage = () => {
       {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 press-scale">
+          <button onClick={() => navigate('/member/social')} className="p-1 -ml-1 press-scale">
             <ArrowLeft size={22} className="text-text-primary" />
           </button>
           <h1 className="text-base font-bold text-text-primary tracking-tight">My Profile</h1>
@@ -219,6 +231,28 @@ const MyProfilePage = () => {
             >
               Share Profile
             </button>
+          </div>
+        </div>
+
+        {/* Highlights Section */}
+        <div className="bg-white pb-3 pt-1 px-4 overflow-hidden border-b border-purple-100/30">
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide py-2">
+            {/* New Highlight Button */}
+            <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group" onClick={() => setShowHighlightSelectionModal(true)}>
+               <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center bg-white group-hover:bg-slate-50 transition-colors">
+                  <Plus size={24} className="text-slate-800" />
+               </div>
+               <span className="text-[12px] font-medium text-slate-800">New</span>
+            </div>
+            {/* Existing Highlights */}
+            {highlights.map(h => (
+               <div key={h.id} className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                  <div className="w-16 h-16 rounded-full border-2 border-slate-200 p-[2px]">
+                     <img src={h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
+                  </div>
+                  <span className="text-[12px] font-medium text-slate-800">{h.title}</span>
+               </div>
+            ))}
           </div>
         </div>
 
@@ -866,6 +900,129 @@ const MyProfilePage = () => {
           <ActivityDashboard onClose={() => setShowActivityDashboard(false)} />
         )}
       </AnimatePresence>
+
+      {/* Highlight Selection Modal */}
+      {showHighlightSelectionModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-[#0c0c0c] flex flex-col animate-slide-up h-full w-full max-w-md mx-auto" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 h-14 shrink-0">
+            <div className="flex items-center gap-6">
+              <button onClick={() => setShowHighlightSelectionModal(false)} className="text-white p-1 -ml-1 active:scale-95 transition-transform">
+                <ArrowLeft size={24} />
+              </button>
+              <h2 className="text-white text-[19px] font-semibold tracking-tight">Add to highlight</h2>
+            </div>
+            <button 
+              onClick={() => {
+                setShowHighlightSelectionModal(false);
+                setShowHighlightCreationModal(true);
+              }}
+              disabled={selectedHighlightItems.length === 0}
+              className={`text-[15px] font-semibold tracking-wide ${selectedHighlightItems.length > 0 ? 'text-[#0095f6]' : 'text-white/40'}`}
+            >
+              Next
+            </button>
+          </div>
+          {/* Grid of user's posts */}
+          <div className="flex-1 overflow-y-auto bg-[#0c0c0c] p-[1px]" style={{ touchAction: 'auto' }}>
+            <div className="grid grid-cols-3 gap-[2px]">
+              {(() => {
+                const userImages = posts.filter(p => p.author.id === currentUser.id && p.images && p.images.length > 0).flatMap(p => p.images);
+                const displayImages = userImages.length > 0 ? userImages : [
+                  'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=500&q=80',
+                  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=500&q=80',
+                  'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=500&q=80',
+                  'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=500&q=80',
+                  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=500&q=80',
+                  'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=500&q=80'
+                ];
+                
+                return displayImages.map((imgUrl, idx) => {
+                  const isSelected = selectedHighlightItems.includes(imgUrl);
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedHighlightItems(prev => prev.filter(url => url !== imgUrl));
+                        } else {
+                          setSelectedHighlightItems(prev => [...prev, imgUrl]);
+                        }
+                      }}
+                      className="aspect-[9/16] bg-gray-900 relative cursor-pointer overflow-hidden group"
+                    >
+                      <img src={imgUrl} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/10 group-active:bg-black/30 transition-colors" />
+                      <div className="absolute top-2 right-2">
+                        <div className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                          isSelected 
+                            ? 'bg-[#0095f6] border-[#0095f6] scale-100 opacity-100' 
+                            : 'border-white/80 bg-black/20 backdrop-blur-sm opacity-80'
+                        }`}>
+                          {isSelected && <Check size={14} strokeWidth={3} className="text-white" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Highlight Creation Modal */}
+      {showHighlightCreationModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-[#0c0c0c] flex flex-col animate-slide-up h-full w-full max-w-md mx-auto" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 h-14 shrink-0">
+            <div className="flex items-center gap-6">
+              <button onClick={() => {
+                setShowHighlightCreationModal(false);
+                setShowHighlightSelectionModal(true);
+              }} className="text-white p-1 -ml-1 active:scale-95 transition-transform">
+                <ArrowLeft size={24} />
+              </button>
+              <h2 className="text-white text-[19px] font-semibold tracking-tight">New highlight</h2>
+            </div>
+            <button 
+              onClick={() => {
+                setHighlights(prev => [{
+                  id: Date.now(),
+                  title: newHighlightTitle || 'Highlights',
+                  cover: selectedHighlightItems[0]
+                }, ...prev]);
+                setShowHighlightCreationModal(false);
+                setSelectedHighlightItems([]);
+                setNewHighlightTitle('Highlights');
+              }}
+              className="text-[#0095f6] text-[15px] font-semibold tracking-wide active:text-white/70 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+          {/* Edit Cover & Title */}
+          <div className="flex-1 flex flex-col items-center pt-16 px-6" style={{ touchAction: 'auto' }}>
+            <div className="w-[88px] h-[88px] rounded-full p-[2px] bg-gradient-to-tr from-gray-500 to-gray-300 mb-3 shadow-xl">
+              <div className="w-full h-full rounded-full overflow-hidden bg-[#0c0c0c] border-[3px] border-[#0c0c0c]">
+                <img src={selectedHighlightItems[0]} className="w-full h-full object-cover" />
+              </div>
+            </div>
+            <button className="text-[#0095f6] text-[13.5px] font-medium mb-8 active:opacity-70 transition-opacity">Edit cover</button>
+            <div className="w-full max-w-[200px] relative">
+              <input 
+                type="text"
+                value={newHighlightTitle}
+                onChange={(e) => setNewHighlightTitle(e.target.value)}
+                className="w-full bg-transparent border-b-[1.5px] border-[#0095f6] text-center text-white text-[17px] font-medium outline-none pb-2 placeholder:text-white/30 focus:border-[#0095f6] transition-colors"
+                placeholder="Highlights"
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
