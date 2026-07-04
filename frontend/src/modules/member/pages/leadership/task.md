@@ -1,0 +1,23 @@
+- `[x]` Add CITIES_LEADERSHIP_DATA and CABINET_MEMBERS_DATA mock data objects
+- `[x]` Update LeaderHeroBanner to receive and use a `city` prop for specific city details lookups
+- `[x]` Implement MemberSliderCard component with call/chat buttons and 3-card initial width styling
+- `[x]` Implement CabinetMemberCard component with Call, WhatsApp, and Message triggers
+- `[x]` Update CityCard to represent city data instead of committee level data
+- `[x]` Add cityLeaders horizontal slider directly below the top Hero banner
+- `[x]` Stretch city leader banners edge-to-edge on mobile layout to remove left/right white gaps
+- `[x]` Reposition Your City section title/subtitle inside the dark gradient header banner
+- `[x]` Make city banner titles and subtitles dynamic (e.g. "भोपाल शहर" / "BHOPAL CITY LEADERSHIP" depending on the city name)
+- `[x]` Reposition slider card designation badges to be in-between the photo and name text
+- `[x]` Reduce internal padding gaps and shrink call/chat icon actions inside all slider cards
+- `[x]` Update HomePage core committee slider cards to match the 2nd image layout style
+- `[x]` Add "Your City" section showing current user's city President banner and office-bearers slider
+- `[x]` Update "Our Organization" section to render CityCard items (4 initially, with View All button)
+- `[x]` Add in-place rendering for City Detail View (with Back button) when clicking a city card
+- `[x]` Filter Cabinet (Mantrigan) by active city dynamically inside City Details view
+- `[x]` Hide Stats (Community Strength) and Mission cards from City Details view
+- `[x]` Remove Cabinet section from the main page landing view
+- `[x]` Fix closing div tags in HomePage.jsx to restore compile build integrity
+- `[x]` Preserve navigation state: pass `fromCity` parameter when jumping to directory profile details
+- `[x]` Handle back navigation on MemberDetailPage.jsx to return to the active city details section on LeadershipPage.jsx
+- `[x]` Verify stats, mission, and bottom navigation remain completely untouched on main view
+- `[x]` Clean up any unused code/variables and compile check

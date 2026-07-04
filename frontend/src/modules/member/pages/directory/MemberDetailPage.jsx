@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, MessageCircle, Phone, Mail, MapPin, Grid, Info, Users, Globe, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useData } from '../../context/DataProvider';
@@ -53,6 +53,7 @@ const businessTypeMap = {
 const MemberDetailPage = () => {
   const { memberId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('posts');
   
   const { 
@@ -156,7 +157,13 @@ const MemberDetailPage = () => {
       {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 press-scale">
+          <button onClick={() => {
+            if (location.state?.fromCity) {
+              navigate('/member/leadership', { state: { activeCityDetail: location.state.fromCity } });
+            } else {
+              navigate(-1);
+            }
+          }} className="p-1 -ml-1 press-scale">
             <ArrowLeft size={22} className="text-text-primary" />
           </button>
           <h1 className="text-base font-bold text-text-primary tracking-tight">{member.name}</h1>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Crown, ChevronRight, MapPin,
   Users, Building, Building2, Globe, Home, CheckCircle,
-  BookOpen, Heart, Shield, Star, Calendar, Landmark
+  BookOpen, Heart, Shield, Star, Calendar, Landmark, MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useData } from '../../context/DataProvider';
@@ -42,13 +42,110 @@ const getBadgeColor = (role) => {
   return 'bg-[#ff3b68]';
 };
 
-const COMMITTEE_DATA = [
-  { id: 'state', nameHi: 'मध्यप्रदेश राज्य समिति', nameEn: 'State Committee', icon: Globe, gradient: 'from-blue-500 to-blue-700', members: 18532, seeds: ['s1','s2','s3'], extra: 45 },
-  { id: 'division', nameHi: 'इंदौर संभाग समिति', nameEn: 'Division Committee', icon: Building, gradient: 'from-indigo-500 to-indigo-700', members: 3245, seeds: ['d1','d2','d3'], extra: 12 },
-  { id: 'district', nameHi: 'इंदौर जिला समिति', nameEn: 'District Committee', icon: Landmark, gradient: 'from-rose-500 to-rose-700', members: 582, seeds: ['di1','di2','di3'], extra: 8 },
-  { id: 'city', nameHi: 'इंदौर शहर समिति', nameEn: 'City Committee', icon: Building2, gradient: 'from-orange-500 to-orange-700', members: 185, seeds: ['c1','c2','c3'], extra: 5 },
-  { id: 'tehsil', nameHi: 'सांवेर तहसील समिति', nameEn: 'Tehsil Committee', icon: Home, gradient: 'from-teal-500 to-teal-700', members: 76, seeds: ['t1','t2','t3'], extra: 3 },
-  { id: 'village', nameHi: 'ग्राम समिति', nameEn: 'Village Committee', icon: Users, gradient: 'from-emerald-500 to-emerald-700', members: 32, seeds: ['v1','v2','v3'], extra: 2 },
+// ─── MOCK DATA STRUCTURES FOR CITIES & CABINET ─────────────────────────────────
+const NATIONAL_LEADER = {
+  id: 'national_pres',
+  name: 'Shri Mohan Lal Agrawal',
+  initials: 'MA',
+  role: 'President',
+  city: 'Indore',
+  phone: '+91 98765 43210'
+};
+
+const CITIES_LEADERSHIP_DATA = {
+  "Indore": {
+    cityName: "Indore",
+    cityLeader: { id: 'l_indore', name: 'Shri Mohan Lal Agrawal', initials: 'MA', role: 'President', city: 'Indore', phone: '+91 98765 43210' },
+    members: [
+      { id: 'm_indore_1', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', role: 'Vice President', city: 'Indore', phone: '+91 98765 11111' },
+      { id: 'm_indore_2', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', role: 'Secretary', city: 'Indore', phone: '+91 98765 22222' },
+      { id: 'm_indore_3', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', role: 'Joint Secretary', city: 'Indore', phone: '+91 98765 33334' },
+      { id: 'm_indore_4', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', role: 'Treasurer', city: 'Indore', phone: '+91 98765 33333' }
+    ]
+  },
+  "Jaipur": {
+    cityName: "Jaipur",
+    cityLeader: { id: 'l_jaipur', name: 'Smt. Kamla Agrawal', initials: 'KA', role: 'President', city: 'Jaipur', phone: '+91 98765 43211' },
+    members: [
+      { id: 'm_jaipur_1', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', role: 'Vice President', city: 'Jaipur', phone: '+91 98765 11111' },
+      { id: 'm_jaipur_2', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', role: 'Secretary', city: 'Jaipur', phone: '+91 98765 22222' },
+      { id: 'm_jaipur_3', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', role: 'Joint Secretary', city: 'Jaipur', phone: '+91 98765 33334' },
+      { id: 'm_jaipur_4', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', role: 'Treasurer', city: 'Jaipur', phone: '+91 98765 33333' }
+    ]
+  },
+  "Bhopal": {
+    cityName: "Bhopal",
+    cityLeader: { id: 'l_bhopal', name: 'Shri Kailash Agrawal', initials: 'KA', role: 'President', city: 'Bhopal', phone: '+91 98260 11223' },
+    members: [
+      { id: 'm_bhopal_1', name: 'Shri Omprakash Agrawal', initials: 'OA', role: 'Vice President', city: 'Bhopal', phone: '+91 98260 22334' },
+      { id: 'm_bhopal_2', name: 'Shri Ramdev Agrawal', initials: 'RA', role: 'Secretary', city: 'Bhopal', phone: '+91 98260 33445' },
+      { id: 'm_bhopal_3', name: 'Shri Hari Agrawal', initials: 'HA', role: 'Treasurer', city: 'Bhopal', phone: '+91 98260 44556' }
+    ]
+  },
+  "Ujjain": {
+    cityName: "Ujjain",
+    cityLeader: { id: 'l_ujjain', name: 'Shri Ghanshyam Agrawal', initials: 'GA', role: 'President', city: 'Ujjain', phone: '+91 98930 44556' },
+    members: [
+      { id: 'm_ujjain_1', name: 'Shri Santosh Agrawal', initials: 'SA', role: 'Vice President', city: 'Ujjain', phone: '+91 98930 55667' },
+      { id: 'm_ujjain_2', name: 'Shri Rajesh Agrawal', initials: 'RA', role: 'Secretary', city: 'Ujjain', phone: '+91 98930 66778' }
+    ]
+  },
+  "Gwalior": {
+    cityName: "Gwalior",
+    cityLeader: { id: 'l_gwalior', name: 'Shri Omprakash Agrawal', initials: 'OA', role: 'President', city: 'Gwalior', phone: '+91 94251 11223' },
+    members: [
+      { id: 'm_gwalior_1', name: 'Shri Prakash Agrawal', initials: 'PA', role: 'Vice President', city: 'Gwalior', phone: '+91 94251 22334' },
+      { id: 'm_gwalior_2', name: 'Shri Sunil Agrawal', initials: 'SA', role: 'Secretary', city: 'Gwalior', phone: '+91 94251 33445' }
+    ]
+  },
+  "Jabalpur": {
+    cityName: "Jabalpur",
+    cityLeader: { id: 'l_jabalpur', name: 'Shri Madan Lal Agrawal', initials: 'MA', role: 'President', city: 'Jabalpur', phone: '+91 93000 11223' },
+    members: [
+      { id: 'm_jabalpur_1', name: 'Shri Vijay Agrawal', initials: 'VA', role: 'Vice President', city: 'Jabalpur', phone: '+91 93000 22334' },
+      { id: 'm_jabalpur_2', name: 'Shri Rakesh Agrawal', initials: 'RA', role: 'Secretary', city: 'Jabalpur', phone: '+91 93000 33445' }
+    ]
+  }
+};
+
+const CABINET_MEMBERS_DATA = [
+  // Indore
+  { id: 'cab_1', name: 'Shri Ashok Kumar Agrawal', initials: 'AA', role: 'Minister (Education)', phone: '+91 98765 44444', city: 'Indore' },
+  { id: 'cab_2', name: 'Shri Deepak Kumar Agrawal', initials: 'DA', role: 'Minister (Youth)', phone: '+91 98765 55555', city: 'Indore' },
+  { id: 'cab_3', name: 'Smt. Seema Agrawal', initials: 'SA', role: 'Minister (Women Welfare)', phone: '+91 98765 66666', city: 'Indore' },
+  { id: 'cab_4', name: 'Shri Mahesh Chand Agrawal', initials: 'MA', role: 'Minister (Social)', phone: '+91 98765 77777', city: 'Indore' },
+  { id: 'cab_5', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', role: 'Minister (Finance)', phone: '+91 98765 33333', city: 'Indore' },
+
+  // Bhopal
+  { id: 'cab_b1', name: 'Shri Kamal Agrawal', initials: 'KA', role: 'Minister (Education)', phone: '+91 98260 11223', city: 'Bhopal' },
+  { id: 'cab_b2', name: 'Shri Ramakant Agrawal', initials: 'RA', role: 'Minister (Youth)', phone: '+91 98260 33445', city: 'Bhopal' },
+  { id: 'cab_b3', name: 'Smt. Omprakash Agrawal', initials: 'OA', role: 'Minister (Women Welfare)', phone: '+91 98260 44556', city: 'Bhopal' },
+
+  // Ujjain
+  { id: 'cab_u1', name: 'Shri Santosh Agrawal', initials: 'SA', role: 'Minister (Education)', phone: '+91 98930 55667', city: 'Ujjain' },
+  { id: 'cab_u2', name: 'Shri Rajesh Agrawal', initials: 'RA', role: 'Minister (Finance)', phone: '+91 98930 66778', city: 'Ujjain' },
+
+  // Gwalior
+  { id: 'cab_g1', name: 'Shri Prakash Agrawal', initials: 'PA', role: 'Minister (Youth)', phone: '+91 94251 22334', city: 'Gwalior' },
+  { id: 'cab_g2', name: 'Shri Sunil Agrawal', initials: 'SA', role: 'Minister (Social)', phone: '+91 94251 33445', city: 'Gwalior' },
+
+  // Jabalpur
+  { id: 'cab_ja1', name: 'Shri Vijay Agrawal', initials: 'VA', role: 'Minister (Education)', phone: '+91 93000 22334', city: 'Jabalpur' },
+  { id: 'cab_ja2', name: 'Shri Rakesh Agrawal', initials: 'RA', role: 'Minister (Finance)', phone: '+91 93000 33445', city: 'Jabalpur' },
+
+  // Jaipur
+  { id: 'cab_j1', name: 'Shri Ashok Kumar Sharma', initials: 'AS', role: 'Minister (Education)', phone: '+91 98290 12345', city: 'Jaipur' },
+  { id: 'cab_j2', name: 'Shri Deepak Sharma', initials: 'DS', role: 'Minister (Youth)', phone: '+91 98290 23456', city: 'Jaipur' },
+  { id: 'cab_j3', name: 'Smt. Seema Sharma', initials: 'SS', role: 'Minister (Women Welfare)', phone: '+91 98290 34567', city: 'Jaipur' }
+];
+
+const CITIES_LIST_DATA = [
+  { id: 'indore', nameHi: 'इंदौर महानगर समिति', nameEn: 'Indore', icon: Building2, bg: 'bg-[#6C3BFF]', members: 185, seeds: ['c1','c2','c3'] },
+  { id: 'bhopal', nameHi: 'भोपाल नगर समिति', nameEn: 'Bhopal', icon: Landmark, bg: 'bg-[#ff9f43]', members: 142, seeds: ['b1','b2','b3'] },
+  { id: 'ujjain', nameHi: 'उज्जैन नगर समिति', nameEn: 'Ujjain', icon: Home, bg: 'bg-[#ff5252]', members: 95, seeds: ['u1','u2','u3'] },
+  { id: 'gwalior', nameHi: 'ग्वालियर नगर समिति', nameEn: 'Gwalior', icon: Building, bg: 'bg-[#3380ff]', members: 78, seeds: ['g1','g2','g3'] },
+  { id: 'jabalpur', nameHi: 'जबलपुर नगर समिति', nameEn: 'Jabalpur', icon: Globe, bg: 'bg-[#00a680]', members: 64, seeds: ['ja1','ja2','ja3'] },
+  { id: 'jaipur', nameHi: 'जयपुर नगर समिति', nameEn: 'Jaipur', icon: Users, bg: 'bg-[#10b981]', members: 120, seeds: ['v1','v2','v3'] }
 ];
 
 const STATS_DATA = [
@@ -59,7 +156,7 @@ const STATS_DATA = [
 ];
 
 const MISSION_PILLARS = [
-  { icon: BookOpen, labelHi: 'शिक्षा', labelEn: 'Education', desc: 'ज्ञान और विकास', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+  { icon: BookOpen, labelHi: 'शिक्षा', labelEn: 'Education', desc: 'ज्ञान and विकास', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
   { icon: Heart, labelHi: 'सेवा', labelEn: 'Service', desc: 'समाज की सेवा', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
   { icon: Shield, labelHi: 'विकास', labelEn: 'Development', desc: 'सतत प्रगति', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
   { icon: Star, labelHi: 'एकता', labelEn: 'Unity', desc: 'एक समाज, एक लक्ष्य', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
@@ -123,33 +220,53 @@ const getHindiName = (name) => {
 };
 
 // ─── PREMIUM HERO BANNER ──────────────────────────────────────────────────────
-const HeroBanner = ({ leader, onBack, navigate }) => {
-  if (!leader) return null;
+const LeaderHeroBanner = ({ city, onBack, navigate, hideHeader = false, activeCityDetail }) => {
+  const leader = city 
+    ? (CITIES_LEADERSHIP_DATA[city]?.cityLeader || NATIONAL_LEADER)
+    : NATIONAL_LEADER;
+
   const isPresident = leader.role === 'President';
   const isPatron = leader.role === 'Patron';
 
   const roleDisplay = isPresident ? 'PRESIDENT' : isPatron ? 'PATRON' : leader.role.toUpperCase();
   const subDisplay = isPresident ? 'SAMAJ PRESIDENT' : isPatron ? 'SAMAJ PATRON' : `SAMAJ ${leader.role.toUpperCase()}`;
 
-  return (
-    <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #120b32 0%, #1e1145 50%, #2e1a6c 100%)' }}>
-      <div className="relative z-10 px-2 pt-12 pb-5">
-        {/* Header Row */}
-        <div className="flex items-center gap-3 mb-5 px-2">
-          <button onClick={onBack}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 transition-all active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            <ArrowLeft size={18} strokeWidth={2.5} />
-          </button>
-          <div>
-            <h1 className="text-white text-[20px] font-black tracking-tight">समाज नेतृत्व</h1>
-            <p className="text-purple-200/70 text-[11px] font-semibold mt-0.5">हमारा नेतृत्व, हमारा गौरव</p>
-          </div>
-        </div>
+  const cityHindiMap = {
+    'Indore': 'इंदौर',
+    'Bhopal': 'भोपाल',
+    'Ujjain': 'उज्जैन',
+    'Gwalior': 'ग्वालियर',
+    'Jabalpur': 'जबलपुर',
+    'Jaipur': 'जयपुर'
+  };
+  const cityHindi = city ? (cityHindiMap[city] || city) : '';
+  const title = city ? `${cityHindi} शहर` : 'समाज नेतृत्व';
+  const subtitle = city ? `${city.toUpperCase()} CITY LEADERSHIP` : 'हमारा नेतृत्व, हमारा गौरव';
 
-        {/* Hero Card styled exactly like HomePage President Card */}
+  return (
+    <div className={`relative overflow-hidden ${city ? 'mx-[-8px] sm:mx-0 sm:rounded-[32px]' : ''}`} style={{ background: 'linear-gradient(135deg, #120b32 0%, #1e1145 50%, #2e1a6c 100%)' }}>
+      <div className="relative z-10 px-2 pt-6 pb-5">
+        
+        {/* Header Row (Conditional) */}
+        {!hideHeader && (
+          <div className="flex items-center gap-3 mb-5 px-2 pt-4">
+            {onBack && (
+              <button onClick={onBack}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 transition-all active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <ArrowLeft size={18} strokeWidth={2.5} />
+              </button>
+            )}
+            <div>
+              <h1 className="text-white text-[20px] font-black tracking-tight">{title}</h1>
+              <p className="text-purple-200/70 text-[11px] font-semibold mt-0.5">{subtitle}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Hero Card Layout */}
         <div 
-          onClick={() => navigate(`/member/directory/${leader.id}`)}
+          onClick={() => navigate(`/member/directory/${leader.id}`, { state: { fromCity: activeCityDetail } })}
           className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] shadow-xl shadow-purple-500/10 border border-purple-400/10 overflow-hidden py-9 px-4 shrink-0 cursor-pointer active:scale-[0.99] transition-all duration-300"
         >
           {/* Dark overlay backdrop */}
@@ -188,9 +305,9 @@ const HeroBanner = ({ leader, onBack, navigate }) => {
 
             {/* Golden Separator */}
             <div className="flex items-center gap-1.5 my-2.5 w-28">
-              <div className="h-[1px] flex-1 bg-amber-400/25" />
+              <div className="h-[1px] bg-amber-400/25" />
               <div className="w-1 h-1 rotate-45 bg-amber-400/60" />
-              <div className="h-[1px] flex-1 bg-amber-400/25" />
+              <div className="h-[1px] bg-amber-400/25" />
             </div>
 
             {/* Location */}
@@ -221,69 +338,110 @@ const HeroBanner = ({ leader, onBack, navigate }) => {
   );
 };
 
-// ─── CORE COMMITTEE CARD ──────────────────────────────────────────────────────
-const CoreCommitteeCard = ({ member, isSelected, onSelect }) => {
+// ─── REUSABLE MEMBER SLIDER CARD ──────────────────────────────────────────────
+const MemberSliderCard = ({ member, navigate, activeCityDetail }) => {
   const colorMap = { 'Vice President': 'bg-[#7c3aed]', 'Secretary': 'bg-[#ff3b68]', 'Joint Secretary': 'bg-[#ff3b68]', 'Treasurer': 'bg-[#00a651]' };
   const badgeColor = colorMap[member.role] || getBadgeColor(member.role);
   const hindiMap = { 'Vice President': 'उपाध्यक्ष', 'Secretary': 'महासचिव', 'Joint Secretary': 'संगठन मंत्री', 'Treasurer': 'कोषाध्यक्ष' };
   const hindiRole = hindiMap[member.role] || getHindiRole(member.role);
 
   return (
-    <div onClick={onSelect}
-      className={`shrink-0 w-[calc((100vw-36px)/4.25)] max-w-[85px] bg-white rounded-2xl flex flex-col items-center cursor-pointer transition-all duration-200 pb-2.5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border ${
-        isSelected ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-100 hover:border-purple-200 hover:-translate-y-0.5'
-      }`}>
-      <div className="w-full aspect-[3/3.2] overflow-hidden bg-gray-55 shrink-0 mb-2 relative rounded-t-2xl">
+    <div onClick={() => navigate(`/member/directory/${member.id}`, { state: { fromCity: activeCityDetail } })}
+      className="shrink-0 w-[calc((100vw-36px)/3.25)] max-w-[105px] bg-white rounded-2xl flex flex-col items-center cursor-pointer transition-all duration-200 pb-2 border border-gray-100 hover:border-purple-200 hover:-translate-y-0.5 relative overflow-hidden"
+    >
+      <div className="w-full aspect-[3/3.1] overflow-hidden bg-gray-55 shrink-0 mb-1 pointer-events-none">
         <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
-        <div className="absolute top-1.5 left-1.5">
-          <span className={`text-white text-[7px] font-bold px-1.5 py-0.5 rounded-md shadow-sm leading-none ${badgeColor}`}>{hindiRole}</span>
-        </div>
       </div>
-      <h4 className="text-slate-900 text-[9.5px] font-extrabold text-center leading-tight mb-1.5 px-1 h-7 flex items-center justify-center">
+      
+      {/* Badge in-between image and name */}
+      <span className={`text-white text-[6.5px] font-black px-1.5 py-0.5 rounded-md shadow-sm leading-none mb-1 shrink-0 ${badgeColor}`}>
+        {hindiRole}
+      </span>
+
+      {/* Name text with reduced height/margin */}
+      <h4 className="text-slate-900 text-[9px] font-extrabold text-center leading-tight mb-1 px-1 h-5 flex items-center justify-center truncate w-full">
         {member.name.replace(' Agrawal', '').replace(' Sharma', '').replace(' Patel', '').replace('Shri ', '')}
       </h4>
-      <div onClick={(e) => e.stopPropagation()}>
+
+      {/* Shrink buttons and spacing */}
+      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
         <button onClick={() => window.open(`tel:${member.phone || '9999999999'}`)}
-          className="w-7 h-7 rounded-full border border-purple-200 flex items-center justify-center text-[#a855f7] hover:bg-purple-50 transition-colors">
-          <Phone size={12} />
+          className="w-5.5 h-5.5 rounded-full border border-purple-200 flex items-center justify-center text-[#a855f7] hover:bg-purple-50 transition-colors"
+        >
+          <Phone size={9} />
+        </button>
+        <button onClick={() => navigate(`/member/chat/${member.id}`)}
+          className="w-5.5 h-5.5 rounded-full border border-emerald-250 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"
+        >
+          <MessageCircle size={9} />
         </button>
       </div>
     </div>
   );
 };
 
-// ─── COMMITTEE CARD ───────────────────────────────────────────────────────────
-const CommitteeCard = ({ data, navigate }) => {
-  const { icon: Icon, nameHi, nameEn, members, seeds } = data;
-
-  const colorMap = {
-    'State Committee': { bg: 'bg-[#6C3BFF]', icon: Globe },
-    'Division Committee': { bg: 'bg-[#ff9f43]', icon: Building },
-    'District Committee': { bg: 'bg-[#ff5252]', icon: MapPin },
-    'City Committee': { bg: 'bg-[#3380ff]', icon: Building2 },
-    'Tehsil Committee': { bg: 'bg-[#00a680]', icon: Home },
-    'Village Committee': { bg: 'bg-[#10b981]', icon: Users }
-  };
-
-  const theme = colorMap[nameEn] || { bg: 'bg-purple-600', icon: Icon };
-  const TargetIcon = theme.icon;
+// ─── CABINET MEMBER CARD ──────────────────────────────────────────────────────
+const CabinetMemberCard = ({ member, navigate, activeCityDetail }) => {
+  const badgeColor = getBadgeColor(member.role);
+  const hindiRole = getHindiRole(member.role);
 
   return (
+    <div 
+      onClick={() => navigate(`/member/directory/${member.id}`, { state: { fromCity: activeCityDetail } })}
+      className="bg-white rounded-3xl p-3 border border-purple-100/55 shadow-[0_4px_16px_rgba(0,0,0,0.02)] flex items-center justify-between gap-3 cursor-pointer hover:border-purple-200 transition-all"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-55 shrink-0 border border-purple-100/50 shadow-sm">
+          <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
+        </div>
+        <div className="min-w-0">
+          <span className={`text-[6.5px] font-black text-white px-1.5 py-0.5 rounded-md leading-none ${badgeColor}`}>
+            {hindiRole}
+          </span>
+          <h4 className="text-[11.5px] font-black text-slate-800 truncate mt-0.5 leading-tight">{member.name}</h4>
+        </div>
+      </div>
+      
+      <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center gap-1">
+        <a href={`tel:${member.phone}`}
+          className="w-6 h-6 rounded-lg border border-purple-100 flex items-center justify-center text-[#6C3BFF] hover:bg-purple-50 active:scale-95 transition-all"
+          style={{ background: 'rgba(108,59,255,0.04)' }}>
+          <Phone size={9.5} />
+        </a>
+        <a href={`https://wa.me/${member.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
+          className="w-6 h-6 rounded-lg border border-emerald-100 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 active:scale-95 transition-all"
+          style={{ background: 'rgba(16,185,129,0.04)' }}>
+          <MessageCircle size={9.5} className="text-emerald-500" />
+        </a>
+        <button onClick={() => navigate(`/member/chat/${member.id}`)}
+          className="w-6 h-6 rounded-lg border border-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+          style={{ background: 'rgba(51,128,255,0.04)' }}>
+          <MessageSquare size={9.5} className="text-blue-500" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── CITY CARD ────────────────────────────────────────────────────────────────
+const CityCard = ({ data, onClick }) => {
+  const { nameHi, nameEn, icon: Icon, bg, members, seeds } = data;
+  return (
     <motion.div 
-      onClick={() => navigate('/member/directory/list', { state: { filterType: 'committee', filterVal: nameEn } })}
+      onClick={onClick}
       whileHover={{ y: -2, scale: 1.01 }} 
       transition={{ duration: 0.2 }}
       className="bg-white rounded-3xl p-4.5 border border-purple-100/50 shadow-[0_4px_16px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-[0_8px_24px_rgba(108,59,255,0.06)] transition-all flex items-center justify-between gap-4"
     >
       {/* Left: Icon Container */}
-      <div className={`w-12 h-12 rounded-2xl ${theme.bg} flex items-center justify-center shrink-0 shadow-sm`}>
-        <TargetIcon size={22} color="#fff" strokeWidth={2} />
+      <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center shrink-0 shadow-sm`}>
+        <Icon size={22} color="#fff" strokeWidth={2} />
       </div>
 
       {/* Middle-Left: Titles */}
       <div className="flex-1 min-w-0 pr-1">
         <h4 className="text-[12.5px] font-black text-slate-800 truncate leading-tight">{nameHi}</h4>
-        <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{nameEn}</p>
+        <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{nameEn} City</p>
       </div>
 
       {/* Middle: Avatar list */}
@@ -308,7 +466,7 @@ const CommitteeCard = ({ data, navigate }) => {
       <button 
         onClick={(e) => {
           e.stopPropagation();
-          navigate('/member/directory/list', { state: { filterType: 'committee', filterVal: nameEn } });
+          onClick();
         }}
         className="shrink-0 py-2 px-3.5 rounded-xl text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm shadow-purple-500/5"
         style={{ background: 'rgba(108,59,255,0.06)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.12)' }}
@@ -408,41 +566,103 @@ const LeadershipPage = () => {
   const location = useLocation();
   const { currentUser } = useData();
 
-  const sliderRef = useRef(null);
-  const scrollRight = () => {
-    if (sliderRef.current) {
-      sliderRef.current.scrollBy({ left: 100, behavior: 'smooth' });
+  const [activeCityDetail, setActiveCityDetail] = useState(
+    location.state?.activeCityDetail || null
+  );
+  const [showAllCities, setShowAllCities] = useState(false);
+
+  // Setup sliders refs
+  const cityLeadersSliderRef = useRef(null);
+  const userCitySliderRef = useRef(null);
+  const detailCitySliderRef = useRef(null);
+
+  const scrollSlider = (ref) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: 100, behavior: 'smooth' });
     }
   };
 
-  const cityAdmins = mockAdmins.filter(a => a.city === currentUser.city);
-  const patron = cityAdmins.find(a => a.role === 'Patron');
-  const president = cityAdmins.find(a => a.role === 'President');
-  const coreCommittee = cityAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role));
+  const userCity = currentUser?.city || 'Indore';
+  const userCityData = CITIES_LEADERSHIP_DATA[userCity] || CITIES_LEADERSHIP_DATA['Indore'];
 
-  const [selectedId, setSelectedId] = useState(
-    location.state?.selectedId || president?.id || patron?.id || cityAdmins[0]?.id || null
-  );
+  const allCityLeaders = Object.keys(CITIES_LEADERSHIP_DATA).map(key => CITIES_LEADERSHIP_DATA[key].cityLeader);
+  const visibleCities = showAllCities ? CITIES_LIST_DATA : CITIES_LIST_DATA.slice(0, 4);
 
-  useEffect(() => {
-    if (location.state?.selectedId) {
-      setSelectedId(location.state.selectedId);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state?.selectedId]);
-
-  const selectedLeader = cityAdmins.find(a => a.id === selectedId) || president || patron || cityAdmins[0];
-
-  const handleSelectLeader = (id) => {
-    setSelectedId(id);
+  // Handle back from detail view
+  const handleBackToMain = () => {
+    setActiveCityDetail(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // If viewing a specific city details view
+  if (activeCityDetail) {
+    const detailData = CITIES_LEADERSHIP_DATA[activeCityDetail];
+    const cityCabinet = CABINET_MEMBERS_DATA.filter(m => m.city === activeCityDetail);
+
+    return (
+      <div className="min-h-screen pb-28" style={{ backgroundColor: '#F8F7FF' }}>
+        {/* City Leader Hero Banner */}
+        <LeaderHeroBanner city={activeCityDetail} onBack={handleBackToMain} navigate={navigate} hideHeader={false} activeCityDetail={activeCityDetail} />
+
+        <div className="flex flex-col lg:flex-row gap-5 px-2 pt-5 max-w-5xl mx-auto">
+          <div className="flex-1 min-w-0 space-y-6">
+            
+            {/* City Office Bearers Slider */}
+            {detailData && detailData.members && (
+              <div>
+                <SectionHeader 
+                  titleHi={`${activeCityDetail} कार्यकारिणी`} 
+                  subtitleEn={`${activeCityDetail} Office Bearers`} 
+                />
+                <div className="relative">
+                  <div 
+                    ref={detailCitySliderRef}
+                    className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 items-stretch scroll-smooth"
+                  >
+                    {detailData.members.map(m => (
+                      <MemberSliderCard key={m.id} member={m} navigate={navigate} activeCityDetail={activeCityDetail} />
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => scrollSlider(detailCitySliderRef)}
+                    className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-[#6C3BFF] hover:border-purple-200 active:scale-90 transition-all z-20"
+                  >
+                    <ChevronRight size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* City Scoped Cabinet Ministers Grid */}
+            {cityCabinet.length > 0 && (
+              <div>
+                <SectionHeader titleHi="मंत्रिमंडल" subtitleEn="Cabinet Ministers" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {cityCabinet.map(m => (
+                    <CabinetMemberCard key={m.id} member={m} navigate={navigate} activeCityDetail={activeCityDetail} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="text-center py-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-purple-200/40 to-transparent mb-4" />
+              <p className="text-[10px] text-gray-400">{currentUser.community} · {currentUser.city}</p>
+              <p className="text-[9px] text-gray-300 mt-0.5">अंतिम अपडेट · जून 2026</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-28" style={{ backgroundColor: '#F8F7FF' }}>
 
-      {/* HERO BANNER */}
-      <HeroBanner leader={selectedLeader} onBack={() => navigate(-1)} navigate={navigate} />
+      {/* 1. Main Leader Hero Banner (overall national top leader) */}
+      <LeaderHeroBanner city={null} onBack={() => navigate(-1)} navigate={navigate} hideHeader={false} activeCityDetail={activeCityDetail} />
 
       {/* 2-COLUMN LAYOUT */}
       <div className="flex flex-col lg:flex-row gap-5 px-2 pt-5 max-w-5xl mx-auto">
@@ -450,49 +670,78 @@ const LeadershipPage = () => {
         {/* MAIN CONTENT */}
         <div className="flex-1 min-w-0 space-y-6">
 
-          {/* राष्ट्रीय कार्यकारिणी */}
-          {coreCommittee.length > 0 && (
-            <div>
-              <SectionHeader titleHi="राष्ट्रीय कार्यकारिणी" subtitleEn="Core Committee"
-                action={{ label: 'सभी देखें', onClick: () => navigate('/member/directory/list') }} />
-              <div className="relative">
-                <div 
-                  ref={sliderRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 items-stretch scroll-smooth"
-                >
-                  {coreCommittee.map(m => (
-                    <CoreCommitteeCard key={m.id} member={m}
-                      isSelected={selectedLeader?.id === m.id}
-                      onSelect={() => handleSelectLeader(m.id)} />
-                  ))}
-                </div>
-                
-                {/* Floating Scroll Arrow */}
-                <button 
-                  onClick={scrollRight}
-                  className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-[#6C3BFF] hover:border-purple-200 active:scale-90 transition-all z-20"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* हमारा संगठन */}
+          {/* 2. City Leaders Slider (NEW) */}
           <div>
-            <SectionHeader titleHi="हमारा संगठन" subtitleEn="समाज की एक मजबूत संरचना" />
+            <SectionHeader titleHi="शहर अध्यक्ष" subtitleEn="City Presidents" />
+            <div className="relative">
+              <div 
+                ref={cityLeadersSliderRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 items-stretch scroll-smooth"
+              >
+                {allCityLeaders.map(m => (
+                  <MemberSliderCard key={m.id} member={m} navigate={navigate} activeCityDetail={activeCityDetail} />
+                ))}
+              </div>
+              <button 
+                onClick={() => scrollSlider(cityLeadersSliderRef)}
+                className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-[#6C3BFF] hover:border-purple-200 active:scale-90 transition-all z-20"
+              >
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+
+          {/* 3. "Your City" Leader Section (NEW) */}
+          <div className="space-y-4">
+            {/* Scoped city president card with integrated header (hideHeader={false}) */}
+            <LeaderHeroBanner city={userCity} navigate={navigate} hideHeader={false} activeCityDetail={activeCityDetail} />
+            
+            {/* Scoped city office-bearers slider */}
+            <div className="relative">
+              <div 
+                ref={userCitySliderRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 items-stretch scroll-smooth"
+              >
+                {userCityData.members.map(m => (
+                  <MemberSliderCard key={m.id} member={m} navigate={navigate} activeCityDetail={activeCityDetail} />
+                ))}
+              </div>
+              <button 
+                onClick={() => scrollSlider(userCitySliderRef)}
+                className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-[#6C3BFF] hover:border-purple-200 active:scale-90 transition-all z-20"
+              >
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+
+          {/* 4. "Our Organization" Section */}
+          <div>
+            <SectionHeader 
+              titleHi="हमारा संगठन" 
+              subtitleEn="समाज की एक मजबूत संरचना" 
+              action={{ 
+                label: showAllCities ? "कम देखें" : "सभी देखें", 
+                onClick: () => setShowAllCities(!showAllCities) 
+              }} 
+            />
             <div className="flex flex-col gap-3">
-              {COMMITTEE_DATA.map((data, idx) => (
-                <motion.div key={data.id}
-                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: idx * 0.06 }}>
-                  <CommitteeCard data={data} navigate={navigate} />
-                </motion.div>
+              {visibleCities.map((data) => (
+                <CityCard 
+                  key={data.id} 
+                  data={data} 
+                  onClick={() => {
+                    setActiveCityDetail(data.nameEn);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }} 
+                />
               ))}
             </div>
           </div>
 
-          {/* समाज की ताकत */}
+
+
+          {/* Community Strength (Stats) */}
           <div>
             <SectionHeader titleHi="समाज की ताकत" subtitleEn="Community Strength" />
             <div className="grid grid-cols-2 gap-3">
