@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal, User, Settings, LogOut } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Bookmark, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal, User, Settings, LogOut } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 import { PostSkeleton } from '../../components/common/Skeleton';
@@ -33,6 +33,7 @@ const localT = {
     likes: "likes",
     comments: "comments",
     like: "Like",
+    save: "Save",
     comment: "Comment",
     share: "Share",
     views: "views",
@@ -65,6 +66,7 @@ const localT = {
     likes: "likes",
     comments: "comments",
     like: "Like",
+    save: "Save",
     comment: "Comment",
     share: "Share",
     views: "views",
@@ -222,7 +224,7 @@ const MultiImageGrid = ({ images, onClick }) => {
 
 const PostCard = ({ post, index, lang, onShareClick }) => {
   const navigate = useNavigate();
-  const { togglePostLike, members, admins } = useData();
+  const { togglePostLike, togglePostSave, members, admins } = useData();
   const styles = getCategoryStyles(post.category, lang);
   const [doubleHeart, setDoubleHeart] = useState(false);
 
@@ -386,11 +388,11 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
       </div>
 
       {/* Action Triggers Row */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-t border-slate-100 bg-slate-50/20">
+      <div className="flex items-center justify-evenly py-1.5 border-t border-slate-100 bg-slate-50/20">
         <motion.button 
           whileTap={{ scale: 0.95 }}
           onClick={(e) => { e.stopPropagation(); togglePostLike(post.id); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
+          className={`flex items-center justify-center gap-1.5 px-2 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
         >
           <Heart size={18} className={post.isLiked ? 'fill-red-500 text-red-500' : ''} /> 
           {localT[lang].like}
@@ -398,7 +400,7 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
         <motion.button 
           whileTap={{ scale: 0.95 }}
           onClick={(e) => { e.stopPropagation(); navigate(`/member/social/${post.id}`); }}
-          className="flex-1 flex items-center justify-center gap-2 py-2 text-[13.5px] font-bold text-slate-500 hover:text-[#1877F2] hover:bg-slate-100/50 rounded-xl transition-all"
+          className="flex items-center justify-center gap-1.5 px-2 py-2 text-[13.5px] font-bold text-slate-500 hover:text-[#1877F2] hover:bg-slate-100/50 rounded-xl transition-all"
         >
           <MessageCircle size={18} /> 
           {localT[lang].comment}
@@ -406,10 +408,18 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
         <motion.button 
           whileTap={{ scale: 0.95 }}
           onClick={(e) => { e.stopPropagation(); onShareClick(post); }}
-          className="flex-1 flex items-center justify-center gap-2 py-2 text-[13.5px] font-bold text-slate-500 hover:text-emerald-600 hover:bg-slate-100/50 rounded-xl transition-all"
+          className="flex items-center justify-center gap-1.5 px-2 py-2 text-[13.5px] font-bold text-slate-500 hover:text-emerald-600 hover:bg-slate-100/50 rounded-xl transition-all"
         >
           <Share2 size={18} />
           {localT[lang].share}
+        </motion.button>
+        <motion.button 
+          whileTap={{ scale: 0.95 }}
+          onClick={(e) => { e.stopPropagation(); togglePostSave(post.id); }}
+          className={`flex items-center justify-center gap-1.5 px-2 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isSaved ? 'text-amber-500' : 'text-slate-500 hover:text-amber-500'}`}
+        >
+          <Bookmark size={18} className={post.isSaved ? 'fill-amber-500 text-amber-500' : ''} /> 
+          {localT[lang].save}
         </motion.button>
       </div>
     </div>

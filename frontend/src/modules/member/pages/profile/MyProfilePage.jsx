@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3 } from 'lucide-react';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
@@ -107,6 +107,8 @@ const MyProfilePage = () => {
 
   // My Posts
   const myPosts = posts?.filter(p => p.author.name === currentUser.name) || [];
+  const likedPosts = posts?.filter(p => p.isLiked) || [];
+  const savedPosts = posts?.filter(p => p.isSaved) || [];
 
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
@@ -192,10 +194,7 @@ const MyProfilePage = () => {
                 📍 {currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}
               </p>
             )}
-            {/* Bio - if available, else static placeholder */}
-            <p className="text-[13px] text-text-primary mt-1.5 leading-snug">
-              {currentUser.bio || "Welcome to my profile! Let's connect and build a strong community together. 🌟"}
-            </p>
+
             {/* Social Links Summary */}
             {(currentUser.linkedin || currentUser.twitter || currentUser.facebook) && (
               <a href={currentUser.linkedin || currentUser.facebook || currentUser.twitter} target="_blank" rel="noreferrer" className="text-[12px] font-semibold text-brand-primary flex items-center gap-1 mt-1 truncate">
@@ -220,12 +219,6 @@ const MyProfilePage = () => {
             >
               Share Profile
             </button>
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className="px-3 py-1.5 bg-purple-50 text-brand-primary rounded-lg border border-purple-100 shadow-sm press-scale transition-colors"
-            >
-              <SettingsIcon size={18} />
-            </button>
           </div>
         </div>
 
@@ -233,24 +226,44 @@ const MyProfilePage = () => {
         <div className="flex items-center border-b border-purple-100/30 bg-white sticky top-14 z-20">
           <button 
             onClick={() => setActiveTab('posts')}
-            className={`flex-1 py-3 text-[14px] font-bold flex items-center justify-center gap-2 transition-all relative ${
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
               activeTab === 'posts' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <Grid size={18} />
-            Posts
+            <Grid size={26} />
             {activeTab === 'posts' && (
               <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
             )}
           </button>
           <button 
+            onClick={() => setActiveTab('liked')}
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
+              activeTab === 'liked' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Heart size={26} />
+            {activeTab === 'liked' && (
+              <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+          <button 
+            onClick={() => setActiveTab('saved')}
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
+              activeTab === 'saved' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Bookmark size={26} />
+            {activeTab === 'saved' && (
+              <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 py-3 text-[14px] font-bold flex items-center justify-center gap-2 transition-all relative ${
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
               activeTab === 'settings' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <SettingsIcon size={18} />
-            Settings
+            <SettingsIcon size={26} />
             {activeTab === 'settings' && (
               <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
             )}
@@ -281,6 +294,66 @@ const MyProfilePage = () => {
                   </div>
                   <h3 className="text-sm font-bold text-slate-700">No Posts Yet</h3>
                   <p className="text-[11px] mt-1">Share a moment with your community.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Liked Tab Content */}
+        {activeTab === 'liked' && (
+          <div className="px-1">
+            <div className="grid grid-cols-3 gap-[2px] md:gap-1">
+              {likedPosts.length > 0 ? (
+                likedPosts.map((post) => (
+                  <div key={post.id} className="aspect-square bg-purple-50/50 overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate(`/member/social/${post.id}`)}>
+                    {post.image || (post.images && post.images.length > 0) ? (
+                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center border border-purple-100/30">
+                        <span className="text-[9px] font-bold text-brand-primary uppercase tracking-wider mb-1">{post.category}</span>
+                        <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400">
+                  <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center mb-4">
+                    <Heart size={24} className="text-slate-300" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-700">No Liked Posts</h3>
+                  <p className="text-[11px] mt-1">Posts you like will appear here.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Saved Tab Content */}
+        {activeTab === 'saved' && (
+          <div className="px-1">
+            <div className="grid grid-cols-3 gap-[2px] md:gap-1">
+              {savedPosts.length > 0 ? (
+                savedPosts.map((post) => (
+                  <div key={post.id} className="aspect-square bg-purple-50/50 overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate(`/member/social/${post.id}`)}>
+                    {post.image || (post.images && post.images.length > 0) ? (
+                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center border border-purple-100/30">
+                        <span className="text-[9px] font-bold text-brand-primary uppercase tracking-wider mb-1">{post.category}</span>
+                        <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400">
+                  <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center mb-4">
+                    <Bookmark size={24} className="text-slate-300" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-700">No Saved Posts</h3>
+                  <p className="text-[11px] mt-1">Posts you save will appear here.</p>
                 </div>
               )}
             </div>

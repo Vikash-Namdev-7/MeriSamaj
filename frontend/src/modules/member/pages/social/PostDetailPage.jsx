@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X } from 'lucide-react';
+import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X, Bookmark } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 
@@ -50,7 +50,7 @@ const MultiImageGrid = ({ images }) => {
 const PostDetailPage = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, togglePostLike, addPostComment, addCommentReply, toggleCommentLike, currentUser, language, members, admins } = useData();
+  const { posts, togglePostLike, togglePostSave, addPostComment, addCommentReply, toggleCommentLike, currentUser, language, members, admins } = useData();
   const [commentText, setCommentText] = useState('');
   const [activeSort, setActiveSort] = useState('newest'); // newest | oldest
   const [toastMessage, setToastMessage] = useState('');
@@ -85,6 +85,10 @@ const PostDetailPage = () => {
 
   const handleLike = () => {
     togglePostLike(post.id);
+  };
+
+  const handleSave = () => {
+    togglePostSave(post.id);
   };
 
   const handleSendComment = () => {
@@ -251,10 +255,10 @@ const PostDetailPage = () => {
           </div>
 
           {/* Action triggers */}
-          <div className="flex items-center justify-around px-3 py-1.5 border-t border-slate-100 bg-slate-50/20">
+          <div className="flex items-center justify-evenly py-1.5 border-t border-slate-100 bg-slate-50/20">
             <button 
               onClick={handleLike} 
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
             >
               <Heart size={18} className={post.isLiked ? 'fill-red-500 text-red-500' : ''} />
               <span>Like</span>
@@ -264,10 +268,17 @@ const PostDetailPage = () => {
                 navigator.clipboard.writeText(window.location.href);
                 triggerToast('Link copied to clipboard!');
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 text-[13.5px] font-bold text-slate-500 hover:text-emerald-600 hover:bg-slate-100/50 rounded-xl transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-[13.5px] font-bold text-slate-500 hover:text-emerald-600 hover:bg-slate-100/50 rounded-xl transition-all"
             >
               <Share2 size={18} />
               <span>Share</span>
+            </button>
+            <button 
+              onClick={handleSave} 
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 text-[13.5px] font-bold transition-all rounded-xl hover:bg-slate-100/50 ${post.isSaved ? 'text-amber-500' : 'text-slate-500 hover:text-amber-500'}`}
+            >
+              <Bookmark size={18} className={post.isSaved ? 'fill-amber-500 text-amber-500' : ''} />
+              <span>Save</span>
             </button>
           </div>
         </div>

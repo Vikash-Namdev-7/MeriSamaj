@@ -620,6 +620,18 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
+  const togglePostSave = (postId) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          isSaved: !p.isSaved
+        };
+      }
+      return p;
+    }));
+  };
+
   const addPostComment = (postId, commentText) => {
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
@@ -1361,6 +1373,7 @@ export const DataProvider = ({ children }) => {
     createPost,
     toggleEventRSVP,
     togglePostLike,
+    togglePostSave,
     addPostComment,
     addCommentReply,
     toggleCommentLike,
