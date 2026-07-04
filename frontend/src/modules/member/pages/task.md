@@ -1,0 +1,16 @@
+- `[x]` Rewrite HeroBanner with glassmorphic premium design
+- `[x]` Update CoreCommitteeCard with gradient border + 3D tilt
+- `[x]` Build CommitteeCards grid section
+- `[x]` Build StatsWidget with count-up animation
+- `[x]` Build MissionCard pillars section
+- `[x]` Wire up 2-col desktop layout in LeadershipPage
+- `[x]` Wire up CommitteeCard navigation & Directory filtering
+- `[x]` Remove Organization Hierarchy timeline & accordion sections
+- `[x]` Redesign HeroBanner card to match the blended portrait card layout exactly
+- `[x]` Swap layout stacking so the leader image renders clearly on top of the dark backdrop overlay
+- `[x]` Shift text to the left side and adjust the page container margins to decrease screen spacing gaps
+- `[x]` Optimize the gradient opacity mask range so the leader profile is fully visible and sharp
+- `[x]` Increase vertical height of the card container using valid Tailwind class (py-9) and scale down font sizes of all text elements inside it
+- `[x]` Constrain max-width of left content wrapper (52%) and action buttons row wrapper (160px) to prevent image overlap
+- `[x]` Configure CoreCommitteeCard widths to show exactly 4 cards initially on screen and wire up a floating right scroll button (>) for sliding
+- `[x]` Verify home page unchanged

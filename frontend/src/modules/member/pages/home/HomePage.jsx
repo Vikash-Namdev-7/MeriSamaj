@@ -755,58 +755,63 @@ const HomePage = () => {
                 </div>
               </div>
                 
-                <div className="grid grid-cols-3 gap-2.5 pb-4">
-                  {coreCommittee.slice(0, 3).map(member => {
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4">
+                  {coreCommittee.map(member => {
                     const badgeColor = member.role === 'Vice President' 
-                      ? 'bg-blue-600' 
+                      ? 'bg-[#1e58b8]' 
                       : member.role === 'Secretary' 
-                      ? 'bg-rose-500' 
+                      ? 'bg-[#ff3b68]' 
                       : member.role === 'Joint Secretary' 
-                      ? 'bg-purple-600' 
+                      ? 'bg-[#9333ea]' 
                       : 'bg-emerald-600';
-                    const hindiRole = member.role === 'Vice President' 
+                      
+                    const englishAbbrevRole = member.role === 'Vice President' 
                       ? 'VP' 
                       : member.role === 'Secretary' 
                       ? 'Secretary' 
                       : member.role === 'Joint Secretary' 
                       ? 'Joint Sec' 
-                      : 'Treasurer';
+                      : member.role;
+
                     return (
                       <div 
                         key={member.id} 
                         onClick={() => navigate('/member/leadership', { state: { selectedId: member.id } })}
-                        className="w-full card-neo overflow-hidden flex flex-col items-center cursor-pointer active:scale-[0.98] transition-transform pb-2.5"
+                        className={`shrink-0 w-[calc((100vw-56px)/3.1)] max-w-[130px] bg-white rounded-3xl flex flex-col items-center cursor-pointer transition-all duration-300 pb-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] border border-purple-50 hover:border-purple-200`}
                       >
-                        {/* Portrait Photo */}
-                        <div className="w-full aspect-square overflow-hidden bg-gray-50 shrink-0 mb-2 relative rounded-t-[24px]">
+                        {/* Full Width Portrait Photo with absolute badge */}
+                        <div className="w-full aspect-[4/3.8] overflow-hidden bg-gray-50 shrink-0 mb-2.5 relative rounded-t-3xl">
                           <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
-                          <div className="absolute top-1.5 left-1.5 z-10">
-                            <span className={`text-white text-[7px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm ${badgeColor}`}>
-                              {hindiRole}
+                          
+                          {/* Role Badge - top left overlapping photo */}
+                          <div className="absolute top-2.5 left-2.5">
+                            <span className={`text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm ${badgeColor}`}>
+                              {englishAbbrevRole}
                             </span>
                           </div>
                         </div>
                         
-                        <h4 className="text-text-primary text-[9px] sm:text-[10px] font-bold text-center leading-tight mb-2 px-1 line-clamp-2">
+                        {/* Office Bearer Name */}
+                        <h4 className="text-slate-900 text-[11px] font-extrabold text-center leading-tight mb-2 px-2 h-8 flex items-center justify-center">
                           {member.name.replace(' Agrawal', '').replace(' Sharma', '').replace(' Patel', '')}
                         </h4>
 
-                        {/* Purple divider */}
-                        <div className="w-5 h-[1.5px] bg-gradient-to-r from-purple-400 to-violet-400 rounded-full mb-2" />
+                        {/* Centered Short purple divider line */}
+                        <div className="w-6 h-[2px] bg-[#a855f7] rounded-full mb-2.5" />
                         
-                        {/* Action Buttons */}
-                        <div className="flex gap-1.5 justify-center w-full mt-auto" onClick={(e) => e.stopPropagation()}>
-                          <a 
-                            href={`tel:${member.phone}`} 
-                            className="w-7 h-7 rounded-xl border border-purple-200/50 flex items-center justify-center hover:bg-purple-50 transition-colors text-purple-600 shrink-0"
+                        {/* Action Buttons Row */}
+                        <div className="flex justify-center gap-2.5 w-full mt-auto" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            onClick={() => window.open(`tel:${member.phone || '9999999999'}`)} 
+                            className="w-[30px] h-[30px] rounded-full border border-purple-200 flex items-center justify-center text-[#a855f7] hover:bg-purple-50 transition-colors shrink-0"
                           >
-                            <Phone size={11} />
-                          </a>
+                            <Phone size={13} />
+                          </button>
                           <button 
                             onClick={() => navigate(`/member/chat/${member.id}`)} 
-                            className="w-7 h-7 rounded-xl border border-emerald-200/50 flex items-center justify-center hover:bg-emerald-50 transition-colors text-emerald-600 shrink-0"
+                            className="w-[30px] h-[30px] rounded-full border border-emerald-200 flex items-center justify-center text-[#10b981] hover:bg-emerald-50 transition-colors shrink-0"
                           >
-                            <MessageCircle size={11} />
+                            <MessageCircle size={13} />
                           </button>
                         </div>
                       </div>

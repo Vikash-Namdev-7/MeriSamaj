@@ -86,6 +86,18 @@ const DirectoryListPage = () => {
         return filterVal;
       }
     }
+    if (filterType === 'committee' && filterVal) {
+      // Map English name of committee to the list category
+      const map = {
+        'State Committee': 'State Committee',
+        'Division Committee': 'Division Committee',
+        'District Committee': 'District Committee',
+        'City Committee': 'City Committee',
+        'Tehsil Committee': 'Tehsil Committee',
+        'Village Committee': 'Village Committee'
+      };
+      return map[filterVal] || 'All Categories';
+    }
     return 'All Categories';
   });
 
@@ -102,7 +114,7 @@ const DirectoryListPage = () => {
   // Dropdown lists matching categories
   const cities = ['All Cities', 'Indore', 'Jaipur', 'Bhopal', 'Ujjain', 'Kota', 'Alwar', 'Bikaner', 'Udaipur', 'Delhi'];
   const professions = ['All Professions', 'Architect', 'Doctor', 'Software Engineer', 'Teacher', 'CA', 'Pharmacist', 'Lawyer', 'Business Owner', 'Interior Designer', 'Homemaker'];
-  const categories = ['All Categories', 'Executive Members', 'Business Owners', 'Teachers', 'Doctors', 'Engineers'];
+  const categories = ['All Categories', 'Executive Members', 'Business Owners', 'Teachers', 'Doctors', 'Engineers', 'State Committee', 'Division Committee', 'District Committee', 'City Committee', 'Tehsil Committee', 'Village Committee'];
   const businessTypes = ['All', 'Manufacturing', 'Construction', 'Education', 'Healthcare', 'Service', 'Other'];
 
   // Merge Admins & Members to have a unified database list matching Mockup Screen 2 (e.g. Suresh Sharma - Adhyaksh)
@@ -139,7 +151,7 @@ const DirectoryListPage = () => {
 
     // standard mockup names to make list feel authentic
     const mockReplacements = [
-      { name: 'Rajesh Sharma', role: 'President', city: 'Jaipur', phone: '+91 98765 43210', isVerified: true },
+      { name: 'Rajesh Sharma', role: 'Business Consultant', city: 'Jaipur', phone: '+91 98765 43210', isVerified: true },
       { name: 'Suresh Yadav', role: 'Business Owner', city: 'Kota', phone: '+91 98765 11111', isVerified: true },
       { name: 'Manish Gupta', role: 'Teacher', city: 'Alwar', phone: '+91 98765 22222', isVerified: true },
       { name: 'Ajay Singh', role: 'Software Engineer', city: 'Jaipur', phone: '+91 98765 33333', isVerified: true },
@@ -147,8 +159,14 @@ const DirectoryListPage = () => {
       { name: 'Ravi Jain', role: 'Business Owner', city: 'Udaipur', phone: '+91 98765 55555', isVerified: true }
     ];
 
-    // Map list to match mockup details
+    // Map list to match mockup details, but preserve official admins roles and details
     return baseList.map((item, idx) => {
+      const isOfficial = ['Patron', 'President', 'Vice President', 'Secretary', 'Joint Secretary', 'Treasurer', 'Zonal Head', 'Area Sub-Head'].includes(item.role) || item.role.startsWith('Minister');
+
+      if (isOfficial) {
+        return item; // Keep real admin info (role, city, phone, etc.) intact
+      }
+
       const mockData = mockReplacements[idx % mockReplacements.length];
       return {
         ...item,
@@ -195,6 +213,14 @@ const DirectoryListPage = () => {
       if (selectedCategory === 'Teachers' && item.role !== 'Teacher' && item.profession !== 'Teacher') return false;
       if (selectedCategory === 'Doctors' && item.role !== 'Doctor' && item.profession !== 'Doctor') return false;
       if (selectedCategory === 'Engineers' && item.role !== 'Software Engineer' && item.profession !== 'Software Engineer') return false;
+      
+      // Committee Filters
+      if (selectedCategory === 'State Committee' && !['President', 'Patron', 'Vice President'].includes(item.role)) return false;
+      if (selectedCategory === 'Division Committee' && !['Secretary', 'Joint Secretary'].includes(item.role)) return false;
+      if (selectedCategory === 'District Committee' && !['Zonal Head', 'Treasurer'].includes(item.role)) return false;
+      if (selectedCategory === 'City Committee' && item.role !== 'Area Sub-Head' && item.city !== 'Indore') return false;
+      if (selectedCategory === 'Tehsil Committee' && item.role !== 'Area Sub-Head') return false;
+      if (selectedCategory === 'Village Committee' && item.role !== 'Area Sub-Head') return false;
     }
 
     // 5. Business Type Filter
@@ -235,7 +261,7 @@ const DirectoryListPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface pb-16 relative">
+    <div className="min-h-screen bg-surface pb-16 pt-[58px] relative">
       {/* Header */}
       <PageHeader title="All Members" subtitle="Community Directory" />
 

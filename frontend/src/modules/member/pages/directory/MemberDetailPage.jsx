@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, MessageCircle, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, MessageCircle, Phone, Mail, MapPin, Grid, Info, Users, Globe, Camera } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useData } from '../../context/DataProvider';
 import BranchingFamilyTree from '../../components/family/BranchingFamilyTree';
+import { Avatar } from '../../components/common/Avatar';
 
 // English mappings
 const cityMap = {
@@ -50,6 +53,7 @@ const businessTypeMap = {
 const MemberDetailPage = () => {
   const { memberId } = useParams();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('posts');
   
   const { 
     members, 
@@ -62,7 +66,8 @@ const MemberDetailPage = () => {
     unfollowUser,
     blockUser,
     unblockUser,
-    granularPrivacy
+    granularPrivacy,
+    posts
   } = useData();
 
   // Find member in either members or admins list
@@ -75,18 +80,14 @@ const MemberDetailPage = () => {
     if (!str) return 0;
     return str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + offset;
   };
-
   const hash = getHashValue(member.id);
 
   // Dynamic deterministic properties matching Screen 3 layout
   const memberIdCode = `SM${7000 + (hash % 999)}`;
-  
-  // Calculate a deterministic date of birth based on age
   const birthYear = 2026 - (member.age || 40);
   const birthDay = 1 + (hash % 28);
   const birthMonth = 1 + (hash % 12);
   const dobStr = `${birthDay.toString().padStart(2, '0')}/${birthMonth.toString().padStart(2, '0')}/${birthYear}`;
-
   const phoneNum = member.phone || `98765${(10000 + (hash % 89999))}`;
   const emailAddr = member.email || `${member.name.toLowerCase().replace(/\s+/g, '')}@email.com`;
   const englishCity = cityMap[member.city] || `${member.city}, Rajasthan`;
@@ -111,7 +112,6 @@ const MemberDetailPage = () => {
       { id: `${m.id}-f2`, name: `Aarav ${lastName}`, relation: 'Son', age: Math.max(5, m.age - 25), initials: 'AA' }
     ];
   };
-
   const familyMembers = getMockFamilyMembers(member);
 
   // Follow system state derivations
@@ -140,223 +140,261 @@ const MemberDetailPage = () => {
   const showEmail = isFieldVisible(memberGranular.email);
   const showFamily = isFieldVisible(memberGranular.familyTree);
 
+  // Stats
+  const memberFollowers = members.filter(m => followRelations?.some(r => r.followingId === member.id && r.followerId === m.id && r.status === 'accepted'));
+  const memberFollowing = members.filter(m => followRelations?.some(r => r.followerId === member.id && r.followingId === m.id && r.status === 'accepted'));
+  const memberPosts = posts?.filter(p => p.author.id === member.id) || [];
+
+  // Mock Highlights for this user
+  const memberHighlights = [
+    { id: 1, title: 'Memories', cover: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=150&q=80' },
+    { id: 2, title: 'Travel', cover: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=150&q=80' }
+  ];
+
   return (
-    <div className="min-h-screen bg-surface pb-12">
-      {/* Header */}
-      <div className="bg-card border-b border-gray-100 flex items-center gap-3 px-4 h-14 sticky top-0 z-30">
-        <button onClick={() => navigate(-1)} className="p-1 -ml-1 press-scale">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-base font-bold text-text-primary">Member Profile</h1>
+    <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
+      {/* Header Bar — Glass morphism */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-1 -ml-1 press-scale">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">{member.name}</h1>
+        </div>
       </div>
 
-      <div className="max-w-4xl mx-auto space-y-4 pt-4 px-4">
-        {/* Top Profile Card */}
-        <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col items-center">
-          <div className="w-24 h-24 rounded-2xl overflow-hidden bg-indigo-50 border border-indigo-100/50 flex items-center justify-center font-bold text-3xl text-indigo-700 shadow-inner">
-            {member.initials}
-          </div>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Instagram-Inspired Profile Header Block */}
+        <div className="bg-white pb-6 pt-4 px-4 shadow-[0_2px_12px_rgba(124,58,237,0.03)] border-b border-purple-100/30">
           
-          <div className="flex items-center gap-1.5 mt-4">
-            <h2 className="text-lg font-bold text-text-primary">{member.name}</h2>
-            {member.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
-            {isPrivate && (
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[9px] font-bold text-slate-500 border flex items-center gap-0.5">
-                🔒 PRIVATE
-              </span>
-            )}
+          {/* Top Row: Avatar & Stats */}
+          <div className="flex items-center justify-between gap-6">
+            <div className="relative shrink-0">
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center overflow-hidden shadow-sm transition-all ${
+                member.isPremium 
+                  ? 'border-amber-400 p-[2px] bg-gradient-to-tr from-amber-500 to-yellow-300' 
+                  : 'border-brand-primary/20 p-[2px] bg-white'
+              }`}>
+                <div className="w-full h-full rounded-full overflow-hidden bg-white border border-white">
+                  <Avatar initials={member.initials} src={member.avatar} size="xl" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex-1 flex items-center justify-around">
+              <div className="flex flex-col items-center">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{memberPosts.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Posts</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{memberFollowers.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Followers</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[16px] sm:text-[18px] font-black text-text-primary leading-none">{memberFollowing.length}</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-text-secondary mt-1">Following</span>
+              </div>
+            </div>
           </div>
-          
-          <p className="text-xs font-semibold text-text-secondary mt-1">{englishProfession}</p>
-          <p className="text-[10px] font-medium text-text-secondary mt-0.5">{englishCity}</p>
 
-          {/* Follow Button */}
-          {member.id !== 'u1' && (
-            <div className="w-full mt-4 border-t border-slate-50 pt-4">
+          {/* Name & Bio Block */}
+          <div className="mt-4 space-y-1">
+            <h2 className="text-[15px] font-bold text-text-primary tracking-tight leading-tight flex items-center gap-1.5">
+              {member.name}
+              {isPrivate && <span className="text-xs">🔒</span>}
+              {member.isVerified && <CheckCircle size={14} className="text-emerald-500 fill-emerald-50 shrink-0" />}
+              {member.isPremium && (
+                <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
+                  👑 PRO
+                </span>
+              )}
+            </h2>
+            <p className="text-[12px] font-semibold text-text-secondary">{englishProfession}</p>
+            <p className="text-[11px] font-medium text-text-secondary flex items-center gap-1">
+              📍 {englishCity}
+            </p>
+          </div>
+
+          {/* Action Buttons Row */}
+          {!isMe && (
+            <div className="flex items-center gap-2 mt-4">
               {isBlocked ? (
                 <button
                   onClick={() => unblockUser(member.id)}
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale shadow-sm"
+                  className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-[13px] font-bold shadow-sm press-scale transition-colors"
                 >
-                  Unblock User
+                  Unblock
                 </button>
               ) : isFollowing ? (
-                <div className="flex gap-2 w-full">
+                <>
                   <button
                     onClick={() => unfollowUser(member.id)}
-                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale"
+                    className="flex-1 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-[13px] font-bold shadow-sm press-scale transition-colors"
                   >
                     Following
                   </button>
                   <button
-                    onClick={() => blockUser(member.id)}
-                    className="px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale"
+                    onClick={() => navigate(`/member/chat/${member.id}`)}
+                    className="flex-1 py-1.5 bg-purple-50 text-brand-primary rounded-lg text-[13px] font-bold border border-purple-100 shadow-sm press-scale transition-colors"
                   >
-                    Block
+                    Message
                   </button>
-                </div>
+                </>
               ) : hasRequested ? (
                 <button
                   onClick={() => cancelFollowRequest(member.id)}
-                  className="w-full py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale"
+                  className="flex-1 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[13px] font-bold shadow-sm press-scale transition-colors"
                 >
-                  Requested (Click to Cancel)
+                  Requested
                 </button>
               ) : (
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={() => sendFollowRequest(member.id)}
-                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale shadow-sm shadow-indigo-100"
-                  >
-                    Follow {isPrivate && '🔒'}
-                  </button>
-                  <button
-                    onClick={() => blockUser(member.id)}
-                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale"
-                  >
-                    Block
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {canAccess && !isBlocked && (
-            <div className="w-full grid grid-cols-3 gap-2.5 mt-5 pt-5 border-t border-gray-50">
-              <button 
-                onClick={() => navigate(`/member/chat/${member.id}`)}
-                className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale shadow-sm shadow-indigo-100"
-              >
-                <MessageCircle size={14} /> Contact
-              </button>
-              <button 
-                onClick={() => navigate(`/member/chat/${member.id}`)}
-                className="py-3 bg-card border border-gray-200 text-text-primary rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale hover:bg-gray-50"
-              >
-                <Mail size={14} /> Message
-              </button>
-              {showPhone ? (
-                <a 
-                  href={`tel:${phoneNum}`}
-                  className="py-3 bg-card border border-gray-200 text-text-primary rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 press-scale hover:bg-gray-50 text-center"
+                <button
+                  onClick={() => sendFollowRequest(member.id)}
+                  className="flex-1 py-1.5 bg-brand-primary text-white rounded-lg text-[13px] font-bold shadow-sm press-scale transition-colors"
                 >
-                  <Phone size={14} /> Call
-                </a>
-              ) : (
-                <button 
-                  disabled
-                  className="py-3 bg-gray-50 border border-gray-150 text-slate-400 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 opacity-60 cursor-not-allowed text-center"
-                  title="Phone visibility is restricted"
-                >
-                  <Phone size={14} /> Call
+                  Follow
                 </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Restricted Area Placeholder / Details Area */}
-        {isBlocked ? (
-          <div className="bg-card rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center mt-4">
-            <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4">
-              <span className="text-3xl">🚫</span>
+        {/* Highlights Section */}
+        {canAccess && (
+          <div className="bg-white pb-3 pt-1 px-4 overflow-hidden border-b border-purple-100/30">
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide py-2">
+              {/* Existing Highlights */}
+              {memberHighlights.map(h => (
+                 <div key={h.id} className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer">
+                    <div className="w-16 h-16 rounded-full border-2 border-slate-200 p-[2px]">
+                       <img src={h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
+                    </div>
+                    <span className="text-[12px] font-medium text-slate-800">{h.title}</span>
+                 </div>
+              ))}
             </div>
-            <h3 className="text-[15px] font-bold text-text-primary">Member is Blocked</h3>
-            <p className="text-xs text-text-secondary mt-2 max-w-xs leading-relaxed">
-              You have blocked this member. Unblock them first to view their profile details.
-            </p>
           </div>
-        ) : !canAccess ? (
-          <div className="bg-card rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center mt-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-4">
-              <span className="text-3xl">🔒</span>
-            </div>
-            <h3 className="text-[15px] font-bold text-text-primary">This Profile is Private</h3>
-            <p className="text-xs text-text-secondary mt-2 max-w-xs leading-relaxed">
-              Only accepted followers can view this member's personal info, contact details, and Family Tree.
-            </p>
-            {!hasRequested && (
-              <button
-                onClick={() => sendFollowRequest(member.id)}
-                className="mt-5 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-bold text-xs press-scale shadow-sm"
-              >
-                Send Follow Request
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Section 1: Personal Information */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider pl-1">Personal Information</h3>
-              <div className="bg-card rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
-                <InfoField label="Member ID" value={memberIdCode} />
-                <InfoField label="Date of Birth" value={dobStr} />
-                <InfoField label="Mobile Number" value={showPhone ? phoneNum : (memberGranular.phone === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
-                <InfoField label="Email" value={showEmail ? emailAddr : (memberGranular.email === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
-                <InfoField label="City" value={englishCity} />
-              </div>
-            </div>
-
-            {/* Section 2: Professional Information */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider pl-1">Professional Information</h3>
-              <div className="bg-card rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
-                <InfoField label="Profession" value={englishProfession} />
-                <InfoField label="Company" value={companyName} />
-                <InfoField label="Business" value={businessSector} />
-                <InfoField label="Est. Year" value={estYear.toString()} />
-              </div>
-            </div>
-
-            {/* Section 3: Address */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider pl-1">Address</h3>
-              <div className="bg-card rounded-2xl p-4 border border-gray-100 shadow-sm">
-                <div className="flex gap-2.5 items-start">
-                  <MapPin size={16} className="text-text-secondary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Full Address</p>
-                    <p className="text-xs font-semibold text-text-primary mt-1 leading-relaxed">{fullAddress}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Family Details (Family Tree) */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider pl-1">Family Details (Family Tree)</h3>
-              {showFamily ? (
-                <div className="bg-card rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-2">
-                  <div className="w-full overflow-hidden relative rounded-xl border border-gray-50">
-                    <BranchingFamilyTree 
-                      primaryMember={member} 
-                      familyMembers={familyMembers} 
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-card rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center">
-                  <span className="text-xl">🔒</span>
-                  <p className="text-xs font-semibold text-text-secondary mt-2">
-                    {memberGranular.familyTree === 'private' ? 'Family details are set to Private' : 'Follow this member to view their Family Tree'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </>
         )}
 
+        {/* Tabs Below Profile Info */}
+        <div className="flex items-center border-b border-purple-100/30 bg-white sticky top-14 z-20">
+          <button 
+            onClick={() => setActiveTab('posts')}
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
+              activeTab === 'posts' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Grid size={26} />
+            {activeTab === 'posts' && (
+              <motion.div layoutId="memberProfileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+          <button 
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 py-3 flex items-center justify-center transition-all relative ${
+              activeTab === 'details' ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Info size={26} />
+            {activeTab === 'details' && (
+              <motion.div layoutId="memberProfileTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="min-h-[300px]">
+          {isBlocked ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4">
+                <span className="text-3xl">🚫</span>
+              </div>
+              <h3 className="text-[15px] font-bold text-text-primary">Member is Blocked</h3>
+              <p className="text-xs text-text-secondary mt-2 max-w-xs leading-relaxed">
+                You have blocked this member. Unblock them first to view their profile details.
+              </p>
+            </div>
+          ) : !canAccess ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+              <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center mb-4">
+                <span className="text-3xl">🔒</span>
+              </div>
+              <h3 className="text-[15px] font-bold text-text-primary">This Profile is Private</h3>
+              <p className="text-xs text-text-secondary mt-2 max-w-xs leading-relaxed">
+                Only accepted followers can view this member's posts and details.
+              </p>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'posts' && (
+                <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+                  {memberPosts.length > 0 ? (
+                    memberPosts.flatMap(p => p.images).map((imgUrl, idx) => (
+                      <div key={idx} className="aspect-square bg-purple-50/50 overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity">
+                        <img src={imgUrl} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 flex flex-col items-center justify-center py-20">
+                      <div className="w-16 h-16 rounded-full border-2 border-slate-200 flex items-center justify-center mb-3">
+                        <Camera size={24} className="text-slate-400" />
+                      </div>
+                      <p className="text-sm font-bold text-text-primary">No Posts Yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'details' && (
+                <div className="p-4 space-y-6">
+                  {/* Section 1: Personal Information */}
+                  <div className="space-y-2">
+                    <h3 className="text-[11px] font-bold text-text-secondary uppercase tracking-wider pl-1">Personal Information</h3>
+                    <div className="bg-white rounded-2xl border border-purple-100/50 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                      <InfoField label="Member ID" value={memberIdCode} />
+                      <InfoField label="Date of Birth" value={dobStr} />
+                      <InfoField label="Mobile Number" value={showPhone ? phoneNum : (memberGranular.phone === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
+                      <InfoField label="Email" value={showEmail ? emailAddr : (memberGranular.email === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
+                    </div>
+                  </div>
+
+                  {/* Section 2: Professional Information */}
+                  <div className="space-y-2">
+                    <h3 className="text-[11px] font-bold text-text-secondary uppercase tracking-wider pl-1">Professional Information</h3>
+                    <div className="bg-white rounded-2xl border border-purple-100/50 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                      <InfoField label="Company" value={companyName} />
+                      <InfoField label="Business" value={businessSector} />
+                      <InfoField label="Est. Year" value={estYear.toString()} />
+                    </div>
+                  </div>
+
+                  {/* Section 3: Address */}
+                  <div className="space-y-2">
+                    <h3 className="text-[11px] font-bold text-text-secondary uppercase tracking-wider pl-1">Address</h3>
+                    <div className="bg-white rounded-2xl p-4 border border-purple-100/50 shadow-sm">
+                      <div className="flex gap-2.5 items-start">
+                        <MapPin size={16} className="text-text-secondary mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-text-primary leading-relaxed">{fullAddress}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 const InfoField = ({ label, value }) => (
-  <div className="px-4 py-3.5 flex justify-between items-center text-xs font-semibold">
-    <span className="text-text-secondary">{label}</span>
-    <span className="text-text-primary text-right">{value}</span>
+  <div className="px-4 py-3.5 flex justify-between items-center text-[13px]">
+    <span className="text-text-secondary font-medium">{label}</span>
+    <span className="text-text-primary font-bold text-right">{value}</span>
   </div>
 );
 
