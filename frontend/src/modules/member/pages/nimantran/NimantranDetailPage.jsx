@@ -1,17 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2, MapPin, Calendar, Clock, Heart, Users, Check, X, Phone } from 'lucide-react';
+import { ChevronLeft, Share2, MapPin, Calendar, Clock, Heart, Users, Check, X, Phone, Search, UserCheck } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 
 export default function NimantranDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invitations, currentUser, members, updateInvitationRSVP } = useData();
+  const { invitations, currentUser, members, updateInvitationRSVP, addNotification, groups, addInvitesToInvitation } = useData();
   
   const inv = invitations.find(i => i.id === id);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  // Directory States for inviting more members later
+  const [invitedMemberIds, setInvitedMemberIds] = useState([]);
+  const [invitedGroupIds, setInvitedGroupIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCity, setSelectedCity] = useState('All');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeDirectoryTab, setActiveDirectoryTab] = useState('members');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  // Initialize directory states if invitation exists
+  useEffect(() => {
+    if (inv) {
+      setInvitedMemberIds(inv.invitedMemberIds || []);
+      setInvitedGroupIds(inv.invitedGroupIds || []);
+    }
+  }, [inv]);
 
   useEffect(() => {
     if (!inv) return;
@@ -72,6 +94,37 @@ export default function NimantranDetailPage() {
     }
   };
 
+  // Check event expiry logic (based on event date & time)
+  const parseTime = (timeStr) => {
+    if (!timeStr) return { hours: 12, minutes: 0 };
+    const clean = timeStr.trim().toUpperCase();
+    const isPM = clean.endsWith('PM');
+    const isAM = clean.endsWith('AM');
+    let timeOnly = clean.replace('AM', '').replace('PM', '').trim();
+    const parts = timeOnly.split(':');
+    let hours = parseInt(parts[0], 10);
+    let minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+    
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+    
+    return { hours, minutes };
+  };
+
+  const checkIsFutureEvent = () => {
+    try {
+      const eventDate = new Date(inv.date);
+      const timeInfo = parseTime(inv.timeProgram || inv.timeFood || inv.timeBaraat || '12:00 PM');
+      eventDate.setHours(timeInfo.hours, timeInfo.minutes, 0, 0);
+      return eventDate.getTime() > Date.now();
+    } catch (e) {
+      return true;
+    }
+  };
+
+  const isFutureEvent = checkIsFutureEvent();
+  const canInviteMore = inv.creatorId === currentUser.id && isFutureEvent;
+
   // Build schedule list dynamically based on availability
   const hasGroomBride = inv.groomName && inv.brideName && !inv.title;
   const scheduleItems = [];
@@ -84,6 +137,222 @@ export default function NimantranDetailPage() {
     if (inv.timeProgram || inv.timeBaraat) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
     if (inv.timeOther || inv.timePhere) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
   }
+
+  // --- Directory definitions for invite more ---
+  const getCommunitySurname = (community) => {
+    if (!community) return 'Agrawal';
+    if (community.includes('Mali')) return 'Mali';
+    if (community.includes('Gupta')) return 'Gupta';
+    if (community.includes('Sharma')) return 'Sharma';
+    if (community.includes('Jain')) return 'Jain';
+    if (community.includes('Patel')) return 'Patel';
+    if (community.includes('Verma')) return 'Verma';
+    return 'Agrawal';
+  };
+  const activeSurname = currentUser ? getCommunitySurname(currentUser.community) : 'Agrawal';
+
+  const mainPresident = {
+    id: 'pres_main',
+    name: `Shri Mohan Lal ${activeSurname}`,
+    role: 'Main Samaj President (मुख्य समाज अध्यक्ष)',
+    city: 'Indore',
+    initials: 'ML',
+    isPresident: true
+  };
+
+  const cityPresidents = [
+    { id: 'pres_indore', name: `Shri Mohan Lal ${activeSurname}`, role: 'Indore President (इंदौर अध्यक्ष)', city: 'Indore', initials: 'ML', isPresident: true },
+    { id: 'pres_jaipur', name: `Smt. Kamla ${activeSurname}`, role: 'Jaipur President (जयपुर अध्यक्ष)', city: 'Jaipur', initials: 'KA', isPresident: true },
+    { id: 'pres_bhopal', name: `Shri Kailash ${activeSurname}`, role: 'Bhopal President (भोपाल अध्यक्ष)', city: 'Bhopal', initials: 'KA', isPresident: true },
+    { id: 'pres_ujjain', name: `Shri Ghanshyam ${activeSurname}`, role: 'Ujjain President (उज्जैन अध्यक्ष)', city: 'Ujjain', initials: 'GA', isPresident: true },
+    { id: 'pres_gwalior', name: `Shri Omprakash ${activeSurname}`, role: 'Gwalior President (ग्वालियर अध्यक्ष)', city: 'Gwalior', initials: 'OA', isPresident: true },
+  ];
+
+  const presidents = [mainPresident, ...cityPresidents];
+  const friends = members.filter(m => currentUser.followingList?.includes(m.id) || m.isVerified);
+
+  // Filter lists based on tab, search, and city
+  const filteredMembers = members.filter(member => {
+    if (member.id === currentUser?.id) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return member.name?.toLowerCase().includes(q) || member.profession?.toLowerCase().includes(q) || member.city?.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && member.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredPresidents = presidents.filter(p => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.role.toLowerCase().includes(q) || p.city.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && p.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredFriends = friends.filter(friend => {
+    if (friend.id === currentUser?.id) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return friend.name?.toLowerCase().includes(q) || friend.profession?.toLowerCase().includes(q) || friend.city?.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && friend.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredGroups = groups.filter(group => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return group.name?.toLowerCase().includes(q) || group.category?.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  // Toggling batch button states (check if all filtered ones are selected)
+  const isAllPresidentsInvited = filteredPresidents.length > 0 && filteredPresidents.every(p => invitedMemberIds.includes(p.id));
+  const isAllInCityInvited = filteredMembers.length > 0 && filteredMembers.every(m => invitedMemberIds.includes(m.id));
+  const isAllMembersInvited = filteredMembers.length > 0 && filteredMembers.every(m => invitedMemberIds.includes(m.id));
+  const isAllGroupsInvited = filteredGroups.length > 0 && filteredGroups.every(g => invitedGroupIds.includes(g.id));
+  const isAllFriendsInvited = filteredFriends.length > 0 && filteredFriends.every(f => invitedMemberIds.includes(f.id));
+
+  const handleToggleInvite = (member) => {
+    const memberId = member.id;
+    const originalMemberIds = inv.invitedMemberIds || [];
+    if (originalMemberIds.includes(memberId)) return; // Prevent toggling off already invited members
+    
+    const isCurrentlyInvited = invitedMemberIds.includes(memberId);
+    let updatedIds;
+    
+    if (isCurrentlyInvited) {
+      updatedIds = invitedMemberIds.filter(id => id !== memberId);
+    } else {
+      updatedIds = [...invitedMemberIds, memberId];
+    }
+    
+    setInvitedMemberIds(updatedIds);
+  };
+
+  const handleToggleGroupInvite = (group) => {
+    const groupId = group.id;
+    const originalGroupIds = inv.invitedGroupIds || [];
+    if (originalGroupIds.includes(groupId)) return; // Prevent toggling off already invited groups
+    
+    const isCurrentlyInvited = invitedGroupIds.includes(groupId);
+    let updatedIds;
+    
+    if (isCurrentlyInvited) {
+      updatedIds = invitedGroupIds.filter(id => id !== groupId);
+    } else {
+      updatedIds = [...invitedGroupIds, groupId];
+    }
+    
+    setInvitedGroupIds(updatedIds);
+  };
+
+  // Save new invitations and trigger notifications in a single batch
+  const handleSaveInvitations = () => {
+    const originalMemberIds = inv.invitedMemberIds || [];
+    const newlyInvitedMemberIds = invitedMemberIds.filter(id => !originalMemberIds.includes(id));
+
+    const originalGroupIds = inv.invitedGroupIds || [];
+    const newlyInvitedGroupIds = invitedGroupIds.filter(id => !originalGroupIds.includes(id));
+
+    if (newlyInvitedMemberIds.length === 0 && newlyInvitedGroupIds.length === 0) {
+      showToast('No new members or groups selected to invite.', 'info');
+      return;
+    }
+
+    // Save all to global context
+    addInvitesToInvitation(inv.id, invitedMemberIds, invitedGroupIds);
+
+    // Send notifications for newly invited members
+    newlyInvitedMemberIds.forEach(memberId => {
+      const member = members.find(m => m.id === memberId) || presidents.find(p => p.id === memberId);
+      if (member) {
+        addNotification({
+          type: 'nimantran',
+          title: 'New Invitation',
+          message: `You have been invited to "${displayTitle}".`,
+        });
+      }
+    });
+
+    // Send notifications for newly invited groups
+    newlyInvitedGroupIds.forEach(groupId => {
+      const group = groups.find(g => g.id === groupId);
+      if (group) {
+        addNotification({
+          type: 'nimantran',
+          title: 'Group Invited',
+          message: `The group "${group.name}" has been invited to "${displayTitle}".`,
+        });
+      }
+    });
+
+    showToast('Invitations sent successfully!', 'success');
+  };
+
+  // Batch Select Actions
+  const handleInviteAllPresidents = () => {
+    const originalMemberIds = inv.invitedMemberIds || [];
+    if (isAllPresidentsInvited) {
+      const matchingIds = filteredPresidents.map(p => p.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id) || originalMemberIds.includes(id)));
+    } else {
+      const uninvited = filteredPresidents.filter(p => !invitedMemberIds.includes(p.id));
+      const newIds = uninvited.map(p => p.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const handleInviteAllInCity = () => {
+    const originalMemberIds = inv.invitedMemberIds || [];
+    if (isAllInCityInvited) {
+      const matchingIds = filteredMembers.map(m => m.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id) || originalMemberIds.includes(id)));
+    } else {
+      const uninvited = filteredMembers.filter(m => !invitedMemberIds.includes(m.id));
+      const newIds = uninvited.map(m => m.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const handleInviteAllMembers = () => {
+    const originalMemberIds = inv.invitedMemberIds || [];
+    if (isAllMembersInvited) {
+      const matchingIds = filteredMembers.map(m => m.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id) || originalMemberIds.includes(id)));
+    } else {
+      const uninvited = filteredMembers.filter(m => !invitedMemberIds.includes(m.id));
+      const newIds = uninvited.map(m => m.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const handleInviteAllGroups = () => {
+    const originalGroupIds = inv.invitedGroupIds || [];
+    if (isAllGroupsInvited) {
+      const matchingIds = filteredGroups.map(g => g.id);
+      setInvitedGroupIds(prev => prev.filter(id => !matchingIds.includes(id) || originalGroupIds.includes(id)));
+    } else {
+      const uninvited = filteredGroups.filter(g => !invitedGroupIds.includes(g.id));
+      const newIds = uninvited.map(g => g.id);
+      setInvitedGroupIds(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const handleInviteAllFriends = () => {
+    const originalMemberIds = inv.invitedMemberIds || [];
+    if (isAllFriendsInvited) {
+      const matchingIds = filteredFriends.map(f => f.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id) || originalMemberIds.includes(id)));
+    } else {
+      const uninvited = filteredFriends.filter(f => !invitedMemberIds.includes(f.id));
+      const newIds = uninvited.map(f => f.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
@@ -303,7 +572,348 @@ export default function NimantranDetailPage() {
           )}
         </div>
 
+        {/* INVITE MORE MEMBERS SECTION (Active prior to event date) */}
+        {canInviteMore && (
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-2">
+              <h4 className="font-extrabold text-slate-800 text-[15px]">
+                Invite More Members
+              </h4>
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-lg">Active Event</span>
+            </div>
+
+            {/* Directory Tabs */}
+            <div className="flex border-b border-slate-100 bg-slate-50 p-1 rounded-xl">
+              {[
+                { id: 'members', label: 'Members' },
+                { id: 'presidents', label: 'Presidents' },
+                { id: 'groups', label: 'Groups' },
+                { id: 'friends', label: 'Friends' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => { setActiveDirectoryTab(tab.id); setSearchQuery(''); }}
+                  className={`flex-1 py-2 text-[11px] font-black rounded-lg transition-all text-center ${
+                    activeDirectoryTab === tab.id 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search & City Filter Dropdown Row */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input 
+                  type="text" 
+                  placeholder={activeDirectoryTab === 'groups' ? "Search groups..." : "Search by name, place..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-[13px] outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-800"
+                />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+
+              {/* Hide city dropdown for group & friends tabs */}
+              {['members', 'presidents'].includes(activeDirectoryTab) && (
+                <div className="relative">
+                  <button 
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 flex items-center gap-1.5 hover:bg-slate-100 hover:border-slate-300 transition-colors h-full press-scale whitespace-nowrap"
+                  >
+                    <span>📍 {selectedCity === 'All' ? 'All Cities' : selectedCity}</span>
+                    <span className="text-[9px] text-slate-400">▼</span>
+                  </button>
+                  
+                  {isDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
+                        <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                          Select City
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => { setSelectedCity('All'); setIsDropdownOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === 'All' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                        >
+                          All Cities
+                        </button>
+                        {Array.from(new Set(members.map(m => m.city).filter(Boolean))).map(city => (
+                          <button 
+                            key={city}
+                            type="button"
+                            onClick={() => { setSelectedCity(city); setIsDropdownOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === city ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                          >
+                            {city}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Batch Actions Row */}
+            <div className="bg-slate-50 p-2.5 rounded-xl flex flex-wrap gap-2 items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500">
+                {activeDirectoryTab === 'members' && `${filteredMembers.length} Members`}
+                {activeDirectoryTab === 'presidents' && `${filteredPresidents.length} Presidents`}
+                {activeDirectoryTab === 'groups' && `${filteredGroups.length} Groups`}
+                {activeDirectoryTab === 'friends' && `${filteredFriends.length} Friends`}
+              </span>
+              
+              <div className="flex gap-2">
+                {activeDirectoryTab === 'members' && (
+                  <>
+                    {selectedCity !== 'All' && (
+                      <button 
+                        onClick={handleInviteAllInCity}
+                        type="button"
+                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                          isAllInCityInvited 
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                        }`}
+                      >
+                        {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleInviteAllMembers}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                        isAllMembersInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
+                    </button>
+                  </>
+                )}
+                {activeDirectoryTab === 'presidents' && (
+                  <button 
+                    onClick={handleInviteAllPresidents}
+                    type="button"
+                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                      isAllPresidentsInvited 
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
+                  </button>
+                )}
+                {activeDirectoryTab === 'groups' && (
+                  <button 
+                    onClick={handleInviteAllGroups}
+                    type="button"
+                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                      isAllGroupsInvited 
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
+                  </button>
+                )}
+                {activeDirectoryTab === 'friends' && (
+                  <button 
+                    onClick={handleInviteAllFriends}
+                    type="button"
+                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                      isAllFriendsInvited 
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Directory Lists */}
+            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+              
+              {/* Members Tab */}
+              {activeDirectoryTab === 'members' && filteredMembers.map(member => {
+                const isInvited = invitedMemberIds.includes(member.id);
+                const isOriginalInvited = (inv.invitedMemberIds || []).includes(member.id);
+                return (
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-extrabold flex items-center justify-center text-[12px] border border-indigo-100/30 uppercase">
+                        {member.initials}
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-slate-800">{member.name}</h4>
+                        <p className="text-[11px] text-slate-500 font-semibold">{member.profession} • {member.city}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      disabled={isOriginalInvited}
+                      onClick={() => handleToggleInvite(member)}
+                      className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale ${
+                        isInvited 
+                          ? isOriginalInvited 
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' 
+                            : 'bg-emerald-500 text-white shadow-md' 
+                          : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Presidents Tab */}
+              {activeDirectoryTab === 'presidents' && filteredPresidents.map(president => {
+                const isInvited = invitedMemberIds.includes(president.id);
+                const isOriginalInvited = (inv.invitedMemberIds || []).includes(president.id);
+                return (
+                  <div key={president.id} className="flex items-center justify-between p-3 bg-indigo-50/20 border border-indigo-100/40 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white font-extrabold flex items-center justify-center text-[12px] border border-amber-600 shadow-sm uppercase shrink-0">
+                        👑
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5">
+                          {president.name}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-semibold">{president.role} • City: {president.city}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      disabled={isOriginalInvited}
+                      onClick={() => handleToggleInvite(president)}
+                      className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                        isInvited 
+                          ? isOriginalInvited 
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' 
+                            : 'bg-emerald-500 text-white shadow-md' 
+                          : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Groups Tab */}
+              {activeDirectoryTab === 'groups' && filteredGroups.map(group => {
+                const isInvited = invitedGroupIds.includes(group.id);
+                const isOriginalInvited = (inv.invitedGroupIds || []).includes(group.id);
+                return (
+                  <div key={group.id} className="flex items-center justify-between p-3 bg-purple-50/20 border border-purple-100/40 rounded-xl hover:border-purple-200 hover:bg-white transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 font-extrabold flex items-center justify-center text-[12px] border border-purple-250 uppercase shrink-0">
+                        👥
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-slate-800">{group.name}</h4>
+                        <p className="text-[11px] text-slate-500 font-semibold">{group.category} • {group.members || 0} Members</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      disabled={isOriginalInvited}
+                      onClick={() => handleToggleGroupInvite(group)}
+                      className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                        isInvited 
+                          ? isOriginalInvited 
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' 
+                            : 'bg-emerald-500 text-white shadow-md' 
+                          : 'bg-white text-purple-600 border border-purple-100 hover:bg-purple-50'
+                      }`}
+                    >
+                      {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite Group'}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Friends Tab */}
+              {activeDirectoryTab === 'friends' && filteredFriends.map(friend => {
+                const isInvited = invitedMemberIds.includes(friend.id);
+                const isOriginalInvited = (inv.invitedMemberIds || []).includes(friend.id);
+                return (
+                  <div key={friend.id} className="flex items-center justify-between p-3 bg-pink-50/20 border border-pink-100/40 rounded-xl hover:border-pink-200 hover:bg-white transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-700 font-extrabold flex items-center justify-center text-[12px] border border-pink-250 uppercase shrink-0">
+                        {friend.initials}
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-bold text-slate-800">{friend.name}</h4>
+                        <p className="text-[11px] text-slate-500 font-semibold">{friend.profession} • {friend.city}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      disabled={isOriginalInvited}
+                      onClick={() => handleToggleInvite(friend)}
+                      className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                        isInvited 
+                          ? isOriginalInvited 
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' 
+                            : 'bg-emerald-500 text-white shadow-md' 
+                          : 'bg-white text-pink-600 border border-pink-100 hover:bg-pink-50'
+                      }`}
+                    >
+                      {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Empty States */}
+              {activeDirectoryTab === 'members' && filteredMembers.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-[12px]">No members found in {selectedCity}.</div>
+              )}
+              {activeDirectoryTab === 'presidents' && filteredPresidents.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-[12px]">No presidents found in {selectedCity}.</div>
+              )}
+              {activeDirectoryTab === 'groups' && filteredGroups.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-[12px]">No groups found.</div>
+              )}
+              {activeDirectoryTab === 'friends' && filteredFriends.length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-[12px]">No friends found.</div>
+              )}
+
+            </div>
+
+            {/* Batch Submit Button for Detail Page */}
+            <button 
+              type="button"
+              onClick={handleSaveInvitations}
+              className="w-full bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[13px] py-3.5 rounded-2xl shadow-sm transition-all press-scale mt-3 flex items-center justify-center gap-1.5 animate-fade-in"
+            >
+              <Check size={16} strokeWidth={3} /> Send Invitations
+            </button>
+          </div>
+        )}
+
       </div>
+      {toast.show && (
+        <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 text-white text-[12px] font-black px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in ${
+          toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-slate-800 shadow-slate-800/20'
+        }`}>
+          <Check size={14} strokeWidth={3} className="shrink-0" />
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

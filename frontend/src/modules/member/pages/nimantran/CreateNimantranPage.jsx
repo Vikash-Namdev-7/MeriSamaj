@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Upload, MapPin, Search, Check, X, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Search, Check, X, CheckCircle2, UserCheck, Users } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 
 export default function CreateNimantranPage() {
   const navigate = useNavigate();
-  const { createInvitation, members, currentUser, addNotification } = useData();
+  const { createInvitation, members, currentUser, addNotification, groups, addInvitesToInvitation } = useData();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -13,7 +13,6 @@ export default function CreateNimantranPage() {
     date: '',
     timeFood: '',
     timeProgram: '',
-    timeOther: '',
     location: '',
     mapLink: '',
     contact: '',
@@ -25,11 +24,13 @@ export default function CreateNimantranPage() {
   const [isCreated, setIsCreated] = useState(false);
   const [createdInv, setCreatedInv] = useState(null);
   
-  // Member inviting states
+  // Member & President inviting states
   const [invitedMemberIds, setInvitedMemberIds] = useState([]);
+  const [invitedGroupIds, setInvitedGroupIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeDirectoryTab, setActiveDirectoryTab] = useState('members'); // members | presidents | groups | friends
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -68,8 +69,15 @@ export default function CreateNimantranPage() {
       return;
     }
 
+    const generatedId = `nim${Date.now()}`;
     const newInvitation = {
       ...formData,
+      id: generatedId,
+      creatorId: currentUser.id,
+      status: 'Pending',
+      rsvps: [],
+      invitedMemberIds: [],
+      invitedGroupIds: [],
       // Support backward compatibility (old code might expect groomName/brideName/familyName)
       groomName: formData.title.split('&')[0]?.trim() || formData.title,
       brideName: formData.title.split('&')[1]?.trim() || '',
@@ -84,45 +92,168 @@ export default function CreateNimantranPage() {
   const handleToggleInvite = (member) => {
     const memberId = member.id;
     const isCurrentlyInvited = invitedMemberIds.includes(memberId);
+    let updatedIds;
     
     if (isCurrentlyInvited) {
-      setInvitedMemberIds(prev => prev.filter(id => id !== memberId));
+      updatedIds = invitedMemberIds.filter(id => id !== memberId);
     } else {
-      setInvitedMemberIds(prev => [...prev, memberId]);
-      
-      // Trigger notification for the invited member
-      addNotification({
-        type: 'nimantran',
-        title: 'आमंत्रण भेजा गया (Invitation Sent)',
-        message: `${member.name} को "${createdInv?.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
-      });
+      updatedIds = [...invitedMemberIds, memberId];
+    }
+    
+    setInvitedMemberIds(updatedIds);
+  };
+
+  const handleToggleGroupInvite = (group) => {
+    const groupId = group.id;
+    const isCurrentlyInvited = invitedGroupIds.includes(groupId);
+    let updatedIds;
+    
+    if (isCurrentlyInvited) {
+      updatedIds = invitedGroupIds.filter(id => id !== groupId);
+    } else {
+      updatedIds = [...invitedGroupIds, groupId];
+    }
+    
+    setInvitedGroupIds(updatedIds);
+  };
+
+  // Resolve Community Surname to build mock presidents list
+  const getCommunitySurname = (community) => {
+    if (!community) return 'Agrawal';
+    if (community.includes('Mali')) return 'Mali';
+    if (community.includes('Gupta')) return 'Gupta';
+    if (community.includes('Sharma')) return 'Sharma';
+    if (community.includes('Jain')) return 'Jain';
+    if (community.includes('Patel')) return 'Patel';
+    if (community.includes('Verma')) return 'Verma';
+    return 'Agrawal';
+  };
+  const activeSurname = currentUser ? getCommunitySurname(currentUser.community) : 'Agrawal';
+
+  // Presidents list definitions
+  const mainPresident = {
+    id: 'pres_main',
+    name: `Shri Mohan Lal ${activeSurname}`,
+    role: 'Main Samaj President (मुख्य समाज अध्यक्ष)',
+    city: 'Indore',
+    initials: 'ML',
+    isPresident: true
+  };
+
+  const cityPresidents = [
+    { id: 'pres_indore', name: `Shri Mohan Lal ${activeSurname}`, role: 'Indore President (इंदौर अध्यक्ष)', city: 'Indore', initials: 'ML', isPresident: true },
+    { id: 'pres_jaipur', name: `Smt. Kamla ${activeSurname}`, role: 'Jaipur President (जयपुर अध्यक्ष)', city: 'Jaipur', initials: 'KA', isPresident: true },
+    { id: 'pres_bhopal', name: `Shri Kailash ${activeSurname}`, role: 'Bhopal President (भोपाल अध्यक्ष)', city: 'Bhopal', initials: 'KA', isPresident: true },
+    { id: 'pres_ujjain', name: `Shri Ghanshyam ${activeSurname}`, role: 'Ujjain President (उज्जैन अध्यक्ष)', city: 'Ujjain', initials: 'GA', isPresident: true },
+    { id: 'pres_gwalior', name: `Shri Omprakash ${activeSurname}`, role: 'Gwalior President (ग्वालियर अध्यक्ष)', city: 'Gwalior', initials: 'OA', isPresident: true },
+  ];
+
+  const presidents = [mainPresident, ...cityPresidents];
+
+  // Friends & Chats list: members who are followed or verified
+  const friends = members.filter(m => currentUser.followingList?.includes(m.id) || m.isVerified);
+
+  // Filter lists based on tab, search, and city
+  const filteredMembers = members.filter(member => {
+    if (member.id === currentUser?.id) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return member.name?.toLowerCase().includes(q) || member.profession?.toLowerCase().includes(q) || member.city?.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && member.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredPresidents = presidents.filter(p => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.role.toLowerCase().includes(q) || p.city.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && p.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredFriends = friends.filter(friend => {
+    if (friend.id === currentUser?.id) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return friend.name?.toLowerCase().includes(q) || friend.profession?.toLowerCase().includes(q) || friend.city?.toLowerCase().includes(q);
+    }
+    if (selectedCity !== 'All' && friend.city !== selectedCity) return false;
+    return true;
+  });
+
+  const filteredGroups = groups.filter(group => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return group.name?.toLowerCase().includes(q) || group.category?.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  // Toggling batch button states (check if all filtered ones are selected)
+  const isAllPresidentsInvited = filteredPresidents.length > 0 && filteredPresidents.every(p => invitedMemberIds.includes(p.id));
+  const isAllInCityInvited = filteredMembers.length > 0 && filteredMembers.every(m => invitedMemberIds.includes(m.id));
+  const isAllMembersInvited = filteredMembers.length > 0 && filteredMembers.every(m => invitedMemberIds.includes(m.id));
+  const isAllGroupsInvited = filteredGroups.length > 0 && filteredGroups.every(g => invitedGroupIds.includes(g.id));
+  const isAllFriendsInvited = filteredFriends.length > 0 && filteredFriends.every(f => invitedMemberIds.includes(f.id));
+
+  // Batch Select Actions
+  const handleInviteAllPresidents = () => {
+    if (isAllPresidentsInvited) {
+      const matchingIds = filteredPresidents.map(p => p.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id)));
+    } else {
+      const uninvited = filteredPresidents.filter(p => !invitedMemberIds.includes(p.id));
+      const newIds = uninvited.map(p => p.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
     }
   };
 
-  // Extract unique cities from members list
-  const uniqueCities = Array.from(new Set(members.map(m => m.city).filter(Boolean)));
-
-  // Filter members by search and selected city
-  const filteredMembers = members.filter(member => {
-    // Exclude current user from inviting themselves
-    if (member.id === currentUser?.id) return false;
-
-    // Search query match
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      const matchName = member.name?.toLowerCase().includes(lowerQuery);
-      const matchProfession = member.profession?.toLowerCase().includes(lowerQuery);
-      const matchCity = member.city?.toLowerCase().includes(lowerQuery);
-      if (!matchName && !matchProfession && !matchCity) return false;
+  const handleInviteAllInCity = () => {
+    if (isAllInCityInvited) {
+      const matchingIds = filteredMembers.map(m => m.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id)));
+    } else {
+      const uninvited = filteredMembers.filter(m => !invitedMemberIds.includes(m.id));
+      const newIds = uninvited.map(m => m.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
     }
+  };
 
-    // City match
-    if (selectedCity !== 'All') {
-      if (member.city !== selectedCity) return false;
+  const handleInviteAllMembers = () => {
+    if (isAllMembersInvited) {
+      const matchingIds = filteredMembers.map(m => m.id);
+      setInvitedMemberIds(prev => prev.filter(id => !matchingIds.includes(id)));
+    } else {
+      const uninvited = filteredMembers.filter(m => !invitedMemberIds.includes(m.id));
+      const newIds = uninvited.map(m => m.id);
+      setInvitedMemberIds(prev => [...prev, ...newIds]);
     }
+  };
 
-    return true;
-  });
+  const handleInviteAllGroups = () => {
+    if (isAllGroupsInvited) {
+      const matchingIds = filteredGroups.map(g => g.id);
+      setInvitedGroupIds(prev => prev.filter(id => !matchingIds.includes(id)));
+    } else {
+      const uninvited = filteredGroups.filter(g => !invitedGroupIds.includes(g.id));
+      const newIds = uninvited.map(g => g.id);
+      setInvitedGroupIds(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const handleInviteAllFriends = () => {
+    if (isAllFriendsInvited) {
+      uninvitedFriendsInFilter.forEach(f => {
+        addNotification({
+          type: 'nimantran',
+          title: 'मित्र को आमंत्रण (Friend Invited)',
+          message: `${f.name} को "${createdInv?.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
+        });
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -228,7 +359,7 @@ export default function CreateNimantranPage() {
               </div>
 
               {/* Event Schedules / Timings */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-500">Feast Time</label>
                   <input 
@@ -245,16 +376,6 @@ export default function CreateNimantranPage() {
                     type="time"
                     name="timeProgram"
                     value={formData.timeProgram}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500">Other Time</label>
-                  <input 
-                    type="time"
-                    name="timeOther"
-                    value={formData.timeOther}
                     onChange={handleChange}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                   />
@@ -329,9 +450,9 @@ export default function CreateNimantranPage() {
             {/* Success message */}
             <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex flex-col items-center text-center gap-2">
               <CheckCircle2 size={44} className="text-emerald-500" />
-              <h2 className="text-[16px] font-black text-emerald-800">आमंत्रण सफलतापूर्वक बनाया गया!</h2>
+              <h2 className="text-[16px] font-black text-emerald-800">Invitation Created Successfully!</h2>
               <p className="text-[12px] text-emerald-700 font-semibold">
-                Your invitation is successfully created and live. You can now search and invite community members.
+                Your invitation is successfully created. You can now invite Samaj members, leaders, and groups.
               </p>
             </div>
 
@@ -362,15 +483,35 @@ export default function CreateNimantranPage() {
               </div>
             </div>
 
-            {/* Member Inviting Directory */}
+            {/* Member Inviting Directory with Tabs */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <h3 className="font-black text-slate-800 text-[14px]">
-                  {currentUser?.community || 'Samaj'} Members Directory
+                  {currentUser?.community || 'Samaj'} Directory
                 </h3>
-                <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-lg">
-                  {filteredMembers.length} Members
-                </span>
+              </div>
+
+              {/* Directory Tabs */}
+              <div className="flex border-b border-slate-100 bg-slate-50 p-1 rounded-xl">
+                {[
+                  { id: 'members', label: 'Members' },
+                  { id: 'presidents', label: 'Presidents' },
+                  { id: 'groups', label: 'Groups' },
+                  { id: 'friends', label: 'Friends' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => { setActiveDirectoryTab(tab.id); setSearchQuery(''); }}
+                    className={`flex-1 py-2 text-[11px] font-black rounded-lg transition-all text-center ${
+                      activeDirectoryTab === tab.id 
+                        ? 'bg-white text-indigo-600 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
               {/* Search & City Filter Dropdown Row */}
@@ -378,7 +519,7 @@ export default function CreateNimantranPage() {
                 <div className="relative flex-1">
                   <input 
                     type="text" 
-                    placeholder="Search by name, place..." 
+                    placeholder={activeDirectoryTab === 'groups' ? "Search groups..." : "Search by name, place..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-[13px] outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-800"
@@ -386,53 +527,137 @@ export default function CreateNimantranPage() {
                   <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 </div>
 
-                <div className="relative">
-                  <button 
-                    type="button"
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 flex items-center gap-1.5 hover:bg-slate-100 hover:border-slate-300 transition-colors h-full press-scale whitespace-nowrap"
-                  >
-                    <span>📍 {selectedCity === 'All' ? 'All Cities' : selectedCity}</span>
-                    <span className="text-[9px] text-slate-400">▼</span>
-                  </button>
-                  
-                  {isDropdownOpen && (
-                    <>
-                      {/* Overlay Backdrop to close drop down when clicking outside */}
-                      <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
-                        <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                          Select City
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={() => { setSelectedCity('All'); setIsDropdownOpen(false); }}
-                          className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === 'All' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                        >
-                          All Cities ({members.length})
-                        </button>
-                        {uniqueCities.map(city => (
+                {/* Hide city dropdown for group & friends tabs */}
+                {['members', 'presidents'].includes(activeDirectoryTab) && (
+                  <div className="relative">
+                    <button 
+                      type="button"
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 flex items-center gap-1.5 hover:bg-slate-100 hover:border-slate-300 transition-colors h-full press-scale whitespace-nowrap"
+                    >
+                      <span>📍 {selectedCity === 'All' ? 'All Cities' : selectedCity}</span>
+                      <span className="text-[9px] text-slate-400">▼</span>
+                    </button>
+                    
+                    {isDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                        <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
+                          <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            Select City
+                          </div>
                           <button 
-                            key={city}
                             type="button"
-                            onClick={() => { setSelectedCity(city); setIsDropdownOpen(false); }}
-                            className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === city ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                            onClick={() => { setSelectedCity('All'); setIsDropdownOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === 'All' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
                           >
-                            {city} ({members.filter(m => m.city === city).length})
+                            All Cities
                           </button>
-                        ))}
-                      </div>
+                          {uniqueCities.map(city => (
+                            <button 
+                              key={city}
+                              type="button"
+                              onClick={() => { setSelectedCity(city); setIsDropdownOpen(false); }}
+                              className={`w-full text-left px-4 py-2 text-[12px] font-bold transition-colors ${selectedCity === city ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                            >
+                              {city}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Batch Actions Row */}
+              <div className="bg-slate-50 p-2.5 rounded-xl flex flex-wrap gap-2 items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500">
+                  {activeDirectoryTab === 'members' && `${filteredMembers.length} Members filtered`}
+                  {activeDirectoryTab === 'presidents' && `${filteredPresidents.length} Presidents filtered`}
+                  {activeDirectoryTab === 'groups' && `${filteredGroups.length} Groups available`}
+                  {activeDirectoryTab === 'friends' && `${filteredFriends.length} Friends filtered`}
+                </span>
+                
+                <div className="flex gap-2">
+                  {activeDirectoryTab === 'members' && (
+                    <>
+                      {selectedCity !== 'All' && (
+                        <button 
+                          onClick={handleInviteAllInCity}
+                          type="button"
+                          className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                            isAllInCityInvited 
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                          }`}
+                        >
+                          <MapPin size={10} /> {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                        </button>
+                      )}
+                      <button 
+                        onClick={handleInviteAllMembers}
+                        type="button"
+                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                          isAllMembersInvited 
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        <Users size={10} /> {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
+                      </button>
                     </>
+                  )}
+                  {activeDirectoryTab === 'presidents' && (
+                    <button 
+                      onClick={handleInviteAllPresidents}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                        isAllPresidentsInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      <UserCheck size={10} /> {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
+                    </button>
+                  )}
+                  {activeDirectoryTab === 'groups' && (
+                    <button 
+                      onClick={handleInviteAllGroups}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                        isAllGroupsInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      <Users size={10} /> {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
+                    </button>
+                  )}
+                  {activeDirectoryTab === 'friends' && (
+                    <button 
+                      onClick={handleInviteAllFriends}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                        isAllFriendsInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      <UserCheck size={10} /> {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
+                    </button>
                   )}
                 </div>
               </div>
 
-              {/* Members List */}
+              {/* Dynamic Lists Display */}
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                {filteredMembers.map(member => {
+                
+                {/* 1. MEMBERS LIST */}
+                {activeDirectoryTab === 'members' && filteredMembers.map(member => {
                   const isInvited = invitedMemberIds.includes(member.id);
                   return (
-                    <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all animate-fade-in">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-extrabold flex items-center justify-center text-[12px] border border-indigo-100/30 uppercase">
                           {member.initials}
@@ -444,37 +669,156 @@ export default function CreateNimantranPage() {
                           </p>
                         </div>
                       </div>
-                      
                       <button 
+                        type="button"
                         onClick={() => handleToggleInvite(member)}
                         className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale ${
-                          isInvited 
-                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-250/20' 
-                            : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'
+                          isInvited ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'
                         }`}
                       >
-                        {isInvited ? (
-                          <>
-                            <Check size={12} strokeWidth={3} /> Invited
-                          </>
-                        ) : (
-                          'Invite'
-                        )}
+                        {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
                       </button>
                     </div>
                   );
                 })}
-                {filteredMembers.length === 0 && (
-                  <div className="text-center py-10 text-slate-400 text-[12px] font-semibold flex flex-col items-center justify-center">
-                    <p>No community members found in {selectedCity === 'All' ? 'any city' : selectedCity}.</p>
-                  </div>
+
+                {/* 2. PRESIDENTS LIST */}
+                {activeDirectoryTab === 'presidents' && filteredPresidents.map(president => {
+                  const isInvited = invitedMemberIds.includes(president.id);
+                  return (
+                    <div key={president.id} className="flex items-center justify-between p-3 bg-indigo-50/20 border border-indigo-100/40 rounded-xl hover:border-indigo-200 hover:bg-white transition-all animate-fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white font-extrabold flex items-center justify-center text-[12px] border border-amber-600 shadow-sm uppercase shrink-0">
+                          👑
+                        </div>
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5">
+                            {president.name} 
+                            <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">President</span>
+                          </h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">
+                            {president.role} • City: {president.city}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleToggleInvite(president)}
+                        className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                          isInvited ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* 3. GROUPS LIST */}
+                {activeDirectoryTab === 'groups' && filteredGroups.map(group => {
+                  const isInvited = invitedGroupIds.includes(group.id);
+                  return (
+                    <div key={group.id} className="flex items-center justify-between p-3 bg-purple-50/20 border border-purple-100/40 rounded-xl hover:border-purple-200 hover:bg-white transition-all animate-fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 font-extrabold flex items-center justify-center text-[12px] border border-purple-250 uppercase shrink-0">
+                          👥
+                        </div>
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800">{group.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">
+                            {group.category || 'General'} • {group.members || 0} Members
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleToggleGroupInvite(group)}
+                        className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                          isInvited ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-purple-600 border border-purple-100 hover:bg-purple-50'
+                        }`}
+                      >
+                        {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite Group'}
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* 4. FRIENDS & CHATS LIST */}
+                {activeDirectoryTab === 'friends' && filteredFriends.map(friend => {
+                  const isInvited = invitedMemberIds.includes(friend.id);
+                  return (
+                    <div key={friend.id} className="flex items-center justify-between p-3 bg-pink-50/20 border border-pink-100/40 rounded-xl hover:border-pink-200 hover:bg-white transition-all animate-fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-700 font-extrabold flex items-center justify-center text-[12px] border border-pink-250 uppercase shrink-0">
+                          {friend.initials}
+                        </div>
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800">{friend.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">
+                            {friend.profession || 'Friend'} • {friend.city || 'No city'}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleToggleInvite(friend)}
+                        className={`px-4 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all press-scale shrink-0 ${
+                          isInvited ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-pink-600 border border-pink-100 hover:bg-pink-50'
+                        }`}
+                      >
+                        {isInvited ? <><Check size={12} strokeWidth={3} /> Invited</> : 'Invite'}
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* EMPTY FALLBACKS */}
+                {activeDirectoryTab === 'members' && filteredMembers.length === 0 && (
+                  <div className="text-center py-10 text-slate-400 text-[12px] font-semibold">No members found in {selectedCity === 'All' ? 'any city' : selectedCity}.</div>
+                )}
+                {activeDirectoryTab === 'presidents' && filteredPresidents.length === 0 && (
+                  <div className="text-center py-10 text-slate-400 text-[12px] font-semibold">No presidents found in {selectedCity === 'All' ? 'any city' : selectedCity}.</div>
+                )}
+                {activeDirectoryTab === 'groups' && filteredGroups.length === 0 && (
+                  <div className="text-center py-10 text-slate-400 text-[12px] font-semibold">No groups found matching filter.</div>
+                )}
+                {activeDirectoryTab === 'friends' && filteredFriends.length === 0 && (
+                  <div className="text-center py-10 text-slate-400 text-[12px] font-semibold">No friends found in {selectedCity === 'All' ? 'any city' : selectedCity}.</div>
                 )}
               </div>
             </div>
 
             {/* Actions */}
             <button 
-              onClick={() => navigate('/member/nimantran')}
+              onClick={() => {
+                // Save invited members and groups to context
+                addInvitesToInvitation(createdInv.id, invitedMemberIds, invitedGroupIds);
+                
+                // Dispatch all notifications at once
+                invitedMemberIds.forEach(memberId => {
+                  const member = members.find(m => m.id === memberId) || presidents.find(p => p.id === memberId);
+                  if (member) {
+                    addNotification({
+                      type: 'nimantran',
+                      title: 'नया आमंत्रण (New Invitation)',
+                      message: `आपको "${createdInv.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
+                    });
+                  }
+                });
+
+                invitedGroupIds.forEach(groupId => {
+                  const group = groups.find(g => g.id === groupId);
+                  if (group) {
+                    addNotification({
+                      type: 'nimantran',
+                      title: 'ग्रुप को आमंत्रण (Group Invited)',
+                      message: `आपके "${group.name}" ग्रुप को "${createdInv.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
+                    });
+                  }
+                });
+
+                navigate('/member/nimantran');
+              }}
               className="w-full bg-slate-800 text-white font-black text-[15px] py-4 rounded-xl shadow-lg hover:bg-slate-900 active:scale-95 transition-all"
             >
               Done &amp; View All Invitations

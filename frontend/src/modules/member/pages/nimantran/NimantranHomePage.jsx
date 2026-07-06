@@ -7,11 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function NimantranHomePage() {
   const navigate = useNavigate();
   const { invitations, currentUser, setMobileMenuOpen, getUnreadCountForModule } = useData();
-  const [activeFilter, setActiveFilter] = useState('Upcoming');
+  const [activeFilter, setActiveFilter] = useState('My Invitations');
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const filters = ['Today', 'This Week', 'This Month', 'Upcoming', 'Past'];
+  const filters = ['My Invitations', 'Today', 'This Week', 'This Month', 'Upcoming', 'Past'];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -47,6 +47,9 @@ export default function NimantranHomePage() {
     }
     if (activeFilter === 'Today') {
       return invDate.getTime() === today.getTime();
+    }
+    if (activeFilter === 'My Invitations') {
+      return inv.creatorId === currentUser.id;
     }
     // Simple mock filters for this week/month
     return true; 

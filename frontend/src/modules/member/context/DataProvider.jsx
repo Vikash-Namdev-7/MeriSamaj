@@ -1344,13 +1344,28 @@ export const DataProvider = ({ children }) => {
 
   const createInvitation = (invitationData) => {
     const newInv = {
-      ...invitationData,
-      id: `nim${Date.now()}`,
-      creatorId: currentUser.id,
       status: 'Pending',
-      rsvps: []
+      rsvps: [],
+      invitedMemberIds: [],
+      invitedGroupIds: [],
+      ...invitationData,
+      id: invitationData.id || `nim${Date.now()}`,
+      creatorId: invitationData.creatorId || currentUser.id,
     };
     setInvitations(prev => [newInv, ...prev]);
+  };
+
+  const addInvitesToInvitation = (invitationId, memberIds = [], groupIds = []) => {
+    setInvitations(prev => prev.map(inv => {
+      if (inv.id === invitationId) {
+        return {
+          ...inv,
+          invitedMemberIds: Array.from(new Set([...(inv.invitedMemberIds || []), ...memberIds])),
+          invitedGroupIds: Array.from(new Set([...(inv.invitedGroupIds || []), ...groupIds]))
+        };
+      }
+      return inv;
+    }));
   };
 
   const updateInvitationStatus = (invitationId, status) => {
@@ -1389,6 +1404,7 @@ export const DataProvider = ({ children }) => {
     sendChatMessage,
     invitations,
     createInvitation,
+    addInvitesToInvitation,
     updateInvitationRSVP,
     updateInvitationStatus,
     obituaries,

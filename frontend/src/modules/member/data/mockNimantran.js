@@ -1,11 +1,11 @@
 export const mockNimantran = [
   {
     id: 'nim1',
-    creatorId: 'u1', // Admin or whoever created it
+    creatorId: 'u1',
     groomName: 'Rahul',
     brideName: 'Priya',
     familyName: 'Shri Mohanlal Sharma',
-    date: '2027-02-15', // Format YYYY-MM-DD
+    date: '2027-02-15',
     timeFood: '12:30 PM',
     timeBaraat: '07:00 PM',
     timePhere: '10:30 PM',
@@ -13,12 +13,14 @@ export const mockNimantran = [
     mapLink: 'https://maps.google.com',
     contact: '9999999999',
     message: 'You are cordially invited.',
-    status: 'Pending', // Pending, Approved, Rejected
+    status: 'Pending',
     image: null,
     rsvps: [
       { memberId: 'm1', status: 'attending' },
       { memberId: 'm2', status: 'attending_family' },
-    ]
+    ],
+    invitedMemberIds: [],
+    invitedGroupIds: []
   },
   {
     id: 'nim2',
@@ -38,7 +40,9 @@ export const mockNimantran = [
     image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
     rsvps: [
       { memberId: 'u1', status: 'not_attending' },
-    ]
+    ],
+    invitedMemberIds: ['u1'],
+    invitedGroupIds: []
   },
   {
     id: 'nim3',
@@ -56,7 +60,9 @@ export const mockNimantran = [
     message: 'Please grace the occasion with your presence.',
     status: 'Rejected',
     image: null,
-    rsvps: []
+    rsvps: [],
+    invitedMemberIds: [],
+    invitedGroupIds: []
   },
   {
     id: 'nim4',
@@ -76,6 +82,26 @@ export const mockNimantran = [
     image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=800&auto=format&fit=crop',
     rsvps: [
       { memberId: 'm2', status: 'attending' }
-    ]
+    ],
+    invitedMemberIds: ['m2'],
+    invitedGroupIds: []
+  },
+  {
+    id: 'nim5',
+    creatorId: 'u1',
+    title: 'Grand Family Feast & Dinner',
+    hostName: 'Rajesh Agrawal',
+    date: '2027-04-12',
+    timeFood: '08:00 PM',
+    timeProgram: '07:00 PM',
+    location: 'Golden Tulip Hotel, Vijay Nagar, Indore, MP',
+    mapLink: 'https://maps.google.com',
+    contact: '9827012345',
+    message: 'Join us for a beautiful evening filled with delicious food and family program.',
+    status: 'Approved',
+    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=800&auto=format&fit=crop',
+    rsvps: [],
+    invitedMemberIds: ['m1', 'm2', 'm3', 'pres_jaipur', 'pres_bhopal', 'm4', 'm5'],
+    invitedGroupIds: ['g1']
   }
 ];
