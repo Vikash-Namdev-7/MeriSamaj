@@ -11,6 +11,7 @@ import { StoryViewer } from '../../components/common/StoryViewer';
 import { CityLandscape } from '../../components/common/CityLandscape';
 import { mockAdmins as mockAdminsRaw } from '../../data/mockUsers';
 import { mockSuccessStories } from '../../data/mockMatrimonial';
+import ReferAndEarnBanner from './ReferAndEarnBanner';
 // Removed broken mockFundData import
 
 
@@ -969,8 +970,13 @@ const HomePage = () => {
       {/* ─── SECTION DIVIDER ─── */}
       <div className="mx-5 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
+      {/* ─── REFER & EARN BANNER ─── */}
+      <div className="px-3 mb-8">
+        <ReferAndEarnBanner />
+      </div>
 
-
+      {/* ─── SECTION DIVIDER ─── */}
+      <div className="mx-5 mt-2 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── END OF FEED ILLUSTRATION ─── */}
       <div className="mt-8 relative w-full h-[450px] flex flex-col items-center justify-end overflow-hidden pb-[160px] -mb-[120px] bg-gradient-to-b from-transparent to-purple-50/50">
