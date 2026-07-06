@@ -13,6 +13,15 @@ export default function NimantranHomePage() {
   
   const filters = ['My Invitations', 'Today', 'This Week', 'This Month', 'Upcoming', 'Past'];
 
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return new Date(0);
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    }
+    return new Date(dateStr);
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -22,7 +31,7 @@ export default function NimantranHomePage() {
       return false;
     }
     
-    const invDate = new Date(inv.date);
+    const invDate = parseLocalDate(inv.date);
     invDate.setHours(0, 0, 0, 0);
 
     if (searchQuery) {
@@ -48,10 +57,20 @@ export default function NimantranHomePage() {
     if (activeFilter === 'Today') {
       return invDate.getTime() === today.getTime();
     }
+    if (activeFilter === 'This Week') {
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      return invDate >= startOfWeek && invDate <= endOfWeek;
+    }
+    if (activeFilter === 'This Month') {
+      return invDate.getMonth() === today.getMonth() && invDate.getFullYear() === today.getFullYear();
+    }
     if (activeFilter === 'My Invitations') {
       return inv.creatorId === currentUser.id;
     }
-    // Simple mock filters for this week/month
     return true; 
   });
 
