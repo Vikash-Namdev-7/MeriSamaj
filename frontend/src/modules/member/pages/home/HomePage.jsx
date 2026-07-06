@@ -672,8 +672,8 @@ const HomePage = () => {
       {/* ─── YOUR LEADERS (Samaj Netrutva) ─── */}
       <div className="px-5 mb-8">
         {(() => {
-          const president = mockAdmins.find(a => a.role === 'President' && a.city?.toLowerCase() === currentUser.city?.toLowerCase()) || mockAdmins[1];
-          const coreCommittee = mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role) && a.city?.toLowerCase() === currentUser.city?.toLowerCase());
+          const president = mockAdmins.find(a => a.role === 'President' && (currentUser.city?.toLowerCase().includes(a.city?.toLowerCase()) || a.city?.toLowerCase().includes(currentUser.city?.toLowerCase()))) || mockAdmins[1];
+          const coreCommittee = mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role) && a.city?.toLowerCase() === president.city?.toLowerCase());
           
           return (
             <div className="flex flex-col gap-5">
