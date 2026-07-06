@@ -12,6 +12,8 @@ export default function NimantranDetailPage() {
   const inv = invitations.find(i => i.id === id);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [creatorRsvpTab, setCreatorRsvpTab] = useState('attending');
+  const [selectedStatus, setSelectedStatus] = useState(null);
 
   // Directory States for inviting more members later
   const [invitedMemberIds, setInvitedMemberIds] = useState([]);
@@ -65,14 +67,30 @@ export default function NimantranDetailPage() {
 
   const currentRSVP = (inv.rsvps || []).find(r => r.memberId === currentUser.id)?.status;
 
+  useEffect(() => {
+    setSelectedStatus(currentRSVP || null);
+  }, [currentRSVP]);
+
   const handleRSVP = (status) => {
-    updateInvitationRSVP(inv.id, status);
+    setSelectedStatus(status);
+  };
+
+  const handleSubmitRSVP = () => {
+    if (selectedStatus) {
+      updateInvitationRSVP(inv.id, selectedStatus);
+      showToast('RSVP response submitted successfully!', 'success');
+    }
   };
 
   const rsvpMembers = (inv.rsvps || []).map(r => {
     const m = members.find(mem => mem.id === r.memberId);
     return m ? { ...m, status: r.status } : null;
   }).filter(Boolean);
+
+  const attendingList = rsvpMembers.filter(m => m.status === 'attending');
+  const familyList = rsvpMembers.filter(m => m.status === 'attending_family');
+  const declinedList = rsvpMembers.filter(m => m.status === 'not_attending');
+  const isCreator = inv.creatorId === currentUser.id;
 
   const displayTitle = inv.title || `Wedding of ${inv.groomName} & ${inv.brideName}`;
   const displayHost = inv.hostName || inv.familyName;
@@ -512,65 +530,227 @@ export default function NimantranDetailPage() {
         </div>
 
         {/* RSVP Section */}
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
-          <h4 className="font-bold text-slate-800 text-[15px] mb-4">RSVP (Attendance)</h4>
-          
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => handleRSVP('attending')}
-              className={`w-full py-3.5 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all border-2 ${
-                currentRSVP === 'attending' 
-                  ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' 
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
-              }`}
-            >
-              I am Attending
-            </button>
-            <div className="flex gap-3">
+        {isCreator ? (
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="font-bold text-slate-800 text-[15px]">RSVP Dashboard</h4>
+                <p className="text-[11px] text-slate-500 font-semibold">Track invitation responses</p>
+              </div>
+              <span className="text-[11px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-0.5 rounded-lg">
+                Creator View
+              </span>
+            </div>
+
+            {/* Metric Cards (Tabs) */}
+            <div className="grid grid-cols-3 gap-2.5 mb-5">
+              {/* Attending Card */}
               <button 
-                onClick={() => handleRSVP('attending_family')}
-                className={`flex-1 py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-all border-2 ${
-                  currentRSVP === 'attending_family' 
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200'
+                type="button"
+                onClick={() => setCreatorRsvpTab('attending')}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                  creatorRsvpTab === 'attending'
+                    ? 'border-indigo-600 bg-indigo-50/45 text-indigo-700 shadow-sm'
+                    : 'border-slate-100 bg-slate-50/50 text-slate-500 hover:border-slate-200'
                 }`}
               >
-                With Family
+                <span className="text-xl font-black mb-1">{attendingList.length}</span>
+                <span className="text-[10px] font-bold text-center whitespace-nowrap">Attending</span>
               </button>
+
+              {/* With Family Card */}
               <button 
-                onClick={() => handleRSVP('not_attending')}
-                className={`flex-1 py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-all border-2 ${
-                  currentRSVP === 'not_attending' 
-                    ? 'border-slate-400 bg-slate-100 text-slate-700' 
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                type="button"
+                onClick={() => setCreatorRsvpTab('attending_family')}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                  creatorRsvpTab === 'attending_family'
+                    ? 'border-purple-600 bg-purple-50/45 text-purple-700 shadow-sm'
+                    : 'border-slate-100 bg-slate-50/50 text-slate-500 hover:border-slate-200'
                 }`}
               >
-                Declined
+                <span className="text-xl font-black mb-1">{familyList.length}</span>
+                <span className="text-[10px] font-bold text-center whitespace-nowrap">With Family</span>
               </button>
+
+              {/* Declined Card */}
+              <button 
+                type="button"
+                onClick={() => setCreatorRsvpTab('not_attending')}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                  creatorRsvpTab === 'not_attending'
+                    ? 'border-slate-500 bg-slate-100 text-slate-700 shadow-sm'
+                    : 'border-slate-100 bg-slate-50/50 text-slate-500 hover:border-slate-200'
+                }`}
+              >
+                <span className="text-xl font-black mb-1">{declinedList.length}</span>
+                <span className="text-[10px] font-bold text-center whitespace-nowrap">Declined</span>
+              </button>
+            </div>
+
+            {/* Selected List */}
+            <div className="space-y-2.5">
+              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                {creatorRsvpTab === 'attending' && 'Attending Members'}
+                {creatorRsvpTab === 'attending_family' && 'Attending With Family'}
+                {creatorRsvpTab === 'not_attending' && 'Declined Members'}
+              </h5>
+
+              {creatorRsvpTab === 'attending' && (
+                attendingList.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-[12px] bg-slate-50/30 rounded-2xl border border-dashed border-slate-200">
+                    No members attending yet.
+                  </div>
+                ) : (
+                  attendingList.map(member => (
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                      <div className="flex items-center gap-3">
+                        <Avatar initials={member.initials} size="md" imageUrl={member.avatar} />
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800">{member.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">{member.profession} • {member.city}</p>
+                        </div>
+                      </div>
+                      {member.phone && (
+                        <a 
+                          href={`tel:${member.phone}`}
+                          className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors press-scale"
+                        >
+                          <Phone size={14} />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )
+              )}
+
+              {creatorRsvpTab === 'attending_family' && (
+                familyList.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-[12px] bg-slate-50/30 rounded-2xl border border-dashed border-slate-200">
+                    No members attending with family yet.
+                  </div>
+                ) : (
+                  familyList.map(member => (
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                      <div className="flex items-center gap-3">
+                        <Avatar initials={member.initials} size="md" imageUrl={member.avatar} />
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800">{member.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">{member.profession} • {member.city}</p>
+                        </div>
+                      </div>
+                      {member.phone && (
+                        <a 
+                          href={`tel:${member.phone}`}
+                          className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors press-scale"
+                        >
+                          <Phone size={14} />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )
+              )}
+
+              {creatorRsvpTab === 'not_attending' && (
+                declinedList.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-[12px] bg-slate-50/30 rounded-2xl border border-dashed border-slate-200">
+                    No members declined yet.
+                  </div>
+                ) : (
+                  declinedList.map(member => (
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-white transition-all">
+                      <div className="flex items-center gap-3">
+                        <Avatar initials={member.initials} size="md" imageUrl={member.avatar} />
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800">{member.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">{member.profession} • {member.city}</p>
+                        </div>
+                      </div>
+                      {member.phone && (
+                        <a 
+                          href={`tel:${member.phone}`}
+                          className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors press-scale"
+                        >
+                          <Phone size={14} />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )
+              )}
             </div>
           </div>
-
-          {/* RSVP Members List */}
-          {rsvpMembers.length > 0 && (
-            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-              <p className="text-[13px] font-bold text-slate-600">
-                Total {inv.rsvps.length} person(s) RSVP'd
-              </p>
-              <div className="flex -space-x-2">
-                {rsvpMembers.slice(0, 4).map((member, i) => (
-                  <div key={member.id} className="relative w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden z-10" style={{ zIndex: 10 - i }}>
-                     <Avatar initials={member.initials} size="sm" imageUrl={member.avatar} />
-                  </div>
-                ))}
-                {rsvpMembers.length > 4 && (
-                  <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-bold text-slate-600 z-0 relative">
-                    +{rsvpMembers.length - 4}
-                  </div>
-                )}
+        ) : (
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+            <h4 className="font-bold text-slate-800 text-[15px] mb-4">RSVP (Attendance)</h4>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => handleRSVP('attending')}
+                className={`w-full py-3.5 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all border-2 ${
+                  selectedStatus === 'attending' 
+                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' 
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
+                }`}
+              >
+                I am Attending
+              </button>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => handleRSVP('attending_family')}
+                  className={`flex-1 py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-all border-2 ${
+                    selectedStatus === 'attending_family' 
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' 
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200'
+                  }`}
+                >
+                  With Family
+                </button>
+                <button 
+                  onClick={() => handleRSVP('not_attending')}
+                  className={`flex-1 py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-all border-2 ${
+                    selectedStatus === 'not_attending' 
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' 
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'
+                  }`}
+                >
+                  Declined
+                </button>
               </div>
             </div>
-          )}
-        </div>
+
+            {selectedStatus !== currentRSVP && (
+              <button
+                type="button"
+                onClick={handleSubmitRSVP}
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[13px] py-3 rounded-xl shadow-sm transition-all press-scale mt-4 flex items-center justify-center gap-1.5 animate-fade-in"
+              >
+                <Check size={14} strokeWidth={3} /> Submit RSVP
+              </button>
+            )}
+
+            {/* RSVP Members List */}
+            {rsvpMembers.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <p className="text-[13px] font-bold text-slate-600">
+                  Total {inv.rsvps.length} person(s) RSVP'd
+                </p>
+                <div className="flex -space-x-2">
+                  {rsvpMembers.slice(0, 4).map((member, i) => (
+                    <div key={member.id} className="relative w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden z-10" style={{ zIndex: 10 - i }}>
+                       <Avatar initials={member.initials} size="sm" imageUrl={member.avatar} />
+                    </div>
+                  ))}
+                  {rsvpMembers.length > 4 && (
+                    <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-bold text-slate-600 z-0 relative">
+                      +{rsvpMembers.length - 4}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* INVITE MORE MEMBERS SECTION (Active prior to event date) */}
         {canInviteMore && (
