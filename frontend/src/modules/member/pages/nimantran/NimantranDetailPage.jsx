@@ -10,7 +10,7 @@ export default function NimantranDetailPage() {
   const { invitations, currentUser, members, updateInvitationRSVP } = useData();
   
   const inv = invitations.find(i => i.id === id);
-  
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
@@ -52,11 +52,15 @@ export default function NimantranDetailPage() {
     return m ? { ...m, status: r.status } : null;
   }).filter(Boolean);
 
+  const displayTitle = inv.title || `Wedding of ${inv.groomName} & ${inv.brideName}`;
+  const displayHost = inv.hostName || inv.familyName;
+  const images = inv.images || (inv.image ? [inv.image] : []);
+
   const handleShare = async () => {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `${inv.groomName} & ${inv.brideName} - Invitation`,
+          title: `${displayTitle} - Invitation`,
           text: 'You are cordially invited.',
           url: window.location.href,
         });
@@ -67,6 +71,19 @@ export default function NimantranDetailPage() {
       console.log('Error sharing:', err);
     }
   };
+
+  // Build schedule list dynamically based on availability
+  const hasGroomBride = inv.groomName && inv.brideName && !inv.title;
+  const scheduleItems = [];
+  if (hasGroomBride) {
+    if (inv.timeFood) scheduleItems.push({ label: 'Reception', value: inv.timeFood });
+    if (inv.timeBaraat) scheduleItems.push({ label: 'Baraat', value: inv.timeBaraat });
+    if (inv.timePhere) scheduleItems.push({ label: 'Phere', value: inv.timePhere });
+  } else {
+    if (inv.timeFood) scheduleItems.push({ label: 'Feast Time', value: inv.timeFood });
+    if (inv.timeProgram || inv.timeBaraat) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
+    if (inv.timeOther || inv.timePhere) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
@@ -87,27 +104,62 @@ export default function NimantranDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className="p-4 space-y-4">
-        {/* Full Card */}
+      <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
+        {/* Full Card Visual */}
         <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
-          <div className="relative overflow-hidden flex flex-col items-center justify-center text-center bg-[#FFF8F0] min-h-[160px]">
-            {inv.image ? (
-              <img src={inv.image} alt="Invitation Card" className="w-full object-cover" />
+          <div className="relative overflow-hidden flex flex-col items-center justify-center text-center">
+            {images.length > 0 ? (
+              <div className="relative w-full h-72 overflow-hidden bg-slate-100 flex items-center justify-center group">
+                <img src={images[currentImgIndex]} alt="Invitation Event Card" className="w-full h-full object-cover" />
+                
+                {images.length > 1 && (
+                  <>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setCurrentImgIndex(prev => (prev - 1 + images.length) % images.length); }} 
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors text-lg"
+                    >
+                      ‹
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setCurrentImgIndex(prev => (prev + 1) % images.length); }} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors text-lg"
+                    >
+                      ›
+                    </button>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {images.map((_, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImgIndex ? 'bg-white w-3' : 'bg-white/50'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             ) : (
-              <div className="p-8 w-full h-full flex flex-col items-center justify-center relative">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#F97316 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+              <div className="p-8 w-full min-h-[220px] flex flex-col items-center justify-center relative bg-gradient-to-r from-purple-600 to-indigo-700 text-white shadow-inner">
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1.5px, transparent 1.5px)', backgroundSize: '12px 12px' }} />
                 
-                <h3 className="text-orange-800 font-bold text-[18px] mb-6 tracking-widest relative z-10">Wedding Invitation</h3>
+                {hasGroomBride ? (
+                  <>
+                    <h3 className="text-white/80 font-bold text-[14px] mb-4 tracking-widest relative z-10 uppercase">Wedding Invitation</h3>
+                    <div className="flex flex-col items-center justify-center gap-2 mb-4 relative z-10">
+                      <span className="text-3xl font-black">{inv.groomName}</span>
+                      <div className="my-1">
+                        <Heart size={20} className="text-rose-400 fill-rose-400" />
+                      </div>
+                      <span className="text-3xl font-black">{inv.brideName}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-black leading-snug max-w-[85%] relative z-10 drop-shadow-sm">{displayTitle}</h3>
+                    <p className="text-[13px] opacity-90 font-bold mt-2 z-10 uppercase tracking-wide">{displayHost}</p>
+                  </>
+                )}
                 
-                <div className="flex flex-col items-center justify-center gap-2 mb-6 relative z-10">
-                  <span className="text-4xl font-black text-rose-700">{inv.groomName}</span>
-                  <div className="my-2">
-                    <Heart size={24} className="text-rose-500 fill-rose-500" />
-                  </div>
-                  <span className="text-4xl font-black text-rose-700">{inv.brideName}</span>
-                </div>
-                
-                <p className="text-slate-600 text-[14px] font-medium mt-2 z-10">- Cordially Invited -</p>
+                <p className="text-white/70 text-[13px] font-medium mt-4 z-10 border-t border-white/20 pt-2 px-8">- Cordially Invited -</p>
               </div>
             )}
           </div>
@@ -147,17 +199,22 @@ export default function NimantranDetailPage() {
             </div>
             
             {/* Time */}
-            <div className="flex items-start gap-3 pt-3 border-t border-slate-200/50">
-              <Clock size={16} className="text-indigo-600 mt-0.5 shrink-0" />
-              <div className="w-full">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Schedule</p>
-                <div className="grid grid-cols-2 gap-y-1.5 mt-1 text-[13px]">
-                  <div className="flex items-center gap-2"><span className="w-16 text-slate-500">Reception:</span> <span className="font-bold text-slate-800">{inv.timeFood}</span></div>
-                  <div className="flex items-center gap-2"><span className="w-16 text-slate-500">Baraat:</span> <span className="font-bold text-slate-800">{inv.timeBaraat}</span></div>
-                  <div className="flex items-center gap-2"><span className="w-16 text-slate-500">Phere:</span> <span className="font-bold text-slate-800">{inv.timePhere}</span></div>
+            {scheduleItems.length > 0 && (
+              <div className="flex items-start gap-3 pt-3 border-t border-slate-200/50">
+                <Clock size={16} className="text-indigo-600 mt-0.5 shrink-0" />
+                <div className="w-full">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Schedule</p>
+                  <div className="grid grid-cols-2 gap-y-1.5 mt-1 text-[13px]">
+                    {scheduleItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="w-24 text-slate-500 font-semibold">{item.label}:</span> 
+                        <span className="font-bold text-slate-800">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Location */}
             <div className="flex items-start gap-3 pt-3 border-t border-slate-200/50">

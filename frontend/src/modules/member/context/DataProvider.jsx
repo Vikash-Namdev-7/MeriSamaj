@@ -398,7 +398,7 @@ export const DataProvider = ({ children }) => {
   const [granularPrivacy, setGranularPrivacy] = useState(() => loadState('granularPrivacy', defaultGranularPrivacy));
 
   // Invitations State
-  const [invitations, setInvitations] = useState(() => loadState('invitations', initialNimantran));
+  const [invitations, setInvitations] = useState(initialNimantran);
 
   // Sync to localStorage when state changes
   useEffect(() => saveState('currentUser', currentUser), [currentUser]);
@@ -424,7 +424,7 @@ export const DataProvider = ({ children }) => {
   useEffect(() => saveState('followRelations', followRelations), [followRelations]);
   useEffect(() => saveState('blockedUsers', blockedUsers), [blockedUsers]);
   useEffect(() => saveState('granularPrivacy', granularPrivacy), [granularPrivacy]);
-  useEffect(() => saveState('invitations', invitations), [invitations]);
+  // useEffect(() => saveState('invitations', invitations), [invitations]); // Disabled persistence so newly created cards reset on refresh
 
   // Follow System Methods
   const sendFollowRequest = (targetUserId) => {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataProvider';
-import { Mail, Search, Bell, MapPin, Heart, Plus, Calendar, Clock, ChevronLeft, User, Menu } from 'lucide-react';
+import { Mail, Search, Bell, MapPin, Plus, ChevronLeft, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function NimantranHomePage() {
@@ -27,10 +27,14 @@ export default function NimantranHomePage() {
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      if (!inv.groomName.toLowerCase().includes(lowerQuery) &&
-          !inv.brideName.toLowerCase().includes(lowerQuery) &&
-          !inv.location.toLowerCase().includes(lowerQuery) &&
-          !inv.familyName.toLowerCase().includes(lowerQuery)) {
+      const matchGroom = inv.groomName?.toLowerCase().includes(lowerQuery);
+      const matchBride = inv.brideName?.toLowerCase().includes(lowerQuery);
+      const matchTitle = inv.title?.toLowerCase().includes(lowerQuery);
+      const matchHost = inv.hostName?.toLowerCase().includes(lowerQuery);
+      const matchLocation = inv.location?.toLowerCase().includes(lowerQuery);
+      const matchFamily = inv.familyName?.toLowerCase().includes(lowerQuery);
+
+      if (!matchGroom && !matchBride && !matchTitle && !matchHost && !matchLocation && !matchFamily) {
         return false;
       }
     }
@@ -68,7 +72,7 @@ export default function NimantranHomePage() {
             <Search size={18} />
           </button>
           <button onClick={() => navigate('/member/notifications?module=nimantran')} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary relative hover:bg-purple-50 transition-all press-scale">
-            <Bell size={18} />
+            <Mail size={18} />
             {getUnreadCountForModule('nimantran') > 0 && (
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-primary" />
             )}
@@ -120,84 +124,91 @@ export default function NimantranHomePage() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 max-w-4xl mx-auto w-full">
         <AnimatePresence>
-          {filteredInvitations.map(inv => (
-            <motion.div
-              key={inv.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="card-neo overflow-hidden"
-            >
-              {/* Card Header (Visual) */}
-              <div className="relative overflow-hidden flex flex-col items-center justify-center text-center border-b border-rose-100/30 bg-rose-50/20 min-h-[160px]">
-                {inv.status === 'Pending' && <span className="absolute top-3 right-3 bg-amber-50 text-amber-700 border border-amber-250/30 text-[10px] px-2.5 py-0.5 rounded-lg font-bold z-20">Pending</span>}
-                {inv.status === 'Rejected' && <span className="absolute top-3 right-3 bg-rose-550/10 text-rose-700 border border-rose-250/30 text-[10px] px-2.5 py-0.5 rounded-lg font-bold z-20">Rejected</span>}
+          {filteredInvitations.map(inv => {
+            const images = inv.images || (inv.image ? [inv.image] : []);
+            const displayTitle = inv.title || `Wedding of ${inv.groomName} & ${inv.brideName}`;
+            const displayHost = inv.hostName || inv.familyName;
 
-                {inv.image ? (
-                  <img src={inv.image} alt="Invitation Card" className="w-full h-48 object-cover" />
-                ) : (
-                  <>
-                    <div className="absolute top-0 left-0 w-full h-full opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#7C3AED 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
-                    <h3 className="text-brand-primary font-bold text-[13px] mb-3.5 z-10 tracking-widest mt-6 uppercase">Wedding Invitation</h3>
-                    <div className="flex items-center justify-center gap-3.5 text-2xl font-black text-rose-500 z-10">
-                      <span>{inv.groomName}</span>
-                      <div className="w-9 h-9 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shadow-sm">
-                        <Heart size={16} className="text-rose-500 fill-rose-500" />
-                      </div>
-                      <span>{inv.brideName}</span>
+            return (
+              <motion.div
+                key={inv.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="card-neo overflow-hidden"
+              >
+                {/* Card Header (Visual) */}
+                <div className="relative overflow-hidden flex flex-col items-center justify-center text-center border-b border-purple-100/20 min-h-[160px]">
+                  {inv.status === 'Pending' && <span className="absolute top-3 right-3 bg-amber-50 text-amber-700 border border-amber-250/30 text-[10px] px-2.5 py-0.5 rounded-lg font-bold z-20">Pending</span>}
+                  {inv.status === 'Rejected' && <span className="absolute top-3 right-3 bg-rose-550/10 text-rose-700 border border-rose-250/30 text-[10px] px-2.5 py-0.5 rounded-lg font-bold z-20">Rejected</span>}
+
+                  {images.length > 0 ? (
+                    <div className="relative w-full h-48 overflow-hidden bg-slate-100">
+                      <img src={images[0]} alt="Invitation Card" className="w-full h-full object-cover" />
+                      {images.length > 1 && (
+                        <span className="absolute bottom-2.5 right-2.5 bg-black/65 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                          +{images.length - 1} More Photos
+                        </span>
+                      )}
                     </div>
-                    <p className="text-text-secondary text-[11px] font-bold mt-3.5 z-10 border-t border-rose-150/40 pt-2 px-8 mb-6">
-                      - Cordially Invited -
-                    </p>
-                  </>
-                )}
-              </div>
+                  ) : (
+                    <div className="relative w-full h-48 bg-gradient-to-r from-purple-600 to-indigo-700 flex flex-col items-center justify-center text-center p-6 text-white shadow-inner">
+                      <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1.5px, transparent 1.5px)', backgroundSize: '12px 12px' }} />
+                      <h3 className="font-black text-[17px] tracking-wide relative z-10 leading-snug max-w-[80%]">{displayTitle}</h3>
+                      <p className="text-[12px] opacity-90 font-bold mt-1.5 z-10 uppercase tracking-wide">{displayHost}</p>
+                      <p className="text-[11px] opacity-75 mt-3.5 z-10 border-t border-white/20 pt-1.5 px-6 font-semibold">
+                        - Cordially Invited -
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-              {/* Card Body */}
-              <div className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100/40 flex flex-col items-center justify-center shrink-0 shadow-inner">
-                    <span className="text-brand-primary text-[10px] font-bold leading-none block mb-0.5">{new Date(inv.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
-                    <span className="text-brand-primary text-[16px] font-black leading-none">{new Date(inv.date).getDate()}</span>
+                {/* Card Body */}
+                <div className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100/40 flex flex-col items-center justify-center shrink-0 shadow-inner">
+                      <span className="text-brand-primary text-[10px] font-bold leading-none block mb-0.5">{new Date(inv.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+                      <span className="text-brand-primary text-[16px] font-black leading-none">{new Date(inv.date).getDate()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <h4 className="font-bold text-text-primary text-[15px] truncate">{displayTitle}</h4>
+                      <p className="text-text-secondary text-[12px] font-semibold mt-1 truncate">
+                        {displayHost}
+                      </p>
+                      <p className="text-text-secondary text-[12px] flex items-start gap-1 mt-1 font-medium">
+                        <MapPin size={14} className="shrink-0 mt-0.5 text-purple-400" /> 
+                        <span className="truncate">{inv.location}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <h4 className="font-bold text-text-primary text-[15px] truncate">Wedding of {inv.groomName} &amp; {inv.brideName}</h4>
-                    <p className="text-text-secondary text-[12px] font-semibold mt-1 truncate">
-                      {inv.familyName}
-                    </p>
-                    <p className="text-text-secondary text-[12px] flex items-start gap-1 mt-1 font-medium">
-                      <MapPin size={14} className="shrink-0 mt-0.5 text-rose-400" /> 
-                      <span className="truncate">{inv.location}</span>
-                    </p>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 mt-5">
+                    <button 
+                      onClick={() => navigate(`/member/nimantran/${inv.id}`)}
+                      className="flex-1 bg-purple-50 text-brand-primary font-bold text-[12px] py-2.5 rounded-xl border border-purple-150/30 hover:bg-purple-100/40 active:scale-95 transition-all press-scale"
+                    >
+                      View Card
+                    </button>
+                    <a 
+                      href={inv.mapLink || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 bg-emerald-50 text-emerald-700 font-bold text-[12px] py-2.5 rounded-xl text-center border border-emerald-100/50 hover:bg-emerald-100/50 active:scale-95 transition-all press-scale"
+                    >
+                      Navigate
+                    </a>
+                    <button 
+                      onClick={() => navigate(`/member/nimantran/${inv.id}`)}
+                      className="flex-1 bg-gradient-to-r from-brand-primary to-brand-glow text-white shadow-md shadow-purple-500/25 font-bold text-[12px] py-2.5 rounded-xl active:scale-95 transition-all press-scale"
+                    >
+                      RSVP
+                    </button>
                   </div>
                 </div>
-                
-                {/* Actions */}
-                <div className="flex items-center gap-2 mt-5">
-                  <button 
-                    onClick={() => navigate(`/member/nimantran/${inv.id}`)}
-                    className="flex-1 bg-purple-50 text-brand-primary font-bold text-[12px] py-2.5 rounded-xl border border-purple-150/30 hover:bg-purple-100/40 active:scale-95 transition-all press-scale"
-                  >
-                    View Card
-                  </button>
-                  <a 
-                    href={inv.mapLink || '#'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 bg-emerald-50 text-emerald-700 font-bold text-[12px] py-2.5 rounded-xl text-center border border-emerald-100/50 hover:bg-emerald-100/50 active:scale-95 transition-all press-scale"
-                  >
-                    Navigate
-                  </a>
-                  <button 
-                    onClick={() => navigate(`/member/nimantran/${inv.id}`)}
-                    className="flex-1 bg-gradient-to-r from-brand-primary to-brand-glow text-white shadow-md shadow-purple-500/25 font-bold text-[12px] py-2.5 rounded-xl active:scale-95 transition-all press-scale"
-                  >
-                    RSVP
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
         
         {filteredInvitations.length === 0 && (
