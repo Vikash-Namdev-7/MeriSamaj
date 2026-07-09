@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  /* ─── Colors — Premium Purple Palette ─── */
-  --color-brand-primary: #7C3AED;       /* Vibrant Purple */
-  --color-brand-secondary: #A78BFA;     /* Soft Lavender */
-  --color-brand-tertiary: #EDE9FE;      /* Light Violet */
+  /* ─── Colors — Flat Dashboard Palette ─── */
+  --color-brand-primary: #6f42c1;       /* Bootstrap Purple */
+  --color-brand-secondary: #8540f5;     /* Soft Purple */
+  --color-brand-tertiary: #f4f7fe;      /* Light Gray-Blue */
   --color-brand-accent: #F59E0B;        /* Warm Amber for CTAs */
-  --color-brand-dark: #4C1D95;          /* Deep Purple for headers */
-  --color-brand-glow: #8B5CF6;          /* Glow purple for effects */
+  --color-brand-dark: #1e1e2d;          /* Dark Slate for sidebar */
+  --color-brand-glow: #6f42c1;          /* Glow purple for effects */
   
   --color-social-module: #3B82F6;       /* Blue */
   --color-matrimonial-module: #F43F5E;  /* Rose 500 */
   
-  --color-surface: #F8F7FC;            /* Violet-tinted off-white */
+  --color-surface: #f4f7fe;            /* Light gray-blue dashboard background */
   --color-card: #FFFFFF;
-  --color-card-glass: rgba(255, 255, 255, 0.72);
+  --color-card-glass: #ffffff;
   
-  --color-text-primary: #1A1A2E;       /* Deep Indigo-Black */
-  --color-text-secondary: #6B7280;     /* Muted Gray */
-  --color-text-muted: #9CA3AF;         /* Light Muted */
+  --color-text-primary: #1e293b;       /* Dark slate text */
+  --color-text-secondary: #475569;     /* Slate */
+  --color-text-muted: #94a3b8;         /* Light slate */
   
-  --color-border-light: rgba(124, 58, 237, 0.08);
-  --color-border-card: rgba(124, 58, 237, 0.06);
+  --color-border-light: rgba(0, 0, 0, 0.05);
+  --color-border-card: rgba(0, 0, 0, 0.04);
   
   /* Fonts */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -115,51 +115,46 @@
   /* ── Premium Card Styles ── */
   /* Standard card — clean with violet-tinted depth */
   .card-std {
-    background: rgba(255, 255, 255, 0.88);
-    border-radius: 20px;
-    border: 1px solid rgba(124, 58, 237, 0.06);
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.03);
     box-shadow:
-      0 1px 2px rgba(124, 58, 237, 0.04),
-      0 4px 12px -2px rgba(124, 58, 237, 0.06),
-      0 12px 24px -8px rgba(124, 58, 237, 0.04);
+      0 1px 2px rgba(0, 0, 0, 0.02),
+      0 4px 12px -2px rgba(0, 0, 0, 0.04);
     transition: transform 280ms cubic-bezier(0.25, 1, 0.5, 1),
       box-shadow 280ms ease;
   }
 
   .card-std:active {
     transform: scale(0.985) translateY(1px);
-    box-shadow: 0 1px 4px rgba(124, 58, 237, 0.06);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   }
 
   /* Elevated card — more depth for important elements */
   .card-elevated {
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 24px;
-    border: 1px solid rgba(124, 58, 237, 0.05);
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.03);
     box-shadow:
-      0 2px 4px rgba(124, 58, 237, 0.04),
-      0 8px 16px -4px rgba(124, 58, 237, 0.06),
-      0 16px 32px -8px rgba(124, 58, 237, 0.05);
+      0 2px 4px rgba(0, 0, 0, 0.02),
+      0 8px 16px -4px rgba(0, 0, 0, 0.05);
     transition: transform 280ms cubic-bezier(0.25, 1, 0.5, 1),
       box-shadow 300ms ease;
   }
 
   .card-elevated:active {
     transform: scale(0.985) translateY(1px);
-    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
 
-  /* ── Neo Card — Premium glassmorphism card with hover lift ── */
+  /* ── Neo Card — Premium flat dashboard card ── */
   .card-neo {
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-radius: 24px;
-    border: 1px solid rgba(124, 58, 237, 0.08);
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.03);
     box-shadow:
-      0 1px 2px rgba(124, 58, 237, 0.03),
-      0 4px 12px -2px rgba(124, 58, 237, 0.05),
-      0 16px 32px -8px rgba(124, 58, 237, 0.04);
+      0 1px 2px rgba(0, 0, 0, 0.01),
+      0 4px 12px -2px rgba(0, 0, 0, 0.04);
     transition: transform 320ms cubic-bezier(0.25, 1, 0.5, 1),
       box-shadow 320ms ease,
       border-color 320ms ease;
@@ -167,16 +162,15 @@
 
   .card-neo:hover {
     transform: translateY(-2px);
-    border-color: rgba(124, 58, 237, 0.14);
+    border-color: rgba(111, 66, 193, 0.14);
     box-shadow:
-      0 2px 4px rgba(124, 58, 237, 0.04),
-      0 8px 20px -4px rgba(124, 58, 237, 0.08),
-      0 20px 40px -8px rgba(124, 58, 237, 0.06);
+      0 2px 4px rgba(0, 0, 0, 0.02),
+      0 8px 20px -4px rgba(0, 0, 0, 0.06);
   }
 
   .card-neo:active {
     transform: scale(0.985) translateY(0px);
-    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
   /* ── Glassmorphism ── */
@@ -205,11 +199,7 @@
 
   /* ── Ambient Background — Subtle purple aurora ── */
   .aura-bg {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: -1;
-    overflow: hidden;
-    background: linear-gradient(145deg, #F8F7FC 0%, #F3F0FF 40%, #FBF9FF 70%, #F8F7FC 100%);
+    display: none;
   }
   .aura-bg::before, .aura-bg::after {
     content: '';
@@ -1030,4 +1020,248 @@
   .responsive-fixed-fab {
     right: calc(50% - 720px + 32px) !important;
   }
+}
+
+/* ── Hide scrollbars utility ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* ── Dark Dashboard Theme override for Admin & Head modules ── */
+.dark-dashboard {
+  background: #08031d !important;
+}
+
+.dark-dashboard main {
+  background: radial-gradient(circle at top right, #170942 0%, #08031d 85%) !important;
+  color: #f3f4f6 !important;
+}
+
+.dark-dashboard .card-neo {
+  background: rgba(22, 12, 54, 0.6) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(167, 139, 250, 0.15) !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-dashboard .card-neo:hover {
+  border-color: rgba(167, 139, 250, 0.3) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark-dashboard .text-text-muted {
+  color: #bfaaff !important; /* Brighter lavender-gray for muted text in dark theme */
+}
+
+.dark-dashboard select, 
+.dark-dashboard input, 
+.dark-dashboard textarea {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark-dashboard select option {
+  background-color: #160b37 !important;
+  color: #ffffff !important;
+}
+
+.dark-dashboard tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ─── THEME MIGRATION OVERRIDES ─── */
+/* Force light text on dark-mode utility classes inside the main workspace */
+main .text-white {
+  color: #1e293b !important;
+}
+
+/* Ensure buttons keep white text */
+main button, 
+main .bg-brand-primary, 
+main .bg-purple-500, 
+main .bg-emerald-500, 
+main .bg-rose-500,
+main .bg-amber-500 {
+  color: #ffffff !important;
+}
+
+main button .text-white, 
+main .bg-brand-primary .text-white,
+main .bg-emerald-500 .text-white,
+main .bg-rose-500 .text-white,
+main .bg-amber-500 .text-white {
+  color: #ffffff !important;
+}
+
+/* Force light backgrounds on dark hex colors */
+main .bg-\[\#120739\], 
+main .bg-\[\#120739\]\/50,
+main .bg-\[\#120739\]\/60,
+main .bg-\[\#120739\]\/80,
+main .bg-\[\#0c0533\], 
+main .bg-\[\#1a0f4c\],
+main .bg-\[\#20134f\],
+main .bg-\[\#0f072e\] {
+  background-color: #ffffff !important;
+}
+
+/* Fix modal dark gradients and dark modal elements */
+main .bg-gradient-to-b.from-\[\#13093a\].to-\[\#21124f\],
+main .bg-gradient-to-b.from-\[\#0f072e\].via-\[\#160b37\].to-\[\#1e1045\],
+main .bg-\[\#160b37\],
+main .bg-gradient-to-b.from-\[\#0f072e\].to-\[\#1e0f49\] {
+  background: #ffffff !important;
+}
+
+/* Fix modal close buttons and faint texts */
+main .text-white\/50 {
+  color: #94a3b8 !important;
+}
+main .hover\:text-white:hover {
+  color: #1e293b !important;
+}
+
+main .bg-white\/2, 
+main .bg-white\/5, 
+main .bg-white\/10 {
+  background-color: #f8fafc !important;
+}
+
+/* Borders */
+main .border-white\/5, 
+main .border-white\/10,
+main .border-white\/20,
+main .border-purple-500\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Specific text colors */
+main .text-purple-200,
+main .text-purple-250,
+main .text-purple-300 {
+  color: #475569 !important;
+}
+main .text-white\/70,
+main .text-white\/90 {
+  color: #64748b !important;
+}
+main .text-text-muted {
+  color: #64748b !important;
+}
+
+/* Fix gradients from dark to light */
+main .bg-gradient-to-r.from-white.via-purple-200.to-purple-400 {
+  background: linear-gradient(to right, #1e293b, #475569, #334155) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Form Elements */
+main input, main select, main textarea {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  font-size: 13.5px !important;
+  transition: all 200ms ease !important;
+  outline: none !important;
+}
+main input:focus, main select:focus, main textarea:focus {
+  border-color: #a78bfa !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08) !important;
+}
+main input::placeholder, main textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Specific fixes for UI Badges */
+main .bg-rose-500\/10 { background-color: #fff1f2 !important; }
+main .text-rose-400 { color: #e11d48 !important; }
+main .bg-emerald-500\/10, main .bg-emerald-500\/15 { background-color: #ecfdf5 !important; }
+main .text-emerald-400 { color: #10b981 !important; }
+main .bg-amber-500\/10, main .bg-amber-500\/15 { background-color: #fffbeb !important; }
+main .text-amber-400 { color: #f59e0b !important; }
+
+/* ─── PREMIUM DASHBOARD & DATA TABLE OVERRIDES ─── */
+main table {
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important;
+  width: 100% !important;
+}
+
+main thead th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #64748b !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 12px 16px !important;
+  background-color: transparent !important;
+}
+
+main tbody tr {
+  background-color: #ffffff !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.01), 0 1px 2px rgba(0, 0, 0, 0.01) !important;
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease !important;
+}
+
+main tbody tr:hover {
+  background-color: #f8fafc !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02) !important;
+}
+
+main tbody td {
+  border-top: 1px solid #f8fafc !important;
+  border-bottom: 1px solid #f8fafc !important;
+  padding: 14px 16px !important;
+}
+
+main tbody td:first-child {
+  border-left: 1px solid #f8fafc !important;
+  border-top-left-radius: 16px !important;
+  border-bottom-left-radius: 16px !important;
+}
+
+main tbody td:last-child {
+  border-right: 1px solid #f8fafc !important;
+  border-top-right-radius: 16px !important;
+  border-bottom-right-radius: 16px !important;
+}
+
+/* Scrollbar customizations */
+main::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+main::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+main::-webkit-scrollbar-thumb {
+  background: #e2e8f0 !important;
+  border-radius: 10px !important;
+}
+main::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1 !important;
+}
+
+/* Card hover and visual upgrades for pages */
+main .card, main .card-neo, main .bg-white.shadow-sm.rounded-3xl, main .bg-white.border.border-gray-200 {
+  border-color: #f1f5f9 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01), 0 4px 20px -2px rgba(0, 0, 0, 0.02) !important;
+  transition: all 300ms cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+main .card:hover, main .card-neo:hover, main .bg-white.shadow-sm.rounded-3xl:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.01), 0 12px 30px -4px rgba(124, 58, 237, 0.04) !important;
 }

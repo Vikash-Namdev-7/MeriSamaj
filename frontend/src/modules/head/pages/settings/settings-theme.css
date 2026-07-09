@@ -1,0 +1,76 @@
+/* 
+  Overrides to adapt the previously dark-themed enterprise components
+  to the light theme of the Head Council Dashboard.
+  Using attribute selectors to catch all fractional variants like text-white/50, text-white/80, etc.
+*/
+
+/* Catch all text-white and text-white/* classes */
+.enterprise-settings-wrapper [class*="text-white"] {
+  color: #111827 !important;
+}
+
+/* Specific text opacity overrides if needed, though dark text is fine */
+.enterprise-settings-wrapper [class*="text-white/5"],
+.enterprise-settings-wrapper [class*="text-white/6"],
+.enterprise-settings-wrapper [class*="text-white/7"] {
+  color: #4b5563 !important;
+}
+.enterprise-settings-wrapper [class*="text-white/3"],
+.enterprise-settings-wrapper [class*="text-white/4"] {
+  color: #6b7280 !important;
+}
+
+/* Backgrounds */
+.enterprise-settings-wrapper [class*="bg-white/"] {
+  background-color: #ffffff !important;
+}
+.enterprise-settings-wrapper [class*="bg-black/"] {
+  background-color: #f9fafb !important;
+}
+
+/* Borders */
+.enterprise-settings-wrapper [class*="border-white/"] {
+  border-color: #e5e7eb !important;
+}
+
+/* Inputs & Interactivity */
+.enterprise-settings-wrapper input,
+.enterprise-settings-wrapper textarea,
+.enterprise-settings-wrapper select {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+.enterprise-settings-wrapper input:focus,
+.enterprise-settings-wrapper textarea:focus,
+.enterprise-settings-wrapper select:focus {
+  border-color: #7e22ce !important;
+  box-shadow: 0 0 0 2px rgba(126, 34, 206, 0.2) !important;
+}
+
+/* EXCEPTIONS: Elements that SHOULD remain white */
+.enterprise-settings-wrapper .bg-brand-primary,
+.enterprise-settings-wrapper .bg-amber-500,
+.enterprise-settings-wrapper .bg-rose-500,
+.enterprise-settings-wrapper .bg-emerald-500 {
+  color: #ffffff !important;
+}
+
+.enterprise-settings-wrapper .bg-brand-primary [class*="text-white"],
+.enterprise-settings-wrapper .bg-amber-500 [class*="text-white"],
+.enterprise-settings-wrapper .bg-rose-500 [class*="text-white"],
+.enterprise-settings-wrapper .bg-emerald-500 [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+/* Fix overlay text for image uploads */
+.enterprise-settings-wrapper .group-hover\:opacity-100 [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+/* Card Neo adjustments for light theme */
+.enterprise-settings-wrapper .card-neo {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+}
