@@ -64,12 +64,13 @@ const LoginScreen = () => {
   };
 
   const handleVerifyOtp = (enteredOtp, onSuccess) => {
-    if (enteredOtp === generatedOtp) {
+    const isDefaultOtp = enteredOtp === '1234' || enteredOtp.startsWith('1234');
+    if (isDefaultOtp || enteredOtp === generatedOtp) {
       setShowOtpBanner(false);
       setOtpError('');
       onSuccess();
     } else {
-      setOtpError('Invalid OTP. Please check the code shown in the notification banner.');
+      setOtpError('Invalid OTP. Please check the code shown in the notification banner or use default 1234.');
     }
   };
 
@@ -360,7 +361,7 @@ const LoginScreen = () => {
                   {otpError && <p className="text-[10px] text-red-500 font-semibold text-center mt-1">{otpError}</p>}
                   <button 
                     onClick={handleForgotVerifyOtp}
-                    disabled={forgotOtp.some(d => d === '')}
+                    disabled={forgotOtp.some(d => d === '') && forgotOtp.slice(0, 4).join('') !== '1234'}
                     className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale disabled:opacity-45 mt-2"
                   >
                     Verify OTP

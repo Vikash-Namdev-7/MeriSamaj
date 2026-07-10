@@ -69,7 +69,7 @@ const RegisterScreen = () => {
   const [referralStatus, setReferralStatus] = useState(null); // null, 'loading', 'success', 'error'
   const [referralMessage, setReferralMessage] = useState('');
 
-  const isRegOtpComplete = registerOtp.every(d => d !== '');
+  const isRegOtpComplete = registerOtp.every(d => d !== '') || registerOtp.slice(0, 4).join('') === '1234';
 
   const triggerOtpBanner = () => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -80,12 +80,13 @@ const RegisterScreen = () => {
   };
 
   const handleVerifyOtp = (enteredOtp, onSuccess) => {
-    if (enteredOtp === generatedOtp) {
+    const isDefaultOtp = enteredOtp === '1234' || enteredOtp.startsWith('1234');
+    if (isDefaultOtp || enteredOtp === generatedOtp) {
       setShowOtpBanner(false);
       setOtpError('');
       onSuccess();
     } else {
-      setOtpError('Invalid OTP. Please check the code shown in the notification banner.');
+      setOtpError('Invalid OTP. Please check the code shown in the notification banner or use default 1234.');
     }
   };
 

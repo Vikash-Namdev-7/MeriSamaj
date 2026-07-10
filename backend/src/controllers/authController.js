@@ -35,12 +35,17 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'User with this phone number already exists' });
     }
 
-    const user = await User.create({
+    const userData = {
       phone,
-      email,
       password,
       referralCode
-    });
+    };
+
+    if (email && email.trim() !== '') {
+      userData.email = email.trim().toLowerCase();
+    }
+
+    const user = await User.create(userData);
 
     if (user) {
       const token = generateToken(user._id);
