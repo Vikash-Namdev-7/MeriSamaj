@@ -44,7 +44,7 @@ const OtpBanner = ({ code, onDismiss }) => (
 const RegisterScreen = () => {
   const navigate = useNavigate();
   const { loginUser } = useData();
-  const { setAuth } = useAuth();
+  const { register } = useAuth();
   const inputRefs = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -135,7 +135,7 @@ const RegisterScreen = () => {
     
     setIsLoading(true);
     try {
-      const response = await authService.register({
+      const response = await register({
         phone: registerPhone,
         email: registerEmail,
         password: registerPassword,

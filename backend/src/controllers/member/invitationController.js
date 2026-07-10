@@ -1,0 +1,165 @@
+const Invitation = require('../../models/Invitation');
+
+// @desc    Create a new invitation
+// @route   POST /api/member/invitations
+// @access  Private
+exports.createInvitation = async (req, res) => {
+  try {
+    const {
+      title,
+      hostName,
+      date,
+      timeFood,
+      timeProgram,
+      location,
+      mapLink,
+      contact,
+      message,
+      invitedMemberIds,
+      invitedGroupIds,
+      groomName,
+      brideName,
+      familyName
+    } = req.body;
+
+    // Handle uploaded images from Cloudinary
+    let images = [];
+    if (req.files && req.files.length > 0) {
+      images = req.files.map(file => file.path); // Cloudinary URL is in file.path
+    }
+
+    // Parse array fields if they are sent as strings
+    let parsedMemberIds = [];
+    let parsedGroupIds = [];
+    try {
+      if (invitedMemberIds) {
+        parsedMemberIds = typeof invitedMemberIds === 'string' ? JSON.parse(invitedMemberIds) : invitedMemberIds;
+      }
+      if (invitedGroupIds) {
+        parsedGroupIds = typeof invitedGroupIds === 'string' ? JSON.parse(invitedGroupIds) : invitedGroupIds;
+      }
+    } catch (e) {
+      console.error('Error parsing member/group IDs:', e);
+    }
+
+    const invitation = new Invitation({
+      title,
+      hostName,
+      date,
+      timeFood,
+      timeProgram,
+      location,
+      mapLink,
+      contact,
+      message,
+      images,
+      creatorId: req.user._id,
+      invitedMemberIds: parsedMemberIds,
+      invitedGroupIds: parsedGroupIds,
+      groomName,
+      brideName,
+      familyName
+    });
+
+    const createdInvitation = await invitation.save();
+    res.status(201).json(createdInvitation);
+  } catch (error) {
+    console.error('Error creating invitation:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Get all invitations
+// @route   GET /api/member/invitations
+// @access  Private
+exports.getInvitations = async (req, res) => {
+  try {
+    // For now, fetch all invitations. 
+    // In the future, we could filter by creatorId, or invitedMemberIds for specific views.
+    const invitations = await Invitation.find({})
+      .populate('creatorId', 'name email')
+      .populate('rsvps.memberId', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json(invitations);
+  } catch (error) {
+    console.error('Error fetching invitations:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Get invitation by ID
+// @route   GET /api/member/invitations/:id
+// @access  Private
+exports.getInvitationById = async (req, res) => {
+  try {
+    const invitation = await Invitation.findById(req.params.id)
+      .populate('creatorId', 'name email')
+      .populate('rsvps.memberId', 'name');
+
+    if (invitation) {
+      res.json(invitation);
+    } else {
+      res.status(404).json({ message: 'Invitation not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching invitation:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Update RSVP status
+// @route   PUT /api/member/invitations/:id/rsvp
+// @access  Private
+exports.updateRSVP = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const invitation = await Invitation.findById(req.params.id);
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    const rsvpIndex = invitation.rsvps.findIndex(
+      (r) => r.memberId.toString() === req.user._id.toString()
+    );
+
+    if (rsvpIndex >= 0) {
+      // Update existing RSVP
+      invitation.rsvps[rsvpIndex].status = status;
+    } else {
+      // Add new RSVP
+      invitation.rsvps.push({ memberId: req.user._id, status });
+    }
+
+    await invitation.save();
+    res.json(invitation);
+  } catch (error) {
+    console.error('Error updating RSVP:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Delete invitation
+// @route   DELETE /api/member/invitations/:id
+// @access  Private
+exports.deleteInvitation = async (req, res) => {
+  try {
+    const invitation = await Invitation.findById(req.params.id);
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    // Check if the user is the creator
+    if (invitation.creatorId.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized to delete this invitation' });
+    }
+
+    await invitation.deleteOne();
+    res.json({ message: 'Invitation removed' });
+  } catch (error) {
+    console.error('Error deleting invitation:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};

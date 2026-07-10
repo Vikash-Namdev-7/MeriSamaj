@@ -8,7 +8,7 @@ import {
   Lock, Eye, AlertCircle, ClipboardCheck, Globe, EyeOff, Trash2, Edit3, Heart
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
-
+import { authService } from '../../../../core/auth/authService';
 // ─── MOCK DATA ───────────────────────────────────────────────────────────────
 const communityData = {
   'Agrawal Samaj': {
@@ -183,6 +183,7 @@ const OnboardingScreen = () => {
 
   // Step 4 Personal
   const [avatar, setAvatar] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
@@ -375,51 +376,71 @@ const OnboardingScreen = () => {
     setFamilyMembers(prev => prev.filter(m => m.id !== id));
   };
 
-  const handleSaveProfile = () => {
-    const newUser = {
-      id: `u-${Date.now()}`,
-      name: name || 'Guest User',
-      phone: phone || '+91 98765 00000',
-      email: email || alternateEmail || 'guest@email.com',
-      initials: (name || 'Guest').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
-      community: selectedCommunity || 'Gupta Samaj',
-      subCommunity: selectedSubCommunity || 'Vaishya Gupta',
-      city: selectedCity || 'Delhi',
-      pincode: pincode,
-      district: district || 'Delhi',
-      state: stateName || 'Delhi',
-      avatar: avatar,
-      gender: gender || 'Male',
-      dob: dob || '1996-07-02',
-      bloodGroup: bloodGroup || 'A+',
-      maritalStatus: maritalStatus || 'Single',
-      gotra: gotra,
-      qualification: qualification,
-      school: school,
-      passingYear: passingYear,
-      profession: profession,
-      company: company,
-      annualIncome: annualIncome,
-      workCity: workCity,
-      houseNumber: houseNumber,
-      streetAddress: streetAddress,
-      landmark: landmark,
-      areaAddress: areaAddress,
-      pincodeAddress: pincodeAddress,
-      detailedAddress: detailedAddress || `${houseNumber} ${streetAddress} ${landmark} ${areaAddress} ${pincodeAddress}`.trim(),
-      alternatePhone: alternatePhone,
-      alternateEmail: alternateEmail,
-      familyMembers: familyMembers,
-      isAadharVerified: isAadharVerified,
-      isFaceVerified: isFaceVerified,
-      prefEducation: prefEducation,
-      prefAge: prefAge,
-      prefHeight: prefHeight,
-      prefOccupation: prefOccupation,
-      prefCity: prefCity,
-    };
-    localStorage.setItem('merisamaj_registered_user', JSON.stringify(newUser));
-    setStep('onboarding-11');
+  const handleSaveProfile = async () => {
+    try {
+      const formData = new FormData();
+      
+      // Append text fields
+      formData.append('name', name || 'Guest User');
+      formData.append('gender', gender || 'Male');
+      formData.append('dob', dob || '1996-07-02');
+      formData.append('bloodGroup', bloodGroup || 'A+');
+      formData.append('maritalStatus', maritalStatus || 'Single');
+      formData.append('gotra', gotra);
+      formData.append('community', selectedCommunity || 'Gupta Samaj');
+      formData.append('subCommunity', selectedSubCommunity || 'Vaishya Gupta');
+      formData.append('city', selectedCity || 'Delhi');
+      formData.append('district', district || 'Delhi');
+      formData.append('state', stateName || 'Delhi');
+      formData.append('pincode', pincode);
+      formData.append('qualification', qualification);
+      formData.append('school', school);
+      formData.append('passingYear', passingYear);
+      formData.append('profession', profession);
+      formData.append('company', company);
+      formData.append('annualIncome', annualIncome);
+      formData.append('workCity', workCity);
+      formData.append('houseNumber', houseNumber);
+      formData.append('streetAddress', streetAddress);
+      formData.append('landmark', landmark);
+      formData.append('areaAddress', areaAddress);
+      formData.append('pincodeAddress', pincodeAddress);
+      formData.append('detailedAddress', detailedAddress || `${houseNumber} ${streetAddress} ${landmark} ${areaAddress} ${pincodeAddress}`.trim());
+      formData.append('alternatePhone', alternatePhone);
+      formData.append('alternateEmail', alternateEmail);
+      formData.append('familyMembers', JSON.stringify(familyMembers));
+      formData.append('isAadharVerified', isAadharVerified);
+      formData.append('isFaceVerified', isFaceVerified);
+      formData.append('prefEducation', prefEducation);
+      formData.append('prefAge', prefAge);
+      formData.append('prefHeight', prefHeight);
+      formData.append('prefOccupation', prefOccupation);
+      formData.append('prefCity', prefCity);
+
+      // Append file
+      if (avatarFile) {
+        formData.append('avatarFile', avatarFile);
+      } else if (avatar) {
+        formData.append('avatar', avatar);
+      }
+
+      const response = await authService.updateProfile(formData);
+      
+      // Update local storage with the complete returned object
+      localStorage.setItem('merisamaj_registered_user', JSON.stringify(response));
+      setStep('onboarding-11');
+      setToastMessage('Profile saved successfully!');
+      setTimeout(() => setToastMessage(''), 3000);
+    } catch (error) {
+      console.error('Failed to save profile', error);
+      setToastMessage(error?.response?.data?.message || 'Failed to save profile');
+      setTimeout(() => setToastMessage(''), 3000);
+      
+      // Fallback local storage for offline/demo UX
+      const fallbackUser = { id: `u-${Date.now()}`, name, phone, email, avatar };
+      localStorage.setItem('merisamaj_registered_user', JSON.stringify(fallbackUser));
+      setStep('onboarding-11');
+    }
   };
 
   const handleGoToHome = () => {
@@ -675,6 +696,7 @@ const OnboardingScreen = () => {
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                       const file = e.target.files[0];
                       if (file) {
+                        setAvatarFile(file);
                         const reader = new FileReader();
                         reader.onload = (ev) => setAvatar(ev.target.result);
                         reader.readAsDataURL(file);

@@ -120,8 +120,9 @@ const HomePage = () => {
   const totalUpdatesCount = newDonationsCount + newNoticesCount + newEventsCount + 2; // +2 for bookings & funds mockup
 
   const unreadCount = getUnreadCountForModule('home');
+  const userCommunity = currentUser?.community || 'Agrawal Samaj';
 
-  const communityPosts = mockPosts.filter(p => p.community === currentUser.community || true).slice(0, 10);
+  const communityPosts = mockPosts.filter(p => p.community === userCommunity || true).slice(0, 10);
 
   const getSamajImage = (community) => {
     const c = community.toLowerCase();
@@ -143,8 +144,8 @@ const HomePage = () => {
       <div className="relative w-full overflow-hidden" style={{ minHeight: '290px' }}>
         {/* Background Image — Cultural landmark */}
         <img 
-          src={getSamajImage(currentUser.community)} 
-          alt={currentUser.community}
+          src={getSamajImage(userCommunity)} 
+          alt={userCommunity}
           className="absolute inset-0 w-full h-full object-cover scale-105"
           style={{ filter: 'saturate(1.1)' }}
         />
@@ -180,14 +181,14 @@ const HomePage = () => {
               >
                 {/* Inner shine */}
                 <div className="absolute inset-0 rounded-[18px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
-                <span className="relative z-10">{currentUser.community.substring(0, 1)}</span>
+                <span className="relative z-10">{userCommunity.substring(0, 1)}</span>
               </div>
               {/* Glow ring pulse */}
               <div className="absolute inset-0 rounded-[18px] pointer-events-none" style={{ boxShadow: '0 0 0 1.5px rgba(167,139,250,0.4), 0 0 12px rgba(124,58,237,0.25)' }} />
             </div>
             <div>
               <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{greeting}</p>
-              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{currentUser.name.split(' ')[0]}</h1>
+              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{(currentUser?.name || 'Member').split(' ')[0]}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Upload, MapPin, Search, Check, X, CheckCircle2, UserCheck, Users } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Search, Check, X, CheckCircle2, UserCheck, Users, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import DatePicker from '../../../../components/ui/DatePicker';
+import TimePicker from '../../../../components/ui/TimePicker';
 
 export default function CreateNimantranPage() {
   const navigate = useNavigate();
@@ -31,6 +33,7 @@ export default function CreateNimantranPage() {
   const [selectedCity, setSelectedCity] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeDirectoryTab, setActiveDirectoryTab] = useState('members'); // members | presidents | groups | friends
+  const [toastMessage, setToastMessage] = useState('');
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -39,7 +42,7 @@ export default function CreateNimantranPage() {
       setImagePreviews(prev => [...prev, ...newUrls]);
       setFormData(prev => ({
         ...prev,
-        images: [...(prev.images || []), ...newUrls]
+        images: [...(prev.images || []), ...files] // Store File objects
       }));
     }
   };
@@ -59,34 +62,55 @@ export default function CreateNimantranPage() {
       setFormData(prev => ({ ...prev, [name]: formatted }));
       return;
     }
+    
+    if (name === 'title' || name === 'hostName') {
+      // Remove standard keyboard special characters but allow unicode/languages
+      const formatted = value.replace(/[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?~`]/g, '');
+      setFormData(prev => ({ ...prev, [name]: formatted }));
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.hostName || !formData.date || !formData.location || !formData.contact) {
-      alert("Please fill in Title, Host/Family name, Date, Venue, and Contact Number.");
+      setToastMessage("Please fill in Title, Host/Family name, Date, Venue, and Contact Number.");
+      setTimeout(() => setToastMessage(''), 3000);
       return;
     }
 
-    const generatedId = `nim${Date.now()}`;
-    const newInvitation = {
-      ...formData,
-      id: generatedId,
-      creatorId: currentUser.id,
-      status: 'Pending',
-      rsvps: [],
-      invitedMemberIds: [],
-      invitedGroupIds: [],
-      // Support backward compatibility (old code might expect groomName/brideName/familyName)
-      groomName: formData.title.split('&')[0]?.trim() || formData.title,
-      brideName: formData.title.split('&')[1]?.trim() || '',
-      familyName: formData.hostName,
-    };
+    const data = new FormData();
+    data.append('title', formData.title);
+    data.append('hostName', formData.hostName);
+    data.append('date', formData.date);
+    data.append('timeFood', formData.timeFood);
+    data.append('timeProgram', formData.timeProgram);
+    data.append('location', formData.location);
+    data.append('mapLink', formData.mapLink);
+    data.append('contact', formData.contact);
+    data.append('message', formData.message);
     
-    createInvitation(newInvitation);
-    setCreatedInv(newInvitation);
-    setIsCreated(true);
+    // Backward compatibility fields
+    data.append('groomName', formData.title.split('&')[0]?.trim() || formData.title);
+    data.append('brideName', formData.title.split('&')[1]?.trim() || '');
+    data.append('familyName', formData.hostName);
+
+    if (formData.images && formData.images.length > 0) {
+      formData.images.forEach(img => {
+        data.append('images', img);
+      });
+    }
+    
+    try {
+      const created = await createInvitation(data);
+      setCreatedInv(created);
+      setIsCreated(true);
+    } catch (err) {
+      setToastMessage("Failed to create invitation");
+      setTimeout(() => setToastMessage(''), 3000);
+    }
   };
 
   const handleToggleInvite = (member) => {
@@ -191,6 +215,9 @@ export default function CreateNimantranPage() {
     return true;
   });
 
+  // Get unique cities from members and presidents
+  const uniqueCities = Array.from(new Set([...members.map(m => m.city), ...presidents.map(p => p.city)])).filter(Boolean).sort();
+
   // Toggling batch button states (check if all filtered ones are selected)
   const isAllPresidentsInvited = filteredPresidents.length > 0 && filteredPresidents.every(p => invitedMemberIds.includes(p.id));
   const isAllInCityInvited = filteredMembers.length > 0 && filteredMembers.every(m => invitedMemberIds.includes(m.id));
@@ -255,8 +282,16 @@ export default function CreateNimantranPage() {
     }
   };
 
+  const renderToast = () => toastMessage && (
+    <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-[#1e1145] text-white border border-purple-500/20 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 animate-bounce font-sans text-xs font-bold select-none max-w-[90%] w-max text-center">
+      <AlertCircle size={15} className="text-purple-300 shrink-0" />
+      <span>{toastMessage}</span>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-surface pb-24 relative">
+      {renderToast()}
       {/* Header */}
       <div className="bg-white px-4 py-4 flex items-center gap-3 sticky top-0 z-30 shadow-sm border-b border-slate-100">
         <button 
@@ -328,6 +363,7 @@ export default function CreateNimantranPage() {
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
+                  autoComplete="off"
                   placeholder="e.g. Marriage Ceremony, House Warming & Dinner"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                 />
@@ -341,6 +377,7 @@ export default function CreateNimantranPage() {
                   name="hostName"
                   value={formData.hostName}
                   onChange={handleChange}
+                  autoComplete="off"
                   placeholder="e.g. Verma Family / Shri Ramesh Gupta"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                 />
@@ -349,11 +386,11 @@ export default function CreateNimantranPage() {
               {/* Event Date */}
               <div className="space-y-1">
                 <label className="text-[12px] font-bold text-slate-500">Event Date *</label>
-                <input 
-                  type="date"
+                <DatePicker 
                   name="date"
                   value={formData.date}
                   onChange={handleChange}
+                  placeholder="Select Date"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                 />
               </div>
@@ -362,22 +399,21 @@ export default function CreateNimantranPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-500">Feast Time</label>
-                  <input 
-                    type="time"
+                  <TimePicker 
                     name="timeFood"
                     value={formData.timeFood}
                     onChange={handleChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-500">Program Time</label>
-                  <input 
-                    type="time"
+                  <TimePicker 
                     name="timeProgram"
                     value={formData.timeProgram}
                     onChange={handleChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                    align="right"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                   />
                 </div>
               </div>

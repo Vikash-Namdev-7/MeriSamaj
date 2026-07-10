@@ -13,8 +13,10 @@ const PublicRoute = () => {
     );
   }
 
+  const isOnboarded = auth.user?.name && auth.user.name !== 'Member';
+
   return auth.isAuthenticated ? (
-    <Navigate to="/member/home" replace />
+    <Navigate to={isOnboarded ? "/member/home" : "/member/onboarding"} replace />
   ) : (
     <Outlet />
   );

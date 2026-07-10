@@ -7,8 +7,8 @@ import { mockEvents as initialEvents } from '../data/mockEvents';
 import { mockMatrimonialProfiles as initialMatrimonial } from '../data/mockMatrimonial';
 import { mockObituaries as initialObituaries } from '../data/mockObituaries';
 import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
-import { mockNimantran as initialNimantran } from '../data/mockNimantran';
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
+import invitationService from '../../../core/api/invitationService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -683,7 +683,21 @@ export const DataProvider = ({ children }) => {
   const [granularPrivacy, setGranularPrivacy] = useState(() => loadState('granularPrivacy', defaultGranularPrivacy));
 
   // Invitations State
-  const [invitations, setInvitations] = useState(initialNimantran);
+  const [invitations, setInvitations] = useState([]);
+
+  useEffect(() => {
+    const loadInvitations = async () => {
+      try {
+        const data = await invitationService.getInvitations();
+        setInvitations(data);
+      } catch (error) {
+        console.error('Failed to load invitations', error);
+      }
+    };
+    if (currentUser) {
+      loadInvitations();
+    }
+  }, [currentUser]);
 
   // Sync to localStorage when state changes
   useEffect(() => saveState('currentUser', currentUser), [currentUser]);
@@ -1610,37 +1624,24 @@ export const DataProvider = ({ children }) => {
   const adaptedGroupMessagesMap = adaptGroupMessages(groupMessages, activeCommunity);
   const adaptedNotificationsList = adaptNotifications(notifications, activeCommunity);
 
-  const updateInvitationRSVP = (invitationId, status) => {
-    setInvitations(prev => prev.map(inv => {
-      if (inv.id === invitationId) {
-        const existingRSVP = inv.rsvps.find(r => r.memberId === currentUser.id);
-        if (existingRSVP) {
-          return {
-            ...inv,
-            rsvps: inv.rsvps.map(r => r.memberId === currentUser.id ? { ...r, status } : r)
-          };
-        } else {
-          return {
-            ...inv,
-            rsvps: [...inv.rsvps, { memberId: currentUser.id, status }]
-          };
-        }
-      }
-      return inv;
-    }));
+  const updateInvitationRSVP = async (invitationId, status) => {
+    try {
+      const updatedInv = await invitationService.updateRSVP(invitationId, status);
+      setInvitations(prev => prev.map(inv => inv._id === invitationId || inv.id === invitationId ? updatedInv : inv));
+    } catch (error) {
+      console.error('Failed to update RSVP', error);
+    }
   };
 
-  const createInvitation = (invitationData) => {
-    const newInv = {
-      status: 'Pending',
-      rsvps: [],
-      invitedMemberIds: [],
-      invitedGroupIds: [],
-      ...invitationData,
-      id: invitationData.id || `nim${Date.now()}`,
-      creatorId: invitationData.creatorId || currentUser.id,
-    };
-    setInvitations(prev => [newInv, ...prev]);
+  const createInvitation = async (invitationData) => {
+    try {
+      const newInv = await invitationService.createInvitation(invitationData);
+      setInvitations(prev => [newInv, ...prev]);
+      return newInv;
+    } catch (error) {
+      console.error('Failed to create invitation', error);
+      throw error;
+    }
   };
 
   const addInvitesToInvitation = (invitationId, memberIds = [], groupIds = []) => {

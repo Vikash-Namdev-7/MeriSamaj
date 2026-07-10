@@ -5,6 +5,7 @@ const config = require('./config/config');
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const rootRouter = require('./routes/index');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -12,12 +13,16 @@ const app = express();
 connectDB();
 
 // Global Middlewares
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Root API Router
-app.use('/api', rootRouter);
+app.use('/api/v1', rootRouter);
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {

@@ -2,12 +2,16 @@ import { axiosPublic } from '../api/axiosConfig';
 
 export const authService = {
   login: async (credentials) => {
-    const response = await axiosPublic.post('/auth/login', credentials);
+    const response = await axiosPublic.post('/auth/login', credentials, {
+      withCredentials: true
+    });
     return response.data;
   },
 
   register: async (userData) => {
-    const response = await axiosPublic.post('/auth/register', userData);
+    const response = await axiosPublic.post('/auth/register', userData, {
+      withCredentials: true
+    });
     return response.data;
   },
 
@@ -25,6 +29,16 @@ export const authService = {
 
   refresh: async () => {
     const response = await axiosPublic.post('/auth/refresh', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    // Determine if data is FormData (for file uploads) or normal object
+    const isFormData = profileData instanceof FormData;
+    const response = await axiosPublic.put('/auth/update-profile', profileData, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
       withCredentials: true
     });
     return response.data;
