@@ -227,6 +227,28 @@ const verifyOtp = async (req, res) => {
   res.json({ message: 'OTP verified successfully (mocked)' });
 };
 
+// @desc    Reset password (mocked OTP verification)
+// @route   POST /api/auth/reset-password
+// @access  Public
+const resetPassword = async (req, res) => {
+  const { phone, otp, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found with this mobile number' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -234,5 +256,6 @@ module.exports = {
   refreshAuth,
   updateProfile,
   sendOtp,
-  verifyOtp
+  verifyOtp,
+  resetPassword
 };

@@ -27,6 +27,12 @@ export const authService = {
     return response.data;
   },
 
+  resetPassword: async (resetData) => {
+    // resetData: { phone, otp, newPassword }
+    const response = await axiosPublic.post('/auth/reset-password', resetData);
+    return response.data;
+  },
+
   refresh: async () => {
     const response = await axiosPublic.post('/auth/refresh', {}, {
       withCredentials: true

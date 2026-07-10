@@ -7,7 +7,8 @@ const {
   refreshAuth,
   updateProfile,
   sendOtp,
-  verifyOtp
+  verifyOtp,
+  resetPassword
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -18,6 +19,7 @@ router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
+router.post('/reset-password', resetPassword);
 
 // Protected routes
 router.post('/refresh', protect, refreshAuth);
