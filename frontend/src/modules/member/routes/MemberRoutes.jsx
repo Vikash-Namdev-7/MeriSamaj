@@ -5,6 +5,8 @@ import { MemberLayout } from '../components/layout/MemberLayout';
 import { AnimatedPage } from '../components/layout/AnimatedPage';
 
 // Onboarding
+import MemberProtectedRoute from '../../../core/routes/MemberProtectedRoute';
+import PublicRoute from '../../../core/routes/PublicRoute';
 import SplashScreen from '../pages/onboarding/SplashScreen';
 import LoginScreen from '../pages/onboarding/LoginScreen';
 import RegisterScreen from '../pages/onboarding/RegisterScreen';
@@ -120,12 +122,15 @@ export const MemberRoutes = () => {
         <Routes location={location} key={location.pathname}>
           {/* Onboarding — no bottom nav */}
           <Route path="splash" element={<SplashScreen />} />
-          <Route path="login" element={<LoginScreen />} />
-          <Route path="register" element={<RegisterScreen />} />
-          <Route path="onboarding" element={<OnboardingScreen />} />
-
-          {/* Main App — with bottom nav */}
-          <Route path="/" element={<MemberLayout />}>
+          <Route element={<PublicRoute />}>
+            <Route path="login" element={<LoginScreen />} />
+            <Route path="register" element={<RegisterScreen />} />
+          </Route>
+          
+          <Route element={<MemberProtectedRoute />}>
+            <Route path="onboarding" element={<OnboardingScreen />} />
+            {/* Main App — with bottom nav */}
+            <Route path="/" element={<MemberLayout />}>
             <Route index element={<Navigate to="home" replace />} />
 
             {/* Main Tabs */}
@@ -233,6 +238,7 @@ export const MemberRoutes = () => {
           {/* Catch-all for missing phase B pages */}
           <Route path="*" element={<div className="flex flex-col items-center justify-center min-h-[60vh]"><p className="text-gray-400 text-sm">Feature coming soon (Phase B)</p></div>} />
         </Route>
+      </Route>
       </Routes>
       </ReferralProvider>
     </AnimatePresence>

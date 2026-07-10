@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Phone, ArrowRight, ArrowLeft, Bell, Lock, Eye, EyeOff, AlertCircle, Globe, Check
+  Phone, ArrowRight, ArrowLeft, Bell, Lock, Eye, EyeOff, AlertCircle, Globe, Check, Loader2
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { useAuth } from '../../../../core/auth/useAuth';
+import { authService } from '../../../../core/auth/authService';
 
 // ─── OTP NOTIFICATION BANNER ──────────────────────────────────────────────────
 const OtpBanner = ({ code, onDismiss }) => (
@@ -26,7 +28,9 @@ const OtpBanner = ({ code, onDismiss }) => (
 const LoginScreen = () => {
   const navigate = useNavigate();
   const { loginUser, setLanguage, language } = useData();
+  const { login } = useAuth();
   const inputRefs = useRef([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Step flow: 'initial-language' -> 'auth'
   const [step, setStep] = useState('initial-language');
@@ -80,16 +84,24 @@ const LoginScreen = () => {
     handleVerifyOtp(entered, () => setForgotPasswordStep(3));
   };
 
-  const handleForgotResetPassword = () => {
+  const handleForgotResetPassword = async () => {
     if (!forgotNewPassword || forgotNewPassword !== forgotConfirmPassword) {
       setToastMessage('Passwords do not match');
       setTimeout(() => setToastMessage(''), 3000);
       return;
     }
-    setToastMessage('Password reset successful! Please log in.');
-    setTimeout(() => setToastMessage(''), 3000);
-    setForgotPasswordStep(null);
-    setLoginPassword('');
+    setIsLoading(true);
+    try {
+      await authService.resetPassword({ phone: forgotMobile, otp: forgotOtp.join(''), newPassword: forgotNewPassword });
+      setToastMessage('Password reset successful! Please log in.');
+      setForgotPasswordStep(null);
+      setLoginPassword('');
+    } catch (error) {
+      setToastMessage(error?.response?.data?.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setToastMessage(''), 3000);
+    }
   };
 
   const sampleUsers = [
@@ -97,37 +109,24 @@ const LoginScreen = () => {
     { id: 'mock-u2', name: 'Dr. Neha Jain', phone: '+91 98270 54321', email: 'dr.neha.j@email.com', initials: 'NJ', community: 'Jain Samaj', subCommunity: 'Digambar', city: 'Bhopal', profession: 'Doctor', company: 'Jain Care Clinic', age: 35, gender: 'Female', familyMembers: [] }
   ];
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!loginIdentifier || !loginPassword) {
       setToastMessage('Please enter email/mobile and password');
       setTimeout(() => setToastMessage(''), 3000);
       return;
     }
 
-    const savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null');
-
-    if (savedUser && (loginIdentifier === savedUser.phone || loginIdentifier === savedUser.email)) {
-      loginUser(savedUser);
+    setIsLoading(true);
+    try {
+      const response = await login({ identifier: loginIdentifier, password: loginPassword });
+      // Keep DataProvider state in sync for backward compatibility during transition
+      loginUser(response.user);
       navigate('/member/home');
-    } else {
-      const match = sampleUsers.find(u => u.phone === loginIdentifier || u.email === loginIdentifier || u.name.toLowerCase().includes(loginIdentifier.toLowerCase()));
-      if (match) {
-        loginUser(match);
-        navigate('/member/home');
-      } else {
-        const mockUser = {
-          id: `u-${Date.now()}`,
-          name: loginIdentifier.includes('@') ? loginIdentifier.split('@')[0] : 'Member User',
-          phone: !loginIdentifier.includes('@') ? loginIdentifier : '+91 98765 43210',
-          email: loginIdentifier.includes('@') ? loginIdentifier : 'member@email.com',
-          community: 'Gupta Samaj',
-          city: 'Indore',
-          profession: 'Professional',
-          familyMembers: [],
-        };
-        loginUser(mockUser);
-        navigate('/member/home');
-      }
+    } catch (error) {
+      setToastMessage(error?.response?.data?.message || 'Login failed. Please check credentials.');
+      setTimeout(() => setToastMessage(''), 3000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -290,9 +289,11 @@ const LoginScreen = () => {
 
                 <button 
                   onClick={handleLogin}
-                  className="w-full mt-6 py-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale shadow-md"
+                  disabled={isLoading}
+                  className="w-full mt-6 py-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  Login <ArrowRight size={16} />
+                  {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Login'} 
+                  {!isLoading && <ArrowRight size={16} />}
                 </button>
               </div>
             </>
@@ -407,9 +408,10 @@ const LoginScreen = () => {
 
                   <button 
                     onClick={handleForgotResetPassword}
-                    className="w-full py-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale shadow-md"
+                    disabled={isLoading}
+                    className="w-full py-3.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Reset Password
+                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Reset Password'}
                   </button>
                 </div>
               )}

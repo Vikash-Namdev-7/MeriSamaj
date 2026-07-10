@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
 import { useData } from '../../context/DataProvider';
+import { useAuth } from '../../../../core/auth/useAuth';
 import { 
   Home, Users, Heart, BookOpen, MessageCircle, User, Vote, 
   HeartHandshake, Briefcase, Shield, X, LogOut, Award, Mail, Settings, Gift
@@ -14,7 +15,8 @@ const hiddenPaths = ['/member/events', '/member/groups', '/member/notifications'
 export const MemberLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isMobileMenuOpen, setMobileMenuOpen, currentUser, logoutUser } = useData();
+  const { isMobileMenuOpen, setMobileMenuOpen, currentUser } = useData();
+  const { logout } = useAuth();
 
   const shouldHideBottomNav = hiddenPaths.some(p => location.pathname.startsWith(p)) || location.pathname.split('/').filter(Boolean).length > 2;
 
@@ -173,9 +175,9 @@ export const MemberLayout = () => {
             <div className="p-4 shrink-0">
               <div className="mx-1 mb-3 h-[1px] bg-gradient-to-r from-transparent via-purple-400/15 to-transparent" />
               <button 
-                onClick={() => {
+                onClick={async () => {
                   setMobileMenuOpen(false);
-                  logoutUser();
+                  await logout();
                   navigate('/member/login');
                 }}
                 className="w-full flex items-center justify-center gap-2.5 py-3 rounded-[14px] text-[12px] font-bold uppercase tracking-wider transition-all active:scale-95"

@@ -5,10 +5,12 @@ import AdminRoutes from './modules/admin/routes/AdminRoutes';
 import HeadRoutes from './modules/head/routes/HeadRoutes';
 import { DataProvider } from './modules/member/context/DataProvider';
 import { FundProvider } from './modules/member/context/FundContext';
+import { AuthProvider } from './core/auth/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 
 const App = () => {
   return (
+    <AuthProvider>
     <DataProvider>
       <FundProvider>
         <div className="desktop-wrapper">
@@ -34,6 +36,7 @@ const App = () => {
       </div>
       </FundProvider>
     </DataProvider>
+    </AuthProvider>
   );
 };
 

@@ -1,0 +1,12 @@
+import { useContext, useDebugValue } from 'react';
+import { AuthContext } from './AuthContext';
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  useDebugValue(context.auth, auth => auth?.user ? 'Logged In' : 'Logged Out');
+  
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
