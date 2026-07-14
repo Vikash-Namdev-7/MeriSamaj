@@ -545,10 +545,10 @@ const MyProfilePage = () => {
           </div>
 
           {/* Profile details block */}
-          <div className="px-4.5 pb-3.5 pt-3 relative flex flex-row-reverse items-start justify-between gap-4 sm:gap-6">
+          <div className="px-4.5 pb-3.5 pt-3 relative flex flex-row-reverse items-stretch justify-between gap-4 sm:gap-6">
             
             {/* Overlapping Avatar */}
-            <div className="shrink-0 z-10 mr-1 sm:mr-3 flex flex-col items-center">
+            <div className="shrink-0 z-10 mr-1 sm:mr-3 flex flex-col items-center justify-between pb-1 self-stretch">
               <div className="-mt-[70px] sm:-mt-[88px] relative">
                 {/* Glowing ring */}
                 <div className={`w-[110px] h-[110px] sm:w-[135px] sm:h-[135px] rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-300 p-[3px] bg-white border ${
@@ -585,7 +585,7 @@ const MyProfilePage = () => {
               </div>
 
               {/* Follow count statistics bar */}
-              <div className="flex items-center justify-center gap-2.5 text-[13.5px] sm:text-[14.5px] font-bold text-slate-500 mt-9 sm:mt-12 text-center">
+              <div className="flex-1 flex items-center justify-center gap-2 text-[11px] sm:text-[13px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
                 <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
                   <span className="font-extrabold text-slate-800">{myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
                 </button>
@@ -599,7 +599,7 @@ const MyProfilePage = () => {
             {/* User credentials details */}
             <div className="text-left space-y-2 flex-1 pt-0 sm:pt-0.5 ml-1 sm:ml-3">
               <div className="flex items-center flex-wrap gap-2">
-                <h2 className="text-[22px] sm:text-[25px] font-black text-slate-800 tracking-tight leading-none flex items-center gap-1.5">
+                <h2 className="text-[17px] xs:text-[20px] sm:text-[25px] font-black text-slate-800 tracking-tight leading-none flex items-center gap-1.5 break-words flex-wrap max-w-full">
                   {currentUser.name}
                   {profilePrivacy?.u1 === 'private' && <span className="text-xs">🔒</span>}
                   {currentUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
