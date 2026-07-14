@@ -43,9 +43,9 @@ export const MemberLayout = () => {
   ];
 
   return (
-    <div className="relative w-full min-h-screen bg-surface flex flex-col md:flex-row overflow-x-hidden">
+    <div className="relative w-full h-screen bg-surface flex flex-col md:flex-row overflow-hidden">
       <SideNav />
-      <div className={`flex-1 w-full min-w-0 ${shouldHideBottomNav ? 'pb-0' : 'pb-20'} md:pb-0`}>
+      <div className={`flex-1 w-full min-w-0 h-full overflow-y-auto ${shouldHideBottomNav ? 'pb-0' : 'pb-20'} md:pb-0 md:ml-[260px]`}>
         {/* pb-20 accounts for floating bottom nav with margin */}
         <Outlet />
       </div>

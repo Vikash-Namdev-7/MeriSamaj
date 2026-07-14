@@ -1,13 +1,16 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { initialPurposes, initialDonationHistory } from './mockDonationData';
+import { initialPurposes, initialDonationHistory, topDonors as initialTopDonors } from './mockDonationData';
+import { useData } from '../../context/DataProvider';
 
 const DonationContext = createContext(null);
 
 export const DonationProvider = ({ children }) => {
+  const { currentUser } = useData();
   const [purposes, setPurposes] = useState(initialPurposes);
   const [donationHistory, setDonationHistory] = useState(initialDonationHistory);
+  const [topDonors, setTopDonors] = useState(initialTopDonors);
 
   const makeDonation = (purposeId, amount, type) => {
     const targetPurpose = purposes.find(p => p.id === purposeId);
@@ -56,11 +59,44 @@ export const DonationProvider = ({ children }) => {
       })
     );
 
+    // Update topDonors list dynamically
+    const userName = currentUser?.name || "You";
+    const userInitials = currentUser?.initials || (currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('') : "YO");
+    const userAvatar = currentUser?.avatar || "";
+
+    setTopDonors(prevTopDonors => {
+      const newDonorRecord = {
+        id: `td_user_${Date.now()}`,
+        name: userName,
+        amount: formattedAmount,
+        initials: userInitials,
+        purpose: targetPurpose.title,
+        date: `${formattedDate}, ${formattedTime}`,
+        paymentMode: type === "One-time" ? "Online (UPI)" : "Bank Transfer",
+        avatar: userAvatar
+      };
+
+      const existingDonorIdx = prevTopDonors.findIndex(d => d.name === userName);
+      if (existingDonorIdx >= 0) {
+        const updated = [...prevTopDonors];
+        updated[existingDonorIdx] = {
+          ...updated[existingDonorIdx],
+          amount: updated[existingDonorIdx].amount + formattedAmount,
+          purpose: targetPurpose.title,
+          date: `${formattedDate}, ${formattedTime}`,
+          paymentMode: type === "One-time" ? "Online (UPI)" : "Bank Transfer"
+        };
+        return updated;
+      } else {
+        return [...prevTopDonors, newDonorRecord];
+      }
+    });
+
     return newDonation;
   };
 
   return (
-    <DonationContext.Provider value={{ purposes, donationHistory, makeDonation }}>
+    <DonationContext.Provider value={{ purposes, donationHistory, topDonors, makeDonation }}>
       {children || <Outlet />}
     </DonationContext.Provider>
   );

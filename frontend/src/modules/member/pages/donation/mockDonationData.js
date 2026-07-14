@@ -63,14 +63,56 @@ export const donationGuidelines = [
 ];
 
 export const topDonors = [
-  { id: "td1", name: "Rakesh Sharma", amount: 25000, initials: "RS" },
-  { id: "td2", name: "Suresh Yadav", amount: 21000, initials: "SY" },
-  { id: "td3", name: "Manish Gupta", amount: 15500, initials: "MG" },
-  { id: "td4", name: "Ajay Singh", amount: 11000, initials: "AS" },
-  { id: "td5", name: "Vinod Kumar", amount: 7500, initials: "VK" },
-  { id: "td6", name: "Sunita Agarwal", amount: 5000, initials: "SA" },
-  { id: "td7", name: "Pankaj Jain", amount: 3500, initials: "PJ" },
-  { id: "td8", name: "Rohit Verma", amount: 2100, initials: "RV" }
+  { 
+    id: "td1", 
+    name: "Vikash Agrawal", 
+    amount: 101000, 
+    initials: "VA", 
+    purpose: "Samaj Bhavan Construction", 
+    date: "12 July 2026, 11:20 AM", 
+    paymentMode: "Online (UPI)", 
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" 
+  },
+  { 
+    id: "td2", 
+    name: "Karan Sharma", 
+    amount: 51000, 
+    initials: "KS", 
+    purpose: "Education Support Fund", 
+    date: "11 July 2026, 04:15 PM", 
+    paymentMode: "Bank Transfer", 
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" 
+  },
+  { 
+    id: "td3", 
+    name: "Rajesh Mali", 
+    amount: 31000, 
+    initials: "RM", 
+    purpose: "Health Camp Organization", 
+    date: "10 July 2026, 08:30 PM", 
+    paymentMode: "Online (UPI)", 
+    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80" 
+  },
+  { 
+    id: "td4", 
+    name: "Alok Patel", 
+    amount: 25000, 
+    initials: "AP", 
+    purpose: "Poor Girls Marriage Support", 
+    date: "10 July 2026, 02:10 PM", 
+    paymentMode: "Cash", 
+    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80" 
+  },
+  { 
+    id: "td5", 
+    name: "Nitin Jain", 
+    amount: 11000, 
+    initials: "NJ", 
+    purpose: "Education Support Fund", 
+    date: "09 July 2026, 06:45 PM", 
+    paymentMode: "Online (UPI)", 
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80" 
+  }
 ];
 
 export const impactStats = [

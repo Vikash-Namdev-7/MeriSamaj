@@ -27,7 +27,7 @@ export const SideNav = () => {
   ];
 
   return (
-    <div className="hidden md:flex flex-col w-[260px] h-screen bg-gradient-to-b from-[#1e1145] via-[#25175a] to-[#2d1b69] sticky top-0 border-r border-white/5">
+    <div className="hidden md:flex flex-col w-[260px] h-screen bg-gradient-to-b from-[#1e1145] via-[#25175a] to-[#2d1b69] fixed top-0 left-0 border-r border-white/5 z-20 overflow-y-auto scrollbar-hide">
       {/* Brand Logo */}
       <div className="px-6 pt-7 pb-5">
         <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 // import React from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { MemberLayout } from '../components/layout/MemberLayout';
 import { AnimatedPage } from '../components/layout/AnimatedPage';
@@ -119,7 +119,8 @@ export const MemberRoutes = () => {
   return (
     <AnimatePresence mode="wait">
       <ReferralProvider>
-        <Routes location={location} key={location.pathname}>
+        <DonationProvider>
+          <Routes location={location} key={location.pathname}>
           {/* Onboarding — no bottom nav */}
           <Route path="splash" element={<SplashScreen />} />
           <Route element={<PublicRoute />}>
@@ -182,7 +183,7 @@ export const MemberRoutes = () => {
               <Route path=":id" element={<AnimatedPage><PollDetailPage /></AnimatedPage>} />
             </Route>
 
-            <Route path="donation" element={<DonationProvider />}>
+            <Route path="donation" element={<Outlet />}>
               <Route index element={<AnimatedPage><DonationPage /></AnimatedPage>} />
               <Route path="setup" element={<AnimatedPage><DonateSetupPage /></AnimatedPage>} />
               <Route path="payment" element={<AnimatedPage><DonatePaymentPage /></AnimatedPage>} />
@@ -240,6 +241,7 @@ export const MemberRoutes = () => {
         </Route>
       </Route>
       </Routes>
+        </DonationProvider>
       </ReferralProvider>
     </AnimatePresence>
   );

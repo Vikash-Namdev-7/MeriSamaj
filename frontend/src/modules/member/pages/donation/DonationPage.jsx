@@ -18,12 +18,12 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Avatar } from '../../components/common/Avatar';
 import { useDonation } from './DonationContext';
-import { donationGuidelines, topDonors, impactStats } from './mockDonationData';
+import { donationGuidelines, impactStats } from './mockDonationData';
 
 const DonationPage = () => {
   const navigate = useNavigate();
   const { setMobileMenuOpen, getUnreadCountForModule, user } = useData();
-  const { purposes } = useDonation();
+  const { purposes, topDonors } = useDonation();
 
   const [selectedCity, setSelectedCity] = useState(user?.city || 'Indore');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);

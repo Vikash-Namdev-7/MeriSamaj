@@ -12,7 +12,7 @@ import { CityLandscape } from '../../components/common/CityLandscape';
 import { mockAdmins as mockAdminsRaw } from '../../data/mockUsers';
 import { mockSuccessStories } from '../../data/mockMatrimonial';
 import ReferAndEarnBanner from './ReferAndEarnBanner';
-// Removed broken mockFundData import
+import { useDonation } from '../donation/DonationContext';
 
 
 
@@ -101,6 +101,7 @@ const quickActions = [
 const HomePage = () => {
   const navigate = useNavigate();
   const { currentUser, members: mockMembers, admins: contextAdmins, posts: mockPosts, events: mockEvents, language, setLanguage, notifications, getUnreadCountForModule } = useData();
+  const { topDonors } = useDonation();
   const mockAdmins = contextAdmins && contextAdmins.length > 0 ? contextAdmins : mockAdminsRaw;
   const subHeadsRef = useDraggableScroll();
   const updatesScrollRef = useDraggableScroll();
@@ -167,7 +168,7 @@ const HomePage = () => {
 
         {/* Floating Navbar */}
         <div className="relative z-10 px-5 pt-6 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/member/settings')}>
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/member/profile')}>
             {/* Avatar with premium glow ring */}
             <div className="relative">
               <div 
@@ -255,7 +256,7 @@ const HomePage = () => {
         if (totalCount === 0) return null;
 
         return (
-          <div className="px-5 mb-4 animate-fade-in-up">
+          <div className="px-3 mb-4 animate-fade-in-up">
             <div className="bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#5B21B6] rounded-[24px] p-4 text-white shadow-[0_8px_30px_rgb(124,58,237,0.15)] relative overflow-hidden">
               <div className="absolute -right-4 -bottom-4 w-28 h-28 bg-white/5 rounded-full blur-xl" />
               <div className="absolute left-1/3 top-0 w-20 h-20 bg-purple-300/10 rounded-full blur-xl" />
@@ -295,7 +296,7 @@ const HomePage = () => {
       })()}
 
       {/* ─── INTERACTIVE HIGHLIGHTS MODULE ─── */}
-      <div className="px-5 mt-3 relative z-10 flex gap-3">
+      <div className="px-3 mt-3 relative z-10 flex gap-3">
         {/* Invitations (Nimantran) */}
         <motion.div 
           onClick={() => navigate('/member/nimantran')}
@@ -360,10 +361,162 @@ const HomePage = () => {
         </motion.div>
       </div>
 
+      {/* ─── TOP 5 DONORS SECTION ─── */}
+      <div className="px-3 mt-6 relative z-10 animate-fade-in-up">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#FF2162] to-[#FF4D85] shadow-[0_4px_12px_rgba(255,33,98,0.25)] border border-[#FF2162]/20">
+                <Heart className="text-white animate-pulse" size={13} fill="currentColor" />
+              </div>
+            </div>
+            <h3 className="text-[15px] font-extrabold text-text-primary tracking-tight">Top 5 Recent Donors</h3>
+          </div>
+          <button 
+            onClick={() => navigate('/member/donation')} 
+            className="text-[11px] font-bold text-[#FF2162] flex items-center gap-0.5 hover:underline press-scale"
+          >
+            View All <ChevronRight size={13} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* 3D Modern Container */}
+        <div 
+          className="rounded-[32px] p-4.5 space-y-4 relative overflow-hidden transition-all duration-300"
+          style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #fcfbfe 100%)',
+            border: '1.5px solid rgba(124,58,237,0.06)',
+            boxShadow: '0 10px 30px -5px rgba(124,58,237,0.08), inset 0 2px 4px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.02)'
+          }}
+        >
+          {/* Subtle 3D Depth Card Overlay */}
+          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-purple-300/35 to-transparent" />
+          
+          <div className="flex flex-col gap-3.5">
+            {[...topDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
+              // Select color themes and icons for purposes
+              let purposeIcon = <Home size={11} className="text-amber-500" />;
+              let purposeBg = 'bg-amber-50';
+              if (donor.purpose.toLowerCase().includes('schola') || donor.purpose.toLowerCase().includes('chhatra')) {
+                purposeIcon = <GraduationCap size={11} className="text-purple-500" />;
+                purposeBg = 'bg-purple-50';
+              } else if (donor.purpose.toLowerCase().includes('gaushala') || donor.purpose.toLowerCase().includes('cow')) {
+                purposeIcon = <span className="text-[10px] leading-none">🐄</span>;
+                purposeBg = 'bg-orange-50';
+              } else if (donor.purpose.toLowerCase().includes('vivah') || donor.purpose.toLowerCase().includes('marri')) {
+                purposeIcon = <Heart size={10} className="text-rose-500" fill="currentColor" />;
+                purposeBg = 'bg-rose-50';
+              } else if (donor.purpose.toLowerCase().includes('shiksha') || donor.purpose.toLowerCase().includes('edu')) {
+                purposeIcon = <BookOpen size={11} className="text-blue-500" />;
+                purposeBg = 'bg-blue-50';
+              }
+
+              // Badges for payments
+              let paymentBadge = (
+                <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">
+                  <span>Online (UPI)</span>
+                </div>
+              );
+              if (donor.paymentMode.toLowerCase().includes('bank')) {
+                paymentBadge = (
+                  <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50">
+                    <span>Bank Transfer</span>
+                  </div>
+                );
+              } else if (donor.paymentMode.toLowerCase().includes('cash')) {
+                paymentBadge = (
+                  <div className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100/50">
+                    <span>Cash</span>
+                  </div>
+                );
+              }
+
+              // Rank Badge color & 3D styling
+              const rankGradients = [
+                'from-[#FF2162] to-[#FF4D85] shadow-[0_3px_8px_rgba(255,33,98,0.25)]',
+                'from-[#A78BFA] to-[#C4B5FD] shadow-[0_3px_8px_rgba(167,139,250,0.2)]',
+                'from-[#F59E0B] to-[#FBBF24] shadow-[0_3px_8px_rgba(245,158,11,0.2)]',
+                'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]',
+                'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]'
+              ];
+              const rankGrad = rankGradients[idx] || rankGradients[4];
+
+              return (
+                <motion.div
+                  key={donor.id}
+                  whileHover={{ y: -2, scale: 1.01, boxShadow: '0 6px 20px rgba(124,58,237,0.04)' }}
+                  className="flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-100/60 shadow-sm transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* 3D Rank Badge */}
+                    <div className={`w-[22px] h-[22px] rounded-lg bg-gradient-to-br ${rankGrad} text-white flex items-center justify-center text-[10px] font-black tracking-tight border border-white/20 select-none shrink-0`}>
+                      {idx + 1}
+                    </div>
+
+                    {/* Avatar with Glow Rings */}
+                    <div className="relative shrink-0">
+                      <div className="w-[42px] h-[42px] rounded-full overflow-hidden border border-purple-100/80 p-[1.5px] bg-white">
+                        {donor.avatar ? (
+                          <img src={donor.avatar} alt={donor.name} className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-purple-50 text-brand-primary flex items-center justify-center text-[11px] font-black uppercase">
+                            {donor.initials}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details: Name, Purpose, Date */}
+                    <div className="flex flex-col text-left">
+                      <span className="text-[13px] font-extrabold text-slate-800 tracking-tight leading-tight mb-0.5">
+                        {donor.name}
+                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        {/* Purpose badge */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${purposeBg} border border-purple-100/10`}>
+                            {purposeIcon}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-500 truncate max-w-[130px] leading-tight">
+                            {donor.purpose}
+                          </span>
+                        </div>
+                        {/* Date info */}
+                        <div className="flex items-center gap-1 text-[8.5px] font-semibold text-slate-400 leading-tight">
+                          <Calendar size={8} className="text-slate-400" />
+                          <span>{donor.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Amount and Payment Mode */}
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="text-[14px] font-black text-emerald-600 leading-none tracking-tight">
+                      ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(donor.amount)}
+                    </span>
+                    {paymentBadge}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Large View All Button */}
+          <button 
+            onClick={() => navigate('/member/donation')}
+            className="w-full py-3 bg-[#FF2162] hover:bg-[#E0144C] text-white text-[13px] font-black rounded-2xl flex items-center justify-center gap-1.5 transition-all duration-300 press-scale shadow-[0_6px_20px_rgba(255,33,98,0.25)] border border-[#FF2162]/10"
+          >
+            View All Donors <ArrowRight size={14} strokeWidth={3} />
+          </button>
+        </div>
+      </div>
+
       {/* ─── TODAY'S UPDATES SECTION ─── */}
       <div className="mt-5 relative z-10">
         {/* Header */}
-        <div className="px-5 flex items-center justify-between mb-3">
+        <div className="px-3 flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="relative">
               <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.15)' }}>
@@ -383,7 +536,7 @@ const HomePage = () => {
         </div>
 
         {/* Premium metric pill cards */}
-        <div className="mx-5 rounded-[24px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(124,58,237,0.06)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 20px -4px rgba(124,58,237,0.08), 0 12px 32px -8px rgba(124,58,237,0.05)' }}>
+        <div className="mx-3 rounded-[24px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(124,58,237,0.06)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 20px -4px rgba(124,58,237,0.08), 0 12px 32px -8px rgba(124,58,237,0.05)' }}>
           <div className="flex items-stretch">
             {/* New Bookings */}
             <div onClick={() => navigate('/member/dharmashala')} className="flex flex-col items-center justify-center text-center cursor-pointer press-scale flex-1 py-3.5 gap-1.5 relative overflow-hidden group">
@@ -570,7 +723,7 @@ const HomePage = () => {
       {/* ─── END CENSUS DASHBOARD BANNER ─── */}
 
       {/* ─── BENTO GRID (QUICK ACTIONS) ─── */}
-      <div className="px-5 mt-6 relative z-10">
+      <div className="px-3 mt-6 relative z-10">
         <div className="flex items-center justify-between mb-4 px-0.5">
           <h3 className="text-[13px] font-black text-text-secondary tracking-widest uppercase">Exclusive Features</h3>
           <div className="h-[1.5px] flex-1 mx-3 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.15), transparent)' }} />
@@ -627,18 +780,18 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── MATRIMONY SUCCESS STORIES ─── */}
       <div className="px-0 relative z-10">
-        <div className="px-5 flex items-center justify-between mb-4">
+        <div className="px-3 flex items-center justify-between mb-4">
           <h3 className="text-[17px] font-bold text-text-primary tracking-tight">Success Stories</h3>
           <button onClick={() => navigate('/member/matrimonial')} className="text-[13px] text-pink-600 font-bold press-scale flex items-center gap-0.5">
             Find Your Perfect Match <ChevronRight size={16} />
           </button>
         </div>
         
-        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-5">
+        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-3">
           {mockSuccessStories.map((story) => (
             <div 
               key={story.id} 
@@ -668,10 +821,10 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-6 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-6 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── YOUR LEADERS (Samaj Netrutva) ─── */}
-      <div className="px-5 mb-8">
+      <div className="px-3 mb-8">
         {(() => {
           const president = mockAdmins.find(a => a.role === 'President' && (currentUser.city?.toLowerCase().includes(a.city?.toLowerCase()) || a.city?.toLowerCase().includes(currentUser.city?.toLowerCase()))) || mockAdmins[1];
           const coreCommittee = mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role) && a.city?.toLowerCase() === president.city?.toLowerCase());
@@ -757,7 +910,7 @@ const HomePage = () => {
                 </div>
               </div>
                 
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-3 px-3">
                 {coreCommittee.map(member => {
                     const badgeColor = member.role === 'Vice President' 
                       ? 'bg-[#7c3aed]' 
@@ -832,11 +985,11 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── UPCOMING EVENTS ─── */}
       <div className="px-0">
-        <div className="px-5 flex items-center justify-between mb-4">
+        <div className="px-3 flex items-center justify-between mb-4">
           <div>
             <h3 className="text-[17px] font-bold text-text-primary tracking-tight">Upcoming Events</h3>
             <p className="text-[11px] text-text-secondary font-medium mt-0.5">Upcoming Events</p>
@@ -845,7 +998,7 @@ const HomePage = () => {
             View More <ChevronRight size={16} />
           </button>
         </div>
-        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-3 px-5">
+        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-3 px-3">
           {mockEvents.slice(0, 4).map((event) => {
             const gradients = {
               Cultural: 'from-purple-500 to-violet-600',
@@ -926,17 +1079,17 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── COMMUNITY FEED PREVIEW ─── */}
-      <div className="px-5">
+      <div className="px-3">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[17px] font-bold text-text-primary tracking-tight">Community Feed</h3>
           <button onClick={() => navigate('/member/social')} className="text-[13px] text-social-module font-bold press-scale flex items-center gap-0.5">
             View All <ChevronRight size={16} />
           </button>
         </div>
-        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-2 -mx-5 px-5">
+        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-2 -mx-3 px-3">
           {communityPosts.slice(0, 5).map((post, i) => {
             const matchedMember = mockMembers.find(m => m.name === post.author.name) || mockAdmins.find(a => a.name === post.author.name);
             const handleAuthorClick = (e) => {
@@ -969,7 +1122,7 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-8 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── REFER & EARN BANNER ─── */}
       <div className="px-3 mb-8">
@@ -977,7 +1130,7 @@ const HomePage = () => {
       </div>
 
       {/* ─── SECTION DIVIDER ─── */}
-      <div className="mx-5 mt-2 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
+      <div className="mx-3 mt-2 mb-6 h-[1px] bg-gradient-to-r from-transparent via-purple-200/40 to-transparent" />
 
       {/* ─── END OF FEED ILLUSTRATION ─── */}
       <div className="mt-8 relative w-full h-[450px] flex flex-col items-center justify-end overflow-hidden pb-[160px] -mb-[120px] bg-gradient-to-b from-transparent to-purple-50/50">
