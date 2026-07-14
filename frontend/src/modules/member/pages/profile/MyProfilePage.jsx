@@ -585,7 +585,7 @@ const MyProfilePage = () => {
               </div>
 
               {/* Follow count statistics bar */}
-              <div className="flex-1 flex items-center justify-center gap-2 text-[11px] sm:text-[13px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
+              <div className="flex-1 flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
                 <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
                   <span className="font-extrabold text-slate-800">{myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
                 </button>
@@ -616,7 +616,7 @@ const MyProfilePage = () => {
               </div>
 
               {/* Bio metadata columns */}
-              <div className="text-[13.5px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
+              <div className="text-[12px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
                 <p className="flex items-center gap-2">
                   <Briefcase size={14} className="text-slate-400 shrink-0" /> 
                   <span>{currentUser.profession || 'Community Member'}{currentUser.company ? ` at ${currentUser.company}` : ''}</span>
@@ -632,14 +632,14 @@ const MyProfilePage = () => {
                   <span>{currentUser.community || 'Agrawal Samaj'}{currentUser.subCommunity ? ` (${currentUser.subCommunity})` : ''}</span>
                 </p>
                 {currentUser.phone && (
-                  <p className="flex items-center gap-2 flex-wrap text-[12.5px] sm:text-[13.5px] text-slate-450 mt-0.5">
-                    <Phone size={13} className="text-slate-400 shrink-0" /> 
+                  <p className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[13.5px] text-slate-450 mt-0.5">
+                    <Phone size={12} className="text-slate-400 shrink-0" /> 
                     <span>{currentUser.phone}</span>
                   </p>
                 )}
                 {currentUser.email && (
-                  <p className="flex items-center gap-2 flex-wrap text-[12.5px] sm:text-[13.5px] text-slate-450">
-                    <Mail size={13} className="text-slate-400 shrink-0" /> 
+                  <p className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[13.5px] text-slate-450">
+                    <Mail size={12} className="text-slate-400 shrink-0" /> 
                     <span className="truncate max-w-[170px] sm:max-w-xs">{currentUser.email}</span>
                   </p>
                 )}

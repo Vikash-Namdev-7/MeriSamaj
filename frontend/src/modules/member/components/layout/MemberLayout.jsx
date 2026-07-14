@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
@@ -18,7 +18,34 @@ export const MemberLayout = () => {
   const { isMobileMenuOpen, setMobileMenuOpen, currentUser } = useData();
   const { logout } = useAuth();
 
+  const [isBottomNavVisible, setBottomNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollContainerRef = useRef(null);
+
+
+
+  useEffect(() => {
+    const handleToggle = (e) => {
+      if (e.detail !== undefined) {
+        setBottomNavVisible(e.detail);
+      }
+    };
+    window.addEventListener('toggle-bottom-nav', handleToggle);
+    return () => {
+      window.removeEventListener('toggle-bottom-nav', handleToggle);
+    };
+  }, []);
+
+  // Always show BottomNav and reset scroll to top on path change
+  useEffect(() => {
+    setBottomNavVisible(true);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
   const shouldHideBottomNav = hiddenPaths.some(p => location.pathname.startsWith(p)) || location.pathname.split('/').filter(Boolean).length > 2;
+  const isFullHeightRoute = location.pathname.startsWith('/member/social') || location.pathname === '/member/chat';
 
   const handleMenuLinkClick = (path) => {
     setMobileMenuOpen(false);
@@ -43,13 +70,16 @@ export const MemberLayout = () => {
   ];
 
   return (
-    <div className="relative w-full h-screen bg-surface flex flex-col md:flex-row overflow-hidden">
+    <div className="relative w-full h-[100dvh] bg-surface flex flex-col md:flex-row overflow-hidden">
       <SideNav />
-      <div className={`flex-1 w-full min-w-0 h-full overflow-y-auto ${shouldHideBottomNav ? 'pb-0' : 'pb-20'} md:pb-0 md:ml-[260px]`}>
+      <div 
+        ref={scrollContainerRef}
+        className={`flex-1 w-full min-w-0 h-full overflow-y-auto ${shouldHideBottomNav || isFullHeightRoute ? 'pb-0' : 'pb-20'} md:pb-0 md:ml-[260px]`}
+      >
         {/* pb-20 accounts for floating bottom nav with margin */}
         <Outlet />
       </div>
-      <BottomNav />
+      <BottomNav isVisible={isBottomNavVisible} />
 
       {/* ─── MOBILE DRAWER MENU ─── */}
       {isMobileMenuOpen && (

@@ -8,7 +8,7 @@ const tabPaths = ['/member/home', '/member/social', '/member/matrimonial', '/mem
 // Sub-pages where bottom nav should be hidden
 const hiddenPaths = ['/member/events', '/member/groups', '/member/notifications', '/member/splash', '/member/login', '/member/setup-profile', '/member/select-community', '/member/verify-otp', '/member/chat/room', '/member/chat/call', '/member/matrimonial'];
 
-export const BottomNav = () => {
+export const BottomNav = ({ isVisible = true }) => {
   const location = useLocation();
   
   // Hide on onboarding and sub-pages
@@ -35,7 +35,9 @@ export const BottomNav = () => {
 
   return (
     <div 
-      className="responsive-fixed-bottom z-40 md:hidden"
+      className={`responsive-fixed-bottom z-40 md:hidden transition-all duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
+      }`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {/* Premium glass nav container */}

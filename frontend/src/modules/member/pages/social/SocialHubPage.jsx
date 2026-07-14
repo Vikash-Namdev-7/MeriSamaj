@@ -125,6 +125,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const touchTriggeredRef = useRef(false);
   const isWheelingRef = useRef(false);
   const wheelTimeoutRef = useRef(null);
+  const lastTabScrollY = useRef({});
 
   const tabs = [
     { id: 'city-feed', label: 'City Feed', icon: CityFeedIcon, component: FeedPage, feedProps: { feedType: 'city' } },
@@ -177,6 +178,36 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
       setActiveTab(newIndex);
     }
   };
+
+  const handleTabScroll = (e) => {
+    const tabId = e.currentTarget.dataset.tabId;
+    const currentScrollY = e.currentTarget.scrollTop;
+    
+    // Only apply the hide-on-scroll behavior to the City Feed and Community Feed tabs
+    if (tabId !== 'city-feed' && tabId !== 'community-feed') {
+      lastTabScrollY.current[tabId] = currentScrollY;
+      return;
+    }
+
+    const lastScroll = lastTabScrollY.current[tabId] || 0;
+    const difference = currentScrollY - lastScroll;
+
+    if (Math.abs(difference) > 8) {
+      if (difference > 0 && currentScrollY > 60) {
+        // Scrolling down -> hide BottomNav
+        window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: false }));
+      } else {
+        // Scrolling up -> show BottomNav
+        window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: true }));
+      }
+    }
+    lastTabScrollY.current[tabId] = currentScrollY;
+  };
+
+  useEffect(() => {
+    // Show bottom nav instantly when user switches tabs
+    window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: true }));
+  }, [activeTab]);
 
   const scrollToTab = (index) => {
     if (scrollContainerRef.current && !isTransitioningRef.current) {
@@ -297,7 +328,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   };
 
   return (
-    <div className="h-screen bg-surface flex flex-col overflow-hidden relative">
+    <div className={`h-full w-full flex flex-col overflow-hidden relative ${activeTab === tabs.findIndex(t => t.id === 'chat') ? 'bg-white' : 'bg-surface'}`}>
       
       {/* ─── FIXED GLOBAL HEADER ─── */}
       <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-purple-100/30 flex-shrink-0 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
@@ -385,7 +416,12 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
             onGroupCreateTriggered: () => setTriggerCreateGroup(false)
           } : {};
           return (
-            <div key={tab.id} className={`w-full h-full flex-shrink-0 overflow-y-auto pb-28 ${tab.id === 'chat' ? 'bg-white' : ''}`}>
+            <div 
+              key={tab.id} 
+              data-tab-id={tab.id}
+              onScroll={handleTabScroll}
+              className={`w-full h-full flex-shrink-0 overflow-y-auto ${tab.id === 'chat' ? 'bg-white pb-0' : 'pb-28'}`}
+            >
               <Component isHub={true} {...extraProps} {...groupsProps} searchQuery={searchQuery} />
             </div>
           );

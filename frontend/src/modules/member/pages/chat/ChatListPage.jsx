@@ -225,7 +225,7 @@ const ChatListPage = ({ isHub = false }) => {
       </div>
 
       {/* CHAT LIST */}
-      <div className="flex-1 bg-transparent overflow-y-auto">
+      <div className="flex-1 bg-transparent overflow-y-auto pb-28">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-60">
             <MessageCircle size={48} className="text-gray-300" />
