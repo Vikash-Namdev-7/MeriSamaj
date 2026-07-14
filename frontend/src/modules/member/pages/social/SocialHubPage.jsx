@@ -192,16 +192,22 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
     const lastScroll = lastTabScrollY.current[tabId] || 0;
     const difference = currentScrollY - lastScroll;
 
+    // Accumulate scroll delta. Only trigger and reset baseline when threshold is crossed.
     if (Math.abs(difference) > 8) {
-      if (difference > 0 && currentScrollY > 60) {
+      if (currentScrollY <= 60) {
+        // Always show near the top
+        window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: true }));
+      } else if (difference > 0) {
         // Scrolling down -> hide BottomNav
         window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: false }));
       } else {
         // Scrolling up -> show BottomNav
         window.dispatchEvent(new CustomEvent('toggle-bottom-nav', { detail: true }));
       }
+      
+      // Update baseline ONLY when threshold is crossed so slow scrolling accumulates
+      lastTabScrollY.current[tabId] = currentScrollY;
     }
-    lastTabScrollY.current[tabId] = currentScrollY;
   };
 
   useEffect(() => {
