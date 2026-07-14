@@ -4,12 +4,12 @@ import { ChevronLeft, Share2, MapPin, Calendar, Clock, Heart, Users, Check, X, P
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 
-export default function NimantranDetailPage() {
+export default function InvitationDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { invitations, currentUser, members, updateInvitationRSVP, addNotification, groups, addInvitesToInvitation } = useData();
   
-  const inv = invitations.find(i => i.id === id);
+  const inv = invitations.find(i => String(i.id) === String(id));
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [creatorRsvpTab, setCreatorRsvpTab] = useState('attending');
@@ -65,7 +65,7 @@ export default function NimantranDetailPage() {
 
   if (!inv) return <div className="p-10 text-center">Invitation not found.</div>;
 
-  const currentRSVP = (inv.rsvps || []).find(r => r.memberId === currentUser.id)?.status;
+  const currentRSVP = (inv.rsvps || []).find(r => r.memberId === currentUser?.id)?.status;
 
   useEffect(() => {
     setSelectedStatus(currentRSVP || null);
@@ -90,7 +90,7 @@ export default function NimantranDetailPage() {
   const attendingList = rsvpMembers.filter(m => m.status === 'attending');
   const familyList = rsvpMembers.filter(m => m.status === 'attending_family');
   const declinedList = rsvpMembers.filter(m => m.status === 'not_attending');
-  const isCreator = inv.creatorId === currentUser.id;
+  const isCreator = currentUser && inv.creatorId === currentUser.id;
 
   const displayTitle = inv.title || `Wedding of ${inv.groomName} & ${inv.brideName}`;
   const displayHost = inv.hostName || inv.familyName;
@@ -289,7 +289,7 @@ export default function NimantranDetailPage() {
       const member = members.find(m => m.id === memberId) || presidents.find(p => p.id === memberId);
       if (member) {
         addNotification({
-          type: 'nimantran',
+          type: 'invitation',
           title: 'New Invitation',
           message: `You have been invited to "${displayTitle}".`,
         });
@@ -301,7 +301,7 @@ export default function NimantranDetailPage() {
       const group = groups.find(g => g.id === groupId);
       if (group) {
         addNotification({
-          type: 'nimantran',
+          type: 'invitation',
           title: 'Group Invited',
           message: `The group "${group.name}" has been invited to "${displayTitle}".`,
         });

@@ -11,6 +11,7 @@ export const AdminLayout = () => {
   const location = useLocation();
   const { currentUser, members, logoutUser } = useData();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
 
   // Calculate real-time pending approvals count
@@ -226,7 +227,7 @@ export const AdminLayout = () => {
     return navigationConfig.map((section) => (
       <div key={section.category} className="space-y-1 pt-3">
         {/* Category Header */}
-        <div className="px-4 py-1 text-[10px] font-black text-slate-400 tracking-widest uppercase">
+        <div className="px-4 py-1 text-[10px] font-black tracking-widest uppercase" style={{ color: 'rgba(167,139,250,0.7)' }}>
           {section.category}
         </div>
         
@@ -245,15 +246,22 @@ export const AdminLayout = () => {
                 <button
                   onClick={() => toggleExpand(item.name)}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                    isParentActive 
-                      ? 'bg-purple-50 text-[#5b21b6] font-extrabold shadow-sm shadow-purple-500/5' 
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold'
+                    isParentActive ? 'font-semibold' : 'hover:bg-white/5'
                   }`}
+                  style={isParentActive ? {
+                    background: 'rgba(124,58,237,0.18)',
+                    border: '1px solid rgba(124,58,237,0.25)',
+                    color: '#ffffff',
+                  } : {
+                    border: '1px solid transparent',
+                    color: 'rgba(255,255,255,0.85)',
+                  }}
                 >
                   <div className="flex items-center">
                     <Icon 
                       size={18} 
-                      className={`mr-3 transition-colors ${isParentActive ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`} 
+                      className="mr-3 transition-colors"
+                      style={{ color: isParentActive ? '#ffffff' : 'rgba(255,255,255,0.75)' }}
                     />
                     <span className="text-[13px] tracking-wide">{item.name}</span>
                   </div>
@@ -264,12 +272,12 @@ export const AdminLayout = () => {
                         {item.badge}
                       </span>
                     )}
-                    {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                    {isExpanded ? <ChevronUp size={14} style={{ color: 'rgba(255,255,255,0.6)' }} /> : <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.6)' }} />}
                   </div>
                 </button>
                 
                 {isExpanded && (
-                  <div className="ml-6 pl-4 border-l border-slate-100 space-y-1 mt-1 mb-2">
+                  <div className="ml-6 pl-4 border-l border-white/10 space-y-1 mt-1 mb-2">
                     {item.children.map((child) => {
                       const isChildActive = location.pathname === child.path && 
                         (!child.search || location.search === child.search);
@@ -280,10 +288,14 @@ export const AdminLayout = () => {
                           to={`${child.path}${child.search || ''}`}
                           onClick={isMobile ? () => setIsMobileOpen(false) : undefined}
                           className={`block py-1.5 px-2.5 text-[12.5px] transition-colors rounded-lg ${
-                            isChildActive 
-                              ? 'text-purple-600 font-bold bg-purple-50/50' 
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50 font-medium'
+                            isChildActive ? 'font-bold' : 'hover:bg-white/5 font-medium'
                           }`}
+                          style={isChildActive ? {
+                            background: 'rgba(124,58,237,0.15)',
+                            color: '#ffffff'
+                          } : {
+                            color: 'rgba(255,255,255,0.75)'
+                          }}
                         >
                           {child.name}
                         </NavLink>
@@ -300,27 +312,34 @@ export const AdminLayout = () => {
                 key={item.name}
                 to={item.path}
                 onClick={isMobile ? () => setIsMobileOpen(false) : undefined}
-                className={`flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                  isActive 
-                    ? 'bg-purple-50 text-[#5b21b6] font-extrabold shadow-sm shadow-purple-500/5' 
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold'
+                className={`flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${
+                  isActive ? 'font-semibold' : 'hover:bg-white/5'
                 }`}
+                style={isActive ? {
+                  background: 'rgba(124,58,237,0.18)',
+                  border: '1px solid rgba(124,58,237,0.25)',
+                  color: '#ffffff',
+                } : {
+                  border: '1px solid transparent',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
               >
                 {/* Active Accent Bar */}
                 {isActive && (
-                  <div className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full bg-purple-600" />
+                  <div className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full" style={{ background: 'linear-gradient(180deg, #A78BFA, #7C3AED)', boxShadow: '0 0 8px rgba(124,58,237,0.6)' }} />
                 )}
                 
                 <div className="flex items-center">
                   <Icon 
                     size={18} 
-                    className={`mr-3 transition-colors ${isActive ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`} 
+                    className="mr-3 transition-colors"
+                    style={{ color: isActive ? '#ffffff' : 'rgba(255,255,255,0.75)' }}
                   />
-                  <span className="text-[13px] tracking-wide">{item.name}</span>
+                  <span className="text-[13px] tracking-wide relative z-10">{item.name}</span>
                 </div>
 
                 {item.badge !== null && item.badge !== undefined && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white border border-rose-400/30 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white border border-rose-400/30 animate-pulse relative z-10">
                     {item.badge}
                   </span>
                 )}
@@ -335,27 +354,40 @@ export const AdminLayout = () => {
   return (
     <div className="relative w-full h-screen bg-surface flex flex-col md:flex-row overflow-hidden">
       {/* ─── DESKTOP SIDEBAR ─── */}
-      <aside className="hidden md:flex flex-col w-[260px] h-full bg-white border-r border-slate-100 shrink-0 z-40">
+      {isDesktopSidebarOpen && (
+      <aside 
+        className="hidden md:flex flex-col w-[260px] h-full shrink-0 z-40 transition-all duration-300"
+        style={{
+          background: 'linear-gradient(160deg, #13093a 0%, #1e1145 30%, #25175a 65%, #2d1b69 100%)',
+          borderRight: '1px solid rgba(167,139,250,0.12)',
+          boxShadow: '4px 0 48px rgba(0,0,0,0.3), inset -1px 0 0 rgba(167,139,250,0.08)',
+        }}
+      >
         {/* Brand Header */}
         <div className="px-6 pt-7 pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-purple-500/25">
-              म
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+            >
+              <span className="relative z-10">म</span>
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
             </div>
             <div>
-              <h1 className="text-[18px] font-black text-slate-900 tracking-tight leading-none">MeriSamaj</h1>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Admin Dashboard</p>
+              <h1 className="text-[18px] font-black text-white tracking-tight leading-none">MeriSamaj</h1>
+              <p className="text-[9px] font-semibold uppercase tracking-widest mt-1" style={{ color: 'rgba(167,139,250,0.6)' }}>Admin Dashboard</p>
             </div>
           </div>
         </div>
 
         {/* Separator */}
-        <div className="mx-5 h-[1px] bg-slate-100 mb-5" />
+        <div className="mx-5 h-[1px] bg-gradient-to-r from-transparent via-purple-400/15 to-transparent mb-5" />
 
         {/* Admin Tag */}
-        <div className="mx-4 mb-4 px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-100 flex items-center gap-2">
+        <div className="mx-4 mb-4 px-4 py-2.5 rounded-xl flex items-center gap-2"
+          style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+        >
           <ShieldAlert size={16} className="text-amber-500 animate-pulse" />
-          <span className="text-[11px] font-extrabold tracking-wider uppercase text-purple-700">
+          <span className="text-[11px] font-extrabold tracking-wider uppercase" style={{ color: 'rgba(253,230,138,0.9)' }}>
             Moderator Desk Mode
           </span>
         </div>
@@ -367,9 +399,11 @@ export const AdminLayout = () => {
 
         {/* User Card & Sign Out */}
         <div className="p-4 space-y-2 mt-auto">
-          <div className="mx-2 mb-2 h-[1px] bg-slate-100" />
+          <div className="mx-2 mb-2 h-[1px] bg-gradient-to-r from-transparent via-purple-400/15 to-transparent" />
           
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 border border-slate-100/80">
+          <div className="flex items-center gap-3 p-2 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
+          >
             <Avatar 
               initials={currentUser?.initials || 'A'} 
               size="sm" 
@@ -377,19 +411,27 @@ export const AdminLayout = () => {
               color="bg-gradient-to-br from-violet-400 to-purple-600 text-white font-bold"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-bold text-slate-800 truncate leading-none">{currentUser?.name || 'Administrator'}</p>
-              <p className="text-[9px] font-bold text-slate-400 truncate mt-1 leading-none">Council Admin</p>
+              <p className="text-[12px] font-bold text-white truncate leading-none">{currentUser?.name || 'Administrator'}</p>
+              <p className="text-[9px] font-semibold truncate mt-1 leading-none" style={{ color: 'rgba(167,139,250,0.55)' }}>Council Admin</p>
             </div>
           </div>
 
           <button 
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all text-[12px] font-bold uppercase tracking-wider border border-rose-100"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all text-[12px] font-bold uppercase tracking-wider active:scale-95"
+            style={{
+              background: 'rgba(239,68,68,0.12)',
+              color: 'rgba(252,165,165,0.9)',
+              border: '1px solid rgba(239,68,68,0.2)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
           >
             <LogOut size={14} /> Log Out
           </button>
         </div>
       </aside>
+      )}
 
       {/* ─── MOBILE HEADER & TOP NAV ─── */}
       <header className="md:hidden w-full h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm">
@@ -419,55 +461,80 @@ export const AdminLayout = () => {
             onClick={() => setIsMobileOpen(false)}
           />
           <div 
-            className="fixed top-0 left-0 bottom-0 w-[270px] bg-white z-55 flex flex-col p-5 shadow-2xl border-r border-slate-100 animate-slide-right pb-safe"
+            className="fixed top-0 left-0 bottom-0 w-[288px] z-55 flex flex-col shadow-2xl animate-slide-right pb-safe"
+            style={{
+              background: 'linear-gradient(160deg, #13093a 0%, #1e1145 30%, #25175a 65%, #2d1b69 100%)',
+              borderRight: '1px solid rgba(167,139,250,0.12)',
+              boxShadow: '4px 0 48px rgba(0,0,0,0.3), inset -1px 0 0 rgba(167,139,250,0.08)',
+            }}
           >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white font-black text-md shadow-sm">
-                  म
+            <div className="flex items-center justify-between p-5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg relative overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)', boxShadow: '0 4px 16px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                >
+                  <span className="relative z-10">म</span>
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
                 </div>
-                <span className="text-[16px] font-black text-slate-900">MeriSamaj</span>
+                <div>
+                  <h1 className="text-[17px] font-black text-white tracking-tight leading-none">MeriSamaj</h1>
+                  <p className="text-[9px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: 'rgba(167,139,250,0.6)' }}>Admin Desk</p>
+                </div>
               </div>
               <button 
                 onClick={() => setIsMobileOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 bg-slate-50 active:scale-90"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 transition-all active:scale-90"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
 
             {/* Separator */}
-            <div className="mx-2 h-[1px] bg-slate-100 mb-5" />
+            <div className="mx-5 h-[1px] bg-gradient-to-r from-transparent via-purple-400/15 to-transparent mb-4" />
 
             {/* Admin Tag */}
-            <div className="mx-2 mb-4 px-3 py-2.5 rounded-xl bg-purple-50 border border-purple-100 flex items-center gap-2">
+            <div className="mx-4 mb-4 px-3 py-2.5 rounded-xl flex items-center gap-2"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+            >
               <ShieldAlert size={16} className="text-amber-500 animate-pulse" />
-              <span className="text-[11px] font-extrabold tracking-wider uppercase text-purple-700">
+              <span className="text-[11px] font-extrabold tracking-wider uppercase" style={{ color: 'rgba(253,230,138,0.9)' }}>
                 Moderator Desk Mode
               </span>
             </div>
 
             {/* Nav items list */}
-            <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
+            <nav className="flex-1 space-y-1.5 overflow-y-auto px-1 no-scrollbar">
               {renderNavItems(true)}
             </nav>
 
             {/* Footer */}
-            <div className="pt-4 mt-auto border-t border-slate-100 space-y-2">
-              <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="p-4 mt-auto space-y-2">
+              <div className="mx-2 mb-2 h-[1px] bg-gradient-to-r from-transparent via-purple-400/15 to-transparent" />
+              
+              <div className="flex items-center gap-3 p-2 rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
+              >
                 <Avatar 
                   initials={currentUser?.initials || 'A'} 
                   size="sm" 
                   imageUrl={currentUser?.avatar}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-bold text-slate-800 truncate leading-none">{currentUser?.name || 'Admin'}</p>
-                  <p className="text-[9px] font-bold text-slate-400 truncate mt-1 leading-none">Council Admin</p>
+                  <p className="text-[12px] font-bold text-white truncate leading-none">{currentUser?.name || 'Admin'}</p>
+                  <p className="text-[9px] font-semibold truncate mt-1 leading-none" style={{ color: 'rgba(167,139,250,0.55)' }}>Council Admin</p>
                 </div>
               </div>
               <button 
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 py-2.5 text-rose-600 bg-rose-50 rounded-xl font-bold uppercase tracking-wider text-[12px] border border-rose-100"
+                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-bold uppercase tracking-wider text-[12px] transition-all active:scale-95"
+                style={{
+                  background: 'rgba(239,68,68,0.12)',
+                  color: 'rgba(252,165,165,0.9)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
               >
                 <LogOut size={14} /> Sign Out
               </button>
@@ -481,6 +548,13 @@ export const AdminLayout = () => {
         {/* Top Navbar */}
         <div className="h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hidden md:flex z-30">
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+              className="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-600 text-white hover:opacity-90 shadow-md transition-all active:scale-95"
+              title="Toggle Sidebar"
+            >
+              <Menu size={20} />
+            </button>
             <h2 className="text-gray-800 font-bold text-sm tracking-wide">Master Administration</h2>
           </div>
           <div className="flex items-center gap-6">

@@ -5,9 +5,9 @@ import { useData } from '../../context/DataProvider';
 import DatePicker from '../../../../components/ui/DatePicker';
 import TimePicker from '../../../../components/ui/TimePicker';
 
-export default function CreateNimantranPage() {
+export default function CreateInvitationPage() {
   const navigate = useNavigate();
-  const { createInvitation, members, currentUser, addNotification, groups, addInvitesToInvitation } = useData();
+  const { createInvitation, members, currentUser, addNotification, groups, addInvitesToInvitation, invitationFormConfig } = useData();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -274,7 +274,7 @@ export default function CreateNimantranPage() {
     if (isAllFriendsInvited) {
       uninvitedFriendsInFilter.forEach(f => {
         addNotification({
-          type: 'nimantran',
+          type: 'invitation',
           title: 'मित्र को आमंत्रण (Friend Invited)',
           message: `${f.name} को "${createdInv?.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
         });
@@ -310,44 +310,46 @@ export default function CreateNimantranPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* File Upload Section (Multiple photos) */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-bold text-slate-700 block">
-                Upload Event Photos / Invitation Cards
-              </label>
-              
-              <label className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-50 transition-colors relative overflow-hidden min-h-32 block w-full">
-                <input 
-                  type="file" 
-                  multiple
-                  accept="image/*" 
-                  onChange={handleImageUpload} 
-                  className="hidden" 
-                />
-                <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-indigo-500 mb-2">
-                  <Upload size={20} />
-                </div>
-                <p className="text-indigo-900 text-[13px] font-bold">Upload Event Photos (Multiple)</p>
-                <p className="text-[11px] text-slate-400 mt-1">Tap to select photos of card, venue, or program</p>
-              </label>
+            {invitationFormConfig?.enablePhotos && (
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-slate-700 block">
+                  Upload Event Photos / Invitation Cards
+                </label>
+                
+                <label className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-50 transition-colors relative overflow-hidden min-h-32 block w-full">
+                  <input 
+                    type="file" 
+                    multiple
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    className="hidden" 
+                  />
+                  <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-indigo-500 mb-2">
+                    <Upload size={20} />
+                  </div>
+                  <p className="text-indigo-900 text-[13px] font-bold">Upload Event Photos (Multiple)</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Tap to select photos of card, venue, or program</p>
+                </label>
 
-              {/* Multiple Previews */}
-              {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group bg-slate-100">
-                      <img src={preview} alt={`preview-${index}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition-colors shadow-md"
-                      >
-                        <X size={12} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                {/* Multiple Previews */}
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group bg-slate-100">
+                        <img src={preview} alt={`preview-${index}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition-colors shadow-md"
+                        >
+                          <X size={12} strokeWidth={3} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Event Details Form Card */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
@@ -396,27 +398,33 @@ export default function CreateNimantranPage() {
               </div>
 
               {/* Event Schedules / Timings */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500">Feast Time</label>
-                  <TimePicker 
-                    name="timeFood"
-                    value={formData.timeFood}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
+              {(invitationFormConfig?.enableFeastTime || invitationFormConfig?.enableProgramTime) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {invitationFormConfig?.enableFeastTime && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-500">Feast Time</label>
+                      <TimePicker 
+                        name="timeFood"
+                        value={formData.timeFood}
+                        onChange={handleChange}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                      />
+                    </div>
+                  )}
+                  {invitationFormConfig?.enableProgramTime && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-500">Program Time</label>
+                      <TimePicker 
+                        name="timeProgram"
+                        value={formData.timeProgram}
+                        onChange={handleChange}
+                        align="right"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500">Program Time</label>
-                  <TimePicker 
-                    name="timeProgram"
-                    value={formData.timeProgram}
-                    onChange={handleChange}
-                    align="right"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Location */}
               <div className="space-y-1 pt-2">
@@ -432,44 +440,50 @@ export default function CreateNimantranPage() {
               </div>
 
               {/* Google Maps link */}
-              <div className="space-y-1">
-                <label className="text-[12px] font-bold text-slate-500">Google Map Link</label>
-                <input 
-                  type="url"
-                  name="mapLink"
-                  value={formData.mapLink}
-                  onChange={handleChange}
-                  placeholder="Paste map link here"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                />
-              </div>
+              {invitationFormConfig?.enableMapLink && (
+                <div className="space-y-1">
+                  <label className="text-[12px] font-bold text-slate-500">Google Map Link</label>
+                  <input 
+                    type="url"
+                    name="mapLink"
+                    value={formData.mapLink}
+                    onChange={handleChange}
+                    placeholder="Paste map link here"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                  />
+                </div>
+              )}
 
               {/* Contact Number */}
-              <div className="space-y-1">
-                <label className="text-[12px] font-bold text-slate-500">Contact Number *</label>
-                <input 
-                  type="tel"
-                  name="contact"
-                  value={formData.contact}
-                  onChange={handleChange}
-                  placeholder="9999999999"
-                  maxLength={10}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                />
-              </div>
+              {invitationFormConfig?.enableContact && (
+                <div className="space-y-1">
+                  <label className="text-[12px] font-bold text-slate-500">Contact Number *</label>
+                  <input 
+                    type="tel"
+                    name="contact"
+                    value={formData.contact}
+                    onChange={handleChange}
+                    placeholder="9999999999"
+                    maxLength={10}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                  />
+                </div>
+              )}
 
               {/* Personal Message */}
-              <div className="space-y-1">
-                <label className="text-[12px] font-bold text-slate-500">Message (Optional)</label>
-                <input 
-                  type="text"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  placeholder="You are cordially invited."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                />
-              </div>
+              {invitationFormConfig?.enableMessage && (
+                <div className="space-y-1">
+                  <label className="text-[12px] font-bold text-slate-500">Message (Optional)</label>
+                  <input 
+                    type="text"
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    placeholder="You are cordially invited."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                  />
+                </div>
+              )}
 
             </div>
 
@@ -528,18 +542,18 @@ export default function CreateNimantranPage() {
               </div>
 
               {/* Directory Tabs */}
-              <div className="flex border-b border-slate-100 bg-slate-50 p-1 rounded-xl">
+              <div className="flex border-b border-slate-100 bg-slate-50 p-1 rounded-xl overflow-x-auto custom-scrollbar">
                 {[
-                  { id: 'members', label: 'Members' },
-                  { id: 'presidents', label: 'Presidents' },
-                  { id: 'groups', label: 'Groups' },
-                  { id: 'friends', label: 'Friends' }
-                ].map(tab => (
+                  { id: 'members', label: 'Members', show: invitationFormConfig?.enableMembersTab !== false },
+                  { id: 'presidents', label: 'Presidents', show: invitationFormConfig?.enablePresidentsTab !== false },
+                  { id: 'groups', label: 'Groups', show: invitationFormConfig?.enableGroupsTab !== false },
+                  { id: 'friends', label: 'Friends', show: invitationFormConfig?.enableFriendsTab !== false }
+                ].filter(t => t.show).map(tab => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => { setActiveDirectoryTab(tab.id); setSearchQuery(''); }}
-                    className={`flex-1 py-2 text-[11px] font-black rounded-lg transition-all text-center ${
+                    className={`flex-1 min-w-[80px] py-2 text-[11px] font-black rounded-lg transition-all text-center ${
                       activeDirectoryTab === tab.id 
                         ? 'bg-white text-indigo-600 shadow-sm' 
                         : 'text-slate-500 hover:text-slate-700'
@@ -615,75 +629,75 @@ export default function CreateNimantranPage() {
                   {activeDirectoryTab === 'friends' && `${filteredFriends.length} Friends filtered`}
                 </span>
                 
-                <div className="flex gap-2">
-                  {activeDirectoryTab === 'members' && (
-                    <>
-                      {selectedCity !== 'All' && (
+                {invitationFormConfig?.enableBatchInvite !== false && (
+                  <div className="flex gap-2">
+                    {activeDirectoryTab === 'members' && (
+                      <>
+                        {selectedCity !== 'All' && (
+                          <button 
+                            onClick={handleInviteAllInCity}
+                            type="button"
+                            className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                              isAllInCityInvited 
+                                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                            }`}
+                          >
+                            <MapPin size={10} /> {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                          </button>
+                        )}
                         <button 
-                          onClick={handleInviteAllInCity}
+                          onClick={handleInviteAllMembers}
                           type="button"
-                          className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                            isAllInCityInvited 
-                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                          className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1 shadow-sm press-scale ${
+                            isAllMembersInvited ? 'bg-indigo-800 hover:bg-indigo-900' : 'bg-indigo-600 hover:bg-indigo-700'
                           }`}
                         >
-                          <MapPin size={10} /> {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                          <Users size={10} /> {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
                         </button>
-                      )}
+                      </>
+                    )}
+                    {activeDirectoryTab === 'presidents' && (
                       <button 
-                        onClick={handleInviteAllMembers}
+                        onClick={handleInviteAllPresidents}
                         type="button"
                         className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                          isAllMembersInvited 
+                          isAllPresidentsInvited 
                             ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
                             : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                         }`}
                       >
-                        <Users size={10} /> {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
+                        <UserCheck size={10} /> {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
                       </button>
-                    </>
-                  )}
-                  {activeDirectoryTab === 'presidents' && (
-                    <button 
-                      onClick={handleInviteAllPresidents}
-                      type="button"
-                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                        isAllPresidentsInvited 
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
-                    >
-                      <UserCheck size={10} /> {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
-                    </button>
-                  )}
-                  {activeDirectoryTab === 'groups' && (
-                    <button 
-                      onClick={handleInviteAllGroups}
-                      type="button"
-                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                        isAllGroupsInvited 
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
-                    >
-                      <Users size={10} /> {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
-                    </button>
-                  )}
-                  {activeDirectoryTab === 'friends' && (
-                    <button 
-                      onClick={handleInviteAllFriends}
-                      type="button"
-                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                        isAllFriendsInvited 
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
-                    >
-                      <UserCheck size={10} /> {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
-                    </button>
-                  )}
-                </div>
+                    )}
+                    {activeDirectoryTab === 'groups' && (
+                      <button 
+                        onClick={handleInviteAllGroups}
+                        type="button"
+                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                          isAllGroupsInvited 
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        <Users size={10} /> {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
+                      </button>
+                    )}
+                    {activeDirectoryTab === 'friends' && (
+                      <button 
+                        onClick={handleInviteAllFriends}
+                        type="button"
+                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                          isAllFriendsInvited 
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        <UserCheck size={10} /> {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Dynamic Lists Display */}
@@ -835,7 +849,7 @@ export default function CreateNimantranPage() {
                   const member = members.find(m => m.id === memberId) || presidents.find(p => p.id === memberId);
                   if (member) {
                     addNotification({
-                      type: 'nimantran',
+                      type: 'invitation',
                       title: 'नया आमंत्रण (New Invitation)',
                       message: `आपको "${createdInv.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
                     });
@@ -846,14 +860,14 @@ export default function CreateNimantranPage() {
                   const group = groups.find(g => g.id === groupId);
                   if (group) {
                     addNotification({
-                      type: 'nimantran',
+                      type: 'invitation',
                       title: 'ग्रुप को आमंत्रण (Group Invited)',
                       message: `आपके "${group.name}" ग्रुप को "${createdInv.title || 'कार्यक्रम'}" के लिए आमंत्रित किया गया है।`,
                     });
                   }
                 });
 
-                navigate('/member/nimantran');
+                navigate('/member/invitations');
               }}
               className="w-full bg-slate-800 text-white font-black text-[15px] py-4 rounded-xl shadow-lg hover:bg-slate-900 active:scale-95 transition-all"
             >

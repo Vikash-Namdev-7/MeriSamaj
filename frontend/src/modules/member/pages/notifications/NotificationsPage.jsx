@@ -20,7 +20,7 @@ const typeConfig = {
 const moduleTitles = {
   home: 'General Notifications',
   matrimonial: 'Matrimonial Alerts',
-  nimantran: 'Nimantran Alerts',
+  nimantran: 'Invitation Alerts',
   chat: 'Chat Notifications',
   donation: 'Donation Updates',
   voting: 'Voting Updates',
@@ -73,7 +73,7 @@ const NotificationsPage = () => {
       { key: 'voting', label: 'Voting & Poll Alerts' }
     ],
     nimantran: [
-      { key: 'nimantran', label: 'Nimantran Alerts' }
+      { key: 'nimantran', label: 'Invitation Alerts' }
     ],
     donation: [
       { key: 'donation', label: 'Donation Updates' }

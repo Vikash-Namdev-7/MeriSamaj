@@ -56,7 +56,7 @@ export const MemberLayout = () => {
     { name: 'Home', path: '/member/home', icon: Home },
     { name: 'Social Hub', path: '/member/social', icon: Users },
     { name: 'Matrimonial', path: '/member/matrimonial', icon: Heart },
-    { name: 'Nimantran (Invitations)', path: '/member/nimantran', icon: Mail },
+    { name: 'Invitations', path: '/member/invitations', icon: Mail },
     { name: 'Directory', path: '/member/directory', icon: BookOpen },
     { name: 'Chat Messenger', path: '/member/chat', icon: MessageCircle },
     { name: 'Voting / Polls', path: '/member/voting', icon: Vote },

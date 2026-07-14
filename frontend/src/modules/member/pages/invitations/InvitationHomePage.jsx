@@ -4,7 +4,7 @@ import { useData } from '../../context/DataProvider';
 import { Mail, Search, Bell, MapPin, Plus, ChevronLeft, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function NimantranHomePage() {
+export default function InvitationHomePage() {
   const navigate = useNavigate();
   const { invitations, currentUser, setMobileMenuOpen, getUnreadCountForModule } = useData();
   const [activeFilter, setActiveFilter] = useState('My Invitations');
@@ -207,7 +207,7 @@ export default function NimantranHomePage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 mt-5">
                     <button 
-                      onClick={() => navigate(`/member/nimantran/${inv.id}`)}
+                      onClick={() => navigate(`/member/invitations/${inv.id}`)}
                       className="flex-1 bg-purple-50 text-brand-primary font-bold text-[12px] py-2.5 rounded-xl border border-purple-150/30 hover:bg-purple-100/40 active:scale-95 transition-all press-scale"
                     >
                       View Card
@@ -221,7 +221,7 @@ export default function NimantranHomePage() {
                       Navigate
                     </a>
                     <button 
-                      onClick={() => navigate(`/member/nimantran/${inv.id}`)}
+                      onClick={() => navigate(`/member/invitations/${inv.id}`)}
                       className="flex-1 bg-gradient-to-r from-brand-primary to-brand-glow text-white shadow-md shadow-purple-500/25 font-bold text-[12px] py-2.5 rounded-xl active:scale-95 transition-all press-scale"
                     >
                       RSVP
@@ -244,7 +244,7 @@ export default function NimantranHomePage() {
 
       {/* Floating Action Button */}
       <button 
-        onClick={() => navigate('/member/nimantran/create')}
+        onClick={() => navigate('/member/invitations/create')}
         className="fixed bottom-[100px] right-5 w-14 h-14 bg-gradient-to-br from-brand-primary to-brand-glow text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/25 active:scale-90 transition-transform z-30 press-scale hover:scale-105"
       >
         <Plus size={24} strokeWidth={2.5} />

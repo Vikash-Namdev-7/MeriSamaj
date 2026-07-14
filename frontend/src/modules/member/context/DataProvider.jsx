@@ -538,6 +538,27 @@ export const DataProvider = ({ children }) => {
     });
   });
   const [obituaries, setObituaries] = useState(() => loadState('obituaries', initialObituaries));
+  
+  // Dynamic Configuration for Invitation Form Fields
+  const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig', {
+    enableFeastTime: true,
+    enableProgramTime: true,
+    enableMapLink: true,
+    enableContact: true,
+    enableMessage: true,
+    enablePhotos: true,
+    enableMembersTab: true,
+    enablePresidentsTab: true,
+    enableGroupsTab: true,
+    enableFriendsTab: true,
+    enableBatchInvite: true
+  }));
+
+  const updateInvitationConfig = (newConfig) => {
+    setInvitationFormConfig(newConfig);
+    saveState('invitationFormConfig', newConfig);
+  };
+
   const [professionals, setProfessionals] = useState(() => {
     const saved = loadState('professionals', initialProfessionals);
     return saved.map((p, index) => {
@@ -1658,7 +1679,15 @@ export const DataProvider = ({ children }) => {
   };
 
   const updateInvitationStatus = (invitationId, status) => {
-    setInvitations(prev => prev.map(inv => inv.id === invitationId ? { ...inv, status } : inv));
+    setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? { ...inv, status } : inv));
+  };
+
+  const updateInvitation = (invitationId, updatedData) => {
+    setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? { ...inv, ...updatedData } : inv));
+  };
+
+  const deleteInvitation = (invitationId) => {
+    setInvitations(prev => prev.filter(inv => inv.id !== invitationId && inv._id !== invitationId));
   };
 
   const verifyMember = (memberId) => {
@@ -2274,6 +2303,10 @@ export const DataProvider = ({ children }) => {
     addInvitesToInvitation,
     updateInvitationRSVP,
     updateInvitationStatus,
+    updateInvitation,
+    deleteInvitation,
+    invitationFormConfig,
+    updateInvitationConfig,
     obituaries,
     addObituary,
     toggleObituaryShraddhanjali,

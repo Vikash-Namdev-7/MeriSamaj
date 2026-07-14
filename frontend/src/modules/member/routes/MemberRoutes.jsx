@@ -108,10 +108,10 @@ import { CensusPage } from '../pages/census/CensusPage';
 import ChatRouteWrapper from '../pages/chat/ChatRouteWrapper';
 import ChatInfoPage from '../pages/chat/ChatInfoPage';
 
-// Feature: Nimantran
-import NimantranHomePage from '../pages/nimantran/NimantranHomePage';
-import CreateNimantranPage from '../pages/nimantran/CreateNimantranPage';
-import NimantranDetailPage from '../pages/nimantran/NimantranDetailPage';
+// Feature: Invitations
+import InvitationHomePage from '../pages/invitations/InvitationHomePage';
+import CreateInvitationPage from '../pages/invitations/CreateInvitationPage';
+import InvitationDetailPage from '../pages/invitations/InvitationDetailPage';
 
 export const MemberRoutes = () => {
   const location = useLocation();
@@ -210,10 +210,10 @@ export const MemberRoutes = () => {
           <Route path="shradhanjali/create" element={<AnimatedPage><CreateShradhanjaliPage /></AnimatedPage>} />
           <Route path="shradhanjali/:id" element={<AnimatedPage><ShradhanjaliDetailPage /></AnimatedPage>} />
 
-          {/* Nimantran Module */}
-          <Route path="nimantran" element={<AnimatedPage><NimantranHomePage /></AnimatedPage>} />
-          <Route path="nimantran/create" element={<AnimatedPage><CreateNimantranPage /></AnimatedPage>} />
-          <Route path="nimantran/:id" element={<AnimatedPage><NimantranDetailPage /></AnimatedPage>} />
+          {/* Invitation Module */}
+          <Route path="invitations" element={<AnimatedPage><InvitationHomePage /></AnimatedPage>} />
+          <Route path="invitations/create" element={<AnimatedPage><CreateInvitationPage /></AnimatedPage>} />
+          <Route path="invitations/:id" element={<AnimatedPage><InvitationDetailPage /></AnimatedPage>} />
 
           {/* Dharmashala Booking Module */}
           <Route path="dharmashala" element={<AnimatedPage><DharmashalaHomePage /></AnimatedPage>} />

@@ -110,7 +110,7 @@ const HomePage = () => {
   const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
 
   // Dynamic counts for quick actions (with fallbacks for UI demonstration)
-  const nimantranCount = getUnreadCountForModule('nimantran') || 3;
+  const invitationCount = getUnreadCountForModule('nimantran') || 3;
   const donationCount = getUnreadCountForModule('donation') || 5;
   const shradhanjaliCount = getUnreadCountForModule('shradhanjali') || 2;
 
@@ -297,9 +297,9 @@ const HomePage = () => {
 
       {/* ─── INTERACTIVE HIGHLIGHTS MODULE ─── */}
       <div className="px-3 mt-3 relative z-10 flex gap-3">
-        {/* Invitations (Nimantran) */}
+        {/* Invitations (Invitation) */}
         <motion.div 
-          onClick={() => navigate('/member/nimantran')}
+          onClick={() => navigate('/member/invitations')}
           whileHover={{ y: -4 }}
           whileTap={{ scale: 0.98 }}
           className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
@@ -308,9 +308,9 @@ const HomePage = () => {
             <div className="w-13 h-13 bg-gradient-to-br from-indigo-400 to-purple-600 shadow-lg shadow-purple-500/25 rounded-[22px] flex items-center justify-center">
               <Mail className="text-white" size={22} strokeWidth={2} />
             </div>
-            {nimantranCount > 0 && (
+            {invitationCount > 0 && (
               <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {nimantranCount}
+                {invitationCount}
               </div>
             )}
           </div>

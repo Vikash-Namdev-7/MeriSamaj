@@ -13,6 +13,7 @@ import NotificationManagement from '../pages/notifications/NotificationManagemen
 import MatrimonialManagement from '../pages/matrimonial/MatrimonialManagement';
 import CommunityReports from '../pages/reports/CommunityReports';
 import CommunityEngagement from '../pages/engagement/CommunityEngagement';
+import InvitationManagement from '../pages/invitation/InvitationManagement';
 import HeadProtectedRoute from '../components/HeadProtectedRoute';
 import HeadProfileSettings from '../pages/profile/HeadProfileSettings';
 
@@ -21,8 +22,8 @@ export const HeadRoutes = () => {
     <Routes>
       <Route element={<HeadProtectedRoute />}>
         <Route element={<HeadLayout />}>
-          {/* Default /head redirects to dashboard */}
-        <Route index element={<Navigate to="dashboard" replace />} />
+          {/* Default /head redirects to invitations */}
+        <Route index element={<Navigate to="invitations" replace />} />
         
         {/* Head Dashboard */}
         <Route path="dashboard" element={<HeadDashboard />} />
@@ -33,6 +34,7 @@ export const HeadRoutes = () => {
         {/* Other Head views */}
         <Route path="events" element={<EventManagement />} />
         <Route path="professionals" element={<ProfessionalDirectoryManagement />} />
+        <Route path="invitations" element={<InvitationManagement />} />
         <Route path="notifications" element={<NotificationManagement />} />
         <Route path="matrimonial" element={<MatrimonialManagement />} />
         <Route path="funds" element={<FundGovernance />} />
