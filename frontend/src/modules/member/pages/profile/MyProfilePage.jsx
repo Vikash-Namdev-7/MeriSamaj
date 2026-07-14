@@ -103,6 +103,11 @@ const MyProfilePage = () => {
 
   // Members lists Modal State (Followers/Following)
   const [membersListModalType, setMembersListModalType] = useState(null); // 'followers', 'following', or null
+  const [membersSearchQuery, setMembersSearchQuery] = useState('');
+
+  useEffect(() => {
+    setMembersSearchQuery('');
+  }, [membersListModalType]);
 
   useEffect(() => {
     if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard || showHighlightSelectionModal || showHighlightCreationModal || showNotificationsModal || showLanguageModal || showThemeModal || showHelpModal || showAboutModal) {
@@ -148,7 +153,7 @@ const MyProfilePage = () => {
   const likedPosts = posts?.filter(p => p.isLiked) || [];
   const savedPosts = posts?.filter(p => p.isSaved) || [];
 
-  if (showSettingsPage) {
+  const renderSettingsPage = () => {
     return (
       <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden animate-slide-up">
         {/* Header Bar — settings view */}
@@ -404,39 +409,6 @@ const MyProfilePage = () => {
                 <ChevronRight size={16} className="text-purple-300" />
               </button>
 
-              {/* Action: Language */}
-              <button 
-                onClick={() => setShowLanguageModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">🌐</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Language</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">{language === 'hi' ? 'हिन्दी (Hindi)' : 'English'}</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action: App Appearance */}
-              <button 
-                onClick={() => setShowThemeModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">📱</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">App Appearance</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">{theme === 'dark' ? 'Dark' : 'Light'} Mode</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
             </div>
 
             {/* Group 2.5: Support & About */}
@@ -507,11 +479,15 @@ const MyProfilePage = () => {
         </div>
       </div>
     );
-  }
+  };
 
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
-      {/* Header Bar — Glass morphism */}
+      {showSettingsPage ? (
+        renderSettingsPage()
+      ) : (
+        <>
+          {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/member/social')} className="p-1 -ml-1 press-scale">
@@ -529,7 +505,7 @@ const MyProfilePage = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto sm:px-4 py-0 sm:py-6 space-y-6">
+      <div className="max-w-4xl mx-auto sm:px-4 py-0 sm:py-6 space-y-4">
         
         {/* ─── PROFILE HEADER CARD ─── */}
         <div className="bg-white sm:rounded-[28px] overflow-hidden border-b sm:border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.04)] relative">
@@ -569,11 +545,11 @@ const MyProfilePage = () => {
           </div>
 
           {/* Profile details block */}
-          <div className="px-4.5 pb-6 pt-4.5 relative flex flex-row items-start gap-4 sm:gap-6">
+          <div className="px-4.5 pb-3.5 pt-3 relative flex flex-row-reverse items-start justify-between gap-4 sm:gap-6">
             
             {/* Overlapping Avatar */}
-            <div className="-mt-[58px] sm:-mt-[70px] shrink-0 z-10">
-              <div className="relative">
+            <div className="shrink-0 z-10 mr-1 sm:mr-3 flex flex-col items-center">
+              <div className="-mt-[70px] sm:-mt-[88px] relative">
                 {/* Glowing ring */}
                 <div className={`w-[110px] h-[110px] sm:w-[135px] sm:h-[135px] rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-300 p-[3px] bg-white border ${
                   currentUser.isPremium 
@@ -607,59 +583,64 @@ const MyProfilePage = () => {
                   />
                 </label>
               </div>
+
+              {/* Follow count statistics bar */}
+              <div className="flex items-center justify-center gap-2.5 text-[13.5px] sm:text-[14.5px] font-bold text-slate-500 mt-9 sm:mt-12 text-center">
+                <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
+                  <span className="font-extrabold text-slate-800">{myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
+                </button>
+                <span className="text-slate-300">•</span>
+                <button onClick={() => setMembersListModalType('following')} className="hover:text-brand-primary transition-colors press-scale">
+                  <span className="font-extrabold text-slate-800">{myFollowing.length}</span> <span className="text-slate-400 font-medium">following</span>
+                </button>
+              </div>
             </div>
 
             {/* User credentials details */}
-            <div className="text-left space-y-2 flex-1 pt-1.5 sm:pt-3">
+            <div className="text-left space-y-2 flex-1 pt-0 sm:pt-0.5 ml-1 sm:ml-3">
               <div className="flex items-center flex-wrap gap-2">
-                <h2 className="text-[20px] font-extrabold text-slate-800 tracking-tight leading-none flex items-center gap-1.5">
+                <h2 className="text-[22px] sm:text-[25px] font-black text-slate-800 tracking-tight leading-none flex items-center gap-1.5">
                   {currentUser.name}
                   {profilePrivacy?.u1 === 'private' && <span className="text-xs">🔒</span>}
-                  {currentUser.isVerified && <CheckCircle size={17} className="text-emerald-500 fill-emerald-50 shrink-0" />}
+                  {currentUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
                 </h2>
                 {currentUser.isPremium ? (
-                  <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
+                  <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
                     👑 {currentUser.membershipPlan || 'PRO'}
                   </span>
                 ) : (
-                  <span className="bg-purple-50 text-brand-primary text-[8px] font-black uppercase px-2 py-0.5 rounded border border-purple-100/50 tracking-wider">
+                  <span className="bg-purple-50 text-brand-primary text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded border border-purple-100/50 tracking-wider">
                     Member
                   </span>
                 )}
               </div>
 
               {/* Bio metadata columns */}
-              <div className="text-[12.5px] font-semibold text-slate-500 flex flex-col gap-1.5 mt-2">
+              <div className="text-[13.5px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
                 <p className="flex items-center gap-2">
-                  <Briefcase size={13} className="text-slate-400 shrink-0" /> 
+                  <Briefcase size={14} className="text-slate-400 shrink-0" /> 
                   <span>{currentUser.profession || 'Community Member'}{currentUser.company ? ` at ${currentUser.company}` : ''}</span>
                 </p>
                 {(currentUser.city || currentUser.state) && (
                   <p className="flex items-center gap-2">
-                    <MapPin size={13} className="text-slate-400 shrink-0" /> 
+                    <MapPin size={14} className="text-slate-400 shrink-0" /> 
                     <span>{currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}</span>
                   </p>
                 )}
                 <p className="flex items-center gap-2">
-                  <Users size={13} className="text-slate-400 shrink-0" /> 
+                  <Users size={14} className="text-slate-400 shrink-0" /> 
                   <span>{currentUser.community || 'Agrawal Samaj'}{currentUser.subCommunity ? ` (${currentUser.subCommunity})` : ''}</span>
                 </p>
                 {currentUser.phone && (
-                  <p className="flex items-center gap-2 flex-wrap text-[11.5px] text-slate-450 mt-0.5">
-                    <Phone size={12} className="text-slate-400 shrink-0" /> 
+                  <p className="flex items-center gap-2 flex-wrap text-[12.5px] sm:text-[13.5px] text-slate-450 mt-0.5">
+                    <Phone size={13} className="text-slate-400 shrink-0" /> 
                     <span>{currentUser.phone}</span>
-                    <span className="text-[8px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 font-bold border border-slate-100">
-                      {myPhoneSetting === 'everyone' ? '🔓 Public' : myPhoneSetting === 'followers' ? '👥 Friends' : '🔒 Private'}
-                    </span>
                   </p>
                 )}
                 {currentUser.email && (
-                  <p className="flex items-center gap-2 flex-wrap text-[11.5px] text-slate-450">
-                    <Mail size={12} className="text-slate-400 shrink-0" /> 
+                  <p className="flex items-center gap-2 flex-wrap text-[12.5px] sm:text-[13.5px] text-slate-450">
+                    <Mail size={13} className="text-slate-400 shrink-0" /> 
                     <span className="truncate max-w-[170px] sm:max-w-xs">{currentUser.email}</span>
-                    <span className="text-[8px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 font-bold border border-slate-100">
-                      {myEmailSetting === 'everyone' ? '🔓 Public' : myEmailSetting === 'followers' ? '👥 Friends' : '🔒 Private'}
-                    </span>
                   </p>
                 )}
               </div>
@@ -670,22 +651,13 @@ const MyProfilePage = () => {
                   href={currentUser.linkedin || currentUser.facebook || currentUser.twitter} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="text-[12px] font-bold text-brand-primary inline-flex items-center gap-1.5 mt-1 bg-purple-50 hover:bg-purple-100/70 border border-purple-100/30 px-3 py-1 rounded-full transition-colors truncate max-w-full"
+                  className="text-[13px] font-bold text-brand-primary inline-flex items-center gap-1.5 mt-1 bg-purple-50 hover:bg-purple-100/70 border border-purple-100/30 px-3.5 py-1.5 rounded-full transition-colors truncate max-w-full"
                 >
-                  <Globe size={12} /> {new URL(currentUser.linkedin || currentUser.facebook || currentUser.twitter || 'https://linktr.ee/user').hostname}
+                  <Globe size={13} /> {new URL(currentUser.linkedin || currentUser.facebook || currentUser.twitter || 'https://linktr.ee/user').hostname}
                 </a>
               )}
 
-              {/* Follow count statistics bar */}
-              <div className="flex items-center gap-2.5 text-[12.5px] font-bold text-slate-600 mt-4 pt-3.5 border-t border-slate-100">
-                <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
-                </button>
-                <span className="text-slate-300">•</span>
-                <button onClick={() => setMembersListModalType('following')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{myFollowing.length}</span> <span className="text-slate-400 font-medium">following</span>
-                </button>
-              </div>
+
 
             </div>
 
@@ -890,6 +862,8 @@ const MyProfilePage = () => {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Social Links Modal */}
       {showSocialModal && createPortal(
@@ -1046,7 +1020,7 @@ const MyProfilePage = () => {
       {/* Members List Modal (Followers / Following) */}
       {membersListModalType && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[75vh] animate-scale-pop border border-purple-100/20" style={{ touchAction: 'auto' }}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col h-[80vh] max-h-[80vh] animate-scale-pop border border-purple-100/20" style={{ touchAction: 'auto' }}>
             <div className="flex items-center justify-between pb-3 border-b border-purple-100/20 shrink-0">
               <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">
                 {membersListModalType === 'followers' ? 'Followers' : 'Following'}
@@ -1058,42 +1032,74 @@ const MyProfilePage = () => {
                 ✕
               </button>
             </div>
+
+            {/* Search Input Bar */}
+            <div className="mt-3.5 mb-2 shrink-0 relative">
+              <input
+                type="text"
+                placeholder="Search by name, city, gotra..."
+                value={membersSearchQuery}
+                onChange={(e) => setMembersSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 border border-purple-100/30 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-text-primary outline-none focus:border-brand-primary/40 focus:ring-2 focus:ring-brand-primary/10 transition-all shadow-inner"
+              />
+              <span className="absolute left-3.5 top-3 text-slate-400">🔍</span>
+              {membersSearchQuery && (
+                <button
+                  onClick={() => setMembersSearchQuery('')}
+                  className="absolute right-3.5 top-3 text-[10px] font-black text-slate-400 hover:text-slate-650"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             
             <div className="overflow-y-auto py-4 space-y-3 flex-1 min-h-[200px]">
-              {(membersListModalType === 'followers' ? myFollowers : myFollowing).length > 0 ? (
-                (membersListModalType === 'followers' ? myFollowers : myFollowing).map(m => (
-                  <div key={m.id} className="flex items-center justify-between p-3.5 bg-purple-50/30 border border-purple-100/20 rounded-2xl shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar initials={m.initials} size="sm" color="bg-purple-100 text-brand-primary font-bold" />
-                      <div>
-                        <h4 className="text-[13px] font-bold text-text-primary leading-none">{m.name}</h4>
-                        <p className="text-[10px] text-text-secondary mt-1">{m.city}</p>
+              {(() => {
+                const listToRender = (membersListModalType === 'followers' ? myFollowers : myFollowing)
+                  .filter(m => {
+                    const q = membersSearchQuery.toLowerCase();
+                    return (
+                      m.name?.toLowerCase().includes(q) ||
+                      m.city?.toLowerCase().includes(q) ||
+                      m.profession?.toLowerCase().includes(q) ||
+                      m.subCommunity?.toLowerCase().includes(q)
+                    );
+                  });
+                return listToRender.length > 0 ? (
+                  listToRender.map(m => (
+                    <div key={m.id} className="flex items-center justify-between p-3.5 bg-purple-50/30 border border-purple-100/20 rounded-2xl shadow-sm">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar initials={m.initials} size="sm" color="bg-purple-100 text-brand-primary font-bold" />
+                        <div>
+                          <h4 className="text-[13px] font-bold text-text-primary leading-none">{m.name}</h4>
+                          <p className="text-[10px] text-text-secondary mt-1">{m.city}</p>
+                        </div>
                       </div>
+                      {membersListModalType === 'followers' ? (
+                        <button
+                          onClick={() => removeFollower(m.id)}
+                          className="px-3.5 py-1.5 bg-red-50 text-red-650 hover:bg-red-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => unfollowUser(m.id)}
+                          className="px-3.5 py-1.5 bg-purple-50 text-brand-primary hover:bg-purple-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
+                        >
+                          Unfollow
+                        </button>
+                      )}
                     </div>
-                    {membersListModalType === 'followers' ? (
-                      <button
-                        onClick={() => removeFollower(m.id)}
-                        className="px-3.5 py-1.5 bg-red-50 text-red-650 hover:bg-red-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
-                      >
-                        Remove
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => unfollowUser(m.id)}
-                        className="px-3.5 py-1.5 bg-purple-50 text-brand-primary hover:bg-purple-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
-                      >
-                        Unfollow
-                      </button>
-                    )}
+                  ))
+                ) : (
+                  <div className="text-center py-10 text-text-muted">
+                    <p className="text-xs font-semibold">
+                      {membersSearchQuery ? 'No search results found.' : `No ${membersListModalType === 'followers' ? 'followers' : 'following'} found.`}
+                    </p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-10 text-text-muted">
-                  <p className="text-xs font-semibold">
-                    No {membersListModalType === 'followers' ? 'followers' : 'following'} found.
-                  </p>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>,
