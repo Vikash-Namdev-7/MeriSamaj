@@ -1001,6 +1001,15 @@
     box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.04), 0 4px 6px -2px rgba(124, 58, 237, 0.02);
   }
 
+  .responsive-fixed-top,
+  .responsive-fixed-bottom {
+    left: 260px !important;
+    right: auto !important;
+    width: calc(100% - 260px) !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
   .responsive-fixed-fab {
     right: 32px !important;
   }
@@ -1012,13 +1021,16 @@
     margin: 0 auto;
   }
 
-  .responsive-fixed-top,
-  .responsive-fixed-bottom {
-    max-width: 1440px !important;
-  }
-
   .responsive-fixed-fab {
     right: calc(50% - 720px + 32px) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .responsive-fixed-top,
+  .responsive-fixed-bottom {
+    left: calc(50% - 460px) !important;
+    width: 1180px !important;
   }
 }
 

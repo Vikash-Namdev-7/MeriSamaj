@@ -19,6 +19,7 @@ export default function CreateInvitationPage() {
     mapLink: '',
     contact: '',
     message: 'You are cordially invited.',
+    customFields: {},
     images: [],
   });
 
@@ -73,12 +74,34 @@ export default function CreateInvitationPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleCustomFieldChange = (fieldId, value) => {
+    setFormData(prev => ({
+      ...prev,
+      customFields: {
+        ...prev.customFields,
+        [fieldId]: value
+      }
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.hostName || !formData.date || !formData.location || !formData.contact) {
       setToastMessage("Please fill in Title, Host/Family name, Date, Venue, and Contact Number.");
       setTimeout(() => setToastMessage(''), 3000);
       return;
+    }
+
+    // Validate custom required fields
+    if (invitationFormConfig?.customFields?.length > 0) {
+      const missingFields = invitationFormConfig.customFields
+        .filter(f => f.required && !formData.customFields?.[f.id])
+        .map(f => f.label);
+      if (missingFields.length > 0) {
+        setToastMessage(`Please fill in required custom fields: ${missingFields.join(', ')}`);
+        setTimeout(() => setToastMessage(''), 3000);
+        return;
+      }
     }
 
     const data = new FormData();
@@ -102,6 +125,8 @@ export default function CreateInvitationPage() {
         data.append('images', img);
       });
     }
+
+    data.append('customFields', JSON.stringify(formData.customFields || {}));
     
     try {
       const created = await createInvitation(data);
@@ -484,6 +509,32 @@ export default function CreateInvitationPage() {
                   />
                 </div>
               )}
+
+              {/* Custom Fields */}
+              {invitationFormConfig?.customFields && invitationFormConfig.customFields.map(field => (
+                <div key={field.id} className="space-y-1">
+                  <label className="text-[12px] font-bold text-slate-500">
+                    {field.label} {field.required && '*'}
+                  </label>
+                  {field.type === 'textarea' ? (
+                    <textarea 
+                      value={formData.customFields?.[field.id] || ''}
+                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                      rows={2}
+                      placeholder={`Enter ${field.label}`}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800 resize-none"
+                    />
+                  ) : (
+                    <input 
+                      type={field.type}
+                      value={formData.customFields?.[field.id] || ''}
+                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                      placeholder={`Enter ${field.label}`}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                    />
+                  )}
+                </div>
+              ))}
 
             </div>
 

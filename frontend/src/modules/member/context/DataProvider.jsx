@@ -551,7 +551,8 @@ export const DataProvider = ({ children }) => {
     enablePresidentsTab: true,
     enableGroupsTab: true,
     enableFriendsTab: true,
-    enableBatchInvite: true
+    enableBatchInvite: true,
+    customFields: []
   }));
 
   const updateInvitationConfig = (newConfig) => {
@@ -1665,29 +1666,55 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const addInvitesToInvitation = (invitationId, memberIds = [], groupIds = []) => {
-    setInvitations(prev => prev.map(inv => {
-      if (inv.id === invitationId) {
-        return {
-          ...inv,
-          invitedMemberIds: Array.from(new Set([...(inv.invitedMemberIds || []), ...memberIds])),
-          invitedGroupIds: Array.from(new Set([...(inv.invitedGroupIds || []), ...groupIds]))
-        };
-      }
-      return inv;
-    }));
+  const addInvitesToInvitation = async (invitationId, memberIds = [], groupIds = []) => {
+    try {
+      const existingInv = invitations.find(inv => inv._id === invitationId || inv.id === invitationId);
+      if (!existingInv) return;
+
+      const updatedMemberIds = Array.from(new Set([...(existingInv.invitedMemberIds || []), ...memberIds]));
+      const updatedGroupIds = Array.from(new Set([...(existingInv.invitedGroupIds || []), ...groupIds]));
+
+      const data = new FormData();
+      data.append('invitedMemberIds', JSON.stringify(updatedMemberIds));
+      data.append('invitedGroupIds', JSON.stringify(updatedGroupIds));
+
+      const updatedInv = await invitationService.updateInvitation(invitationId, data);
+      setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? updatedInv : inv));
+    } catch (error) {
+      console.error('Failed to add invites to invitation', error);
+    }
   };
 
-  const updateInvitationStatus = (invitationId, status) => {
-    setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? { ...inv, status } : inv));
+  const updateInvitationStatus = async (invitationId, status) => {
+    try {
+      const data = new FormData();
+      data.append('status', status);
+      const updatedInv = await invitationService.updateInvitation(invitationId, data);
+      setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? updatedInv : inv));
+    } catch (error) {
+      console.error('Failed to update invitation status', error);
+    }
   };
 
-  const updateInvitation = (invitationId, updatedData) => {
-    setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? { ...inv, ...updatedData } : inv));
+  const updateInvitation = async (invitationId, updatedData) => {
+    try {
+      const updatedInv = await invitationService.updateInvitation(invitationId, updatedData);
+      setInvitations(prev => prev.map(inv => (inv.id === invitationId || inv._id === invitationId) ? updatedInv : inv));
+      return updatedInv;
+    } catch (error) {
+      console.error('Failed to update invitation', error);
+      throw error;
+    }
   };
 
-  const deleteInvitation = (invitationId) => {
-    setInvitations(prev => prev.filter(inv => inv.id !== invitationId && inv._id !== invitationId));
+  const deleteInvitation = async (invitationId) => {
+    try {
+      await invitationService.deleteInvitation(invitationId);
+      setInvitations(prev => prev.filter(inv => inv.id !== invitationId && inv._id !== invitationId));
+    } catch (error) {
+      console.error('Failed to delete invitation', error);
+      throw error;
+    }
   };
 
   const verifyMember = (memberId) => {

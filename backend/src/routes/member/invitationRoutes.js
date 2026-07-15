@@ -5,7 +5,8 @@ const {
   getInvitations,
   getInvitationById,
   updateRSVP,
-  deleteInvitation
+  deleteInvitation,
+  updateInvitation
 } = require('../../controllers/member/invitationController');
 const { protect } = require('../../middleware/authMiddleware');
 const upload = require('../../middleware/uploadMiddleware');
@@ -20,6 +21,7 @@ router.route('/')
 
 router.route('/:id')
   .get(getInvitationById)
+  .put(upload.array('images', 5), updateInvitation)
   .delete(deleteInvitation);
 
 router.route('/:id/rsvp')

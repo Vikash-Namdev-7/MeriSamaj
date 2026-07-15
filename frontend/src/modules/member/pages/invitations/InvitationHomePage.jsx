@@ -69,7 +69,10 @@ export default function InvitationHomePage() {
       return invDate.getMonth() === today.getMonth() && invDate.getFullYear() === today.getFullYear();
     }
     if (activeFilter === 'My Invitations') {
-      return inv.creatorId === currentUser.id;
+      const creatorIdStr = typeof inv.creatorId === 'object' && inv.creatorId !== null
+        ? inv.creatorId._id || inv.creatorId.id
+        : inv.creatorId;
+      return String(creatorIdStr) === String(currentUser?.id || currentUser?._id);
     }
     return true; 
   });
@@ -207,7 +210,7 @@ export default function InvitationHomePage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 mt-5">
                     <button 
-                      onClick={() => navigate(`/member/invitations/${inv.id}`)}
+                      onClick={() => navigate(`/member/invitations/${inv._id || inv.id}`)}
                       className="flex-1 bg-purple-50 text-brand-primary font-bold text-[12px] py-2.5 rounded-xl border border-purple-150/30 hover:bg-purple-100/40 active:scale-95 transition-all press-scale"
                     >
                       View Card
@@ -221,7 +224,7 @@ export default function InvitationHomePage() {
                       Navigate
                     </a>
                     <button 
-                      onClick={() => navigate(`/member/invitations/${inv.id}`)}
+                      onClick={() => navigate(`/member/invitations/${inv._id || inv.id}`)}
                       className="flex-1 bg-gradient-to-r from-brand-primary to-brand-glow text-white shadow-md shadow-purple-500/25 font-bold text-[12px] py-2.5 rounded-xl active:scale-95 transition-all press-scale"
                     >
                       RSVP

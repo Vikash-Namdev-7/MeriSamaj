@@ -87,6 +87,10 @@ const invitationSchema = new mongoose.Schema({
   familyName: {
     type: String,
     trim: true
+  },
+  customFields: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true

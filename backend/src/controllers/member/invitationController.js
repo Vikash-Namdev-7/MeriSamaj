@@ -19,7 +19,8 @@ exports.createInvitation = async (req, res) => {
       invitedGroupIds,
       groomName,
       brideName,
-      familyName
+      familyName,
+      customFields
     } = req.body;
 
     // Handle uploaded images from Cloudinary
@@ -42,6 +43,15 @@ exports.createInvitation = async (req, res) => {
       console.error('Error parsing member/group IDs:', e);
     }
 
+    let parsedCustomFields = {};
+    try {
+      if (customFields) {
+        parsedCustomFields = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
+      }
+    } catch (e) {
+      console.error('Error parsing customFields:', e);
+    }
+
     const invitation = new Invitation({
       title,
       hostName,
@@ -58,7 +68,8 @@ exports.createInvitation = async (req, res) => {
       invitedGroupIds: parsedGroupIds,
       groomName,
       brideName,
-      familyName
+      familyName,
+      customFields: parsedCustomFields
     });
 
     const createdInvitation = await invitation.save();
@@ -151,8 +162,8 @@ exports.deleteInvitation = async (req, res) => {
       return res.status(404).json({ message: 'Invitation not found' });
     }
 
-    // Check if the user is the creator
-    if (invitation.creatorId.toString() !== req.user._id.toString()) {
+    // Check if the user is the creator or an admin
+    if (invitation.creatorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(401).json({ message: 'Not authorized to delete this invitation' });
     }
 
@@ -160,6 +171,114 @@ exports.deleteInvitation = async (req, res) => {
     res.json({ message: 'Invitation removed' });
   } catch (error) {
     console.error('Error deleting invitation:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Update an invitation
+// @route   PUT /api/member/invitations/:id
+// @access  Private
+exports.updateInvitation = async (req, res) => {
+  try {
+    const invitation = await Invitation.findById(req.params.id);
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    // Check if the user is authorized (creator or admin)
+    if (invitation.creatorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Not authorized to update this invitation' });
+    }
+
+    const {
+      title,
+      hostName,
+      date,
+      timeFood,
+      timeProgram,
+      location,
+      mapLink,
+      contact,
+      message,
+      invitedMemberIds,
+      invitedGroupIds,
+      groomName,
+      brideName,
+      familyName,
+      status,
+      existingImages,
+      customFields
+    } = req.body;
+
+    // Handle existing images
+    let images = [];
+    if (existingImages) {
+      try {
+        images = typeof existingImages === 'string' ? JSON.parse(existingImages) : existingImages;
+      } catch (e) {
+        console.error('Error parsing existingImages:', e);
+        images = invitation.images || [];
+      }
+    } else {
+      images = invitation.images || [];
+    }
+
+    // Handle newly uploaded images from Cloudinary
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map(file => file.path);
+      images = [...images, ...newImages];
+    }
+
+    // Parse array fields if they are sent as strings
+    let parsedMemberIds = invitation.invitedMemberIds;
+    let parsedGroupIds = invitation.invitedGroupIds;
+    try {
+      if (invitedMemberIds) {
+        parsedMemberIds = typeof invitedMemberIds === 'string' ? JSON.parse(invitedMemberIds) : invitedMemberIds;
+      }
+      if (invitedGroupIds) {
+        parsedGroupIds = typeof invitedGroupIds === 'string' ? JSON.parse(invitedGroupIds) : invitedGroupIds;
+      }
+    } catch (e) {
+      console.error('Error parsing member/group IDs:', e);
+    }
+
+    let parsedCustomFields = invitation.customFields || {};
+    try {
+      if (customFields) {
+        parsedCustomFields = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
+      }
+    } catch (e) {
+      console.error('Error parsing customFields:', e);
+    }
+
+    invitation.title = title || invitation.title;
+    invitation.hostName = hostName || invitation.hostName;
+    invitation.date = date || invitation.date;
+    invitation.timeFood = timeFood !== undefined ? timeFood : invitation.timeFood;
+    invitation.timeProgram = timeProgram !== undefined ? timeProgram : invitation.timeProgram;
+    invitation.location = location || invitation.location;
+    invitation.mapLink = mapLink !== undefined ? mapLink : invitation.mapLink;
+    invitation.contact = contact || invitation.contact;
+    invitation.message = message !== undefined ? message : invitation.message;
+    invitation.images = images;
+    invitation.invitedMemberIds = parsedMemberIds;
+    invitation.invitedGroupIds = parsedGroupIds;
+    invitation.groomName = groomName || invitation.groomName;
+    invitation.brideName = brideName || invitation.brideName;
+    invitation.familyName = familyName || invitation.familyName;
+    invitation.status = status || invitation.status;
+    
+    if (customFields) {
+      invitation.customFields = parsedCustomFields;
+      invitation.markModified('customFields');
+    }
+
+    const updated = await invitation.save();
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating invitation:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };

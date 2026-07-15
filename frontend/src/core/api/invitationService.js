@@ -38,12 +38,24 @@ const deleteInvitation = async (id) => {
   return response.data;
 };
 
+// Update invitation
+const updateInvitation = async (id, invitationData) => {
+  const config = {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  };
+  const response = await axiosPrivate.put(`${API_URL}/${id}`, invitationData, config);
+  return response.data;
+};
+
 const invitationService = {
   createInvitation,
   getInvitations,
   getInvitationById,
   updateRSVP,
-  deleteInvitation
+  deleteInvitation,
+  updateInvitation
 };
 
 export default invitationService;

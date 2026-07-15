@@ -7,9 +7,9 @@ import { Avatar } from '../../components/common/Avatar';
 export default function InvitationDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invitations, currentUser, members, updateInvitationRSVP, addNotification, groups, addInvitesToInvitation } = useData();
+  const { invitations, currentUser, members, updateInvitationRSVP, addNotification, groups, addInvitesToInvitation, invitationFormConfig } = useData();
   
-  const inv = invitations.find(i => String(i.id) === String(id));
+  const inv = invitations.find(i => String(i.id || i._id) === String(id));
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [creatorRsvpTab, setCreatorRsvpTab] = useState('attending');
@@ -77,7 +77,7 @@ export default function InvitationDetailPage() {
 
   const handleSubmitRSVP = () => {
     if (selectedStatus) {
-      updateInvitationRSVP(inv.id, selectedStatus);
+      updateInvitationRSVP(inv._id || inv.id, selectedStatus);
       showToast('RSVP response submitted successfully!', 'success');
     }
   };
@@ -141,19 +141,34 @@ export default function InvitationDetailPage() {
   };
 
   const isFutureEvent = checkIsFutureEvent();
-  const canInviteMore = inv.creatorId === currentUser.id && isFutureEvent;
+  const canInviteMore = isFutureEvent;
+
+  const directoryTabs = [
+    { id: 'members', label: 'Members', enabled: invitationFormConfig?.enableMembersTab !== false },
+    { id: 'presidents', label: 'Presidents', enabled: invitationFormConfig?.enablePresidentsTab !== false },
+    { id: 'groups', label: 'Groups', enabled: invitationFormConfig?.enableGroupsTab !== false },
+    { id: 'friends', label: 'Friends', enabled: invitationFormConfig?.enableFriendsTab !== false }
+  ].filter(t => t.enabled);
+
+  useEffect(() => {
+    if (directoryTabs.length > 0 && !directoryTabs.map(t => t.id).includes(activeDirectoryTab)) {
+      setActiveDirectoryTab(directoryTabs[0].id);
+    }
+  }, [invitationFormConfig, activeDirectoryTab]);
+
+  const canShowDirectory = canInviteMore && directoryTabs.length > 0;
 
   // Build schedule list dynamically based on availability
   const hasGroomBride = inv.groomName && inv.brideName && !inv.title;
   const scheduleItems = [];
   if (hasGroomBride) {
-    if (inv.timeFood) scheduleItems.push({ label: 'Reception', value: inv.timeFood });
-    if (inv.timeBaraat) scheduleItems.push({ label: 'Baraat', value: inv.timeBaraat });
-    if (inv.timePhere) scheduleItems.push({ label: 'Phere', value: inv.timePhere });
+    if (inv.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Reception', value: inv.timeFood });
+    if (inv.timeBaraat && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Baraat', value: inv.timeBaraat });
+    if (inv.timePhere && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Phere', value: inv.timePhere });
   } else {
-    if (inv.timeFood) scheduleItems.push({ label: 'Feast Time', value: inv.timeFood });
-    if (inv.timeProgram || inv.timeBaraat) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
-    if (inv.timeOther || inv.timePhere) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
+    if (inv.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Feast Time', value: inv.timeFood });
+    if ((inv.timeProgram || inv.timeBaraat) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
+    if ((inv.timeOther || inv.timePhere) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
   }
 
   // --- Directory definitions for invite more ---
@@ -282,7 +297,7 @@ export default function InvitationDetailPage() {
     }
 
     // Save all to global context
-    addInvitesToInvitation(inv.id, invitedMemberIds, invitedGroupIds);
+    addInvitesToInvitation(inv._id || inv.id, invitedMemberIds, invitedGroupIds);
 
     // Send notifications for newly invited members
     newlyInvitedMemberIds.forEach(memberId => {
@@ -446,7 +461,11 @@ export default function InvitationDetailPage() {
                   </>
                 )}
                 
-                <p className="text-white/70 text-[13px] font-medium mt-4 z-10 border-t border-white/20 pt-2 px-8">- Cordially Invited -</p>
+                {invitationFormConfig?.enableMessage !== false && (
+                  <p className="text-white/70 text-[13px] font-medium mt-4 z-10 border-t border-white/20 pt-2 px-8">
+                    {inv.message || 'You are cordially invited.'}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -513,16 +532,35 @@ export default function InvitationDetailPage() {
             </div>
           </div>
 
+          {/* Custom Fields */}
+          {invitationFormConfig?.customFields && invitationFormConfig.customFields.map(field => {
+            const val = inv.customFields?.[field.id];
+            if (!val) return null;
+            return (
+              <div key={field.id} className="flex items-start gap-3 pt-3 border-t border-slate-200/50 mt-3">
+                <div className="w-4 h-4 bg-indigo-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[8px] font-bold text-indigo-700">{field.label.substring(0, 1).toUpperCase()}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{field.label}</p>
+                  <p className="font-bold text-slate-800 text-[14px] whitespace-pre-wrap leading-snug">{val}</p>
+                </div>
+              </div>
+            );
+          })}
+
           {/* Action Buttons */}
           <div className="flex gap-2.5 mt-6">
-            {inv.mapLink && (
+            {inv.mapLink && invitationFormConfig?.enableMapLink !== false && (
               <a href={inv.mapLink} target="_blank" rel="noreferrer" className="flex-1 py-2.5 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-blue-200 transition-colors">
                 <MapPin size={14} /> Directions
               </a>
             )}
-            <a href={`tel:${inv.contact}`} className="flex-1 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-emerald-200 transition-colors">
-              <Phone size={14} /> Call
-            </a>
+            {inv.contact && invitationFormConfig?.enableContact !== false && (
+              <a href={`tel:${inv.contact}`} className="flex-1 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-emerald-200 transition-colors">
+                <Phone size={14} /> Call
+              </a>
+            )}
             <button onClick={handleShare} className="flex-1 py-2.5 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-rose-200 transition-colors">
               <Share2 size={14} /> Share
             </button>
@@ -753,7 +791,7 @@ export default function InvitationDetailPage() {
         )}
 
         {/* INVITE MORE MEMBERS SECTION (Active prior to event date) */}
-        {canInviteMore && (
+        {canShowDirectory && (
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-150 pb-2">
               <h4 className="font-extrabold text-slate-800 text-[15px]">
@@ -764,12 +802,7 @@ export default function InvitationDetailPage() {
 
             {/* Directory Tabs */}
             <div className="flex border-b border-slate-100 bg-slate-50 p-1 rounded-xl">
-              {[
-                { id: 'members', label: 'Members' },
-                { id: 'presidents', label: 'Presidents' },
-                { id: 'groups', label: 'Groups' },
-                { id: 'friends', label: 'Friends' }
-              ].map(tab => (
+              {directoryTabs.map(tab => (
                 <button
                   key={tab.id}
                   type="button"
@@ -842,84 +875,86 @@ export default function InvitationDetailPage() {
             </div>
 
             {/* Batch Actions Row */}
-            <div className="bg-slate-50 p-2.5 rounded-xl flex flex-wrap gap-2 items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">
-                {activeDirectoryTab === 'members' && `${filteredMembers.length} Members`}
-                {activeDirectoryTab === 'presidents' && `${filteredPresidents.length} Presidents`}
-                {activeDirectoryTab === 'groups' && `${filteredGroups.length} Groups`}
-                {activeDirectoryTab === 'friends' && `${filteredFriends.length} Friends`}
-              </span>
-              
-              <div className="flex gap-2">
-                {activeDirectoryTab === 'members' && (
-                  <>
-                    {selectedCity !== 'All' && (
+            {invitationFormConfig?.enableBatchInvite !== false && (
+              <div className="bg-slate-50 p-2.5 rounded-xl flex flex-wrap gap-2 items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500">
+                  {activeDirectoryTab === 'members' && `${filteredMembers.length} Members`}
+                  {activeDirectoryTab === 'presidents' && `${filteredPresidents.length} Presidents`}
+                  {activeDirectoryTab === 'groups' && `${filteredGroups.length} Groups`}
+                  {activeDirectoryTab === 'friends' && `${filteredFriends.length} Friends`}
+                </span>
+                
+                <div className="flex gap-2">
+                  {activeDirectoryTab === 'members' && (
+                    <>
+                      {selectedCity !== 'All' && (
+                        <button 
+                          onClick={handleInviteAllInCity}
+                          type="button"
+                          className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
+                            isAllInCityInvited 
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                          }`}
+                        >
+                          {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                        </button>
+                      )}
                       <button 
-                        onClick={handleInviteAllInCity}
+                        onClick={handleInviteAllMembers}
                         type="button"
-                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 press-scale ${
-                          isAllInCityInvited 
+                        className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                          isAllMembersInvited 
                             ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                         }`}
                       >
-                        {isAllInCityInvited ? `Uninvite All in ${selectedCity}` : `Invite All in ${selectedCity}`}
+                        {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
                       </button>
-                    )}
+                    </>
+                  )}
+                  {activeDirectoryTab === 'presidents' && (
                     <button 
-                      onClick={handleInviteAllMembers}
+                      onClick={handleInviteAllPresidents}
                       type="button"
                       className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
-                        isAllMembersInvited 
+                        isAllPresidentsInvited 
                           ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
                           : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                       }`}
                     >
-                      {isAllMembersInvited ? 'Uninvite All Members' : 'Invite All Members'}
+                      {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
                     </button>
-                  </>
-                )}
-                {activeDirectoryTab === 'presidents' && (
-                  <button 
-                    onClick={handleInviteAllPresidents}
-                    type="button"
-                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
-                      isAllPresidentsInvited 
-                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    }`}
-                  >
-                    {isAllPresidentsInvited ? 'Uninvite All Presidents' : 'Invite All Presidents'}
-                  </button>
-                )}
-                {activeDirectoryTab === 'groups' && (
-                  <button 
-                    onClick={handleInviteAllGroups}
-                    type="button"
-                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
-                      isAllGroupsInvited 
-                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    }`}
-                  >
-                    {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
-                  </button>
-                )}
-                {activeDirectoryTab === 'friends' && (
-                  <button 
-                    onClick={handleInviteAllFriends}
-                    type="button"
-                    className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
-                      isAllFriendsInvited 
-                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    }`}
-                  >
-                    {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
-                  </button>
-                )}
+                  )}
+                  {activeDirectoryTab === 'groups' && (
+                    <button 
+                      onClick={handleInviteAllGroups}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                        isAllGroupsInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {isAllGroupsInvited ? 'Uninvite All Groups' : 'Invite All Groups'}
+                    </button>
+                  )}
+                  {activeDirectoryTab === 'friends' && (
+                    <button 
+                      onClick={handleInviteAllFriends}
+                      type="button"
+                      className={`font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors press-scale ${
+                        isAllFriendsInvited 
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {isAllFriendsInvited ? 'Uninvite All Friends' : 'Invite All Friends'}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Directory Lists */}
             <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
