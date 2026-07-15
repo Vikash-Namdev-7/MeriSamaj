@@ -45,56 +45,49 @@ export default function InvitationManagement() {
     </div>
   );
 
-  // Custom Fields State
-  const [newFieldLabel, setNewFieldLabel] = useState('');
-  const [newFieldType, setNewFieldType] = useState('text');
-  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [newFieldRequired, setNewFieldRequired] = useState(false);
+  // Dynamic Form Fields State
+  const [editingFieldId, setEditingFieldId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
 
-  const fieldTypeOptions = [
-    { value: 'text', label: 'Short Text' },
-    { value: 'textarea', label: 'Long Text (Paragraph)' },
-    { value: 'number', label: 'Number' },
-    { value: 'date', label: 'Date' }
-  ];
+  const handleDeleteField = (id) => {
+    if (window.confirm('Are you sure you want to delete this field?')) {
+      setLocalConfig(prev => ({
+        ...prev,
+        formFields: prev.formFields.filter(f => f.id !== id)
+      }));
+    }
+  };
 
-  const handleAddCustomField = () => {
-    if (!newFieldLabel.trim()) return;
-    
-    const newField = {
-      id: `cf_${Date.now()}`,
-      label: newFieldLabel.trim(),
-      type: newFieldType,
-      required: newFieldRequired
+  const startEditField = (field) => {
+    setEditingFieldId(field.id);
+    setEditFormData({ ...field });
+  };
+
+  const saveEditedField = () => {
+    setLocalConfig(prev => ({
+      ...prev,
+      formFields: prev.formFields.map(f => f.id === editingFieldId ? editFormData : f)
+    }));
+    setEditingFieldId(null);
+  };
+
+  const addNewField = () => {
+    const newId = `custom_${Date.now()}`;
+    const newField = { 
+      id: newId, 
+      label: 'New Field', 
+      desc: 'Description for new field', 
+      type: 'text', 
+      required: false 
     };
-
     setLocalConfig(prev => ({
       ...prev,
-      customFields: [...(prev.customFields || []), newField]
+      formFields: [...(prev.formFields || []), newField]
     }));
-
-    setNewFieldLabel('');
-    setNewFieldType('text');
-    setNewFieldRequired(false);
+    startEditField(newField);
   };
 
-  const handleDeleteCustomField = (id) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      customFields: (prev.customFields || []).filter(f => f.id !== id)
-    }));
-  };
-
-  const settingsOptions = [
-    // Form Fields
-    { key: 'enableFeastTime', label: 'Feast Time Field', desc: 'Allow members to specify food timing' },
-    { key: 'enableProgramTime', label: 'Program Time Field', desc: 'Allow members to specify main event timing' },
-    { key: 'enableMapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs' },
-    { key: 'enableContact', label: 'Contact Number Field', desc: 'Require contact number on invitations' },
-    { key: 'enableMessage', label: 'Personal Message Field', desc: 'Allow members to add a custom message' },
-    { key: 'enablePhotos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards' },
-    
-    // Member Directory & Sharing
+  const directorySettings = [
     { key: 'enableMembersTab', label: 'Show Members Directory', desc: 'Allow inviting general members' },
     { key: 'enablePresidentsTab', label: 'Show Presidents Tab', desc: 'Allow inviting community presidents' },
     { key: 'enableGroupsTab', label: 'Show Groups Tab', desc: 'Allow inviting entire groups' },
@@ -363,7 +356,7 @@ export default function InvitationManagement() {
           </div>
         </div>
         
-        {/* Form Configuration Section */}
+        {/* Dynamic Form Configuration Section */}
         <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
           <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -371,8 +364,8 @@ export default function InvitationManagement() {
                 <Settings size={16} />
               </div>
               <div>
-                <h2 className="text-[14px] font-black text-slate-800">Form Configuration</h2>
-                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Manage fields for member invitation form</p>
+                <h2 className="text-[14px] font-black text-slate-800">Dynamic Form Configuration</h2>
+                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Manage form fields and directory features</p>
               </div>
             </div>
             <button 
@@ -382,7 +375,119 @@ export default function InvitationManagement() {
               <Check size={14} strokeWidth={3} /> Save Configuration
             </button>
           </div>
+
+          <div className="p-5 border-b border-slate-100 bg-white">
+             <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[13px] font-bold text-slate-800">Form Fields</h3>
+              <button onClick={addNewField} className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
+                <Plus size={14} /> Add Field
+              </button>
+            </div>
+            <div className="space-y-3">
+              {localConfig?.formFields?.map(field => (
+                <div key={field.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 transition-all">
+                  {editingFieldId === field.id ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Field Label</label>
+                          <input 
+                            type="text" 
+                            value={editFormData.label} 
+                            onChange={e => setEditFormData({...editFormData, label: e.target.value})}
+                            className="w-full text-sm p-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Input Type</label>
+                          <select 
+                            value={editFormData.type} 
+                            onChange={e => setEditFormData({...editFormData, type: e.target.value})}
+                            className="w-full text-sm p-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 mt-1 bg-white"
+                          >
+                            <option value="text">Text</option>
+                            <option value="time">Time</option>
+                            <option value="date">Date</option>
+                            <option value="url">URL Link</option>
+                            <option value="tel">Phone</option>
+                            <option value="file">File Upload</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Description</label>
+                        <input 
+                          type="text" 
+                          value={editFormData.desc} 
+                          onChange={e => setEditFormData({...editFormData, desc: e.target.value})}
+                          className="w-full text-sm p-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 mt-1"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={editFormData.required} 
+                            onChange={e => setEditFormData({...editFormData, required: e.target.checked})}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          Required Field
+                        </label>
+                        <div className="flex gap-2">
+                          <button onClick={() => setEditingFieldId(null)} className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+                          <button onClick={saveEditedField} className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-[14px] font-bold text-slate-800 flex items-center gap-2">
+                          {field.label}
+                          {field.required && <span className="text-[9px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded uppercase font-black">Required</span>}
+                          <span className="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold">{field.type}</span>
+                        </h4>
+                        <p className="text-[11px] font-semibold text-slate-500 mt-0.5">{field.desc}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => {
+                            setLocalConfig(prev => ({
+                              ...prev,
+                              formFields: prev.formFields.map(f => f.id === field.id ? { ...f, enabled: f.enabled === false ? true : false } : f)
+                            }));
+                          }}
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${field.enabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                          title={field.enabled !== false ? "Disable Field" : "Enable Field"}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${field.enabled !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                        <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
+                          <button onClick={() => startEditField(field)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => handleDeleteField(field.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {localConfig?.formFields?.length === 0 && (
+                <div className="text-center p-6 bg-slate-50 border border-slate-200 border-dashed rounded-xl text-sm font-semibold text-slate-500">
+                  No form fields added.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Directory Settings */}
           <div className="overflow-x-auto">
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-100">
+              <h3 className="text-[13px] font-bold text-slate-800">Directory & Sharing Settings</h3>
+            </div>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -392,7 +497,7 @@ export default function InvitationManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {settingsOptions.map(option => (
+                {directorySettings.map(option => (
                   <tr key={option.key} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-5 py-3.5">
                       <span className="font-bold text-[13px] text-slate-800">{option.label}</span>
@@ -412,143 +517,6 @@ export default function InvitationManagement() {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Custom Fields Management Section */}
-        <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-          <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <Plus size={16} />
-              </div>
-              <div>
-                <h2 className="text-[14px] font-black text-slate-800">Custom Fields Management</h2>
-                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Create and manage dynamic fields for member invitations</p>
-              </div>
-            </div>
-            <button 
-              onClick={handleSaveConfig}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-[12px] transition-all shadow-md shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2"
-            >
-              <Check size={14} strokeWidth={3} /> Save Configuration
-            </button>
-          </div>
-          
-          <div className="p-5 border-b border-slate-100 bg-white">
-            <h3 className="text-[12px] font-bold text-slate-700 mb-3">Add New Custom Field</h3>
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-              <div className="flex-1 space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">Field Label</label>
-                <input 
-                  type="text" 
-                  value={newFieldLabel}
-                  onChange={(e) => setNewFieldLabel(e.target.value)}
-                  placeholder="e.g. Dress Code, Dietary Restriction"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-              <div className="w-full md:w-48 space-y-1 relative">
-                <label className="block text-[11px] font-semibold text-slate-600">Field Type</label>
-                <div 
-                  onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium text-slate-700 cursor-pointer flex justify-between items-center hover:bg-slate-100 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all select-none"
-                >
-                  <span>{fieldTypeOptions.find(o => o.value === newFieldType)?.label || 'Select Type'}</span>
-                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
-                </div>
-                
-                {isTypeDropdownOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10" 
-                      onClick={() => setIsTypeDropdownOpen(false)}
-                    />
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                      {fieldTypeOptions.map(option => (
-                        <div 
-                          key={option.value}
-                          onClick={() => {
-                            setNewFieldType(option.value);
-                            setIsTypeDropdownOpen(false);
-                          }}
-                          className={`px-3 py-2 text-[13px] font-medium cursor-pointer transition-colors flex items-center justify-between ${
-                            newFieldType === option.value 
-                              ? 'bg-indigo-50 text-indigo-700' 
-                              : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          {option.label}
-                          {newFieldType === option.value && <Check size={14} className="text-indigo-600" />}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <input 
-                  type="checkbox" 
-                  id="fieldReq"
-                  checked={newFieldRequired}
-                  onChange={(e) => setNewFieldRequired(e.target.checked)}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label htmlFor="fieldReq" className="text-[12px] font-medium text-slate-700 cursor-pointer">Required Field</label>
-              </div>
-              <button 
-                onClick={handleAddCustomField}
-                disabled={!newFieldLabel.trim()}
-                className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-[12px] transition-all disabled:opacity-50 disabled:cursor-not-allowed h-[38px] flex items-center"
-              >
-                Add Field
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            {localConfig?.customFields && localConfig.customFields.length > 0 ? (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-100">
-                    <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Field Label</th>
-                    <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Type</th>
-                    <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Requirement</th>
-                    <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {localConfig.customFields.map(field => (
-                    <tr key={field.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <span className="font-bold text-[13px] text-slate-800">{field.label}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-[12px] font-medium text-slate-500 capitalize">{field.type}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
-                          {field.required ? 'REQUIRED' : 'OPTIONAL'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <button 
-                          onClick={() => handleDeleteCustomField(field.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Field"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="p-8 text-center">
-                <p className="text-[13px] font-medium text-slate-500">No custom fields created yet.</p>
-              </div>
-            )}
           </div>
         </div>
 

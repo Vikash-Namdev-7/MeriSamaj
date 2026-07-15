@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const donationRoutes = require('./donationRoutes');
 
 // Test Route
 router.get('/test', (req, res) => {
@@ -8,5 +9,7 @@ router.get('/test', (req, res) => {
     message: 'Head routes working fine!'
   });
 });
+
+router.use('/donations', donationRoutes);
 
 module.exports = router;

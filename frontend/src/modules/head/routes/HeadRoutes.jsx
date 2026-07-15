@@ -14,6 +14,7 @@ import MatrimonialManagement from '../pages/matrimonial/MatrimonialManagement';
 import CommunityReports from '../pages/reports/CommunityReports';
 import CommunityEngagement from '../pages/engagement/CommunityEngagement';
 import InvitationManagement from '../pages/invitation/InvitationManagement';
+import DonationManagement from '../pages/donation/DonationManagement';
 import HeadProtectedRoute from '../components/HeadProtectedRoute';
 import HeadProfileSettings from '../pages/profile/HeadProfileSettings';
 
@@ -35,6 +36,7 @@ export const HeadRoutes = () => {
         <Route path="events" element={<EventManagement />} />
         <Route path="professionals" element={<ProfessionalDirectoryManagement />} />
         <Route path="invitations" element={<InvitationManagement />} />
+        <Route path="donations" element={<DonationManagement />} />
         <Route path="notifications" element={<NotificationManagement />} />
         <Route path="matrimonial" element={<MatrimonialManagement />} />
         <Route path="funds" element={<FundGovernance />} />

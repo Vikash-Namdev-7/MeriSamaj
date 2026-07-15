@@ -540,19 +540,20 @@ export const DataProvider = ({ children }) => {
   const [obituaries, setObituaries] = useState(() => loadState('obituaries', initialObituaries));
   
   // Dynamic Configuration for Invitation Form Fields
-  const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig', {
-    enableFeastTime: true,
-    enableProgramTime: true,
-    enableMapLink: true,
-    enableContact: true,
-    enableMessage: true,
-    enablePhotos: true,
+  const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig_v2', {
+    formFields: [
+      { id: 'timeFood', label: 'Feast Time Field', desc: 'Allow members to specify food timing', type: 'time', required: false },
+      { id: 'timeProgram', label: 'Program Time Field', desc: 'Allow members to specify main event timing', type: 'time', required: false },
+      { id: 'mapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs', type: 'url', required: false },
+      { id: 'contact', label: 'Contact Number Field', desc: 'Require contact number on invitations', type: 'tel', required: true },
+      { id: 'message', label: 'Personal Message Field', desc: 'Allow members to add a custom message', type: 'text', required: false },
+      { id: 'photos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards', type: 'file', required: false }
+    ],
     enableMembersTab: true,
     enablePresidentsTab: true,
     enableGroupsTab: true,
     enableFriendsTab: true,
-    enableBatchInvite: true,
-    customFields: []
+    enableBatchInvite: true
   }));
 
   const updateInvitationConfig = (newConfig) => {

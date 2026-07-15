@@ -89,6 +89,11 @@ export const HeadLayout = () => {
           name: 'Fund Governance', 
           path: '/head/funds', 
           icon: Wallet 
+        },
+        {
+          name: 'Donation Campaigns',
+          path: '/head/donations',
+          icon: HeartHandshake
         }
       ]
     },
@@ -245,7 +250,7 @@ export const HeadLayout = () => {
                 key={item.name}
                 to={item.path}
                 onClick={(e) => {
-                  if (item.path !== '/head/invitations') {
+                  if (item.path !== '/head/invitations' && item.path !== '/head/donations') {
                     e.preventDefault();
                   } else if (isMobile) {
                     setIsMobileOpen(false);

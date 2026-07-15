@@ -86,19 +86,19 @@ export default function CreateInvitationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.hostName || !formData.date || !formData.location || !formData.contact) {
-      setToastMessage("Please fill in Title, Host/Family name, Date, Venue, and Contact Number.");
+    if (!formData.title || !formData.hostName || !formData.date || !formData.location) {
+      setToastMessage("Please fill in Title, Host/Family name, Date, and Venue.");
       setTimeout(() => setToastMessage(''), 3000);
       return;
     }
 
-    // Validate custom required fields
-    if (invitationFormConfig?.customFields?.length > 0) {
-      const missingFields = invitationFormConfig.customFields
-        .filter(f => f.required && !formData.customFields?.[f.id])
+    // Validate dynamic required fields
+    if (invitationFormConfig?.formFields?.length > 0) {
+      const missingFields = invitationFormConfig.formFields
+        .filter(f => f.required && f.enabled !== false && !(formData[f.id] !== undefined && formData[f.id] !== '' ? formData[f.id] : formData.customFields?.[f.id]))
         .map(f => f.label);
       if (missingFields.length > 0) {
-        setToastMessage(`Please fill in required custom fields: ${missingFields.join(', ')}`);
+        setToastMessage(`Please fill in required fields: ${missingFields.join(', ')}`);
         setTimeout(() => setToastMessage(''), 3000);
         return;
       }
@@ -108,12 +108,12 @@ export default function CreateInvitationPage() {
     data.append('title', formData.title);
     data.append('hostName', formData.hostName);
     data.append('date', formData.date);
-    data.append('timeFood', formData.timeFood);
-    data.append('timeProgram', formData.timeProgram);
+    data.append('timeFood', formData.timeFood || '');
+    data.append('timeProgram', formData.timeProgram || '');
     data.append('location', formData.location);
-    data.append('mapLink', formData.mapLink);
-    data.append('contact', formData.contact);
-    data.append('message', formData.message);
+    data.append('mapLink', formData.mapLink || '');
+    data.append('contact', formData.contact || '');
+    data.append('message', formData.message || '');
     
     // Backward compatibility fields
     data.append('groomName', formData.title.split('&')[0]?.trim() || formData.title);
@@ -335,7 +335,7 @@ export default function CreateInvitationPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* File Upload Section (Multiple photos) */}
-            {invitationFormConfig?.enablePhotos && (
+            {invitationFormConfig?.formFields?.some(f => f.id === 'photos' && f.enabled !== false) && (
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-slate-700 block">
                   Upload Event Photos / Invitation Cards
@@ -423,113 +423,55 @@ export default function CreateInvitationPage() {
               </div>
 
               {/* Event Schedules / Timings */}
-              {(invitationFormConfig?.enableFeastTime || invitationFormConfig?.enableProgramTime) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {invitationFormConfig?.enableFeastTime && (
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-500">Feast Time</label>
-                      <TimePicker 
-                        name="timeFood"
-                        value={formData.timeFood}
-                        onChange={handleChange}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                      />
-                    </div>
-                  )}
-                  {invitationFormConfig?.enableProgramTime && (
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-500">Program Time</label>
-                      <TimePicker 
-                        name="timeProgram"
-                        value={formData.timeProgram}
-                        onChange={handleChange}
-                        align="right"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Location */}
-              <div className="space-y-1 pt-2">
-                <label className="text-[12px] font-bold text-slate-500">Venue *</label>
-                <textarea 
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  rows={2}
-                  placeholder="e.g. Shriram Garden, Indore, MP"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800 resize-none"
-                />
-              </div>
-
-              {/* Google Maps link */}
-              {invitationFormConfig?.enableMapLink && (
-                <div className="space-y-1">
-                  <label className="text-[12px] font-bold text-slate-500">Google Map Link</label>
-                  <input 
-                    type="url"
-                    name="mapLink"
-                    value={formData.mapLink}
-                    onChange={handleChange}
-                    placeholder="Paste map link here"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
-                </div>
-              )}
-
-              {/* Contact Number */}
-              {invitationFormConfig?.enableContact && (
-                <div className="space-y-1">
-                  <label className="text-[12px] font-bold text-slate-500">Contact Number *</label>
-                  <input 
-                    type="tel"
-                    name="contact"
-                    value={formData.contact}
-                    onChange={handleChange}
-                    placeholder="9999999999"
-                    maxLength={10}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
-                </div>
-              )}
-
-              {/* Personal Message */}
-              {invitationFormConfig?.enableMessage && (
-                <div className="space-y-1">
-                  <label className="text-[12px] font-bold text-slate-500">Message (Optional)</label>
-                  <input 
-                    type="text"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    placeholder="You are cordially invited."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
-                  />
-                </div>
-              )}
-
-              {/* Custom Fields */}
-              {invitationFormConfig?.customFields && invitationFormConfig.customFields.map(field => (
-                <div key={field.id} className="space-y-1">
+              {/* Dynamic Form Fields */}
+              {invitationFormConfig?.formFields?.filter(f => f.type !== 'file' && f.enabled !== false).map(field => (
+                <div key={field.id} className="space-y-1 pt-1">
                   <label className="text-[12px] font-bold text-slate-500">
                     {field.label} {field.required && '*'}
                   </label>
                   {field.type === 'textarea' ? (
                     <textarea 
-                      value={formData.customFields?.[field.id] || ''}
-                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                      name={field.id}
+                      value={formData[field.id] !== undefined ? formData[field.id] : (formData.customFields?.[field.id] || '')}
+                      onChange={(e) => {
+                        if (formData[field.id] !== undefined) handleChange(e);
+                        else handleCustomFieldChange(field.id, e.target.value);
+                      }}
                       rows={2}
-                      placeholder={`Enter ${field.label}`}
+                      placeholder={field.desc || `Enter ${field.label}`}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800 resize-none"
+                    />
+                  ) : field.type === 'time' ? (
+                    <TimePicker 
+                      name={field.id}
+                      value={formData[field.id] !== undefined ? formData[field.id] : (formData.customFields?.[field.id] || '')}
+                      onChange={(e) => {
+                         if (formData[field.id] !== undefined) handleChange(e);
+                         else handleCustomFieldChange(field.id, e.target.value);
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                    />
+                  ) : field.type === 'date' ? (
+                    <DatePicker 
+                      name={field.id}
+                      value={formData[field.id] !== undefined ? formData[field.id] : (formData.customFields?.[field.id] || '')}
+                      onChange={(e) => {
+                         if (formData[field.id] !== undefined) handleChange(e);
+                         else handleCustomFieldChange(field.id, e.target.value);
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                     />
                   ) : (
                     <input 
-                      type={field.type}
-                      value={formData.customFields?.[field.id] || ''}
-                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                      placeholder={`Enter ${field.label}`}
+                      type={field.type || 'text'}
+                      name={field.id}
+                      maxLength={field.type === 'tel' ? 10 : undefined}
+                      value={formData[field.id] !== undefined ? formData[field.id] : (formData.customFields?.[field.id] || '')}
+                      onChange={(e) => {
+                        if (formData[field.id] !== undefined) handleChange(e);
+                        else handleCustomFieldChange(field.id, e.target.value);
+                      }}
+                      placeholder={field.desc || `Enter ${field.label}`}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
                     />
                   )}

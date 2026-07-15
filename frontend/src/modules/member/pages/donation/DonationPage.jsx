@@ -18,12 +18,12 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Avatar } from '../../components/common/Avatar';
 import { useDonation } from './DonationContext';
-import { donationGuidelines, impactStats } from './mockDonationData';
+import { donationGuidelines } from './donationConstants';
 
 const DonationPage = () => {
   const navigate = useNavigate();
   const { setMobileMenuOpen, getUnreadCountForModule, user } = useData();
-  const { purposes, topDonors } = useDonation();
+  const { purposes, topDonors, impactStats, isLoading } = useDonation();
 
   const [selectedCity, setSelectedCity] = useState(user?.city || 'Indore');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
@@ -32,8 +32,12 @@ const DonationPage = () => {
   // Extract unique cities from all purposes for the dropdown
   const availableCities = [...new Set(purposes.map(p => p.city).filter(Boolean))];
 
-  // Filter purposes by selected city
-  const filteredPurposes = purposes.filter(p => p.city === selectedCity);
+  // Filter purposes by selected city, but always include global campaigns
+  const filteredPurposes = purposes.filter(p => 
+    p.city === selectedCity || 
+    !p.city || 
+    ['All Members', 'All Locations', 'Entire Community'].includes(p.visibility)
+  );
 
   // Sort top donors by highest amount
   const sortedDonors = [...topDonors].sort((a, b) => b.amount - a.amount);
@@ -280,12 +284,16 @@ const DonationPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3 my-2">
-              {impactStats.map(stat => (
-                <div key={stat.id} className="bg-surface p-3 rounded-2xl border border-gray-100 text-center space-y-1">
-                  <span className="text-[10px] text-text-secondary font-medium block">{stat.label}</span>
-                  <span className="text-base font-extrabold text-purple-900 block leading-tight">{stat.value}</span>
-                </div>
-              ))}
+              {impactStats && impactStats.length > 0 ? (
+                impactStats.map(stat => (
+                  <div key={stat.id} className="bg-surface p-3 rounded-2xl border border-gray-100 text-center space-y-1">
+                    <span className="text-[10px] text-text-secondary font-medium block">{stat.label}</span>
+                    <span className="text-base font-extrabold text-purple-900 block leading-tight">{stat.value}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-2 text-center text-xs text-text-secondary py-2">Loading stats...</div>
+              )}
             </div>
             
             <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-100 text-[10px] text-emerald-800 flex gap-1.5 items-start mt-2">

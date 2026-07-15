@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Home, GraduationCap, Heart, Users, Award, 
@@ -7,7 +7,7 @@ import {
 import { useDonation } from './DonationContext';
 import { Badge } from '../../components/common/Badge';
 import { Avatar } from '../../components/common/Avatar';
-import { recentDonors } from './mockDonationData';
+import donationService from '../../../../core/api/donationService';
 
 const DonationCampaignDetailPage = () => {
   const navigate = useNavigate();
@@ -15,8 +15,28 @@ const DonationCampaignDetailPage = () => {
   const { purposes } = useDonation();
 
   const purpose = purposes.find(p => p.id === id);
-  const donorsList = recentDonors[id] || [];
-  
+  const [donorsList, setDonorsList] = useState([]);
+  const [isLoadingDonors, setIsLoadingDonors] = useState(true);
+
+  useEffect(() => {
+    const fetchRecentDonors = async () => {
+      if (id) {
+        setIsLoadingDonors(true);
+        try {
+          const res = await donationService.getRecentDonors(id);
+          if (res.status === 'success') {
+            setDonorsList(res.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch recent donors", error);
+        } finally {
+          setIsLoadingDonors(false);
+        }
+      }
+    };
+    fetchRecentDonors();
+  }, [id]);
+
   // Sort donors by date descending (newest first)
   const sortedDonors = [...donorsList].sort((a, b) => new Date(b.date) - new Date(a.date));
   
@@ -147,7 +167,9 @@ const DonationCampaignDetailPage = () => {
         <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
           <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Recent Donors</h3>
           
-          {sortedDonors.length === 0 ? (
+          {isLoadingDonors ? (
+            <p className="text-xs text-text-secondary text-center py-4">Loading donors...</p>
+          ) : sortedDonors.length === 0 ? (
             <p className="text-xs text-text-secondary text-center py-4">No donors yet. Be the first to donate!</p>
           ) : (
             <>
