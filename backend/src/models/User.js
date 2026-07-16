@@ -65,10 +65,47 @@ const userSchema = new mongoose.Schema({
   // Verification Flags
   isAadharVerified: { type: Boolean, default: false },
   isFaceVerified: { type: Boolean, default: false },
+  isPhoneVerified: { type: Boolean, default: true }, // Default true for development ease
+  isEmailVerified: { type: Boolean, default: true }, // Default true for development ease
+  
+  // Centralized Status Fields
+  accountStatus: { 
+    type: String, 
+    enum: ['active', 'inactive', 'blocked', 'deleted', 'pending verification'], 
+    default: 'active' 
+  },
+  verificationStatus: { 
+    type: String, 
+    enum: ['pending', 'verified', 'rejected'], 
+    default: 'verified' // Default verified for development ease
+  },
+  registrationSource: { 
+    type: String, 
+    default: 'mobile' 
+  },
+  
+  // Preferences
+  notificationPreferences: {
+    email: { type: Boolean, default: true },
+    sms: { type: Boolean, default: true },
+    push: { type: Boolean, default: true }
+  },
+  
+  // FCM Device tokens for notifications
+  deviceTokens: [{ type: String }],
+  
+  // Audit fields
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  country: { type: String, default: 'India' },
   
   // Metadata
   referralCode: { type: String },
-  role: { type: String, enum: ['user', 'admin', 'head'], default: 'user' }
+  role: { 
+    type: String, 
+    enum: ['user', 'admin', 'head'], 
+    default: 'user' 
+  }
 }, {
   timestamps: true
 });

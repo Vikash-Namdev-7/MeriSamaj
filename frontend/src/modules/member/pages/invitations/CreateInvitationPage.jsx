@@ -422,6 +422,20 @@ export default function CreateInvitationPage() {
                 />
               </div>
 
+              {/* Event Venue */}
+              <div className="space-y-1">
+                <label className="text-[12px] font-bold text-slate-500">Venue *</label>
+                <input 
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  autoComplete="off"
+                  placeholder="e.g. Community Hall, Vijay Nagar / Grand Palace"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-indigo-500 focus:bg-white transition-colors font-medium text-slate-800"
+                />
+              </div>
+
               {/* Event Schedules / Timings */}
               {/* Dynamic Form Fields */}
               {invitationFormConfig?.formFields?.filter(f => f.type !== 'file' && f.enabled !== false).map(field => (

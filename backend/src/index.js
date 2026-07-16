@@ -7,12 +7,53 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 const rootRouter = require('./routes/index');
 const cookieParser = require('cookie-parser');
 
+// Load optional security middlewares with try-catch fallbacks to prevent crashes
+let helmet;
+try {
+  helmet = require('helmet');
+} catch (e) {
+  console.warn('helmet package not loaded - run npm install to activate');
+}
+
+let mongoSanitize;
+try {
+  mongoSanitize = require('express-mongo-sanitize');
+} catch (e) {
+  console.warn('express-mongo-sanitize package not loaded - run npm install to activate');
+}
+
+let rateLimit;
+try {
+  rateLimit = require('express-rate-limit');
+} catch (e) {
+  console.warn('express-rate-limit package not loaded - run npm install to activate');
+}
+
 const app = express();
 
 // Connect to Database
 connectDB();
 
 // Global Middlewares
+if (helmet) {
+  app.use(helmet());
+}
+
+if (mongoSanitize) {
+  app.use(mongoSanitize());
+}
+
+if (rateLimit) {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Dev-friendly limit
+    message: { status: 'error', message: 'Too many requests from this IP, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false
+  });
+  app.use('/api', limiter);
+}
+
 app.use(cors({
   origin: process.env.CLIENT_URL 
     ? process.env.CLIENT_URL.split(',') 
@@ -25,17 +66,6 @@ app.use(cookieParser());
 
 // Root API Router
 app.use('/api/v1', rootRouter);
-
-// Health Check Endpoint
-app.get('/health', (req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
-  res.status(200).json({
-    status: 'success',
-    message: 'Meri Samaj API Gateway is running smoothly',
-    timestamp: new Date(),
-    database: dbStatus
-  });
-});
 
 // 404 Route handler
 app.use('*', (req, res) => {

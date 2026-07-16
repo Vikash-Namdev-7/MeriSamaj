@@ -6,34 +6,44 @@ import HeadRoutes from './modules/head/routes/HeadRoutes';
 import { DataProvider } from './modules/member/context/DataProvider';
 import { FundProvider } from './modules/member/context/FundContext';
 import { AuthProvider } from './core/auth/AuthContext';
+import { useAxiosPrivate } from './core/auth/useAxiosPrivate';
 import ScrollToTop from './components/ScrollToTop';
+
+const AppContent = () => {
+  // Initialize stateless private Axios interceptors globally
+  useAxiosPrivate();
+
+  return (
+    <div className="desktop-wrapper">
+      <div className="app-container bg-transparent">
+      <div className="aura-bg" />
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          {/* Default entry → splash screen for onboarding demo */}
+          <Route path="/" element={<Navigate to="/member/splash" replace />} />
+          
+          {/* Route all /member/* requests to MemberRoutes */}
+          <Route path="/member/*" element={<MemberRoutes />} />
+
+          {/* Route all /admin/* requests to AdminRoutes */}
+          <Route path="/admin/*" element={<AdminRoutes />} />
+
+          {/* Route all /head/* requests to HeadRoutes */}
+          <Route path="/head/*" element={<HeadRoutes />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
+  </div>
+  );
+};
 
 const App = () => {
   return (
     <AuthProvider>
     <DataProvider>
       <FundProvider>
-        <div className="desktop-wrapper">
-          <div className="app-container bg-transparent">
-          <div className="aura-bg" />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              {/* Default entry → splash screen for onboarding demo */}
-              <Route path="/" element={<Navigate to="/member/splash" replace />} />
-              
-              {/* Route all /member/* requests to MemberRoutes */}
-              <Route path="/member/*" element={<MemberRoutes />} />
-
-              {/* Route all /admin/* requests to AdminRoutes */}
-              <Route path="/admin/*" element={<AdminRoutes />} />
-
-              {/* Route all /head/* requests to HeadRoutes */}
-              <Route path="/head/*" element={<HeadRoutes />} />
-            </Routes>
-          </BrowserRouter>
-        </div>
-      </div>
+        <AppContent />
       </FundProvider>
     </DataProvider>
     </AuthProvider>

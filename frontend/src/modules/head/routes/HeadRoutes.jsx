@@ -23,8 +23,8 @@ export const HeadRoutes = () => {
     <Routes>
       <Route element={<HeadProtectedRoute />}>
         <Route element={<HeadLayout />}>
-          {/* Default /head redirects to invitations */}
-        <Route index element={<Navigate to="invitations" replace />} />
+          {/* Default /head redirects to dashboard */}
+        <Route index element={<Navigate to="dashboard" replace />} />
         
         {/* Head Dashboard */}
         <Route path="dashboard" element={<HeadDashboard />} />

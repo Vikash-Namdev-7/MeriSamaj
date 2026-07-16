@@ -1,8 +1,8 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 
-export const HeadProtectedRoute = () => {
+export const AdminProtectedRoute = () => {
   return <Outlet />;
 };
 
-export default HeadProtectedRoute;
+export default AdminProtectedRoute;

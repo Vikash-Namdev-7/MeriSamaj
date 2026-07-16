@@ -8,11 +8,8 @@ const {
   deleteInvitation,
   updateInvitation
 } = require('../../controllers/member/invitationController');
-const { protect } = require('../../middleware/authMiddleware');
+// Routes are protected at the parent level in routes/index.js
 const upload = require('../../middleware/uploadMiddleware');
-
-// Apply protection to all routes in this file
-router.use(protect);
 
 router.route('/')
   .get(getInvitations)

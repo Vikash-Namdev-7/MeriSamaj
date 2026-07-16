@@ -20,9 +20,7 @@ router.post('/logout', logoutUser);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
-
-// Protected routes
-router.post('/refresh', protect, refreshAuth);
+router.post('/refresh', refreshAuth); // Public stateless refresh endpoint
 
 // Profile update handles avatar upload via Cloudinary
 router.put('/update-profile', protect, upload.single('avatarFile'), updateProfile);

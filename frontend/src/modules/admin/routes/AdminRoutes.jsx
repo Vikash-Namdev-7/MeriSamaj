@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import AdminProtectedRoute from '../components/AdminProtectedRoute';
 import AdminLayout from '../components/AdminLayout';
 import AdminDashboard from '../pages/dashboard/AdminDashboard';
 import UserManagement from '../pages/users/UserManagement';
@@ -19,9 +20,10 @@ import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementC
 export const AdminRoutes = () => {
   return (
     <Routes>
-      <Route element={<AdminLayout />}>
-        {/* Default /admin redirects to admin dashboard */}
-        <Route index element={<Navigate to="dashboard" replace />} />
+      <Route element={<AdminProtectedRoute />}>
+        <Route element={<AdminLayout />}>
+          {/* Default /admin redirects to admin dashboard */}
+          <Route index element={<Navigate to="dashboard" replace />} />
         
         {/* Admin Operational Dashboard */}
         <Route path="dashboard" element={<AdminDashboard />} />
@@ -43,6 +45,7 @@ export const AdminRoutes = () => {
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="dashboard" replace />} />
+      </Route>
       </Route>
     </Routes>
   );

@@ -219,9 +219,7 @@ export const HeadLayout = () => {
                           key={child.name}
                           to={`${child.path}${child.search || ''}`}
                           onClick={(e) => {
-                            if (child.path !== '/head/invitations') {
-                              e.preventDefault();
-                            } else if (isMobile) {
+                            if (isMobile) {
                               setIsMobileOpen(false);
                             }
                           }}
@@ -250,9 +248,7 @@ export const HeadLayout = () => {
                 key={item.name}
                 to={item.path}
                 onClick={(e) => {
-                  if (item.path !== '/head/invitations' && item.path !== '/head/donations') {
-                    e.preventDefault();
-                  } else if (isMobile) {
+                  if (isMobile) {
                     setIsMobileOpen(false);
                   }
                 }}

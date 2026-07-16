@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Import Panel Routes
 const authRoutes = require('./authRoutes');
@@ -9,8 +10,8 @@ const memberRoutes = require('./member/memberRoutes');
 
 // Mount Routes
 router.use('/auth', authRoutes);
-router.use('/admin', adminRoutes);
-router.use('/head', headRoutes);
-router.use('/member', memberRoutes);
+router.use('/admin', protect, authorize('admin', 'super_admin', 'master_admin'), adminRoutes);
+router.use('/head', protect, authorize('head', 'head_admin', 'admin', 'super_admin', 'master_admin'), headRoutes);
+router.use('/member', protect, memberRoutes);
 
 module.exports = router;

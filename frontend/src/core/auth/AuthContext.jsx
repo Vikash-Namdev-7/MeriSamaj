@@ -28,33 +28,6 @@ export const AuthProvider = ({ children }) => {
             isInitialized: true,
           });
         }
-        
-        // Validate in background
-        try {
-          const response = await authService.refresh();
-          if (isMounted) {
-            localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
-            localStorage.setItem('merisamaj_token', response.accessToken);
-            setAuth({
-              user: response.user,
-              accessToken: response.accessToken,
-              isAuthenticated: true,
-              isInitialized: true,
-            });
-          }
-        } catch (error) {
-          // Token expired or invalid, log out
-          if (isMounted) {
-            localStorage.removeItem('merisamaj_user');
-            localStorage.removeItem('merisamaj_token');
-            setAuth({
-              user: null,
-              accessToken: null,
-              isAuthenticated: false,
-              isInitialized: true,
-            });
-          }
-        }
       } else {
         // Fallback to checking cookie if no localStorage item exists
         try {
