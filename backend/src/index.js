@@ -14,7 +14,9 @@ connectDB();
 
 // Global Middlewares
 app.use(cors({
-  origin: true,
+  origin: process.env.CLIENT_URL 
+    ? process.env.CLIENT_URL.split(',') 
+    : true,
   credentials: true
 }));
 app.use(express.json());

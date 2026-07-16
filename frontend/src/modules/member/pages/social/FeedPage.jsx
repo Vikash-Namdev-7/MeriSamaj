@@ -690,7 +690,8 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
                   lang={lang} 
                   onShareClick={(p) => {
                     // Copy mock link to clipboard & notify
-                    navigator.clipboard.writeText(`http://localhost:5174/member/social/${p.id}`);
+                    const clientUrl = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+                    navigator.clipboard.writeText(`${clientUrl}/member/social/${p.id}`);
                     triggerToast("Link copied to clipboard!");
                   }}
                 />
