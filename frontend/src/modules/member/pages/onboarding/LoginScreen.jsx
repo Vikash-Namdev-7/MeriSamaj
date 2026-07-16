@@ -131,38 +131,7 @@ const LoginScreen = () => {
     }
   };
 
-  const handleSkip = () => {
-    // Set guest session in AuthContext
-    setAuth({
-      user: {
-        id: 'guest-user',
-        name: 'Guest Explorer',
-        phone: '0000000000',
-        email: 'guest@samaj.com',
-        role: 'user',
-        community: 'Agrawal Samaj',
-        city: 'Indore',
-        isVerified: true
-      },
-      accessToken: 'guest-token',
-      isAuthenticated: true,
-      isInitialized: true,
-    });
-    
-    // Sync with DataProvider for compatibility
-    loginUser({
-      id: 'guest-user',
-      name: 'Guest Explorer',
-      phone: '0000000000',
-      email: 'guest@samaj.com',
-      role: 'user',
-      community: 'Agrawal Samaj',
-      city: 'Indore',
-      isVerified: true
-    });
-    
-    navigate('/member/home');
-  };
+
 
   const renderToast = () => toastMessage && (
     <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-[#1e1145] text-white border border-purple-500/20 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 animate-bounce font-sans text-xs font-bold select-none">
@@ -330,13 +299,7 @@ const LoginScreen = () => {
                   {!isLoading && <ArrowRight size={16} />}
                 </button>
 
-                <button 
-                  onClick={handleSkip}
-                  type="button"
-                  className="w-full mt-3 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale transition-all border border-slate-200"
-                >
-                  Skip Login (Explore as Guest)
-                </button>
+
               </div>
             </>
           ) : (

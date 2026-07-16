@@ -11,24 +11,68 @@ export const AuthProvider = ({ children }) => {
     isInitialized: false,
   });
 
-  // Check auth status on initial load by trying to refresh the token
+  // Check auth status on initial load by trying to refresh the token or checking localStorage
   useEffect(() => {
     let isMounted = true;
     
     const initializeAuth = async () => {
-      try {
-        const response = await authService.refresh();
+      const savedUser = localStorage.getItem('merisamaj_user');
+      const savedToken = localStorage.getItem('merisamaj_token');
+
+      if (savedUser && savedToken) {
         if (isMounted) {
           setAuth({
-            user: response.user,
-            accessToken: response.accessToken,
+            user: JSON.parse(savedUser),
+            accessToken: savedToken,
             isAuthenticated: true,
             isInitialized: true,
           });
         }
-      } catch (error) {
-        if (isMounted) {
-          setAuth(prev => ({ ...prev, isInitialized: true }));
+        
+        // Validate in background
+        try {
+          const response = await authService.refresh();
+          if (isMounted) {
+            localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
+            localStorage.setItem('merisamaj_token', response.accessToken);
+            setAuth({
+              user: response.user,
+              accessToken: response.accessToken,
+              isAuthenticated: true,
+              isInitialized: true,
+            });
+          }
+        } catch (error) {
+          // Token expired or invalid, log out
+          if (isMounted) {
+            localStorage.removeItem('merisamaj_user');
+            localStorage.removeItem('merisamaj_token');
+            setAuth({
+              user: null,
+              accessToken: null,
+              isAuthenticated: false,
+              isInitialized: true,
+            });
+          }
+        }
+      } else {
+        // Fallback to checking cookie if no localStorage item exists
+        try {
+          const response = await authService.refresh();
+          if (isMounted) {
+            localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
+            localStorage.setItem('merisamaj_token', response.accessToken);
+            setAuth({
+              user: response.user,
+              accessToken: response.accessToken,
+              isAuthenticated: true,
+              isInitialized: true,
+            });
+          }
+        } catch (error) {
+          if (isMounted) {
+            setAuth(prev => ({ ...prev, isInitialized: true }));
+          }
         }
       }
     };
@@ -42,6 +86,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const response = await authService.login(credentials);
+    localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
+    localStorage.setItem('merisamaj_token', response.accessToken);
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -53,6 +99,8 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const response = await authService.register(userData);
+    localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
+    localStorage.setItem('merisamaj_token', response.accessToken);
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -68,6 +116,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error', error);
     } finally {
+      localStorage.removeItem('merisamaj_user');
+      localStorage.removeItem('merisamaj_token');
       setAuth({
         user: null,
         accessToken: null,

@@ -29,6 +29,7 @@ export const useAxiosPrivate = () => {
             const newAccessToken = response.accessToken;
             
             setAuth(prev => {
+              localStorage.setItem('merisamaj_token', newAccessToken);
               return { ...prev, accessToken: newAccessToken };
             });
             
@@ -36,6 +37,8 @@ export const useAxiosPrivate = () => {
             return axiosPrivate(prevRequest);
           } catch (refreshError) {
             // Refresh token expired or invalid, log out the user
+            localStorage.removeItem('merisamaj_user');
+            localStorage.removeItem('merisamaj_token');
             setAuth({
               user: null,
               accessToken: null,
