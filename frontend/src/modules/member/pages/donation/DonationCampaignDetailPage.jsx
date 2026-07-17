@@ -126,39 +126,49 @@ const DonationCampaignDetailPage = () => {
       <div className="px-4 pt-5 max-w-xl mx-auto space-y-6">
         
         {/* Campaign Info Card */}
-        <div className="bg-card rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 border border-gray-100 mt-1">
-              {getPurposeIcon(purpose.id)}
+        <div className="bg-card rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+          {purpose.bannerImage && (
+            <div className="h-48 w-full overflow-hidden relative shrink-0">
+              <img src={purpose.bannerImage} alt={purpose.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-text-primary leading-tight">{purpose.title}</h2>
-              <div className="flex items-center gap-1.5 mt-2">
-                <Badge variant="warning" className="text-[10px] font-bold px-2 py-0.5">{purpose.percentage}%</Badge>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
-                  <MapPin size={10} /> {purpose.city}
+          )}
+          <div className="p-5 space-y-4">
+            <div className="flex items-start gap-4">
+              {!purpose.bannerImage && (
+                <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 border border-gray-100 mt-1">
+                  {getPurposeIcon(purpose.id)}
+                </div>
+              )}
+              <div>
+                <h2 className="text-lg font-bold text-text-primary leading-tight">{purpose.title}</h2>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Badge variant="warning" className="text-[10px] font-bold px-2 py-0.5">{purpose.percentage}%</Badge>
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
+                    <MapPin size={10} /> {purpose.city || 'General'}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <p className="text-xs text-text-secondary leading-relaxed border-t border-gray-50 pt-4">
-            {purpose.desc}
-          </p>
+            
+            <p className="text-xs text-text-secondary leading-relaxed border-t border-gray-50 pt-4">
+              {purpose.desc}
+            </p>
 
-          <div className="space-y-2 bg-gray-50 p-4 rounded-2xl">
-            <div className="flex justify-between items-end mb-1">
-              <span className="text-sm font-bold text-text-primary">
-                ₹{formatCurrency(purpose.raised)} <span className="text-[11px] font-normal text-text-secondary">Raised</span>
-              </span>
-              <span className="text-[11px] font-bold text-text-secondary">Goal: ₹{formatCurrency(purpose.target)}</span>
-            </div>
-            {/* Progress bar */}
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-purple-600 rounded-full" 
-                style={{ width: `${purpose.percentage}%` }}
-              />
+            <div className="space-y-2 bg-gray-50 p-4 rounded-2xl">
+              <div className="flex justify-between items-end mb-1">
+                <span className="text-sm font-bold text-text-primary">
+                  ₹{formatCurrency(purpose.raised)} <span className="text-[11px] font-normal text-text-secondary">Raised</span>
+                </span>
+                <span className="text-[11px] font-bold text-text-secondary">Goal: ₹{formatCurrency(purpose.target)}</span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-purple-600 rounded-full" 
+                  style={{ width: `${purpose.percentage}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

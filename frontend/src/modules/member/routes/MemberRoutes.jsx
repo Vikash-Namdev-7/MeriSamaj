@@ -208,6 +208,7 @@ export const MemberRoutes = () => {
           {/* Shradhanjali — Full-featured memorial module */}
           <Route path="shradhanjali" element={<AnimatedPage><ShradhanjaliHomePage /></AnimatedPage>} />
           <Route path="shradhanjali/create" element={<AnimatedPage><CreateShradhanjaliPage /></AnimatedPage>} />
+          <Route path="shradhanjali/edit/:id" element={<AnimatedPage><CreateShradhanjaliPage /></AnimatedPage>} />
           <Route path="shradhanjali/:id" element={<AnimatedPage><ShradhanjaliDetailPage /></AnimatedPage>} />
 
           {/* Invitation Module */}

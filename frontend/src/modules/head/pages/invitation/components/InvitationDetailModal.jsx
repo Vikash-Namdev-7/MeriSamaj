@@ -40,17 +40,22 @@ export default function InvitationDetailModal({ isOpen, onClose, invitation }) {
   const displayHost = invitation.hostName || invitation.familyName;
   const images = invitation.images || (invitation.image ? [invitation.image] : []);
 
+  const isFieldEnabled = (fieldId) => {
+    const field = invitationFormConfig?.formFields?.find(f => f.id === fieldId);
+    return field ? field.enabled !== false : true;
+  };
+
   // Build schedule list dynamically based on availability
   const hasGroomBride = invitation.groomName && invitation.brideName;
   const scheduleItems = [];
   if (hasGroomBride && !invitation.title) {
-    if (invitation.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Reception Time', value: invitation.timeFood });
-    if (invitation.timeBaraat && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Baraat Time', value: invitation.timeBaraat });
-    if (invitation.timePhere && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Phere Time', value: invitation.timePhere });
+    if (invitation.timeFood && isFieldEnabled('timeFood')) scheduleItems.push({ label: 'Reception Time', value: invitation.timeFood });
+    if (invitation.timeBaraat && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Baraat Time', value: invitation.timeBaraat });
+    if (invitation.timePhere && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Phere Time', value: invitation.timePhere });
   } else {
-    if (invitation.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Feast Time', value: invitation.timeFood });
-    if ((invitation.timeProgram || invitation.timeBaraat) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Program Time', value: invitation.timeProgram || invitation.timeBaraat });
-    if ((invitation.timeOther || invitation.timePhere) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Other Time', value: invitation.timeOther || invitation.timePhere });
+    if (invitation.timeFood && isFieldEnabled('timeFood')) scheduleItems.push({ label: 'Feast Time', value: invitation.timeFood });
+    if ((invitation.timeProgram || invitation.timeBaraat) && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Program Time', value: invitation.timeProgram || invitation.timeBaraat });
+    if ((invitation.timeOther || invitation.timePhere) && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Other Time', value: invitation.timeOther || invitation.timePhere });
   }
 
   // RSVP Processing
@@ -113,7 +118,7 @@ export default function InvitationDetailModal({ isOpen, onClose, invitation }) {
                   <p className="text-[13px] font-semibold opacity-90 mt-1 uppercase tracking-wide">
                     By: {displayHost}
                   </p>
-                  {invitationFormConfig?.enableMessage !== false && (
+                  {isFieldEnabled('message') && (
                     <p className="text-[12px] opacity-75 mt-3 border-t border-white/20 pt-2 italic">
                       "{invitation.message || 'You are cordially invited.'}"
                     </p>
@@ -187,7 +192,7 @@ export default function InvitationDetailModal({ isOpen, onClose, invitation }) {
                   </div>
 
                   {/* Contact Number */}
-                  {invitation.contact && invitationFormConfig?.enableContact !== false && (
+                  {invitation.contact && isFieldEnabled('contact') && (
                     <div className="flex items-start gap-3 pt-3 border-t border-slate-100">
                       <Phone size={16} className="text-indigo-600 mt-0.5 shrink-0" />
                       <div>
@@ -216,7 +221,7 @@ export default function InvitationDetailModal({ isOpen, onClose, invitation }) {
                 </div>
 
                 {/* Directions Button */}
-                {invitation.mapLink && invitationFormConfig?.enableMapLink !== false && (
+                {invitation.mapLink && isFieldEnabled('mapLink') && (
                   <a 
                     href={invitation.mapLink} 
                     target="_blank" 

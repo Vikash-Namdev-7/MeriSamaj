@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Menu, Filter, Plus } from 'lucide-react';
-import { mockDharamshalas } from '../../data/mockDharmashala';
+import { Search, MapPin, Menu, Filter, Loader } from 'lucide-react';
+import dharmashalaService from '../../../../core/api/dharmashalaService';
 import { useData } from '../../context/DataProvider';
 
 export default function DharmashalaHomePage() {
@@ -9,6 +9,8 @@ export default function DharmashalaHomePage() {
   const { setMobileMenuOpen } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [dharamshalas, setDharamshalas] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Filter states
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -18,20 +20,28 @@ export default function DharmashalaHomePage() {
   const [tempLocation, setTempLocation] = useState('all');
   const [tempFacilities, setTempFacilities] = useState({ ac: false, food: false });
 
-  const filtered = mockDharamshalas.filter(d => {
-    // Search query filter
-    const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          d.location.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Location filter
-    const matchesLocation = selectedLocation === 'all' || d.location.toLowerCase().includes(selectedLocation.toLowerCase());
+  const fetchDharamshalas = async () => {
+    setIsLoading(true);
+    try {
+      const res = await dharmashalaService.getDharmashalas({
+        search: searchQuery,
+        city: selectedLocation,
+        ac: selectedFacilities.ac ? 'true' : 'false',
+        food: selectedFacilities.food ? 'true' : 'false'
+      });
+      if (res.status === 'success') {
+        setDharamshalas(res.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dharmashalas", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Facilities filter
-    const matchesAc = !selectedFacilities.ac || d.hasAcRooms;
-    const matchesFood = !selectedFacilities.food || d.hasFoodFacility;
-
-    return matchesSearch && matchesLocation && matchesAc && matchesFood;
-  });
+  useEffect(() => {
+    fetchDharamshalas();
+  }, [searchQuery, selectedLocation, selectedFacilities]);
 
   const handleOpenFilter = () => {
     setTempLocation(selectedLocation);
@@ -98,13 +108,17 @@ export default function DharmashalaHomePage() {
 
         {/* List */}
         <div className="p-4 space-y-4 max-w-4xl mx-auto">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader className="animate-spin text-indigo-600" size={32} />
+            </div>
+          ) : dharamshalas.length === 0 ? (
             <div className="card-neo p-8 text-center text-slate-500 font-bold">
               कोई धर्मशाला नहीं मिली
             </div>
           ) : (
-            filtered.map(d => (
-              <div key={d.id} className="card-neo overflow-hidden flex flex-col">
+            dharamshalas.map(d => (
+              <div key={d._id} className="card-neo overflow-hidden flex flex-col">
                 <div className="flex p-4 gap-4">
                   <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
                     <img src={d.image} alt={d.name} className="w-full h-full object-cover" />
@@ -113,7 +127,7 @@ export default function DharmashalaHomePage() {
                     <h3 className="font-bold text-slate-800 text-[15px] truncate">{d.name}</h3>
                     <div className="flex items-start gap-1 mt-1 text-slate-500">
                       <MapPin size={12} className="mt-0.5 shrink-0" />
-                      <span className="text-[11px] leading-tight font-medium">{d.location}</span>
+                      <span className="text-[11px] leading-tight font-medium">{d.address || d.location}{d.city ? `, ${d.city}` : ''}</span>
                     </div>
                     
                     <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
@@ -126,7 +140,7 @@ export default function DharmashalaHomePage() {
                 
                 <div className="px-4 pb-4 flex justify-end">
                   <button 
-                    onClick={() => navigate(`/member/dharmashala/${d.id}`)}
+                    onClick={() => navigate(`/member/dharmashala/${d._id}`)}
                     className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
                   >
                     बुकिंग करें

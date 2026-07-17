@@ -9,6 +9,11 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
   const { invitationFormConfig } = useData();
   const [error, setError] = useState('');
 
+  const isFieldEnabled = (fieldId) => {
+    const field = invitationFormConfig?.formFields?.find(f => f.id === fieldId);
+    return field ? field.enabled !== false : true;
+  };
+
   const [formData, setFormData] = useState({
     title: '',
     hostName: '',
@@ -195,7 +200,7 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
           <form id="invitation-form" onSubmit={handleSubmit} className="space-y-6">
             
             {/* File Upload Section (Multiple photos) */}
-            {invitationFormConfig?.enablePhotos && (
+            {isFieldEnabled('photos') && (
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-slate-700 block">
                   Upload Event Photos / Invitation Cards
@@ -284,7 +289,7 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
 
               {/* Timings (Feast & Program) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {invitationFormConfig?.enableFeastTime !== false && (
+                {isFieldEnabled('timeFood') && (
                   <div className="space-y-1">
                     <label className="block text-[12px] font-semibold text-slate-600 mb-1.5">Feast Time</label>
                     <TimePicker 
@@ -295,14 +300,14 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
                     />
                   </div>
                 )}
-                {invitationFormConfig?.enableProgramTime !== false && (
+                {isFieldEnabled('timeProgram') && (
                   <div className="space-y-1">
                     <label className="block text-[12px] font-semibold text-slate-600 mb-1.5">Program Time</label>
                     <TimePicker 
                       name="timeProgram"
                       value={formData.timeProgram}
                       onChange={handleChange}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-850 font-medium"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-855 font-medium"
                     />
                   </div>
                 )}
@@ -322,7 +327,7 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
               </div>
 
               {/* Google Map Link */}
-              {invitationFormConfig?.enableMapLink !== false && (
+              {isFieldEnabled('mapLink') && (
                 <div className="space-y-1">
                   <label className="block text-[12px] font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
                     <Link size={12} className="text-slate-400" /> Google Map Link
@@ -340,7 +345,7 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
               )}
 
               {/* Contact Number */}
-              {invitationFormConfig?.enableContact !== false && (
+              {isFieldEnabled('contact') && (
                 <div className="space-y-1">
                   <label className="block text-[12px] font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
                     <Phone size={12} className="text-slate-400" /> Contact Number *
@@ -358,7 +363,7 @@ export default function InvitationFormModal({ isOpen, onClose, invitationData, o
               )}
 
               {/* Personal Message */}
-              {invitationFormConfig?.enableMessage !== false && (
+              {isFieldEnabled('message') && (
                 <div className="space-y-1">
                   <label className="block text-[12px] font-semibold text-slate-600 mb-1.5">Personal Message / Note</label>
                   <textarea 

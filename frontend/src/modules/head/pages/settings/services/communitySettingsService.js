@@ -96,11 +96,44 @@ const INITIAL_SETTINGS = {
     businessPromotion: true,
     categoryApproval: false
   },
+  shradhanjali: {
+    enabled: true,
+    memberSubmissionEnabled: true,
+    requireApproval: true
+  },
   security: {
     twoStepApproval: false,
     sensitiveActionConfirm: true,
     sessionTimeout: 60, // minutes
     loginAlerts: true
+  },
+  homepageContent: {
+    hero: {
+      backgroundImage: '', // empty by default (fallback to standard landmark image)
+      title: 'Welcome to our Samaj Hub',
+      subtitle: 'Connecting and empowering community members across the region.',
+      buttonText: 'Directory Search',
+      buttonLink: '/member/directory'
+    },
+    exclusiveFeatures: [
+      { id: 'professional', label: 'Professional Network', desc: 'Find jobs & hire within the community', path: '/member/professional', icon: 'Briefcase', displayOrder: 1, enabled: true },
+      { id: 'directory', label: 'Directory', desc: 'Browse Samaj Members', path: '/member/directory', icon: 'BookOpen', displayOrder: 2, enabled: true },
+      { id: 'groups', label: 'Groups', desc: 'Discussions', path: '/member/groups', icon: 'Users', displayOrder: 3, enabled: true },
+      { id: 'voting', label: 'Voting', desc: 'Community Polls', path: '/member/voting', icon: 'Vote', displayOrder: 4, enabled: true },
+      { id: 'dharmashala', label: 'Dharmashala', desc: 'Book Rooms', path: '/member/dharmashala', icon: 'Home', displayOrder: 5, enabled: true },
+      { id: 'fund', label: 'Samaj Fund', desc: 'Community Fund', path: '/member/fund', icon: 'Wallet', displayOrder: 6, enabled: true }
+    ],
+    promotions: [
+      {
+        id: 'p1',
+        title: 'Refer & Earn Program',
+        desc: 'Invite your extended family members to join MeriSamaj platform today and earn community reward points.',
+        image: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=400&q=80',
+        buttonText: 'Invite Family',
+        buttonLink: '/member/referral',
+        enabled: true
+      }
+    ]
   }
 };
 

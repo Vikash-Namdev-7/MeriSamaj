@@ -7,6 +7,20 @@ exports.getCampaigns = async (req, res) => {
     const campaigns = await Campaign.find({ status: { $in: ['Active', 'Published'] } }).sort({ startDate: -1 });
     const user = req.user; // Requires auth middleware to attach user
 
+    console.log("DEBUG: All active/published campaigns found in DB:", campaigns.map(c => ({
+      title: c.title,
+      status: c.status,
+      visibility: c.visibility,
+      community: c.community,
+      locations: c.locations
+    })));
+    console.log("DEBUG: Current user fetching campaigns:", {
+      id: user._id,
+      name: user.name,
+      community: user.community,
+      city: user.city
+    });
+
     // Filter based on visibility
     const visibleCampaigns = campaigns.filter(c => {
       if (c.visibility === 'Entire Community') return true;
@@ -28,6 +42,8 @@ exports.getCampaigns = async (req, res) => {
       }
       return true; // default fallback
     });
+
+    console.log("DEBUG: Visible campaigns after filtering:", visibleCampaigns.map(c => c.title));
     
     // Map to match frontend requirements
     const formattedCampaigns = visibleCampaigns.map(c => ({
@@ -38,7 +54,8 @@ exports.getCampaigns = async (req, res) => {
       percentage: c.targetAmount > 0 ? Math.min(Math.round((c.collectedAmount / c.targetAmount) * 100), 100) : 0,
       desc: c.description,
       city: c.city,
-      visibility: c.visibility
+      visibility: c.visibility,
+      bannerImage: c.bannerImage
     }));
 
     res.status(200).json({
@@ -65,7 +82,8 @@ exports.getCampaignById = async (req, res) => {
       target: campaign.targetAmount,
       percentage: campaign.targetAmount > 0 ? Math.min(Math.round((campaign.collectedAmount / campaign.targetAmount) * 100), 100) : 0,
       desc: campaign.description,
-      city: campaign.city
+      city: campaign.city,
+      bannerImage: campaign.bannerImage
     };
 
     res.status(200).json({

@@ -3,6 +3,12 @@ import { authService } from './authService';
 
 export const AuthContext = createContext({});
 
+// Lightweight flag written to localStorage on login/register and cleared on logout.
+// Its presence means a refresh-token cookie *might* still be valid, making the
+// silent-refresh attempt worthwhile. Without it we skip the network call entirely,
+// eliminating the spurious POST /auth/refresh 401 on first-ever app visits.
+const SESSION_FLAG_KEY = 'merisamaj_has_session';
+
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState({
     user: null,
@@ -11,15 +17,17 @@ export const AuthProvider = ({ children }) => {
     isInitialized: false,
   });
 
-  // Check auth status on initial load by trying to refresh the token or checking localStorage
+  // Restore auth state on initial load
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeAuth = async () => {
-      const savedUser = localStorage.getItem('merisamaj_user');
+      const savedUser  = localStorage.getItem('merisamaj_user');
       const savedToken = localStorage.getItem('merisamaj_token');
+      const hasSession = localStorage.getItem(SESSION_FLAG_KEY);
 
       if (savedUser && savedToken) {
+        // Fast path: credentials already in localStorage
         if (isMounted) {
           setAuth({
             user: JSON.parse(savedUser),
@@ -28,8 +36,9 @@ export const AuthProvider = ({ children }) => {
             isInitialized: true,
           });
         }
-      } else {
-        // Fallback to checking cookie if no localStorage item exists
+      } else if (hasSession) {
+        // Session flag exists but localStorage was cleared (e.g. different tab logout).
+        // Try to silently restore via the HTTP-only refresh-token cookie.
         try {
           const response = await authService.refresh();
           if (isMounted) {
@@ -42,10 +51,17 @@ export const AuthProvider = ({ children }) => {
               isInitialized: true,
             });
           }
-        } catch (error) {
+        } catch {
+          // Refresh token expired or invalid — clear the stale flag and proceed as guest
+          localStorage.removeItem(SESSION_FLAG_KEY);
           if (isMounted) {
             setAuth(prev => ({ ...prev, isInitialized: true }));
           }
+        }
+      } else {
+        // No prior session at all — skip the network call and mark as initialized
+        if (isMounted) {
+          setAuth(prev => ({ ...prev, isInitialized: true }));
         }
       }
     };
@@ -61,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     const response = await authService.login(credentials);
     localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
     localStorage.setItem('merisamaj_token', response.accessToken);
+    localStorage.setItem(SESSION_FLAG_KEY, '1');
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -74,6 +91,7 @@ export const AuthProvider = ({ children }) => {
     const response = await authService.register(userData);
     localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
     localStorage.setItem('merisamaj_token', response.accessToken);
+    localStorage.setItem(SESSION_FLAG_KEY, '1');
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -91,6 +109,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       localStorage.removeItem('merisamaj_user');
       localStorage.removeItem('merisamaj_token');
+      localStorage.removeItem(SESSION_FLAG_KEY);
       setAuth({
         user: null,
         accessToken: null,

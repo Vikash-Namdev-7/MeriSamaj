@@ -185,6 +185,8 @@ export default function InvitationManagement() {
         setInvitationToDelete(null);
       } catch (err) {
         console.error('Failed to delete invitation', err);
+        const errMsg = err.response?.data?.message || err.message;
+        alert(`Delete failed: ${errMsg}\n\nPlease verify that your backend server has been restarted to apply the latest role permissions.`);
       }
     }
   };

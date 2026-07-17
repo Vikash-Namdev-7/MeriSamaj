@@ -162,12 +162,15 @@ exports.deleteInvitation = async (req, res) => {
       return res.status(404).json({ message: 'Invitation not found' });
     }
 
-    // Check if the user is the creator or an admin
-    if (invitation.creatorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    // Check if the user is authorized (creator, head, or admin)
+    const isCreator = invitation.creatorId && invitation.creatorId.toString() === req.user._id.toString();
+    const isHeadOrAdmin = ['head', 'admin', 'head_admin', 'super_admin', 'master_admin'].includes(req.user.role);
+
+    if (!isCreator && !isHeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to delete this invitation' });
     }
 
-    await invitation.deleteOne();
+    await Invitation.findByIdAndDelete(req.params.id);
     res.json({ message: 'Invitation removed' });
   } catch (error) {
     console.error('Error deleting invitation:', error);
@@ -186,8 +189,8 @@ exports.updateInvitation = async (req, res) => {
       return res.status(404).json({ message: 'Invitation not found' });
     }
 
-    // Check if the user is authorized (creator or admin)
-    if (invitation.creatorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    // Check if the user is authorized (creator, head, or admin)
+    if (invitation.creatorId.toString() !== req.user._id.toString() && !['head', 'admin'].includes(req.user.role)) {
       return res.status(401).json({ message: 'Not authorized to update this invitation' });
     }
 

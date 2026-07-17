@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, X, Eye, MessageCircle, Bell } from 'lucide-react';
@@ -174,20 +174,84 @@ const MemorialCard = ({ obituary, index }) => {
 /* ─── Page ─── */
 const ShradhanjaliHomePage = () => {
   const navigate = useNavigate();
-  const { obituaries, getUnreadCountForModule } = useData();
+  const { obituaries, obituariesLoading, obituariesError, loadObituaries, getUnreadCountForModule, currentUser } = useData();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [showSearch, setShowSearch] = useState(false);
 
+  const communityId = useMemo(() => {
+    const comName = currentUser?.community;
+    return comName ? comName.toLowerCase().replace(/\s/g, '_') : 'cm_123';
+  }, [currentUser]);
+
+  const settings = useMemo(() => {
+    const saved = localStorage.getItem(`community_settings_${communityId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.shradhanjali) return parsed.shradhanjali;
+      } catch (e) {}
+    }
+    return { enabled: true, memberSubmissionEnabled: true, requireApproval: true };
+  }, [communityId]);
+
   const filtered = obituaries.filter((ob) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      ob.deceasedName?.toLowerCase().includes(q) ||
-      ob.deceasedNameEn?.toLowerCase().includes(q) ||
-      ob.author?.name?.toLowerCase().includes(q)
-    );
+    // 1. Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      const matchSearch = (
+        ob.deceasedName?.toLowerCase().includes(q) ||
+        ob.deceasedNameEn?.toLowerCase().includes(q) ||
+        ob.author?.name?.toLowerCase().includes(q)
+      );
+      if (!matchSearch) return false;
+    }
+
+    // 2. Tab filter
+    if (activeFilter === 'recent') {
+      if (ob.dateOfPassing) {
+        const passingDate = new Date(ob.dateOfPassing);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return passingDate >= thirtyDaysAgo;
+      }
+      return true;
+    }
+
+    if (activeFilter === 'ceremony') {
+      if (ob.funeralDetails?.date) {
+        const ritesDate = new Date(ob.funeralDetails.date);
+        ritesDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return ritesDate >= today;
+      }
+      return false;
+    }
+
+    return true;
   });
+
+  if (!settings.enabled) {
+    return (
+      <AnimatedPage>
+        <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center gap-4">
+          <span className="text-[64px]">🪔</span>
+          <h2 className="text-xl font-bold text-gray-800">Obituary Section Disabled</h2>
+          <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
+            The Obituary (Shradhanjali) portal has been disabled by your Samaj Administrator or Community Head. Please contact them for more details.
+          </p>
+          <button 
+            onClick={() => navigate('/member/home')}
+            className="mt-2 px-6 py-2.5 rounded-xl text-[13px] font-bold text-white press-scale"
+            style={{ background: '#7C5C2E' }}
+          >
+            Go back to Home
+          </button>
+        </div>
+      </AnimatedPage>
+    );
+  }
 
   return (
     <AnimatedPage>
@@ -300,51 +364,79 @@ const ShradhanjaliHomePage = () => {
 
       {/* ─── All posts as full memorial cards ─── */}
       <div className="pt-[116px] pb-32 px-4 max-w-lg mx-auto space-y-5">
-
-        {filtered.length > 0 && (
-          <div className="flex items-center justify-between pt-1 pb-1">
-            <span className="text-[13px] font-semibold text-gray-400">
-              {filtered.length} Obituary Posts
-            </span>
+        {obituariesLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              className="text-[44px]"
+            >
+              🪔
+            </motion.div>
+            <p className="text-[14px] text-gray-500 font-medium">Loading tributes...</p>
           </div>
-        )}
-
-        {filtered.map((ob, idx) => (
-          <MemorialCard key={ob.id} obituary={ob} index={idx} />
-        ))}
-
-        {/* Empty state */}
-        {filtered.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center gap-3 py-20"
-          >
-            <span className="text-[64px]">🕊️</span>
-            <p className="text-[16px] font-bold text-gray-500">No obituaries found</p>
-            {search && (
-              <p className="text-[13px] text-gray-400 text-center">
-                No results for "{search}"
-              </p>
+        ) : obituariesError ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+            <span className="text-[44px]">⚠️</span>
+            <p className="text-[14px] text-red-500 font-medium">{obituariesError}</p>
+            <button
+              onClick={loadObituaries}
+              className="px-4 py-2 rounded-xl text-[12px] font-bold text-white press-scale"
+              style={{ background: '#7C5C2E' }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <>
+            {filtered.length > 0 && (
+              <div className="flex items-center justify-between pt-1 pb-1">
+                <span className="text-[13px] font-semibold text-gray-400">
+                  {filtered.length} Obituary Posts
+                </span>
+              </div>
             )}
-          </motion.div>
+
+            {filtered.map((ob, idx) => (
+              <MemorialCard key={ob.id} obituary={ob} index={idx} />
+            ))}
+
+            {/* Empty state */}
+            {filtered.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center gap-3 py-20"
+              >
+                <span className="text-[64px]">🕊️</span>
+                <p className="text-[16px] font-bold text-gray-500">No obituaries found</p>
+                {search && (
+                  <p className="text-[13px] text-gray-400 text-center">
+                    No results for "{search}"
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </>
         )}
       </div>
 
       {/* ─── FAB ─── */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate('/member/shradhanjali/create')}
-        className="responsive-fixed-fab flex items-center gap-2 px-5 py-3.5 rounded-2xl text-white font-bold text-[14px] shadow-xl z-40"
-        style={{
-          background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)',
-          boxShadow: '0 8px 24px rgba(124,92,46,0.4)',
-        }}
-      >
-        <Plus size={20} strokeWidth={2.5} />
-        <span>Post Obituary</span>
-      </motion.button>
+      {settings.memberSubmissionEnabled && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/member/shradhanjali/create')}
+          className="responsive-fixed-fab flex items-center gap-2 px-5 py-3.5 rounded-2xl text-white font-bold text-[14px] shadow-xl z-40"
+          style={{
+            background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)',
+            boxShadow: '0 8px 24px rgba(124,92,46,0.4)',
+          }}
+        >
+          <Plus size={20} strokeWidth={2.5} />
+          <span>Post Obituary</span>
+        </motion.button>
+      )}
     </AnimatedPage>
   );
 };

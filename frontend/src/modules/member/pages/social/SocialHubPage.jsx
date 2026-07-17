@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, Search, Bell, Users, MessageCircle, MapPin, Compass, X } from 'lucide-react';
+import { Menu, Search, Bell, Users, MessageCircle, MapPin, Compass, X, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
@@ -117,6 +117,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const scrollContainerRef = useRef(null);
   const isTransitioningRef = useRef(false);
   const [triggerCreateGroup, setTriggerCreateGroup] = useState(false);
@@ -350,6 +351,13 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
                 className="bg-transparent outline-none w-full text-[14px] text-text-primary font-bold placeholder-text-muted"
                 autoFocus
               />
+              <button 
+                onClick={() => setIsFilterOpen(true)}
+                className="text-purple-400 hover:text-brand-primary p-0.5"
+                title="Filter Category"
+              >
+                <SlidersHorizontal size={18} />
+              </button>
               <button onClick={() => {
                 setSearchQuery('');
                 setIsSearchOpen(false);
@@ -428,7 +436,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
               onScroll={handleTabScroll}
               className={`w-full h-full flex-shrink-0 overflow-y-auto ${tab.id === 'chat' ? 'bg-white pb-0' : 'pb-28'}`}
             >
-              <Component isHub={true} {...extraProps} {...groupsProps} searchQuery={searchQuery} />
+              <Component isHub={true} {...extraProps} {...groupsProps} searchQuery={searchQuery} isFilterOpen={isFilterOpen} setIsFilterOpen={setIsFilterOpen} />
             </div>
           );
         })}

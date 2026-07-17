@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '../../../core/auth/useAuth';
+import { useHeadAuth } from '../../head/auth/useHeadAuth';
 
 // Import initial mocks
 import { currentUser as initialUser, mockMembers as initialMembers, mockAdmins as initialAdmins } from '../data/mockUsers';
@@ -9,6 +11,7 @@ import { mockObituaries as initialObituaries } from '../data/mockObituaries';
 import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
 import invitationService from '../../../core/api/invitationService';
+import obituaryService from '../../../core/api/obituaryService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -19,6 +22,70 @@ const getCommunitySurname = (community) => {
   if (community.includes('Patel')) return 'Patel';
   if (community.includes('Verma')) return 'Verma';
   return 'Agrawal';
+};
+
+const mapObituariesFromBackend = (data, currentUserId) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(ob => {
+    // Calculate garland count
+    const malaArpanCount = Array.isArray(ob.malaArpanUsers)
+      ? ob.malaArpanUsers.reduce((sum, item) => sum + (item.count || 0), 0)
+      : 0;
+
+    const userHasMalaArpan = Array.isArray(ob.malaArpanUsers)
+      ? ob.malaArpanUsers.some(item => (item.user?._id || item.user || '').toString() === (currentUserId || '').toString() && item.count > 0)
+      : false;
+
+    // Comments mapping
+    const comments = Array.isArray(ob.comments) ? ob.comments.map(c => ({
+      id: c._id || c.id,
+      name: c.name || 'Anonymous',
+      initials: c.initials || (c.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+      text: c.text,
+      timestamp: c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now',
+      likes: Array.isArray(c.likes) ? c.likes.length : 0,
+      isLiked: Array.isArray(c.likes) ? c.likes.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false
+    })) : [];
+
+    const creatorId = ob.creatorId?._id || ob.creatorId;
+    const authorInitials = ob.creatorId?.initials || (ob.creatorId?.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+    return {
+      id: ob._id || ob.id,
+      deceasedName: ob.deceasedName,
+      deceasedNameEn: ob.deceasedNameEn || '',
+      prefix: ob.prefix || '',
+      age: ob.age || 0,
+      birthDate: ob.birthDate || '',
+      dateOfPassing: ob.dateOfPassing,
+      funeralDetails: ob.funeralDetails || {},
+      message: ob.message,
+      image: ob.image || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800',
+      author: {
+        id: creatorId,
+        name: ob.creatorId?.name || 'Samaj Member',
+        initials: authorInitials,
+        relation: ob.relation,
+        email: ob.creatorId?.email || '',
+        phone: ob.creatorId?.phone || ''
+      },
+      shraddhanjaliCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
+      hasOfferedShraddhanjali: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+      haathJodeCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
+      malaArpanCount,
+      userHasHaathJode: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+      userHasMalaArpan,
+      views: ob.views || 0,
+      shares: ob.shares || 0,
+      saves: Array.isArray(ob.saves) ? ob.saves.length : 0,
+      isSaved: Array.isArray(ob.saves) ? ob.saves.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+      privacy: ob.privacy || 'public',
+      familyContact: ob.familyContact || '',
+      timestamp: ob.createdAt ? new Date(ob.createdAt).toLocaleDateString() : 'Just now',
+      status: ob.status || 'Approved',
+      comments
+    };
+  });
 };
 
 const initialGroups = [
@@ -423,6 +490,8 @@ const defaultGranularPrivacy = {
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
+  const { auth } = useAuth();
+  const { headAuth } = useHeadAuth();
   // Helpers for localStorage
   const loadState = (key, defaultState) => {
     try {
@@ -537,17 +606,19 @@ export const DataProvider = ({ children }) => {
       };
     });
   });
-  const [obituaries, setObituaries] = useState(() => loadState('obituaries', initialObituaries));
+  const [obituaries, setObituaries] = useState([]);
+  const [obituariesLoading, setObituariesLoading] = useState(false);
+  const [obituariesError, setObituariesError] = useState(null);
   
   // Dynamic Configuration for Invitation Form Fields
   const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig_v2', {
     formFields: [
-      { id: 'timeFood', label: 'Feast Time Field', desc: 'Allow members to specify food timing', type: 'time', required: false },
-      { id: 'timeProgram', label: 'Program Time Field', desc: 'Allow members to specify main event timing', type: 'time', required: false },
-      { id: 'mapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs', type: 'url', required: false },
-      { id: 'contact', label: 'Contact Number Field', desc: 'Require contact number on invitations', type: 'tel', required: true },
-      { id: 'message', label: 'Personal Message Field', desc: 'Allow members to add a custom message', type: 'text', required: false },
-      { id: 'photos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards', type: 'file', required: false }
+      { id: 'timeFood', label: 'Feast Time Field', desc: 'Allow members to specify food timing', type: 'time', required: false, enabled: true },
+      { id: 'timeProgram', label: 'Program Time Field', desc: 'Allow members to specify main event timing', type: 'time', required: false, enabled: true },
+      { id: 'mapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs', type: 'url', required: false, enabled: true },
+      { id: 'contact', label: 'Contact Number Field', desc: 'Require contact number on invitations', type: 'tel', required: true, enabled: true },
+      { id: 'message', label: 'Personal Message Field', desc: 'Allow members to add a custom message', type: 'text', required: false, enabled: true },
+      { id: 'photos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards', type: 'file', required: false, enabled: true }
     ],
     enableMembersTab: true,
     enablePresidentsTab: true,
@@ -558,7 +629,7 @@ export const DataProvider = ({ children }) => {
 
   const updateInvitationConfig = (newConfig) => {
     setInvitationFormConfig(newConfig);
-    saveState('invitationFormConfig', newConfig);
+    saveState('invitationFormConfig_v2', newConfig);
   };
 
   const [professionals, setProfessionals] = useState(() => {
@@ -717,10 +788,32 @@ export const DataProvider = ({ children }) => {
         console.error('Failed to load invitations', error);
       }
     };
-    if (currentUser) {
+    if (auth.isAuthenticated || headAuth?.isAuthenticated) {
       loadInvitations();
     }
-  }, [currentUser]);
+  }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
+
+  // Obituaries Load
+  const loadObituaries = async () => {
+    setObituariesLoading(true);
+    setObituariesError(null);
+    try {
+      const data = await obituaryService.getObituaries();
+      const formatted = mapObituariesFromBackend(data, currentUser?.id || currentUser?._id);
+      setObituaries(formatted);
+    } catch (error) {
+      console.error('Failed to load obituaries', error);
+      setObituariesError(error.response?.data?.message || 'Failed to fetch obituaries');
+    } finally {
+      setObituariesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (auth.isAuthenticated || headAuth?.isAuthenticated) {
+      loadObituaries();
+    }
+  }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
 
   // Sync to localStorage when state changes
   useEffect(() => saveState('currentUser', currentUser), [currentUser]);
@@ -729,7 +822,7 @@ export const DataProvider = ({ children }) => {
   // useEffect(() => saveState('posts', posts), [posts]); // Disabled persistence for Feed redesign
   useEffect(() => saveState('followedAnnouncements', followedAnnouncements), [followedAnnouncements]);
   useEffect(() => saveState('events', events), [events]);
-  useEffect(() => saveState('obituaries', obituaries), [obituaries]);
+  // useEffect(() => saveState('obituaries', obituaries), [obituaries]); // Managed dynamically via backend now
   useEffect(() => saveState('matrimonialProfiles', matrimonialProfiles), [matrimonialProfiles]);
   useEffect(() => saveState('language', language), [language]);
   useEffect(() => saveState('professionals', professionals), [professionals]);
@@ -1286,8 +1379,34 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const addObituary = (obituary) => {
-    setObituaries([obituary, ...obituaries]);
+  const addObituary = async (obituaryData) => {
+    try {
+      const communityId = (currentUser?.community || '').toLowerCase().replace(/\s/g, '_');
+      let status = 'Approved';
+      const savedSettings = localStorage.getItem(`community_settings_${communityId}`);
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          if (parsed.shradhanjali?.requireApproval) {
+            status = 'Pending';
+          }
+        } catch (e) {}
+      }
+
+      if (obituaryData instanceof FormData) {
+        obituaryData.append('status', status);
+      } else {
+        obituaryData.status = status;
+      }
+
+      const newOb = await obituaryService.createObituary(obituaryData);
+      const formatted = mapObituariesFromBackend([newOb], currentUser?.id || currentUser?._id)[0];
+      setObituaries(prev => [formatted, ...prev]);
+      return formatted;
+    } catch (error) {
+      console.error('Failed to add obituary:', error);
+      throw error;
+    }
   };
 
   const addStory = (storyImage, storyText = '') => {
@@ -1305,7 +1424,41 @@ export const DataProvider = ({ children }) => {
     setStories(prev => [newStory, ...prev]);
   };
 
-  const toggleObituaryShraddhanjali = (obId) => {
+  const updateObituary = async (id, obituaryData) => {
+    try {
+      const updated = await obituaryService.updateObituary(id, obituaryData);
+      const formatted = mapObituariesFromBackend([updated], currentUser?.id || currentUser?._id)[0];
+      setObituaries(prev => prev.map(o => o.id === id ? formatted : o));
+      return formatted;
+    } catch (error) {
+      console.error('Failed to update obituary:', error);
+      throw error;
+    }
+  };
+
+  const updateObituaryStatus = async (id, status) => {
+    try {
+      const updated = await obituaryService.updateObituaryStatus(id, status);
+      const formatted = mapObituariesFromBackend([updated], currentUser?.id || currentUser?._id)[0];
+      setObituaries(prev => prev.map(o => o.id === id ? formatted : o));
+      return formatted;
+    } catch (error) {
+      console.error('Failed to update obituary status:', error);
+      throw error;
+    }
+  };
+
+  const deleteObituary = async (id) => {
+    try {
+      await obituaryService.deleteObituary(id);
+      setObituaries(prev => prev.filter(o => o.id !== id));
+    } catch (error) {
+      console.error('Failed to delete obituary:', error);
+      throw error;
+    }
+  };
+
+  const toggleObituaryShraddhanjali = async (obId) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
@@ -1318,26 +1471,36 @@ export const DataProvider = ({ children }) => {
       }
       return ob;
     }));
+    try {
+      await obituaryService.toggleHaathJode(obId);
+    } catch (error) {
+      console.error('Error toggling shradhanjali:', error);
+      loadObituaries();
+    }
   };
 
-  // New Shradhanjali interaction functions
-  const toggleHaathJode = (obId) => {
+  const toggleHaathJode = async (obId) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
           ...ob,
           userHasHaathJode: !ob.userHasHaathJode,
           haathJodeCount: ob.userHasHaathJode ? (ob.haathJodeCount || 0) - 1 : (ob.haathJodeCount || 0) + 1,
-          // Legacy sync
           hasOfferedShraddhanjali: !ob.userHasHaathJode,
           shraddhanjaliCount: ob.userHasHaathJode ? (ob.shraddhanjaliCount || 0) - 1 : (ob.shraddhanjaliCount || 0) + 1
         };
       }
       return ob;
     }));
+    try {
+      await obituaryService.toggleHaathJode(obId);
+    } catch (error) {
+      console.error('Error toggling haath jode:', error);
+      loadObituaries();
+    }
   };
 
-  const toggleMalaArpan = (obId) => {
+  const toggleMalaArpan = async (obId) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
@@ -1348,9 +1511,15 @@ export const DataProvider = ({ children }) => {
       }
       return ob;
     }));
+    try {
+      await obituaryService.incrementMalaArpan(obId, 1);
+    } catch (error) {
+      console.error('Error toggling mala arpan:', error);
+      loadObituaries();
+    }
   };
 
-  const incrementMalaArpan = (obId, delta) => {
+  const incrementMalaArpan = async (obId, delta) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
@@ -1361,9 +1530,15 @@ export const DataProvider = ({ children }) => {
       }
       return ob;
     }));
+    try {
+      await obituaryService.incrementMalaArpan(obId, delta);
+    } catch (error) {
+      console.error('Error incrementing mala arpan:', error);
+      loadObituaries();
+    }
   };
 
-  const saveShradhanjali = (obId) => {
+  const saveShradhanjali = async (obId) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
@@ -1374,6 +1549,12 @@ export const DataProvider = ({ children }) => {
       }
       return ob;
     }));
+    try {
+      await obituaryService.toggleSave(obId);
+    } catch (error) {
+      console.error('Error saving shradhanjali:', error);
+      loadObituaries();
+    }
   };
 
   const shareShradhanjali = (obId) => {
@@ -1385,57 +1566,72 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
-  const incrementObituaryViews = (obId) => {
-    setObituaries(prev => prev.map(ob => {
-      if (ob.id === obId) {
-        return { ...ob, views: (ob.views || 0) + 1 };
-      }
-      return ob;
-    }));
+  const incrementObituaryViews = async (obId) => {
+    try {
+      await obituaryService.incrementViews(obId);
+      setObituaries(prev => prev.map(ob => {
+        if (ob.id === obId) {
+          return { ...ob, views: (ob.views || 0) + 1 };
+        }
+        return ob;
+      }));
+    } catch (error) {
+      console.error('Error incrementing views:', error);
+    }
   };
 
-  const addObituaryComment = (obId, commentText) => {
-    setObituaries(prev => prev.map(ob => {
-      if (ob.id === obId) {
-        return {
-          ...ob,
-          comments: [
-            ...(ob.comments || []),
-            { 
-              id: `c${Date.now()}`, 
-              name: currentUser.name, 
-              initials: currentUser.initials,
-              text: commentText, 
-              timestamp: 'अभी', 
-              likes: 0,
-              isLiked: false
-            }
-          ]
-        };
-      }
-      return ob;
-    }));
+  const addObituaryComment = async (obId, commentText) => {
+    try {
+      const updatedComments = await obituaryService.addComment(obId, commentText);
+      const mappedComments = updatedComments.map(c => ({
+        id: c._id || c.id,
+        name: c.name || 'Anonymous',
+        initials: c.initials || (c.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+        text: c.text,
+        timestamp: c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now',
+        likes: Array.isArray(c.likes) ? c.likes.length : 0,
+        isLiked: Array.isArray(c.likes) ? c.likes.some(uId => (uId?._id || uId || '').toString() === (currentUser?.id || currentUser?._id || '').toString()) : false
+      }));
+
+      setObituaries(prev => prev.map(ob => {
+        if (ob.id === obId) {
+          return {
+            ...ob,
+            comments: mappedComments
+          };
+        }
+        return ob;
+      }));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
-  const likeObituaryComment = (obId, commentId) => {
-    setObituaries(prev => prev.map(ob => {
-      if (ob.id === obId) {
-        return {
-          ...ob,
-          comments: (ob.comments || []).map(c => {
-            if (c.id === commentId) {
-              return {
-                ...c,
-                isLiked: !c.isLiked,
-                likes: c.isLiked ? Math.max(0, (c.likes || 0) - 1) : (c.likes || 0) + 1
-              };
-            }
-            return c;
-          })
-        };
-      }
-      return ob;
-    }));
+  const likeObituaryComment = async (obId, commentId) => {
+    try {
+      const updatedComments = await obituaryService.toggleCommentLike(obId, commentId);
+      const mappedComments = updatedComments.map(c => ({
+        id: c._id || c.id,
+        name: c.name || 'Anonymous',
+        initials: c.initials || (c.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+        text: c.text,
+        timestamp: c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now',
+        likes: Array.isArray(c.likes) ? c.likes.length : 0,
+        isLiked: Array.isArray(c.likes) ? c.likes.some(uId => (uId?._id || uId || '').toString() === (currentUser?.id || currentUser?._id || '').toString()) : false
+      }));
+
+      setObituaries(prev => prev.map(ob => {
+        if (ob.id === obId) {
+          return {
+            ...ob,
+            comments: mappedComments
+          };
+        }
+        return ob;
+      }));
+    } catch (error) {
+      console.error('Error liking comment:', error);
+    }
   };
 
   const resetAllData = () => {
@@ -1713,7 +1909,7 @@ export const DataProvider = ({ children }) => {
       await invitationService.deleteInvitation(invitationId);
       setInvitations(prev => prev.filter(inv => inv.id !== invitationId && inv._id !== invitationId));
     } catch (error) {
-      console.error('Failed to delete invitation', error);
+      console.error('Failed to delete invitation on backend', error);
       throw error;
     }
   };
@@ -2336,7 +2532,13 @@ export const DataProvider = ({ children }) => {
     invitationFormConfig,
     updateInvitationConfig,
     obituaries,
+    obituariesLoading,
+    obituariesError,
+    loadObituaries,
     addObituary,
+    updateObituary,
+    updateObituaryStatus,
+    deleteObituary,
     toggleObituaryShraddhanjali,
     addObituaryComment,
     toggleHaathJode,

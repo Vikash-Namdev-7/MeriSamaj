@@ -6,6 +6,7 @@ import HeadRoutes from './modules/head/routes/HeadRoutes';
 import { DataProvider } from './modules/member/context/DataProvider';
 import { FundProvider } from './modules/member/context/FundContext';
 import { AuthProvider } from './core/auth/AuthContext';
+import { HeadAuthProvider } from './modules/head/auth/HeadAuthContext';
 import { useAxiosPrivate } from './core/auth/useAxiosPrivate';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -41,11 +42,13 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
+    <HeadAuthProvider>
     <DataProvider>
       <FundProvider>
         <AppContent />
       </FundProvider>
     </DataProvider>
+    </HeadAuthProvider>
     </AuthProvider>
   );
 };

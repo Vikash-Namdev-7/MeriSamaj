@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -58,16 +58,437 @@ const INITIAL_FORM = {
   relation: 'Son/Daughter',
 };
 
+const MiniCalendar = ({ value, onChange, onClose, position }) => {
+  const [date, setDate] = useState(() => {
+    const d = value ? new Date(value) : new Date();
+    return isNaN(d.getTime()) ? new Date() : d;
+  });
+
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  // Get first day of the month
+  const firstDay = new Date(year, month, 1).getDay();
+  // Adjust so Monday is first day (0 = Monday, 6 = Sunday)
+  const firstDayIndex = firstDay === 0 ? 6 : firstDay - 1;
+
+  // Get number of days in the month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const monthsList = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handlePrevMonth = () => {
+    setDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setDate(new Date(year, month + 1, 1));
+  };
+
+  const handleYearChange = (e) => {
+    setDate(new Date(parseInt(e.target.value), month, 1));
+  };
+
+  const handleMonthChange = (e) => {
+    setDate(new Date(year, parseInt(e.target.value), 1));
+  };
+
+  const handleSelectDay = (day) => {
+    const m = String(month + 1).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    onChange(`${year}-${m}-${d}`);
+    onClose();
+  };
+
+  // Generate years list
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear + 2; y >= 1900; y--) {
+    years.push(y);
+  }
+
+  // Days array
+  const dayCells = [];
+  for (let i = 0; i < firstDayIndex; i++) {
+    dayCells.push(<div key={`empty-${i}`} className="w-7 h-7" />);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isSelected = value === `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    dayCells.push(
+      <button
+        key={`day-${d}`}
+        type="button"
+        onClick={() => handleSelectDay(d)}
+        className={`w-7 h-7 rounded-full text-[11px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+          isSelected 
+            ? 'bg-amber-600 text-white shadow-sm' 
+            : 'hover:bg-amber-50 text-gray-700'
+        }`}
+      >
+        {d}
+      </button>
+    );
+  }
+
+  return (
+    <div 
+      className="absolute bg-white border border-amber-200 rounded-2xl shadow-xl p-3 z-50 w-[240px] animate-fade-in"
+      style={{
+        top: position.top,
+        left: position.left,
+        fontFamily: 'sans-serif'
+      }}
+    >
+      {/* Month & Year Selectors */}
+      <div className="flex items-center justify-between gap-1 mb-2 border-b border-amber-100 pb-2">
+        <button type="button" onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded-lg text-amber-800 font-extrabold text-xs">&lt;</button>
+        <div className="flex gap-1">
+          <select 
+            value={month} 
+            onChange={handleMonthChange}
+            className="text-[11px] font-bold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+          >
+            {monthsList.map((m, i) => <option key={i} value={i} className="bg-white text-slate-800 font-medium">{m}</option>)}
+          </select>
+          <select 
+            value={year} 
+            onChange={handleYearChange}
+            className="text-[11px] font-bold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+          >
+            {years.map(y => <option key={y} value={y} className="bg-white text-slate-800 font-medium">{y}</option>)}
+          </select>
+        </div>
+        <button type="button" onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded-lg text-amber-800 font-extrabold text-xs">&gt;</button>
+      </div>
+
+      {/* Weekdays */}
+      <div className="grid grid-cols-7 text-center mb-1">
+        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(w => (
+          <span key={w} className="text-[9px] font-bold text-gray-400 uppercase">{w}</span>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className="grid grid-cols-7 gap-y-0.5 justify-items-center">
+        {dayCells}
+      </div>
+
+      {/* Quick Footer */}
+      <div className="flex items-center justify-between border-t border-amber-100 pt-2 mt-2 text-[10px] font-bold">
+        <button 
+          type="button" 
+          onClick={() => {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            onChange(`${y}-${m}-${d}`);
+            onClose();
+          }}
+          className="text-amber-800 hover:underline"
+        >
+          Today
+        </button>
+        <button 
+          type="button" 
+          onClick={() => {
+            onChange('');
+            onClose();
+          }}
+          className="text-gray-400 hover:underline"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const CalendarInput = ({ value, onChange, placeholder, error }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const handleOpen = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: Math.min(rect.left + window.scrollX, window.innerWidth - 260)
+      });
+      setIsOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target) && !e.target.closest('.mini-calendar-portal')) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <input
+        type="text"
+        readOnly
+        value={value}
+        onClick={handleOpen}
+        placeholder={placeholder}
+        className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] cursor-pointer transition-all pr-10"
+        style={{ borderColor: error ? '#EF4444' : '#E5E7EB' }}
+      />
+      <div 
+        onClick={handleOpen}
+        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer pointer-events-none"
+      >
+        <CalendarDays size={16} />
+      </div>
+
+      {isOpen && createPortal(
+        <div className="mini-calendar-portal">
+          <MiniCalendar 
+            value={value} 
+            onChange={onChange} 
+            onClose={() => setIsOpen(false)} 
+            position={position} 
+          />
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
+const MiniTimePicker = ({ value, onChange, onClose, position }) => {
+  const [hour, setHour] = useState(() => {
+    const parts = (value || '12:00').split(':');
+    return parts[0] || '12';
+  });
+  const [minute, setMinute] = useState(() => {
+    const parts = (value || '12:00').split(':');
+    return parts[1] || '00';
+  });
+
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+  const handleSelectHour = (h) => {
+    setHour(h);
+    onChange(`${h}:${minute}`);
+  };
+
+  const handleSelectMinute = (m) => {
+    setMinute(m);
+    onChange(`${hour}:${m}`);
+  };
+
+  return (
+    <div 
+      className="absolute bg-white border border-amber-200 rounded-2xl shadow-xl p-3 z-50 w-[160px] animate-fade-in flex flex-col"
+      style={{
+        top: position.top,
+        left: position.left,
+        fontFamily: 'sans-serif'
+      }}
+    >
+      <div className="flex justify-between items-center border-b border-amber-100 pb-2 mb-2">
+        <span className="text-[11px] font-bold text-gray-700">Select Time</span>
+        <button type="button" onClick={onClose} className="text-[10px] font-bold text-amber-800 hover:underline cursor-pointer">Done</button>
+      </div>
+
+      <div className="flex gap-2 h-[150px]">
+        {/* Hours list */}
+        <div className="flex-1 overflow-y-auto no-scrollbar border border-slate-100 rounded-xl p-1 bg-slate-50/50">
+          <div className="text-[9px] font-bold text-gray-400 uppercase text-center mb-1 sticky top-0 bg-slate-50">Hr</div>
+          {hours.map(h => {
+            const isSelected = h === hour;
+            return (
+              <button
+                key={h}
+                type="button"
+                onClick={() => handleSelectHour(h)}
+                className={`w-full py-1 text-[11px] font-bold rounded-lg transition-all text-center mb-0.5 cursor-pointer ${
+                  isSelected ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-amber-50 text-gray-700'
+                }`}
+              >
+                {h}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Minutes list */}
+        <div className="flex-1 overflow-y-auto no-scrollbar border border-slate-100 rounded-xl p-1 bg-slate-50/50">
+          <div className="text-[9px] font-bold text-gray-400 uppercase text-center mb-1 sticky top-0 bg-slate-50">Min</div>
+          {minutes.map(m => {
+            const isSelected = m === minute;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleSelectMinute(m)}
+                className={`w-full py-1 text-[11px] font-bold rounded-lg transition-all text-center mb-0.5 cursor-pointer ${
+                  isSelected ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-amber-50 text-gray-700'
+                }`}
+              >
+                {m}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TimeInput = ({ value, onChange, placeholder, error }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const handleOpen = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: Math.min(rect.left + window.scrollX, window.innerWidth - 180)
+      });
+      setIsOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target) && !e.target.closest('.mini-time-portal')) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <input
+        type="text"
+        readOnly
+        value={value}
+        onClick={handleOpen}
+        placeholder={placeholder}
+        className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] cursor-pointer transition-all pr-10"
+        style={{ borderColor: error ? '#EF4444' : '#E5E7EB' }}
+      />
+      <div 
+        onClick={handleOpen}
+        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer pointer-events-none"
+      >
+        <Clock size={16} />
+      </div>
+
+      {isOpen && createPortal(
+        <div className="mini-time-portal">
+          <MiniTimePicker 
+            value={value} 
+            onChange={onChange} 
+            onClose={() => setIsOpen(false)} 
+            position={position} 
+          />
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
 const CreateShradhanjaliPage = () => {
   const navigate = useNavigate();
-  const { addObituary, currentUser } = useData();
+  const { id } = useParams();
+  const isEditMode = !!id;
+  const { addObituary, updateObituary, obituaries, currentUser } = useData();
   const [step, setStep] = useState(1);
+
+  const communityId = useMemo(() => {
+    const comName = currentUser?.community;
+    return comName ? comName.toLowerCase().replace(/\s/g, '_') : 'cm_123';
+  }, [currentUser]);
+
+  const settings = useMemo(() => {
+    const saved = localStorage.getItem(`community_settings_${communityId}`);
+    const defaults = {
+      enabled: true,
+      memberSubmissionEnabled: true,
+      requireApproval: true,
+      fieldConfig: {
+        ceremonyType: { enabled: true, label: 'Ceremony Type' },
+        date: { enabled: true, label: 'Date' },
+        time: { enabled: true, label: 'Time' },
+        venueAddress: { enabled: true, label: 'Venue Address' },
+        showLocation: { enabled: true, label: 'Show Location' }
+      }
+    };
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.shradhanjali) {
+          return {
+            ...defaults,
+            ...parsed.shradhanjali,
+            fieldConfig: {
+              ...defaults.fieldConfig,
+              ...(parsed.shradhanjali.fieldConfig || {})
+            }
+          };
+        }
+      } catch (e) {}
+    }
+    return defaults;
+  }, [communityId]);
   const [form, setForm] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
   const [isPosting, setIsPosting] = useState(false);
   const [posted, setPosted] = useState(false);
   const fileInputRef = useRef(null);
   const [showCeremonyPicker, setShowCeremonyPicker] = useState(false);
+
+  const obituaryToEdit = isEditMode ? obituaries.find(o => o.id === id) : null;
+
+  useEffect(() => {
+    if (isEditMode && obituaryToEdit) {
+      setForm({
+        photoUrl: obituaryToEdit.image || '',
+        photoFile: null,
+        prefix: obituaryToEdit.prefix || 'Late Smt',
+        deceasedName: obituaryToEdit.deceasedNameEn || obituaryToEdit.deceasedName.replace(obituaryToEdit.prefix, '').trim(),
+        age: obituaryToEdit.age?.toString() || '',
+        birthDate: obituaryToEdit.birthDate || '',
+        dateOfPassing: obituaryToEdit.dateOfPassing || '',
+        ritesType: obituaryToEdit.funeralDetails?.type || 'Uthawna / Chautha',
+        ritesDate: obituaryToEdit.funeralDetails?.date || '',
+        ritesTime: obituaryToEdit.funeralDetails?.time || '',
+        ritesVenue: obituaryToEdit.funeralDetails?.venue || '',
+        showLocation: true,
+        message: obituaryToEdit.message || '',
+        privacy: obituaryToEdit.privacy || 'public',
+        familyContact: obituaryToEdit.familyContact || '',
+        relation: obituaryToEdit.author?.relation || 'Son/Daughter',
+      });
+    }
+  }, [id, obituaryToEdit, isEditMode]);
 
   useEffect(() => {
     if (showCeremonyPicker) {
@@ -96,8 +517,11 @@ const CreateShradhanjaliPage = () => {
       if (!form.dateOfPassing) newErrors.dateOfPassing = 'Date of passing is required';
     }
     if (step === 3) {
-      if (!form.ritesDate) newErrors.ritesDate = 'Ceremony date is required';
-      if (!form.ritesVenue.trim()) newErrors.ritesVenue = 'Venue is required';
+      const dateConfig = settings.fieldConfig?.date || { enabled: true };
+      const venueAddressConfig = settings.fieldConfig?.venueAddress || { enabled: true };
+
+      if (dateConfig.enabled && !form.ritesDate) newErrors.ritesDate = 'Ceremony date is required';
+      if (venueAddressConfig.enabled && !form.ritesVenue.trim()) newErrors.ritesVenue = 'Venue is required';
     }
     if (step === 4) {
       if (!form.message.trim()) newErrors.message = 'Message is required';
@@ -129,50 +553,42 @@ const CreateShradhanjaliPage = () => {
   const handlePost = async () => {
     if (isPosting) return;
     setIsPosting(true);
-    await new Promise(r => setTimeout(r, 1200));
 
-    const fullName = `${form.prefix} ${form.deceasedName}`.trim();
-    const newOb = {
-      id: `ob-${Date.now()}`,
-      deceasedName: fullName,
-      deceasedNameEn: form.deceasedName,
-      age: parseInt(form.age) || 0,
-      birthDate: form.birthDate,
-      dateOfPassing: form.dateOfPassing,
-      funeralDetails: {
-        type: form.ritesType,
-        date: form.ritesDate,
-        time: form.ritesTime,
-        venue: form.ritesVenue
-      },
-      message: form.message,
-      author: {
-        id: currentUser.id,
-        name: currentUser.name,
-        initials: currentUser.initials,
-        relation: form.relation
-      },
-      shraddhanjaliCount: 0,
-      hasOfferedShraddhanjali: false,
-      haathJodeCount: 0,
-      malaArpanCount: 0,
-      userHasHaathJode: false,
-      userHasMalaArpan: false,
-      views: 0,
-      shares: 0,
-      saves: 0,
-      isSaved: false,
-      privacy: form.privacy,
-      familyContact: form.familyContact,
-      timestamp: 'Just now',
-      comments: [],
-      image: form.photoUrl || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800',
-    };
+    const formData = new FormData();
+    formData.append('prefix', form.prefix);
+    formData.append('deceasedName', form.deceasedName);
+    formData.append('age', form.age);
+    formData.append('birthDate', form.birthDate);
+    formData.append('dateOfPassing', form.dateOfPassing);
+    formData.append('ritesType', form.ritesType);
+    formData.append('ritesDate', form.ritesDate);
+    formData.append('ritesTime', form.ritesTime);
+    formData.append('ritesVenue', form.ritesVenue);
+    formData.append('message', form.message);
+    formData.append('privacy', form.privacy);
+    formData.append('familyContact', form.familyContact);
+    formData.append('relation', form.relation);
 
-    addObituary(newOb);
-    setIsPosting(false);
-    setPosted(true);
-    setTimeout(() => navigate('/member/shradhanjali', { replace: true }), 2000);
+    if (form.photoFile) {
+      formData.append('image', form.photoFile);
+    } else if (isEditMode) {
+      formData.append('existingImage', form.photoUrl);
+    }
+
+    try {
+      if (isEditMode) {
+        await updateObituary(id, formData);
+      } else {
+        await addObituary(formData);
+      }
+      setIsPosting(false);
+      setPosted(true);
+      setTimeout(() => navigate('/member/shradhanjali', { replace: true }), 2000);
+    } catch (error) {
+      console.error('Error submitting tribute:', error);
+      setIsPosting(false);
+      alert('Error submitting tribute: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   // ── Step content renderers ──
@@ -342,26 +758,21 @@ const CreateShradhanjaliPage = () => {
           <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
             <span className="flex items-center gap-1"><CalendarDays size={10} /> Date of Birth</span>
           </label>
-          <input
-            type="text"
-            placeholder="YYYY-MM-DD"
+          <CalendarInput
             value={form.birthDate}
-            onChange={e => set('birthDate', e.target.value)}
-            className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: '#E5E7EB' }}
+            onChange={val => set('birthDate', val)}
+            placeholder="YYYY-MM-DD"
           />
         </div>
         <div>
           <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
             <span className="flex items-center gap-1"><CalendarDays size={10} /> Date of Passing <span className="text-red-400">*</span></span>
           </label>
-          <input
-            type="text"
-            placeholder="YYYY-MM-DD"
+          <CalendarInput
             value={form.dateOfPassing}
-            onChange={e => set('dateOfPassing', e.target.value)}
-            className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: errors.dateOfPassing ? '#EF4444' : '#E5E7EB' }}
+            onChange={val => set('dateOfPassing', val)}
+            placeholder="YYYY-MM-DD"
+            error={errors.dateOfPassing}
           />
           {errors.dateOfPassing && <p className="text-[12px] text-red-500 mt-1">{errors.dateOfPassing}</p>}
         </div>
@@ -369,179 +780,196 @@ const CreateShradhanjaliPage = () => {
     </div>
   );
 
-  const renderStep3 = () => (
-    <div className="space-y-5">
-      <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-bold text-gray-900">Ceremony Details</h2>
-        <p className="text-[13px] text-gray-500">Enter details of the last rites</p>
-      </div>
+  const renderStep3 = () => {
+    const ceremonyTypeConfig = settings.fieldConfig?.ceremonyType || { enabled: true, label: 'Ceremony Type' };
+    const dateConfig = settings.fieldConfig?.date || { enabled: true, label: 'Date' };
+    const timeConfig = settings.fieldConfig?.time || { enabled: true, label: 'Time' };
+    const venueAddressConfig = settings.fieldConfig?.venueAddress || { enabled: true, label: 'Venue Address' };
+    const showLocationConfig = settings.fieldConfig?.showLocation || { enabled: true, label: 'Show Location' };
 
-      {/* Type selector — custom mobile bottom-sheet picker */}
-      <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Ceremony Type</label>
-        <button
-          type="button"
-          onClick={() => setShowCeremonyPicker(true)}
-          className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-[14px] border outline-none transition-all text-left press-scale"
-          style={{ borderColor: 'rgba(212,175,55,0.4)', background: '#FAFAF8' }}
-        >
-          <span className="font-medium text-gray-900">{form.ritesType}</span>
-          <ChevronDown size={16} className="text-gray-400 shrink-0" />
-        </button>
-      </div>
+    return (
+      <div className="space-y-5">
+        <div className="text-center space-y-1">
+          <h2 className="text-[18px] font-bold text-gray-900">Ceremony Details</h2>
+          <p className="text-[13px] text-gray-500">Enter details of the last rites</p>
+        </div>
 
-      {/* Ceremony type bottom-sheet picker */}
-      {createPortal(
-        <AnimatePresence>
-          {showCeremonyPicker && (
-            <motion.div
-              key="ceremony-picker"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9999] flex items-end justify-center"
-              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', touchAction: 'none' }}
-              onClick={() => setShowCeremonyPicker(false)}
-              onWheel={e => e.stopPropagation()}
-              onTouchMove={e => e.stopPropagation()}
+        {/* Type selector — custom mobile bottom-sheet picker */}
+        {ceremonyTypeConfig.enabled && (
+          <div>
+            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">{ceremonyTypeConfig.label}</label>
+            <button
+              type="button"
+              onClick={() => setShowCeremonyPicker(true)}
+              className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-[14px] border outline-none transition-all text-left press-scale"
+              style={{ borderColor: 'rgba(212,175,55,0.4)', background: '#FAFAF8' }}
             >
+              <span className="font-medium text-gray-900">{form.ritesType}</span>
+              <ChevronDown size={16} className="text-gray-400 shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {/* Ceremony type bottom-sheet picker */}
+        {createPortal(
+          <AnimatePresence>
+            {showCeremonyPicker && (
               <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className="w-full max-w-md rounded-t-[28px] overflow-hidden"
-                style={{ background: 'white', touchAction: 'auto' }}
-                onClick={e => e.stopPropagation()}
+                key="ceremony-picker"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] flex items-end justify-center"
+                style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', touchAction: 'none' }}
+                onClick={() => setShowCeremonyPicker(false)}
+                onWheel={e => e.stopPropagation()}
+                onTouchMove={e => e.stopPropagation()}
               >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
-              </div>
-
-              {/* Title */}
-              <div
-                className="flex items-center justify-between px-5 py-3 border-b"
-                style={{ borderColor: 'rgba(212,175,55,0.15)' }}
-              >
-                <h3 className="text-[16px] font-bold" style={{ color: '#7C5C2E' }}>Select Ceremony Type</h3>
-                <button
-                  onClick={() => setShowCeremonyPicker(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center press-scale"
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+                  className="w-full max-w-md rounded-t-[28px] overflow-hidden"
+                  style={{ background: 'white', touchAction: 'auto' }}
+                  onClick={e => e.stopPropagation()}
                 >
-                  <X size={14} className="text-gray-500" />
-                </button>
-              </div>
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-gray-200" />
+                </div>
 
-              {/* Options list */}
-              <div className="py-2 pb-8">
-                {CEREMONY_TYPES.map((type, idx) => {
-                  const isSelected = form.ritesType === type;
-                  return (
-                    <motion.button
-                      key={type}
-                      type="button"
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.04 }}
-                      onClick={() => { set('ritesType', type); setShowCeremonyPicker(false); }}
-                      className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors press-scale"
-                      style={{
-                        background: isSelected ? 'rgba(212,175,55,0.08)' : 'transparent',
-                        borderBottom: idx < CEREMONY_TYPES.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none'
-                      }}
-                    >
-                      <span
-                        className="text-[15px] font-medium"
-                        style={{ color: isSelected ? '#7C5C2E' : '#1A1A1A' }}
+                {/* Title */}
+                <div
+                  className="flex items-center justify-between px-5 py-3 border-b"
+                  style={{ borderColor: 'rgba(212,175,55,0.15)' }}
+                >
+                  <h3 className="text-[16px] font-bold" style={{ color: '#7C5C2E' }}>Select Ceremony Type</h3>
+                  <button
+                    onClick={() => setShowCeremonyPicker(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center press-scale"
+                  >
+                    <X size={14} className="text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Options list */}
+                <div className="py-2 pb-8">
+                  {CEREMONY_TYPES.map((type, idx) => {
+                    const isSelected = form.ritesType === type;
+                    return (
+                      <motion.button
+                        key={type}
+                        type="button"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.04 }}
+                        onClick={() => { set('ritesType', type); setShowCeremonyPicker(false); }}
+                        className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors press-scale"
+                        style={{
+                          background: isSelected ? 'rgba(212,175,55,0.08)' : 'transparent',
+                          borderBottom: idx < CEREMONY_TYPES.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none'
+                        }}
                       >
-                        {type}
-                      </span>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="text-[18px]"
+                        <span
+                          className="text-[15px] font-medium"
+                          style={{ color: isSelected ? '#7C5C2E' : '#1A1A1A' }}
                         >
-                          ✓
-                        </motion.span>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
+                          {type}
+                        </span>
+                        {isSelected && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="text-[18px]"
+                          >
+                            ✓
+                          </motion.span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
-      {/* Date + Time */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-            <span className="flex items-center gap-1"><CalendarDays size={10} /> Date <span className="text-red-400">*</span></span>
-          </label>
-          <input
-            type="text"
-            placeholder="YYYY-MM-DD"
-            value={form.ritesDate}
-            onChange={e => set('ritesDate', e.target.value)}
-            className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: errors.ritesDate ? '#EF4444' : '#E5E7EB' }}
-          />
-          {errors.ritesDate && <p className="text-[12px] text-red-500 mt-1">{errors.ritesDate}</p>}
-        </div>
-        <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-            <span className="flex items-center gap-1"><Clock size={10} /> Time</span>
-          </label>
-          <input
-            type="time"
-            value={form.ritesTime}
-            onChange={e => set('ritesTime', e.target.value)}
-            className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: '#E5E7EB' }}
-          />
-        </div>
-      </div>
+        {/* Date + Time */}
+        {(dateConfig.enabled || timeConfig.enabled) && (
+          <div className="grid grid-cols-2 gap-3">
+            {dateConfig.enabled && (
+              <div>
+                <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <span className="flex items-center gap-1"><CalendarDays size={10} /> {dateConfig.label} <span className="text-red-400">*</span></span>
+                </label>
+                <CalendarInput
+                  value={form.ritesDate}
+                  onChange={val => set('ritesDate', val)}
+                  placeholder="YYYY-MM-DD"
+                  error={errors.ritesDate}
+                />
+                {errors.ritesDate && <p className="text-[12px] text-red-500 mt-1">{errors.ritesDate}</p>}
+              </div>
+            )}
+            {timeConfig.enabled && (
+              <div>
+                <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <span className="flex items-center gap-1"><Clock size={10} /> {timeConfig.label}</span>
+                </label>
+                <TimeInput
+                  value={form.ritesTime}
+                  onChange={val => set('ritesTime', val)}
+                  placeholder="Select time"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Venue */}
-      <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-          <span className="flex items-center gap-1"><MapPin size={10} /> Venue Address <span className="text-red-400">*</span></span>
-        </label>
-        <input
-          type="text"
-          value={form.ritesVenue}
-          onChange={e => set('ritesVenue', e.target.value)}
-          placeholder="e.g. Swarg Mandir, M.G. Road, Indore"
-          className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
-          style={{ borderColor: errors.ritesVenue ? '#EF4444' : '#E5E7EB' }}
-        />
-        {errors.ritesVenue && <p className="text-[12px] text-red-500 mt-1">{errors.ritesVenue}</p>}
-      </div>
+        {/* Venue */}
+        {venueAddressConfig.enabled && (
+          <div>
+            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+              <span className="flex items-center gap-1"><MapPin size={10} /> {venueAddressConfig.label} <span className="text-red-400">*</span></span>
+            </label>
+            <input
+              type="text"
+              value={form.ritesVenue}
+              onChange={e => set('ritesVenue', e.target.value)}
+              placeholder="e.g. Swarg Mandir, M.G. Road, Indore"
+              className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
+              style={{ borderColor: errors.ritesVenue ? '#EF4444' : '#E5E7EB' }}
+            />
+            {errors.ritesVenue && <p className="text-[12px] text-red-500 mt-1">{errors.ritesVenue}</p>}
+          </div>
+        )}
 
-      {/* Location toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-xl border" style={{ borderColor: 'rgba(212,175,55,0.2)', background: 'rgba(212,175,55,0.04)' }}>
-        <div>
-          <p className="text-[14px] font-semibold text-gray-800">Show Location</p>
-          <p className="text-[11px] text-gray-500">Display location on map</p>
-        </div>
-        <button
-          onClick={() => set('showLocation', !form.showLocation)}
-          className="relative w-12 h-6 rounded-full transition-colors duration-200 press-scale"
-          style={{ background: form.showLocation ? '#7C5C2E' : '#D1D5DB' }}
-        >
-          <div
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200"
-            style={{ left: form.showLocation ? '26px' : '2px' }}
-          />
-        </button>
+        {/* Location toggle */}
+        {showLocationConfig.enabled && (
+          <div className="flex items-center justify-between py-3 px-4 rounded-xl border" style={{ borderColor: 'rgba(212,175,55,0.2)', background: 'rgba(212,175,55,0.04)' }}>
+            <div>
+              <p className="text-[14px] font-semibold text-gray-800">{showLocationConfig.label}</p>
+              <p className="text-[11px] text-gray-500">Display location on map</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set('showLocation', !form.showLocation)}
+              className="relative w-12 h-6 rounded-full transition-colors duration-200 press-scale"
+              style={{ background: form.showLocation ? '#7C5C2E' : '#D1D5DB' }}
+            >
+              <div
+                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200"
+                style={{ left: form.showLocation ? '26px' : '2px' }}
+              />
+            </button>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep4 = () => (
     <div className="space-y-5">
@@ -672,10 +1100,10 @@ const CreateShradhanjaliPage = () => {
                 style={{ background: 'rgba(212,175,55,0.06)', borderColor: 'rgba(212,175,55,0.2)' }}
               >
                 <p className="font-bold" style={{ color: '#7C5C2E' }}>{form.ritesType}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600">
-                  {form.ritesDate && <span>📅 {form.ritesDate}</span>}
-                  {form.ritesTime && <span>⏰ {form.ritesTime}</span>}
-                  {form.ritesVenue && <span>📍 {form.ritesVenue}</span>}
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-gray-600 mt-2">
+                  {form.ritesDate && <span className="flex items-center gap-1"><CalendarDays size={12} className="text-amber-700" /> {form.ritesDate}</span>}
+                  {form.ritesTime && <span className="flex items-center gap-1"><Clock size={12} className="text-amber-700" /> {form.ritesTime}</span>}
+                  {form.ritesVenue && <span className="flex items-center gap-1"><MapPin size={12} className="text-amber-700" /> {form.ritesVenue}</span>}
                 </div>
               </div>
             )}
@@ -726,6 +1154,32 @@ const CreateShradhanjaliPage = () => {
             <h2 className="text-[22px] font-bold text-gray-900 mb-2">Condolence Post Published</h2>
             <p className="text-[14px] text-gray-500">May their soul rest in peace 🙏</p>
           </motion.div>
+        </div>
+      </AnimatedPage>
+    );
+  }
+
+  const isLeadOrAdmin = ['head', 'admin'].includes(currentUser?.role);
+  const isSubmissionBlocked = !isEditMode && !settings.memberSubmissionEnabled && !isLeadOrAdmin;
+
+  if (!settings.enabled || isSubmissionBlocked) {
+    return (
+      <AnimatedPage>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-8 text-center">
+          <span className="text-[64px]">🚫</span>
+          <h2 className="text-[20px] font-bold text-gray-900">Submission Disabled</h2>
+          <p className="text-[14px] text-gray-500 max-w-sm">
+            {!settings.enabled 
+              ? 'The condolences portal has been disabled by your Samaj Adhyaksh.' 
+              : 'Obituary submission has been disabled by the Community Administrator.'}
+          </p>
+          <button 
+            onClick={() => navigate('/member/shradhanjali')}
+            className="mt-2 px-6 py-2.5 rounded-xl text-[13px] font-bold text-white press-scale"
+            style={{ background: '#7C5C2E' }}
+          >
+            Go back to Tributes
+          </button>
         </div>
       </AnimatedPage>
     );

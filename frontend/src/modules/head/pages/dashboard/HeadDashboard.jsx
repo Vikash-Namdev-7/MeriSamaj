@@ -174,46 +174,54 @@ export const HeadDashboard = () => {
       </AnimatePresence>
 
       {/* ─── PAGE HEADER ─── */}
-      <div className="px-6 py-5 bg-white border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
-        <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <LayoutDashboardIcon className="text-indigo-600" size={24} />
-            President Dashboard
-          </h1>
-          <p className="text-[13px] text-slate-500 font-medium mt-1">
-            {currentUser?.community || 'Agrawal Samaj'} &nbsp;•&nbsp;
-            <span className="text-indigo-600 font-semibold">Session: Active Council</span>
-          </p>
+      <div className="px-6 py-4 bg-white border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+            <LayoutDashboardIcon size={20} />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+              President Dashboard
+            </h1>
+            <p className="text-[12px] text-slate-500 font-medium mt-0.5">
+              {currentUser?.community || 'Agrawal Samaj'} &nbsp;•&nbsp;
+              <span className="text-indigo-600 font-semibold">Session: Active Council</span>
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
           <button
             onClick={() => setActiveModal('approve')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
-            <Check size={14} /> Approve Members
+            <Check size={14} className="text-slate-500" />
+            <span>Approve Members</span>
             {pendingMembers.length > 0 && (
-              <span className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] font-black animate-pulse">
+              <span className="ml-1 px-1.5 py-0.5 min-w-[18px] text-center rounded-full bg-rose-500 text-white text-[9px] font-bold leading-none animate-pulse">
                 {pendingMembers.length}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveModal('event')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
-            <Plus size={14} /> Create Event
+            <Plus size={14} className="text-slate-500" />
+            <span>Create Event</span>
           </button>
           <button
             onClick={() => setActiveModal('announce')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
-            <Send size={13} /> Announcement
+            <Send size={13} className="text-slate-500" />
+            <span>Announcement</span>
           </button>
           <button
             onClick={() => setActiveModal('reports')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all active:scale-95 shadow-sm shadow-indigo-500/10 cursor-pointer"
           >
-            <FileText size={14} /> View Reports
+            <FileText size={14} />
+            <span>View Reports</span>
           </button>
         </div>
       </div>
@@ -224,87 +232,87 @@ export const HeadDashboard = () => {
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {/* Card 1: Total Members */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
               <Users size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Members</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">{verifiedCount}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Total Accounts: {members.length}</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Members</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{verifiedCount}</h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Total Accounts: {members.length}</p>
             </div>
-            <div className="flex items-center gap-1 text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200 shrink-0">
+            <div className="flex items-center gap-1 text-emerald-600 font-semibold text-xs bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 shrink-0">
               <TrendingUp size={12} /> +4.2%
             </div>
           </div>
 
           {/* Card 2: Pending Approvals */}
-          <div className={`bg-white p-5 rounded-2xl border shadow-sm flex items-center gap-4 ${pendingMembers.length > 0 ? 'border-rose-200' : 'border-slate-200'}`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${pendingMembers.length > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+          <div className={`bg-white p-5 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-200 ${pendingMembers.length > 0 ? 'border-rose-100 bg-rose-50/10' : 'border-slate-100'}`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${pendingMembers.length > 0 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}>
               <CheckCircle2 size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pending Approvals</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">{pendingMembers.length}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Last Application: Today</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Pending Approvals</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{pendingMembers.length}</h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Last Application: Today</p>
             </div>
             {pendingMembers.length > 0 ? (
-              <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200 shrink-0">Action Required</span>
+              <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 shrink-0">Action Required</span>
             ) : (
-              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">All Clear</span>
+              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 shrink-0">All Clear</span>
             )}
           </div>
 
           {/* Card 3: Matrimonial */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-pink-50 text-pink-500/95 flex items-center justify-center shrink-0">
               <Heart size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Matrimonial Profiles</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">{matrimonialProfiles.length}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">84% Response Rate</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Matrimonial Profiles</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{matrimonialProfiles.length}</h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">84% Response Rate</p>
             </div>
-            <span className="text-[10px] font-black text-pink-600 bg-pink-50 px-2.5 py-1 rounded-full border border-pink-200 shrink-0">Active</span>
+            <span className="text-[10px] font-semibold text-pink-600 bg-pink-50 px-2.5 py-1 rounded-full border border-pink-100 shrink-0">Active</span>
           </div>
 
           {/* Card 4: Events */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500/90 flex items-center justify-center shrink-0">
               <Calendar size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scheduled Events</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">{events.length}</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Next: Career Seminar</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Scheduled Events</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{events.length}</h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Next: Career Seminar</p>
             </div>
-            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 shrink-0">Live RSVP</span>
+            <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 shrink-0">Live RSVP</span>
           </div>
 
           {/* Card 5: Professionals */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-500/90 flex items-center justify-center shrink-0">
               <Briefcase size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Professional Directory</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">24</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Business Nodes: 8 Domains</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Professional Directory</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">24</h3>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Business Nodes: 8 Domains</p>
             </div>
-            <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 shrink-0">Jobs & Dir.</span>
+            <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100 shrink-0">Jobs & Dir.</span>
           </div>
 
           {/* Card 6: Engagement Score */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500/90 flex items-center justify-center shrink-0">
               <Award size={22} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Activity Score</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-0.5">96.4%</h3>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Activity Score</p>
+              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">96.4%</h3>
               <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Excellent Stability</p>
             </div>
-            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">+1.8%</span>
+            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 shrink-0">+1.8%</span>
           </div>
 
         </section>
@@ -313,15 +321,15 @@ export const HeadDashboard = () => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-[15px] font-black text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <BarChart3 size={18} className="text-indigo-600" />
                 Samaj Analytics Overview
               </h3>
-              <p className="text-[12px] text-slate-500 mt-0.5">Real-time graphic parameters from portal activities</p>
+              <p className="text-xs text-slate-400 mt-0.5">Real-time graphic parameters from portal activities</p>
             </div>
             <button
               onClick={() => showToast('Refreshing analytical datasets...', 'success')}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 active:scale-95 transition-all border border-slate-200"
+              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 active:scale-95 transition-all border border-slate-200/80 cursor-pointer"
             >
               <RefreshCw size={14} />
             </button>
@@ -330,10 +338,10 @@ export const HeadDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {/* Chart 1: Member Growth */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Monthly Member Growth</h4>
-                <p className="text-[11px] text-slate-500">Growth of verified accounts over last 6 months</p>
+                <h4 className="text-xs font-semibold text-slate-700">Monthly Member Growth</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Growth of verified accounts over last 6 months</p>
               </div>
               <div className="h-40 mt-4">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
@@ -352,19 +360,19 @@ export const HeadDashboard = () => {
                   <circle cx="100" cy="90" r="4" fill="#6366F1" stroke="white" strokeWidth="2" />
                   <circle cx="180" cy="60" r="4" fill="#6366F1" stroke="white" strokeWidth="2" />
                   <circle cx="280" cy="30" r="4" fill="#818CF8" stroke="white" strokeWidth="2" />
-                  <text x="18" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Jan</text>
-                  <text x="95" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Mar</text>
-                  <text x="175" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">May</text>
-                  <text x="268" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Jul</text>
+                  <text x="18" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Jan</text>
+                  <text x="95" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Mar</text>
+                  <text x="175" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">May</text>
+                  <text x="268" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Jul</text>
                 </svg>
               </div>
             </div>
 
             {/* Chart 2: Event RSVP */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Event RSVP Turnout</h4>
-                <p className="text-[11px] text-slate-500">Registered members versus actual check-ins</p>
+                <h4 className="text-xs font-semibold text-slate-700">Event RSVP Turnout</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Registered members versus actual check-ins</p>
               </div>
               <div className="h-40 mt-4">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
@@ -385,46 +393,46 @@ export const HeadDashboard = () => {
                   <rect x="184" y="80" width="16" height="45" rx="3" fill="#93C5FD" />
                   <rect x="235" y="30" width="16" height="95" rx="3" fill="url(#lgt-purple-bar)" />
                   <rect x="254" y="55" width="16" height="70" rx="3" fill="#93C5FD" />
-                  <text x="27" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Evt-1</text>
-                  <text x="97" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Evt-2</text>
-                  <text x="167" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Evt-3</text>
-                  <text x="237" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="bold">Evt-4</text>
+                  <text x="27" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-1</text>
+                  <text x="97" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-2</text>
+                  <text x="167" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-3</text>
+                  <text x="237" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-4</text>
                 </svg>
               </div>
-              <div className="flex items-center gap-4 justify-center text-[10px] mt-2 border-t border-slate-100 pt-2">
-                <div className="flex items-center gap-1.5 text-slate-600"><div className="w-2.5 h-2.5 rounded bg-indigo-500" /> RSVPs Cast</div>
-                <div className="flex items-center gap-1.5 text-slate-600"><div className="w-2.5 h-2.5 rounded bg-blue-300" /> Checked In</div>
+              <div className="flex items-center gap-4 justify-center text-[10px] mt-2 border-t border-slate-50 pt-2">
+                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-indigo-500" /> RSVPs Cast</div>
+                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-blue-300" /> Checked In</div>
               </div>
             </div>
 
             {/* Chart 3: Matrimonial Activity */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Matrimonial Activity</h4>
-                <p className="text-[11px] text-slate-500">Interests sent (Rose) vs Approvals (Indigo)</p>
+                <h4 className="text-xs font-semibold text-slate-700">Matrimonial Activity</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Interests sent (Rose) vs Approvals (Indigo)</p>
               </div>
               <div className="h-40 mt-4">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
                   <line x1="20" y1="20" x2="280" y2="20" stroke="rgba(0,0,0,0.04)" />
                   <line x1="20" y1="70" x2="280" y2="70" stroke="rgba(0,0,0,0.04)" />
                   <line x1="20" y1="120" x2="280" y2="120" stroke="rgba(0,0,0,0.04)" />
-                  <path d="M20,110 Q60,60 110,80 T200,45 T280,30" fill="none" stroke="#F43F5E" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M20,110 Q60,60 110,80 T200,45 T280,30" fill="none" stroke="#F43F5E" strokeWidth="2" strokeLinecap="round" />
                   <path d="M20,120 Q60,90 110,110 T200,65 T280,45" fill="none" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" />
                   <circle cx="280" cy="30" r="3" fill="#F43F5E" stroke="white" strokeWidth="1" />
                   <circle cx="280" cy="45" r="3" fill="#6366F1" stroke="white" strokeWidth="1" />
                 </svg>
               </div>
-              <div className="flex items-center gap-4 justify-center text-[10px] border-t border-slate-100 pt-2">
-                <div className="flex items-center gap-1.5 text-slate-600"><div className="w-2.5 h-2.5 rounded bg-rose-500" /> Requests</div>
-                <div className="flex items-center gap-1.5 text-slate-600"><div className="w-2.5 h-2.5 rounded bg-indigo-500" /> Matches</div>
+              <div className="flex items-center gap-4 justify-center text-[10px] border-t border-slate-50 pt-2">
+                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-rose-500" /> Requests</div>
+                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-indigo-500" /> Matches</div>
               </div>
             </div>
 
             {/* Chart 4: Professional Domains Donut */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Professional Directory Domains</h4>
-                <p className="text-[11px] text-slate-500">Sector metrics across verified community profiles</p>
+                <h4 className="text-xs font-semibold text-slate-700">Professional Directory Domains</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Sector metrics across verified community profiles</p>
               </div>
               <div className="h-40 mt-4 flex items-center justify-between gap-4">
                 <div className="w-24 h-24 shrink-0">
@@ -436,7 +444,7 @@ export const HeadDashboard = () => {
                     <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#F59E0B" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="135" />
                   </svg>
                 </div>
-                <div className="flex-1 space-y-1.5 text-[11px] font-bold text-slate-700">
+                <div className="flex-1 space-y-1.5 text-[11px] font-semibold text-slate-600">
                   <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-indigo-500" /> IT / Tech</span><span>35%</span></div>
                   <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-blue-500" /> CA / Finance</span><span>25%</span></div>
                   <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500" /> Medical / MD</span><span>20%</span></div>
@@ -446,10 +454,10 @@ export const HeadDashboard = () => {
             </div>
 
             {/* Chart 5: Engagement Waves */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Weekly Activity Engagement</h4>
-                <p className="text-[11px] text-slate-500">Total platform interactions log count</p>
+                <h4 className="text-xs font-semibold text-slate-700">Weekly Activity Engagement</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Total platform interactions log count</p>
               </div>
               <div className="h-40 mt-4">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
@@ -463,27 +471,27 @@ export const HeadDashboard = () => {
                       <stop offset="100%" stopColor="#A5B4FC" />
                     </linearGradient>
                   </defs>
-                  <path d="M10,80 C50,15 80,130 130,50 C180,-10 220,140 290,60" fill="none" stroke="url(#lgt-engage-grad)" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M10,95 C50,30 80,145 130,65 C180,5 220,155 290,75" fill="none" stroke="rgba(99,102,241,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M10,80 C50,15 80,130 130,50 C180,-10 220,140 290,60" fill="none" stroke="url(#lgt-engage-grad)" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M10,95 C50,30 80,145 130,65 C180,5 220,155 290,75" fill="none" stroke="rgba(99,102,241,0.12)" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </div>
             </div>
 
             {/* Chart 6: Active vs Inactive */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Active vs Inactive Ratio</h4>
-                <p className="text-[11px] text-slate-500">Accounts accessed in the last 14 days</p>
+                <h4 className="text-xs font-semibold text-slate-700">Active vs Inactive Ratio</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Accounts accessed in the last 14 days</p>
               </div>
               <div className="h-40 mt-4 flex flex-col items-center justify-center relative">
                 <div className="w-28 h-28">
                   <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="rgba(99,102,241,0.1)" strokeWidth="4.5" />
+                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="rgba(99,102,241,0.05)" strokeWidth="4.5" />
                     <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="url(#lgt-purple-bar)" strokeWidth="4.5" strokeDasharray="88 12" strokeDashoffset="0" strokeLinecap="round" />
                   </svg>
                 </div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center mt-3">
-                  <span className="text-2xl font-black text-slate-900">88%</span>
+                  <span className="text-2xl font-extrabold text-slate-800">88%</span>
                   <span className="text-[9px] font-bold text-emerald-600 tracking-wider uppercase">Active</span>
                 </div>
               </div>
@@ -496,46 +504,46 @@ export const HeadDashboard = () => {
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Left: Pending Approvals */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
-                <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <ShieldAlert size={16} className="text-amber-500" />
                   Pending Verification Requests
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Approve new profiles to allow full catalog directory access</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Approve new profiles to allow full catalog directory access</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 border border-purple-200">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
                 {pendingMembers.length} Requests
               </span>
             </div>
-            <div className="p-5 space-y-3 overflow-y-auto max-h-[300px]">
+            <div className="p-4 space-y-3 overflow-y-auto max-h-[300px]">
               {pendingMembers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2">
+                <div className="flex flex-col items-center justify-center h-32 text-center bg-slate-50/50 border border-slate-100 border-dashed rounded-2xl">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-2">
                     <Check size={18} />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-800">All Clear!</h4>
-                  <p className="text-xs text-slate-500 mt-1">No pending verification requests.</p>
+                  <h4 className="text-xs font-bold text-slate-700">All Clear!</h4>
+                  <p className="text-xs text-slate-400 mt-1">No pending verification requests.</p>
                 </div>
               ) : (
                 pendingMembers.map((member) => (
-                  <div key={member.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div key={member.id} className="p-3 rounded-xl bg-slate-50/50 border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <Avatar initials={member.initials} size="md" imageUrl={member.avatar} color="bg-gradient-to-br from-indigo-400 to-purple-600 text-white font-bold" />
                       <div>
-                        <h4 className="text-sm font-black text-slate-900">{member.name}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">{member.city} • {member.profession || 'Self Employed'} • <span className="text-indigo-600 font-semibold">{member.phone}</span></p>
+                        <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{member.city} • {member.profession || 'Self Employed'} • <span className="text-indigo-600 font-semibold">{member.phone}</span></p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => setSelectedProofMember(member)} className="px-3 py-1.5 rounded-lg text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold transition-all flex items-center gap-1">
+                      <button onClick={() => setSelectedProofMember(member)} className="px-2.5 py-1 rounded-md text-slate-500 bg-white border border-slate-200/85 hover:bg-slate-50 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer">
                         <Eye size={12} /> Proof
                       </button>
-                      <button onClick={() => handleReject(member.id, member.name)} className="px-3 py-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-bold border border-rose-200 transition-all">
+                      <button onClick={() => handleReject(member.id, member.name)} className="px-2.5 py-1 rounded-md text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-semibold border border-rose-100 transition-all cursor-pointer">
                         Reject
                       </button>
-                      <button onClick={() => handleApprove(member.id, member.name)} className="px-3 py-1.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-bold transition-all shadow-sm">
+                      <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold transition-all shadow-sm shadow-indigo-500/10 cursor-pointer">
                         Approve
                       </button>
                     </div>
@@ -546,26 +554,26 @@ export const HeadDashboard = () => {
           </div>
 
           {/* Right: Quick Nav */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
-              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Sparkles size={16} className="text-indigo-500" />
                 Quick Navigation
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Instant portal access bookmarks</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Instant portal access bookmarks</p>
             </div>
             <div className="p-4 grid grid-cols-2 gap-3">
               {[
-                { icon: Users, label: 'Members Desk', color: 'text-purple-600', bg: 'bg-purple-50 hover:bg-purple-100 border-purple-100' },
-                { icon: Heart, label: 'Matrimonial', color: 'text-pink-600', bg: 'bg-pink-50 hover:bg-pink-100 border-pink-100' },
-                { icon: Calendar, label: 'Events Desk', color: 'text-indigo-600', bg: 'bg-indigo-50 hover:bg-indigo-100 border-indigo-100' },
-                { icon: Briefcase, label: 'Professionals', color: 'text-amber-600', bg: 'bg-amber-50 hover:bg-amber-100 border-amber-100' },
-                { icon: FileText, label: 'Financials', color: 'text-purple-600', bg: 'bg-purple-50 hover:bg-purple-100 border-purple-100', onClick: () => setActiveModal('reports') },
-                { icon: Settings, label: 'System Config', color: 'text-slate-600', bg: 'bg-slate-50 hover:bg-slate-100 border-slate-200' },
+                { icon: Users, label: 'Members Desk', color: 'text-purple-600', bg: 'bg-purple-50/40 hover:bg-purple-50 border-purple-100/50' },
+                { icon: Heart, label: 'Matrimonial', color: 'text-pink-600', bg: 'bg-pink-50/40 hover:bg-pink-100 border-pink-100/50' },
+                { icon: Calendar, label: 'Events Desk', color: 'text-indigo-600', bg: 'bg-indigo-50/40 hover:bg-indigo-100 border-indigo-100/50' },
+                { icon: Briefcase, label: 'Professionals', color: 'text-amber-600', bg: 'bg-amber-50/40 hover:bg-amber-100 border-amber-100/50' },
+                { icon: FileText, label: 'Financials', color: 'text-indigo-600', bg: 'bg-indigo-50/40 hover:bg-indigo-100 border-indigo-100/50', onClick: () => setActiveModal('reports') },
+                { icon: Settings, label: 'System Config', color: 'text-slate-600', bg: 'bg-slate-50/50 hover:bg-slate-100 border-slate-200/80' },
               ].map(({ icon: Icon, label, color, bg, onClick }) => (
-                <button key={label} onClick={onClick} className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all group ${bg}`}>
+                <button key={label} onClick={onClick} className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all group duration-200 cursor-pointer ${bg}`}>
                   <Icon size={16} className={`${color} group-hover:scale-110 duration-200`} />
-                  <span className={`text-xs font-bold ${color} mt-4 block`}>{label}</span>
+                  <span className={`text-xs font-semibold text-slate-700 mt-4 block`}>{label}</span>
                 </button>
               ))}
             </div>
@@ -574,14 +582,14 @@ export const HeadDashboard = () => {
         </section>
 
         {/* ─── RECENT REGISTRATIONS TABLE ─── */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Users size={16} className="text-indigo-600" />
                 Recent Portal Registrations
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Chronological registry of community accounts</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Chronological registry of community accounts</p>
             </div>
             <div className="relative w-full sm:w-60">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -590,55 +598,55 @@ export const HeadDashboard = () => {
                 placeholder="Search by name or city..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50/50 border border-slate-200/80 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
               />
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Profile</th>
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Name</th>
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">City</th>
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Profession</th>
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                  <th className="px-5 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profile</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">City</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profession</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-xs text-slate-500">No community profile matches the search query.</td>
+                    <td colSpan="6" className="p-8 text-center text-xs text-slate-400">No community profile matches the search query.</td>
                   </tr>
                 ) : (
                   filteredMembers.slice(0, 6).map((member) => (
-                    <tr key={member.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="px-5 py-4">
+                    <tr key={member.id} className="hover:bg-slate-50/30 transition-colors group">
+                      <td className="px-5 py-3.5">
                         <Avatar initials={member.initials} imageUrl={member.avatar} size="sm" color="bg-gradient-to-br from-purple-400 to-indigo-600 text-white font-bold" />
                       </td>
-                      <td className="px-5 py-4 font-bold text-slate-900 text-sm">{member.name}</td>
-                      <td className="px-5 py-4 text-slate-500 text-sm">{member.city}</td>
-                      <td className="px-5 py-4 font-semibold text-indigo-600 text-sm">{member.profession || 'Registered Member'}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3.5 font-semibold text-slate-800 text-sm">{member.name}</td>
+                      <td className="px-5 py-3.5 text-slate-500 text-sm">{member.city}</td>
+                      <td className="px-5 py-3.5 font-semibold text-indigo-600 text-sm">{member.profession || 'Registered Member'}</td>
+                      <td className="px-5 py-3.5">
                         {member.isVerified ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100/60">
                             <Check size={10} /> Verified
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100/60">
                             <AlertCircle size={10} /> Pending
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {member.isVerified ? (
-                            <button onClick={() => { showToast(`Revoking verification profile ${member.name}`); verifyMember(member.id); }} className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold border border-rose-200 transition-all">Revoke</button>
+                            <button onClick={() => { showToast(`Revoking verification profile ${member.name}`); verifyMember(member.id); }} className="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-semibold border border-rose-100/60 transition-all cursor-pointer">Revoke</button>
                           ) : (
-                            <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200 transition-all">Approve</button>
+                            <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-semibold border border-emerald-100/60 transition-all cursor-pointer">Approve</button>
                           )}
-                          <button onClick={() => setSelectedProofMember(member)} className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold border border-slate-200 transition-all">Details</button>
+                          <button onClick={() => setSelectedProofMember(member)} className="px-2.5 py-1 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-500 text-[10px] font-semibold border border-slate-200/60 transition-all cursor-pointer">Details</button>
                         </div>
                       </td>
                     </tr>
@@ -653,18 +661,18 @@ export const HeadDashboard = () => {
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Events List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
-                <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <Calendar size={16} className="text-indigo-600" />
                   Community Events Desk
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Upcoming celebrations, assemblies and schedules</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Upcoming celebrations, assemblies and schedules</p>
               </div>
               <button
                 onClick={() => setActiveModal('event')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 text-xs font-bold uppercase tracking-wider transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100/60 text-xs font-semibold transition-all cursor-pointer"
               >
                 <Plus size={12} /> Add Event
               </button>
@@ -676,14 +684,14 @@ export const HeadDashboard = () => {
                 </div>
               ) : (
                 events.map((event) => (
-                  <div key={event.id} className="rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col group hover:border-indigo-200 transition-all shadow-sm">
+                  <div key={event.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col group hover:border-indigo-100 transition-all shadow-sm">
                     <div className="h-28 overflow-hidden relative shrink-0">
                       <img
                         src={event.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'}
                         alt={event.title}
                         className="w-full h-full object-cover group-hover:scale-105 duration-500"
                       />
-                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white">
+                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-indigo-600 text-white">
                         {event.category || 'General'}
                       </div>
                     </div>
@@ -710,19 +718,19 @@ export const HeadDashboard = () => {
           </div>
 
           {/* Activity Log */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
-              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Clock size={16} className="text-indigo-600" />
                 Community Activity Log
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Chronological system events audit</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Chronological system events audit</p>
               <div className="flex gap-1.5 mt-3 flex-wrap">
                 {['all', 'members', 'events', 'matrimony'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setTimelineFilter(tab)}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border transition-all ${
+                    className={`px-2 py-1 rounded-md text-[10px] font-semibold capitalize border transition-all cursor-pointer ${
                       timelineFilter === tab
                         ? 'bg-indigo-600 text-white border-indigo-600'
                         : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
@@ -742,11 +750,11 @@ export const HeadDashboard = () => {
                     <div className="absolute left-0 top-1 -translate-x-[5px] w-2.5 h-2.5 rounded-full bg-indigo-600 border-2 border-white" />
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-[11px] text-slate-800">
-                          <span className="font-bold">{act.user}</span> {act.action}
+                        <p className="text-xs text-slate-600">
+                          <span className="font-semibold text-slate-800">{act.user}</span> {act.action}
                         </p>
                         {act.details && (
-                          <p className="text-[10px] text-slate-500 mt-0.5 font-medium">{act.details}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{act.details}</p>
                         )}
                       </div>
                       <span className="text-[8px] font-bold text-slate-400 uppercase shrink-0">{act.time}</span>
@@ -763,59 +771,59 @@ export const HeadDashboard = () => {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Today/Weekly/Monthly Stats */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
-              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <TrendingUp size={16} className="text-indigo-600" />
                 Community Engagement Report
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Platform interactions statistics</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Platform interactions statistics</p>
             </div>
             <div className="p-5">
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Today's Visits</p>
-                  <h4 className="text-xl font-black text-slate-900 mt-1">124</h4>
-                  <span className="text-[10px] font-bold text-emerald-600 mt-1 block">+2.4%</span>
+                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Today's Visits</p>
+                  <h4 className="text-lg font-bold text-slate-800 mt-1">124</h4>
+                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+2.4%</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Weekly Visits</p>
-                  <h4 className="text-xl font-black text-slate-900 mt-1">842</h4>
-                  <span className="text-[10px] font-bold text-emerald-600 mt-1 block">+8.5%</span>
+                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Weekly Visits</p>
+                  <h4 className="text-lg font-bold text-slate-800 mt-1">842</h4>
+                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+8.5%</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Monthly Visits</p>
-                  <h4 className="text-xl font-black text-slate-900 mt-1">3.4k</h4>
-                  <span className="text-[10px] font-bold text-emerald-600 mt-1 block">+12%</span>
+                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Visits</p>
+                  <h4 className="text-lg font-bold text-slate-800 mt-1">3.4k</h4>
+                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+12%</span>
                 </div>
               </div>
-              <div className="mt-4 p-3.5 rounded-xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-700">
-                <span className="font-bold text-indigo-800 block">Adhyaksh Insight:</span>
+              <div className="mt-4 p-3 rounded-xl bg-indigo-50/40 border border-indigo-100/60 text-xs text-indigo-600">
+                <span className="font-semibold text-indigo-800 block">Adhyaksh Insight:</span>
                 Weekly check-ins rose due to newly created marriage match registrations and local dharmashala booking schedules.
               </div>
             </div>
           </div>
 
           {/* Top Contributors */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
-              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Award size={16} className="text-amber-500" />
                 Council Top Contributors
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Top volunteers and donors in community portal</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Top volunteers and donors in community portal</p>
             </div>
             <div className="p-5 space-y-3">
               {topContributors.map((c, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-all">
+                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100/80 hover:bg-slate-50 transition-all">
                   <div className="flex items-center gap-3">
                     <Avatar initials={c.initials} size="sm" color="bg-gradient-to-br from-purple-400 to-indigo-600 text-white font-bold" />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{c.name}</h4>
-                      <p className="text-[10px] font-medium text-indigo-600">{c.role}</p>
+                      <h4 className="text-xs font-bold text-slate-800">{c.name}</h4>
+                      <p className="text-[10px] font-semibold text-indigo-500/80">{c.role}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/40">
                     {c.points}
                   </span>
                 </div>
@@ -834,27 +842,27 @@ export const HeadDashboard = () => {
         {activeModal === 'approve' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2"><ShieldAlert size={16} className="text-amber-500" /> Approve Pending Accounts</h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><ShieldAlert size={16} className="text-amber-500" /> Approve Pending Accounts</h3>
+                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <div className="p-5 space-y-3 overflow-y-auto max-h-[380px]">
                 {pendingMembers.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-10">No pending accounts need verification.</p>
+                  <p className="text-xs text-slate-400 text-center py-10">No pending accounts need verification.</p>
                 ) : (
                   pendingMembers.map((member) => (
-                    <div key={member.id} className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
+                    <div key={member.id} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <Avatar initials={member.initials} size="sm" imageUrl={member.avatar} color="bg-gradient-to-br from-indigo-400 to-purple-600 text-white font-bold" />
                         <div>
-                          <h4 className="text-xs font-bold text-slate-900">{member.name}</h4>
-                          <p className="text-[10px] text-slate-500">{member.city} • {member.phone}</p>
+                          <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
+                          <p className="text-[10px] text-slate-400">{member.city} • {member.phone}</p>
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => handleReject(member.id, member.name)} className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold border border-rose-200 hover:bg-rose-100 transition-all">Reject</button>
-                        <button onClick={() => handleApprove(member.id, member.name)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-700 transition-all shadow-sm">Approve</button>
+                        <button onClick={() => handleReject(member.id, member.name)} className="px-2.5 py-1.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-semibold border border-rose-100 hover:bg-rose-100 transition-all cursor-pointer">Reject</button>
+                        <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-[10px] font-semibold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-500/10 cursor-pointer">Approve</button>
                       </div>
                     </div>
                   ))
@@ -868,33 +876,33 @@ export const HeadDashboard = () => {
         {activeModal === 'event' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2"><Calendar size={16} className="text-indigo-600" /> Schedule Samaj Celebration</h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-lg bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Calendar size={16} className="text-indigo-600" /> Schedule Samaj Celebration</h3>
+                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <form onSubmit={handleCreateEvent} className="p-6 space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Event Title *</label>
-                  <input type="text" required placeholder="e.g., Annual Sneh Milan" value={eventForm.title} onChange={(e) => setEventForm({...eventForm, title: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800 transition-all" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Title *</label>
+                  <input type="text" required placeholder="e.g., Annual Sneh Milan" value={eventForm.title} onChange={(e) => setEventForm({...eventForm, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Event Date *</label>
-                    <input type="date" required value={eventForm.date} onChange={(e) => setEventForm({...eventForm, date: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800" />
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Date *</label>
+                    <input type="date" required value={eventForm.date} onChange={(e) => setEventForm({...eventForm, date: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Time</label>
-                    <input type="text" placeholder="e.g., 07:00 PM" value={eventForm.time} onChange={(e) => setEventForm({...eventForm, time: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800" />
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Time</label>
+                    <input type="text" placeholder="e.g., 07:00 PM" value={eventForm.time} onChange={(e) => setEventForm({...eventForm, time: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Venue Location *</label>
-                  <input type="text" required placeholder="e.g., Samaj Bhawan, Indore" value={eventForm.venue} onChange={(e) => setEventForm({...eventForm, venue: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Venue Location *</label>
+                  <input type="text" required placeholder="e.g., Samaj Bhawan, Indore" value={eventForm.venue} onChange={(e) => setEventForm({...eventForm, venue: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Event Category</label>
-                  <select value={eventForm.category} onChange={(e) => setEventForm({...eventForm, category: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Category</label>
+                  <select value={eventForm.category} onChange={(e) => setEventForm({...eventForm, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800">
                     <option value="General">General Gatherings</option>
                     <option value="Festival">Festival & Satsang</option>
                     <option value="Youth">Youth Careers & Seminars</option>
@@ -902,10 +910,10 @@ export const HeadDashboard = () => {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                  <textarea rows="3" placeholder="Enter short event synopsis..." value={eventForm.description} onChange={(e) => setEventForm({...eventForm, description: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800 resize-none" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</label>
+                  <textarea rows="3" placeholder="Enter short event synopsis..." value={eventForm.description} onChange={(e) => setEventForm({...eventForm, description: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 resize-none" />
                 </div>
-                <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-wider text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all">
+                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 active:scale-95 transition-all cursor-pointer">
                   Create & Broadcast Event
                 </button>
               </form>
@@ -917,17 +925,17 @@ export const HeadDashboard = () => {
         {activeModal === 'announce' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2"><Send size={16} className="text-indigo-600" /> Broadcast Announcement</h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Send size={16} className="text-indigo-600" /> Broadcast Announcement</h3>
+                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <form onSubmit={handleSendAnnouncement} className="p-6 space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Announcement Text</label>
-                  <textarea rows="5" required placeholder="Write official council circular text here..." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 text-sm text-slate-800 resize-none" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Announcement Text</label>
+                  <textarea rows="5" required placeholder="Write official council circular text here..." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="w-full px-4 py-3 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 resize-none" />
                 </div>
-                <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-wider text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all">
+                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 active:scale-95 transition-all cursor-pointer">
                   Broadcast to Feed
                 </button>
               </form>
@@ -939,15 +947,15 @@ export const HeadDashboard = () => {
         {activeModal === 'reports' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2"><FileText size={16} className="text-indigo-600" /> Samaj Financial Audit Reports</h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileText size={16} className="text-indigo-600" /> Samaj Financial Audit Reports</h3>
+                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Donations / Funds Collected</h4>
+                  <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Donations / Funds Collected</h4>
                     <div className="mt-3 space-y-2">
                       {funds.map((f) => {
                         const fContribs = contributions[f.id] || [];
@@ -955,22 +963,22 @@ export const HeadDashboard = () => {
                         return (
                           <div key={f.id} className="flex justify-between text-sm text-slate-700">
                             <span>{f.name}</span>
-                            <span className="font-bold">₹{fCollected.toLocaleString('en-IN')}</span>
+                            <span className="font-semibold">₹{fCollected.toLocaleString('en-IN')}</span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Expenses Audited</h4>
+                  <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Expenses Audited</h4>
                     <div className="mt-3 space-y-2">
-                      <div className="flex justify-between text-sm text-slate-700"><span>Hall Renovation Costs</span><span className="font-bold text-rose-600">₹45,000</span></div>
-                      <div className="flex justify-between text-sm text-slate-700"><span>Food Distribution Event</span><span className="font-bold text-rose-600">₹18,500</span></div>
-                      <div className="flex justify-between text-sm text-slate-700"><span>Scholarship Allocations</span><span className="font-bold text-rose-600">₹25,000</span></div>
+                      <div className="flex justify-between text-sm text-slate-700"><span>Hall Renovation Costs</span><span className="font-semibold text-rose-600">₹45,000</span></div>
+                      <div className="flex justify-between text-sm text-slate-700"><span>Food Distribution Event</span><span className="font-semibold text-rose-600">₹18,500</span></div>
+                      <div className="flex justify-between text-sm text-slate-700"><span>Scholarship Allocations</span><span className="font-semibold text-rose-600">₹25,000</span></div>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-700">
+                <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100/50 text-sm text-indigo-700">
                   <h4 className="font-bold text-indigo-800 mb-1">Treasury Overview:</h4>
                   Total cash reserves are audited and synced to localStorage records. Invoices are archived for secure verification audits.
                 </div>
@@ -983,13 +991,13 @@ export const HeadDashboard = () => {
         {selectedProofMember && (
           <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedProofMember(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">Verification Credential</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Proof submitted by {selectedProofMember.name}</p>
+                  <h3 className="text-sm font-bold text-slate-800">Verification Credential</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Proof submitted by {selectedProofMember.name}</p>
                 </div>
-                <button onClick={() => setSelectedProofMember(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+                <button onClick={() => setSelectedProofMember(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-950 p-4 border border-white/10 flex flex-col justify-between text-white relative overflow-hidden">
@@ -1015,8 +1023,8 @@ export const HeadDashboard = () => {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => handleReject(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold border border-rose-200 hover:bg-rose-100 active:scale-95 transition-all text-center">Reject Proof</button>
-                  <button onClick={() => handleApprove(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold active:scale-95 transition-all text-center">Approve Member</button>
+                  <button onClick={() => handleReject(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2 rounded-lg bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all text-center cursor-pointer">Reject Proof</button>
+                  <button onClick={() => handleApprove(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold active:scale-95 transition-all text-center cursor-pointer">Approve Member</button>
                 </div>
               </div>
             </motion.div>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, Building2, Palette, LayoutTemplate, Link, UserPlus, FileSpreadsheet,
   Users, Heart, Calendar, Briefcase, Bell, Mail, MessageSquare, Phone, FileText,
-  Network, Zap, ShieldCheck, ShieldAlert, HardDrive, Clock, History, Save, X, Download
+  Network, Zap, ShieldCheck, ShieldAlert, HardDrive, Clock, History, Save, X, Download, Award
 } from 'lucide-react';
 import { useData } from '../../../member/context/DataProvider';
 import { useCommunitySettings } from './hooks/useCommunitySettings';
@@ -18,6 +18,7 @@ import { DirectorySettings } from './components/DirectorySettings';
 import { MatrimonialSettings } from './components/MatrimonialSettings';
 import { EventSettings } from './components/EventSettings';
 import { ProfessionalSettings } from './components/ProfessionalSettings';
+import { ObituarySettings } from './components/ObituarySettings';
 import { NotificationSettings } from './components/NotificationSettings';
 import { EmailTemplates } from './components/EmailTemplates';
 import { SmsTemplates } from './components/SmsTemplates';
@@ -49,7 +50,8 @@ const NAV_SECTIONS = [
       { id: 'directory', label: 'Member Directory', icon: Users, component: DirectorySettings },
       { id: 'matrimonial', label: 'Matrimonial', icon: Heart, component: MatrimonialSettings },
       { id: 'events', label: 'Events Settings', icon: Calendar, component: EventSettings },
-      { id: 'professional', label: 'Professional Directory', icon: Briefcase, component: ProfessionalSettings }
+      { id: 'professional', label: 'Professional Directory', icon: Briefcase, component: ProfessionalSettings },
+      { id: 'obituary', label: 'Obituaries Settings', icon: Award, component: ObituarySettings }
     ]
   },
   {
@@ -81,11 +83,21 @@ const NAV_SECTIONS = [
   }
 ];
 
+import { useHeadAuth } from '../../auth/useHeadAuth';
 import './settings-theme.css';
 
 export const CommunitySettings = () => {
   const { currentUser } = useData();
-  const communityId = currentUser?.communityId || 'cm_123'; 
+  const { headAuth } = useHeadAuth();
+  const headUser = headAuth?.headUser;
+
+  const communityId = useMemo(() => {
+    const comName = currentUser?.community || headUser?.community;
+    if (comName) {
+      return comName.toLowerCase().replace(/\s/g, '_');
+    }
+    return 'cm_123';
+  }, [currentUser, headUser]);
   const {
     settings,
     loading,

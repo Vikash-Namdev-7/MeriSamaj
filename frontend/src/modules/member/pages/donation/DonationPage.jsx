@@ -182,35 +182,45 @@ const DonationPage = () => {
                 <div 
                   key={purpose.id}
                   onClick={() => navigate(`/member/donation/campaign/${purpose.id}`)}
-                  className="bg-card rounded-2xl p-4.5 border border-gray-100 shadow-sm space-y-3.5 cursor-pointer hover:border-purple-200 hover:shadow-md transition-all duration-200"
+                  className="bg-card rounded-2xl border border-gray-100 shadow-sm cursor-pointer hover:border-purple-200 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center shrink-0 border border-gray-100 mt-0.5">
-                      {getPurposeIcon(purpose.id)}
+                  {purpose.bannerImage && (
+                    <div className="h-36 w-full overflow-hidden relative shrink-0">
+                      <img src={purpose.bannerImage} alt={purpose.title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-text-primary leading-tight">{purpose.title}</h4>
-                      <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded w-fit">
-                        <MapPin size={9} /> {purpose.city}
+                  )}
+                  <div className="p-4.5 space-y-3.5 flex-1 flex flex-col justify-between">
+                    <div className="flex items-start gap-3">
+                      {!purpose.bannerImage && (
+                        <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center shrink-0 border border-gray-100 mt-0.5">
+                          {getPurposeIcon(purpose.id)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-text-primary leading-tight line-clamp-2">{purpose.title}</h4>
+                        <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded w-fit">
+                          <MapPin size={9} /> {purpose.city || 'General'}
+                        </div>
+                        <p className="text-[10px] text-text-secondary line-clamp-2 mt-1.5">{purpose.desc}</p>
                       </div>
-                      <p className="text-[10px] text-text-secondary line-clamp-2 mt-1.5">{purpose.desc}</p>
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs font-bold text-text-primary">₹{formatCurrency(purpose.raised)} <span className="text-[10px] font-normal text-text-secondary">Raised</span></span>
-                      <span className="text-[10px] font-medium text-text-secondary">Goal: ₹{formatCurrency(purpose.target)}</span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-purple-600 rounded-full" 
-                        style={{ width: `${purpose.percentage}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <span className="text-[9px] font-bold text-purple-700">{purpose.percentage}% Completed</span>
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex justify-between items-end mb-1">
+                        <span className="text-xs font-bold text-text-primary">₹{formatCurrency(purpose.raised)} <span className="text-[10px] font-normal text-text-secondary">Raised</span></span>
+                        <span className="text-[10px] font-medium text-text-secondary">Goal: ₹{formatCurrency(purpose.target)}</span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-purple-600 rounded-full" 
+                          style={{ width: `${purpose.percentage}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <span className="text-[9px] font-bold text-purple-700">{purpose.percentage}% Completed</span>
+                      </div>
                     </div>
                   </div>
                 </div>

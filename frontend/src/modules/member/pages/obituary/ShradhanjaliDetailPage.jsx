@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Bookmark, BookmarkCheck, Flower, Phone, Eye } from 'lucide-react';
+import { ArrowLeft, Share2, Bookmark, BookmarkCheck, Flower, Phone, Eye, Edit, Trash2 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { AnimatedPage } from '../../components/layout/AnimatedPage';
 import TributeHeroImage from './components/TributeHeroImage';
@@ -15,14 +15,22 @@ const ShradhanjaliDetailPage = () => {
   const navigate = useNavigate();
   const {
     obituaries,
+    obituariesLoading,
+    obituariesError,
     toggleHaathJode,
     incrementMalaArpan,
     saveShradhanjali,
     shareShradhanjali,
     incrementObituaryViews,
+    deleteObituary,
+    currentUser
   } = useData();
 
   const obituary = obituaries.find(ob => ob.id === id);
+
+  const isCreator = obituary?.author?.id === currentUser?.id || obituary?.author?.id === currentUser?._id;
+  const isLeadOrAdmin = ['head', 'admin'].includes(currentUser?.role);
+  const canModify = isCreator || isLeadOrAdmin;
 
   // Increment view count on mount
   useEffect(() => {
@@ -32,14 +40,42 @@ const ShradhanjaliDetailPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const handleDelete = async () => {
+    if (window.confirm('क्या आप सचमुच इस श्रद्धांजलि पोस्ट को हटाना चाहते हैं? Are you sure you want to delete this tribute?')) {
+      try {
+        await deleteObituary(id);
+        navigate('/member/shradhanjali', { replace: true });
+      } catch (error) {
+        alert('Failed to delete: ' + (error.response?.data?.message || error.message));
+      }
+    }
+  };
+
+  if (obituariesLoading) {
+    return (
+      <AnimatedPage>
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            className="text-[44px]"
+          >
+            🪔
+          </motion.div>
+          <p className="text-gray-500 font-medium">Loading tribute details...</p>
+        </div>
+      </AnimatedPage>
+    );
+  }
+
   if (!obituary) {
     return (
       <AnimatedPage>
         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
           <span className="text-[56px]">🕊️</span>
-          <p className="text-gray-500 font-medium">Post not found</p>
-          <button onClick={() => navigate(-1)} className="text-[13px] font-semibold" style={{ color: '#7C5C2E' }}>
-            Back
+          <p className="text-gray-500 font-medium">Tribute post not found</p>
+          <button onClick={() => navigate('/member/shradhanjali')} className="text-[13px] font-semibold px-4 py-2 border rounded-xl" style={{ color: '#7C5C2E' }}>
+            Back to List
           </button>
         </div>
       </AnimatedPage>
@@ -101,6 +137,26 @@ const ShradhanjaliDetailPage = () => {
             >
               {obituary.isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
             </button>
+            {canModify && (
+              <>
+                <button
+                  onClick={() => navigate(`/member/shradhanjali/edit/${id}`)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center press-scale"
+                  style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: '#D4AF37' }}
+                  title="Edit"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="w-9 h-9 rounded-full flex items-center justify-center press-scale text-red-400"
+                  style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)' }}
+                  title="Delete"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </>
+            )}
             <span className="text-[20px]">🪔</span>
           </div>
         </div>

@@ -3,11 +3,13 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import donationService from '../../../../core/api/donationService';
 import { useData } from '../../context/DataProvider';
+import { useAuth } from '../../../../core/auth/useAuth';
 
 const DonationContext = createContext(null);
 
 export const DonationProvider = ({ children }) => {
   const { currentUser } = useData();
+  const { auth } = useAuth();
   const [purposes, setPurposes] = useState([]);
   const [donationHistory, setDonationHistory] = useState([]);
   const [topDonors, setTopDonors] = useState([]);
@@ -41,8 +43,10 @@ export const DonationProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchDonationData();
-  }, []);
+    if (auth.isAuthenticated) {
+      fetchDonationData();
+    }
+  }, [auth.isAuthenticated]);
 
   const makeDonation = async (purposeId, amount, type) => {
     try {

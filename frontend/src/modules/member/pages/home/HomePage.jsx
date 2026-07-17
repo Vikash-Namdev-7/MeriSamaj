@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
 import { Bell, Search, Calendar, Heart, Users, BookOpen, Briefcase, Vote, ChevronRight, MapPin, Shield, Crown, ImagePlus, ArrowRight, Plus, Sparkles, GraduationCap, HeartHandshake, Flame, User, Smile, Phone, MessageCircle, Clock, CalendarDays, Mail, Home, Wallet, Megaphone } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { Badge } from '../../components/common/Badge';
 import { useData } from '../../context/DataProvider';
@@ -123,7 +124,81 @@ const HomePage = () => {
   const unreadCount = getUnreadCountForModule('home');
   const userCommunity = currentUser?.community || 'Agrawal Samaj';
 
-  const communityPosts = mockPosts.filter(p => p.community === userCommunity || true).slice(0, 10);
+  // Deriving isolated community ID
+  const communityId = useMemo(() => {
+    const comName = currentUser?.community;
+    if (comName) {
+      return comName.toLowerCase().replace(/\s/g, '_');
+    }
+    return 'cm_123';
+  }, [currentUser]);
+
+  const [homepageContentSettings, setHomepageContentSettings] = useState(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`community_settings_${communityId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.homepageContent) {
+          setHomepageContentSettings(parsed.homepageContent);
+        }
+      } catch (e) {
+        console.error('Failed to parse community settings for homepageContent', e);
+      }
+    }
+  }, [communityId]);
+
+  const mergedFeatures = useMemo(() => {
+    const content = homepageContentSettings?.exclusiveFeatures;
+    if (!Array.isArray(content) || content.length === 0) {
+      return quickActions;
+    }
+    return [...content]
+      .filter(f => f.enabled)
+      .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99))
+      .map(f => {
+        const matchedStatic = quickActions.find(qa => qa.path === f.path || qa.label.toLowerCase().includes(f.label.toLowerCase().substring(0, 4)));
+        return {
+          label: f.label,
+          desc: f.desc,
+          path: f.path,
+          icon: LucideIcons[f.icon] || Briefcase,
+          bgImage: f.bgImage || matchedStatic?.bgImage || 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=400&q=80'
+        };
+      });
+  }, [homepageContentSettings, quickActions]);
+
+  const communityPosts = [...mockPosts].sort((a, b) => {
+    const aMatch = a.community === userCommunity ? 1 : 0;
+    const bMatch = b.community === userCommunity ? 1 : 0;
+    return bMatch - aMatch;
+  }).slice(0, 10);
+
+  const personalizedEvents = [...mockEvents].sort((a, b) => {
+    const aInCity = currentUser?.city && a.venue?.toLowerCase().includes(currentUser.city.toLowerCase()) ? 1 : 0;
+    const bInCity = currentUser?.city && b.venue?.toLowerCase().includes(currentUser.city.toLowerCase()) ? 1 : 0;
+    return bInCity - aInCity;
+  });
+
+  const getCommunitySurnameLocal = (community) => {
+    if (!community) return 'Agrawal';
+    if (community.includes('Mali')) return 'Mali';
+    if (community.includes('Gupta')) return 'Gupta';
+    if (community.includes('Sharma')) return 'Sharma';
+    if (community.includes('Jain')) return 'Jain';
+    if (community.includes('Patel')) return 'Patel';
+    if (community.includes('Verma')) return 'Verma';
+    return 'Agrawal';
+  };
+
+  const personalizedSuccessStories = mockSuccessStories.map(story => {
+    const surname = getCommunitySurnameLocal(userCommunity);
+    return {
+      ...story,
+      groomName: story.groomName.replaceAll('Agrawal', surname).replaceAll('Jain', surname).replaceAll('Mali', surname).replaceAll('Gupta', surname).replaceAll('Sharma', surname).replaceAll('Patel', surname).replaceAll('Verma', surname)
+    };
+  });
 
   const getSamajImage = (community) => {
     const c = community.toLowerCase();
@@ -145,7 +220,7 @@ const HomePage = () => {
       <div className="relative w-full overflow-hidden" style={{ minHeight: '290px' }}>
         {/* Background Image — Cultural landmark */}
         <img 
-          src={getSamajImage(userCommunity)} 
+          src={homepageContentSettings?.hero?.backgroundImage || getSamajImage(userCommunity)} 
           alt={userCommunity}
           className="absolute inset-0 w-full h-full object-cover scale-105"
           style={{ filter: 'saturate(1.1)' }}
@@ -171,25 +246,38 @@ const HomePage = () => {
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/member/profile')}>
             {/* Avatar with premium glow ring */}
             <div className="relative">
-              <div 
-                className="w-[46px] h-[46px] rounded-[18px] text-white flex items-center justify-center text-[20px] font-serif relative overflow-hidden group-hover:scale-105 transition-transform duration-300"
-                style={{ 
-                  background: 'linear-gradient(135deg, rgba(124,58,237,0.5), rgba(167,139,250,0.3))',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  boxShadow: '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-                }}
-              >
-                {/* Inner shine */}
-                <div className="absolute inset-0 rounded-[18px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
-                <span className="relative z-10">{userCommunity.substring(0, 1)}</span>
-              </div>
+              {currentUser?.avatar ? (
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  className="w-[46px] h-[46px] rounded-[18px] object-cover border-[1px] border-white/25 shadow-lg group-hover:scale-105 transition-transform duration-300 z-10 relative"
+                />
+              ) : (
+                <div 
+                  className="w-[46px] h-[46px] rounded-[18px] text-white flex items-center justify-center text-[20px] font-serif relative overflow-hidden group-hover:scale-105 transition-transform duration-300"
+                  style={{ 
+                    background: 'linear-gradient(135deg, rgba(124,58,237,0.5), rgba(167,139,250,0.3))',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    boxShadow: '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  }}
+                >
+                  {/* Inner shine */}
+                  <div className="absolute inset-0 rounded-[18px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
+                  <span className="relative z-10">{(currentUser?.name || userCommunity).substring(0, 1)}</span>
+                </div>
+              )}
               {/* Glow ring pulse */}
               <div className="absolute inset-0 rounded-[18px] pointer-events-none" style={{ boxShadow: '0 0 0 1.5px rgba(167,139,250,0.4), 0 0 12px rgba(124,58,237,0.25)' }} />
             </div>
-            <div>
+            <div className="text-left">
               <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{greeting}</p>
               <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{(currentUser?.name || 'Member').split(' ')[0]}</h1>
+              {currentUser?.community && (
+                <p className="text-[10.5px] font-bold text-purple-200 mt-0.5 leading-tight select-none">
+                  {currentUser.community}{currentUser.city ? ` · ${currentUser.city}` : ''}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -216,7 +304,22 @@ const HomePage = () => {
         </div>
 
         {/* Samaj Identity Content — bottom of hero */}
-        <div className="relative z-10 px-5 pt-8 pb-4 flex flex-col justify-end" />
+        <div className="relative z-10 px-5 pt-8 pb-4 flex flex-col justify-end text-left">
+          {homepageContentSettings?.hero?.title && (
+            <h2 className="text-white text-base font-extrabold tracking-tight drop-shadow">{homepageContentSettings.hero.title}</h2>
+          )}
+          {homepageContentSettings?.hero?.subtitle && (
+            <p className="text-white/80 text-[11px] font-semibold mt-1 leading-snug max-w-xs">{homepageContentSettings.hero.subtitle}</p>
+          )}
+          {homepageContentSettings?.hero?.buttonText && (
+            <button 
+              onClick={() => navigate(homepageContentSettings.hero.buttonLink || '/member/directory')}
+              className="bg-white hover:bg-slate-50 text-indigo-950 text-[10px] font-bold px-3 py-1.5 rounded-lg mt-3 self-start shadow-sm press-scale cursor-pointer"
+            >
+              {homepageContentSettings.hero.buttonText} →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Spacer */}
@@ -727,10 +830,10 @@ const HomePage = () => {
         <div className="flex items-center justify-between mb-4 px-0.5">
           <h3 className="text-[13px] font-black text-text-secondary tracking-widest uppercase">Exclusive Features</h3>
           <div className="h-[1.5px] flex-1 mx-3 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.15), transparent)' }} />
-          <span className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(124,58,237,0.5)' }}>6 FEATURES</span>
+          <span className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(124,58,237,0.5)' }}>{mergedFeatures.length} FEATURES</span>
         </div>
         <div className="grid grid-cols-2 gap-3.5">
-          {quickActions.map((action, idx) => (
+          {mergedFeatures.map((action, idx) => (
             <motion.button
               key={action.label}
               onClick={() => navigate(action.path)}
@@ -746,9 +849,9 @@ const HomePage = () => {
               <img 
                 src={action.bgImage} 
                 alt={action.label} 
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80 transition-opacity duration-300 group-hover:opacity-90" />
+              <div className="absolute inset-0 bg-black/15 transition-opacity duration-300 group-hover:bg-black/25" />
 
               {/* Icon & Arrow Row */}
               <div className="w-full flex items-center justify-between z-10 relative">
@@ -765,12 +868,18 @@ const HomePage = () => {
                 </div>
               </div>
 
-              {/* Text content */}
-              <div className="mt-4 z-10 relative">
-                <span className={`font-extrabold text-white leading-snug tracking-tight block text-[15px] drop-shadow-md`}>
+              {/* Text content - styled with text shadow directly over clear background */}
+              <div className="mt-4 z-10 relative text-left">
+                <span 
+                  className="font-black text-white leading-snug tracking-tight block text-[15px]"
+                  style={{ textShadow: '0 2px 8px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.9)' }}
+                >
                   {action.label}
                 </span>
-                <span className="text-[11px] font-medium text-white/80 mt-1 block leading-tight drop-shadow-sm">
+                <span 
+                  className="text-[11px] font-bold text-white/95 mt-1 block leading-tight"
+                  style={{ textShadow: '0 1px 4px rgba(0, 0, 0, 0.9)' }}
+                >
                   {action.desc}
                 </span>
               </div>
@@ -792,7 +901,7 @@ const HomePage = () => {
         </div>
         
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-3">
-          {mockSuccessStories.map((story) => (
+          {personalizedSuccessStories.map((story) => (
             <div 
               key={story.id} 
               onClick={() => navigate('/member/matrimonial')}
@@ -999,7 +1108,7 @@ const HomePage = () => {
           </button>
         </div>
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-3 px-3">
-          {mockEvents.slice(0, 4).map((event) => {
+          {personalizedEvents.slice(0, 4).map((event) => {
             const gradients = {
               Cultural: 'from-purple-500 to-violet-600',
               Education: 'from-blue-500 to-cyan-600',

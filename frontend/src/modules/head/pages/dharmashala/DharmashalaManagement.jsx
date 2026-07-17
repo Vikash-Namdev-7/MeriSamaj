@@ -1,0 +1,1112 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Building, Plus, Edit, Trash2, Loader, Calendar, DollarSign, Check, X, 
+  ChevronRight, Info, MapPin, Phone, Shield, Activity, Users, Settings, Wrench, Grid, AlertCircle
+} from 'lucide-react';
+import headDharmashalaService from '../../../../core/api/headDharmashalaService';
+import { useData } from '../../../member/context/DataProvider';
+
+export default function DharmashalaManagement() {
+  const { addNotification } = useData();
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'properties' | 'rooms' | 'bookings' | 'maintenance'
+
+  // Loading states
+  const [loading, setLoading] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [stats, setStats] = useState({});
+  const [selectedPropertyId, setSelectedPropertyId] = useState('all');
+
+  // Form modals & fields
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [propertyEditId, setPropertyEditId] = useState(null);
+  const [propertyForm, setPropertyForm] = useState({
+    name: '', description: '', address: '', city: '', state: '', pincode: '',
+    googleMapsUrl: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '',
+    alternateContact: '', email: '', website: '', status: 'Active', isFeatured: false,
+    rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: []
+  });
+
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [roomEditId, setRoomEditId] = useState(null);
+  const [roomForm, setRoomForm] = useState({
+    dharmashala: '', roomNumber: '', roomName: '', floor: '', roomCategory: 'Standard',
+    isAc: false, capacity: 2, extraMattressAllowed: true, maxGuests: 3, price: 1000,
+    weekendPrice: 1200, status: 'Available'
+  });
+
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [activeBooking, setActiveBooking] = useState(null);
+  const [bookingRemarks, setBookingRemarks] = useState('');
+  const [assignedRoomIds, setAssignedRoomIds] = useState([]);
+
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    dharmashalaId: '', roomId: '', startDate: '', endDate: '', reason: 'Cleaning', remarks: ''
+  });
+
+  // Predefined Amenities
+  const allAmenities = [
+    'Parking', 'Lift', 'WiFi', 'CCTV', 'Kitchen', 'Dining Hall', 
+    'RO Water', 'Generator', 'Temple', 'Garden', 'Hot Water', 'Wheelchair Access'
+  ];
+
+  // Fetch functions
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const statsRes = await headDharmashalaService.getDashboardStats();
+      if (statsRes.status === 'success') setStats(statsRes.data);
+
+      const propRes = await headDharmashalaService.getProperties();
+      if (propRes.status === 'success') {
+        setProperties(propRes.data);
+        if (propRes.data.length > 0 && selectedPropertyId === 'all') {
+          setSelectedPropertyId(propRes.data[0]._id);
+        }
+      }
+
+      const bookingRes = await headDharmashalaService.getBookings();
+      if (bookingRes.status === 'success') setBookings(bookingRes.data);
+    } catch (err) {
+      console.error("Failed to load head Dharmashala info", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRooms = async (propId) => {
+    if (!propId || propId === 'all') return;
+    try {
+      const res = await headDharmashalaService.getRooms(propId);
+      if (res.status === 'success') setRooms(res.data);
+    } catch (err) {
+      console.error("Failed to load rooms", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPropertyId && selectedPropertyId !== 'all') {
+      fetchRooms(selectedPropertyId);
+    }
+  }, [selectedPropertyId]);
+
+  // Property Submission
+  const handlePropertySubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    Object.keys(propertyForm).forEach(key => {
+      if (key === 'amenities') {
+        formData.append(key, JSON.stringify(propertyForm[key]));
+      } else {
+        formData.append(key, propertyForm[key]);
+      }
+    });
+
+    try {
+      let res;
+      if (propertyEditId) {
+        res = await headDharmashalaService.updateProperty(propertyEditId, formData);
+      } else {
+        res = await headDharmashalaService.createProperty(formData);
+      }
+
+      if (res.status === 'success') {
+        setShowPropertyModal(false);
+        fetchData();
+        addNotification?.({
+          type: 'system',
+          title: propertyEditId ? 'Property Updated' : 'Property Registered',
+          message: `${propertyForm.name} details saved successfully.`
+        });
+      }
+    } catch (err) {
+      console.error("Property action failed", err);
+    }
+  };
+
+  const openEditProperty = (prop) => {
+    setPropertyEditId(prop._id);
+    setPropertyForm({
+      name: prop.name || '',
+      description: prop.description || '',
+      address: prop.address || '',
+      city: prop.city || '',
+      state: prop.state || '',
+      pincode: prop.pincode || '',
+      googleMapsUrl: prop.googleMapsUrl || '',
+      latitude: prop.latitude || '',
+      longitude: prop.longitude || '',
+      contactPerson: prop.contactPerson || '',
+      contactNumber: prop.contactNumber || '',
+      alternateContact: prop.alternateContact || '',
+      email: prop.email || '',
+      website: prop.website || '',
+      status: prop.status || 'Active',
+      isFeatured: prop.isFeatured || false,
+      rules: prop.rules || '',
+      checkInTime: prop.checkInTime || '10:00',
+      checkOutTime: prop.checkOutTime || '10:00',
+      amenities: prop.amenities || []
+    });
+    setShowPropertyModal(true);
+  };
+
+  const handleDeleteProperty = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this property? This will also remove all rooms and bookings.")) return;
+    try {
+      await headDharmashalaService.deleteProperty(id);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Room Submission
+  const handleRoomSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    Object.keys(roomForm).forEach(key => {
+      formData.append(key, roomForm[key]);
+    });
+
+    try {
+      let res;
+      if (roomEditId) {
+        res = await headDharmashalaService.updateRoom(roomEditId, formData);
+      } else {
+        res = await headDharmashalaService.createRoom(formData);
+      }
+
+      if (res.status === 'success') {
+        setShowRoomModal(false);
+        fetchRooms(selectedPropertyId);
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openAddRoom = () => {
+    setRoomEditId(null);
+    setRoomForm({
+      dharmashala: selectedPropertyId,
+      roomNumber: '', roomName: '', floor: '', roomCategory: 'Standard',
+      isAc: false, capacity: 2, extraMattressAllowed: true, maxGuests: 3, price: 1000,
+      weekendPrice: 1200, status: 'Available'
+    });
+    setShowRoomModal(true);
+  };
+
+  const openEditRoom = (room) => {
+    setRoomEditId(room._id);
+    setRoomForm({
+      dharmashala: room.dharmashala,
+      roomNumber: room.roomNumber,
+      roomName: room.roomName || '',
+      floor: room.floor || '',
+      roomCategory: room.roomCategory || 'Standard',
+      isAc: room.isAc || false,
+      capacity: room.capacity || 2,
+      extraMattressAllowed: room.extraMattressAllowed || true,
+      maxGuests: room.maxGuests || 3,
+      price: room.price || 1000,
+      weekendPrice: room.weekendPrice || 1200,
+      status: room.status || 'Available'
+    });
+    setShowRoomModal(true);
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!window.confirm("Are you sure you want to delete this room?")) return;
+    try {
+      await headDharmashalaService.deleteRoom(roomId);
+      fetchRooms(selectedPropertyId);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Booking Update Actions
+  const handleBookingAction = async (booking, nextStatus) => {
+    if (nextStatus === 'approved') {
+      // Load available rooms for assigning
+      setActiveBooking(booking);
+      setBookingRemarks('');
+      setAssignedRoomIds([]);
+      setShowBookingModal(true);
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to mark this booking as ${nextStatus.toUpperCase()}?`)) return;
+    try {
+      const res = await headDharmashalaService.updateBookingStatus(booking._id, {
+        status: nextStatus,
+        remarks: `Status updated to ${nextStatus}`
+      });
+      if (res.status === 'success') {
+        fetchData();
+        if (selectedPropertyId !== 'all') fetchRooms(selectedPropertyId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleConfirmApproval = async () => {
+    try {
+      const res = await headDharmashalaService.updateBookingStatus(activeBooking._id, {
+        status: 'approved',
+        rooms: assignedRoomIds,
+        remarks: bookingRemarks
+      });
+      if (res.status === 'success') {
+        setShowBookingModal(false);
+        fetchData();
+        if (selectedPropertyId !== 'all') fetchRooms(selectedPropertyId);
+        
+        addNotification?.({
+          type: 'community',
+          title: 'Booking Request Approved',
+          message: `Booking has been confirmed and rooms assigned for ${activeBooking.bookedBy}.`
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Maintenance log submission
+  const handleMaintenanceSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await headDharmashalaService.logMaintenance(maintenanceForm);
+      if (res.status === 'success') {
+        setShowMaintenanceModal(false);
+        fetchData();
+        if (selectedPropertyId !== 'all') fetchRooms(selectedPropertyId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openMaintenanceForm = () => {
+    setMaintenanceForm({
+      dharmashalaId: selectedPropertyId,
+      roomId: '',
+      startDate: '',
+      endDate: '',
+      reason: 'Cleaning',
+      remarks: ''
+    });
+    setShowMaintenanceModal(true);
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen text-slate-800 font-sans space-y-6">
+      {/* Header Banner - White Neo Style */}
+      <div className="flex justify-between items-center bg-white border border-slate-100 p-6 rounded-2xl shadow-sm">
+        <div>
+          <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <Building className="text-indigo-600" /> Dharmashala Management Desk
+          </h2>
+          <p className="text-slate-500 text-xs font-semibold mt-1">Manage your community properties, room inventory, guest check-ins, and bookings scheduling.</p>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              setPropertyEditId(null);
+              setPropertyForm({
+                name: '', description: '', address: '', city: '', state: '', pincode: '',
+                googleMapsUrl: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '',
+                alternateContact: '', email: '', website: '', status: 'Active', isFeatured: false,
+                rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: []
+              });
+              setShowPropertyModal(true);
+            }}
+            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-[12px] transition-all flex items-center gap-2 shadow-sm"
+          >
+            <Plus size={15} /> Add New Property
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs Switcher - Light style */}
+      <div className="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-sm gap-1">
+        {[
+          { id: 'overview', label: 'Overview & Statistics' },
+          { id: 'properties', label: 'Properties Directory' },
+          { id: 'rooms', label: 'Room Inventory' },
+          { id: 'bookings', label: 'Booking Requests' },
+          { id: 'maintenance', label: 'Maintenance Locks' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-5 py-2.5 rounded-lg text-[12.5px] font-black transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-850'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader className="animate-spin text-indigo-600" size={32} />
+          <p className="text-slate-450 text-xs font-semibold">Loading data, please wait...</p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Stats Cards Grid - Light Style */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Dharmashalas', val: stats.totalDharmashalas || 0, color: 'text-indigo-600', desc: 'Registered Properties' },
+                  { label: 'Active Properties', val: stats.activeDharmashalas || 0, color: 'text-emerald-600', desc: 'Open for Bookings' },
+                  { label: 'Total Rooms', val: stats.totalRooms || 0, color: 'text-blue-600', desc: 'Inventory Capacity' },
+                  { label: 'Occupied Rooms', val: stats.occupiedRooms || 0, color: 'text-rose-600', desc: 'Active Guest Rooms' },
+                  { label: 'Pending Requests', val: stats.pendingRequests || 0, color: 'text-amber-600', desc: 'Requires Review' },
+                  { label: 'Today Arrivals', val: stats.todayCheckIns || 0, color: 'text-purple-600', desc: 'Scheduled Check-ins' },
+                  { label: 'Today Departures', val: stats.todayCheckOuts || 0, color: 'text-slate-650', desc: 'Scheduled Check-outs' },
+                  { label: 'Monthly Revenue', val: `₹${stats.monthlyRevenue || 0}`, color: 'text-emerald-700 font-extrabold', desc: 'Current Month Income' }
+                ].map((s, idx) => (
+                  <div key={idx} className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{s.label}</span>
+                    <span className={`text-2xl font-black block mt-2 ${s.color}`}>{s.val}</span>
+                    <span className="text-[9.5px] text-slate-450 mt-1 block font-semibold">{s.desc}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Occupancy Progress Tracker */}
+              <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-xs font-black text-slate-700">Property Occupancy Rate</h3>
+                  <span className="text-indigo-600 font-black text-sm">{stats.occupancyRate || 0}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="bg-indigo-600 h-full rounded-full transition-all" style={{ width: `${stats.occupancyRate || 0}%` }}></div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-semibold">Percentage of currently booked rooms out of total room inventory.</p>
+              </div>
+
+              {/* Today's Schedule Live Desk */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Check-ins */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-2.5">
+                    <Check className="text-emerald-600" size={16} /> Today's Arrivals (Check-ins)
+                  </h3>
+                  <div className="space-y-3">
+                    {bookings.filter(b => b.status === 'approved' || b.status === 'upcoming').length === 0 ? (
+                      <p className="text-slate-400 text-xs font-bold py-6 text-center">No arrivals scheduled for today.</p>
+                    ) : (
+                      bookings.filter(b => b.status === 'approved' || b.status === 'upcoming').map(b => (
+                        <div key={b._id} className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex justify-between items-center">
+                          <div>
+                            <span className="text-xs font-black text-slate-800">{b.bookedBy}</span>
+                            <span className="text-[10px] text-slate-450 block mt-0.5">ID: {b.bookingId} | Rooms: {b.rooms?.map(r=>r.roomNumber).join(', ') || 'None'}</span>
+                          </div>
+                          <button 
+                            onClick={() => handleBookingAction(b, 'checked_in')}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-xl transition-all"
+                          >
+                            Check In
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Check-outs */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm space-y-4">
+                  <h3 className="text-xs font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-2.5">
+                    <X className="text-rose-600" size={16} /> Today's Departures (Check-outs)
+                  </h3>
+                  <div className="space-y-3">
+                    {bookings.filter(b => b.status === 'checked_in').length === 0 ? (
+                      <p className="text-slate-400 text-xs font-bold py-6 text-center">No departures scheduled for today.</p>
+                    ) : (
+                      bookings.filter(b => b.status === 'checked_in').map(b => (
+                        <div key={b._id} className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex justify-between items-center">
+                          <div>
+                            <span className="text-xs font-black text-slate-800">{b.bookedBy}</span>
+                            <span className="text-[10px] text-slate-450 block mt-0.5">ID: {b.bookingId} | Rooms: {b.rooms?.map(r=>r.roomNumber).join(', ') || 'N/A'}</span>
+                          </div>
+                          <button 
+                            onClick={() => handleBookingAction(b, 'checked_out')}
+                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-xl transition-all"
+                          >
+                            Check Out
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: PROPERTIES */}
+          {activeTab === 'properties' && (
+            <div className="grid grid-cols-1 gap-6">
+              {properties.length === 0 ? (
+                <div className="bg-white p-12 rounded-2xl border border-slate-100 text-center space-y-4 shadow-sm">
+                  <Building size={44} className="mx-auto text-slate-350" />
+                  <h3 className="text-sm font-black text-slate-800">No Properties Registered</h3>
+                  <p className="text-xs text-slate-450">Register a community property/Dharmashala to start receiving booking requests.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {properties.map(p => (
+                    <div key={p._id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm flex flex-col relative">
+                      <div className="absolute top-4 right-4 z-10 flex gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                          {p.status === 'Active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="h-44 bg-slate-100 w-full relative border-b border-slate-50">
+                        {p.image ? (
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold bg-slate-100">No Cover Photo</div>
+                        )}
+                      </div>
+                      <div className="p-6 flex-1 flex flex-col space-y-4">
+                        <div>
+                          <h3 className="text-base font-black text-slate-800">{p.name}</h3>
+                          <div className="flex items-start gap-1 mt-1 text-slate-500">
+                            <MapPin size={13} className="mt-0.5 shrink-0 text-indigo-500" />
+                            <p className="text-[11px] font-semibold">{p.address}, {p.city}, {p.state} - {p.pincode}</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-50 flex flex-wrap gap-1.5">
+                          {p.amenities?.map(amenity => (
+                            <span key={amenity} className="px-2.5 py-1 bg-slate-50 border border-slate-100 text-[10px] font-bold rounded-lg text-slate-600">{amenity}</span>
+                          ))}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-50 flex justify-between items-center text-xs font-bold text-slate-600">
+                          <div>
+                            <span>Manager: {p.contactPerson}</span>
+                            <span className="block mt-0.5 text-[11px] text-slate-450 font-medium">Phone: {p.contactNumber}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-50 flex gap-2 justify-end">
+                          <button 
+                            onClick={() => openEditProperty(p)}
+                            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-600 flex items-center gap-1.5"
+                          >
+                            <Edit size={12} /> Edit Details
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProperty(p._id)}
+                            className="px-4 py-2 border border-rose-100 hover:bg-rose-50 text-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                          >
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: ROOMS INVENTORY */}
+          {activeTab === 'rooms' && (
+            <div className="space-y-6">
+              {/* Property Select Dropdown */}
+              <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex justify-between items-center flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold text-slate-500">Select Property:</label>
+                  <select 
+                    value={selectedPropertyId}
+                    onChange={(e) => setSelectedPropertyId(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                  >
+                    {properties.map(p => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={openMaintenanceForm}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-black transition-all text-slate-700 flex items-center gap-1.5"
+                  >
+                    <Wrench size={14} className="text-amber-600" /> Maintenance Schedule
+                  </button>
+                  <button 
+                    onClick={openAddRoom}
+                    disabled={properties.length === 0}
+                    className="px-4 py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus size={14} /> Add New Room
+                  </button>
+                </div>
+              </div>
+
+              {/* Rooms Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {rooms.length === 0 ? (
+                  <div className="col-span-full bg-white p-12 rounded-2xl border border-slate-100 text-center space-y-3 shadow-sm">
+                    <Grid size={40} className="mx-auto text-slate-400" />
+                    <h3 className="text-sm font-black text-slate-800">No rooms registered under this property</h3>
+                    <p className="text-xs text-slate-450">Click 'Add New Room' to configure property inventory details.</p>
+                  </div>
+                ) : (
+                  rooms.map(room => (
+                    <div key={room._id} className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-sm font-black text-slate-800">Room No. {room.roomNumber}</span>
+                          <span className="block text-[10px] font-bold text-slate-450 mt-0.5">{room.roomName} | {room.floor}</span>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                          room.status === 'Available' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                          room.status === 'Booked' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                          room.status === 'Occupied' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                          'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                          {room.status === 'Available' ? 'Available' : room.status === 'Booked' ? 'Reserved' : room.status === 'Occupied' ? 'Occupied' : 'Maintenance'}
+                        </span>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-50 grid grid-cols-2 gap-y-2 text-xs font-bold text-slate-600">
+                        <div>Category: <span className="text-slate-800 font-extrabold">{room.roomCategory}</span></div>
+                        <div>Type: <span className="text-slate-800 font-extrabold">{room.isAc ? 'AC' : 'General'}</span></div>
+                        <div>Price: <span className="text-emerald-650 font-extrabold">₹{room.price}</span></div>
+                        <div>Max Guests: <span className="text-slate-800 font-extrabold">{room.maxGuests}</span></div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-50 flex gap-2 justify-end">
+                        <button 
+                          onClick={() => openEditRoom(room)}
+                          className="p-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 transition-all"
+                        >
+                          <Edit size={13} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteRoom(room._id)}
+                          className="p-2 border border-rose-100 hover:bg-rose-50 rounded-lg text-rose-600 transition-all"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: BOOKINGS DESK */}
+          {activeTab === 'bookings' && (
+            <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-slate-50 flex justify-between items-center">
+                <h3 className="text-xs font-black text-slate-800">Dharmashala Guest Bookings Panel</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-semibold text-slate-600">
+                  <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 py-4">Booking ID</th>
+                      <th className="px-5 py-4">Member Details</th>
+                      <th className="px-5 py-4">Check-in / Out</th>
+                      <th className="px-5 py-4">Allocated Room</th>
+                      <th className="px-5 py-4">Amount</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bookings.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="px-5 py-12 text-center text-slate-400 font-bold">No booking requests found.</td>
+                      </tr>
+                    ) : (
+                      bookings.map(b => (
+                        <tr key={b._id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-4 font-black text-indigo-650">{b.bookingId}</td>
+                          <td className="px-5 py-4">
+                            <span className="text-slate-800 font-bold block">{b.bookedBy}</span>
+                            <span className="text-[10px] text-slate-450 block font-medium mt-0.5">{b.phone}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span>{new Date(b.checkIn).toLocaleDateString('en-US')} - {new Date(b.checkOut).toLocaleDateString('en-US')}</span>
+                            <span className="text-[10px] text-slate-450 block font-medium mt-0.5">({b.nights} Nights)</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-slate-700 block">{b.roomType} room</span>
+                            {b.rooms && b.rooms.length > 0 && (
+                              <span className="text-[10px] text-emerald-650 block font-bold mt-0.5">Room No: {b.rooms.map(r=>r.roomNumber).join(', ')}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-emerald-650 font-black">₹{b.totalAmount}</td>
+                          <td className="px-5 py-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                              b.status === 'pending_approval' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                              b.status === 'approved' || b.status === 'upcoming' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              b.status === 'checked_in' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
+                              'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}>
+                              {b.status === 'pending_approval' ? 'Pending' : 
+                               b.status === 'approved' ? 'Approved' :
+                               b.status === 'upcoming' ? 'Reserved' :
+                               b.status === 'checked_in' ? 'In-House' :
+                               b.status === 'checked_out' ? 'Checked-Out' : 'Completed'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              {b.status === 'pending_approval' && (
+                                <>
+                                  <button 
+                                    onClick={() => handleBookingAction(b, 'approved')}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button 
+                                    onClick={() => handleBookingAction(b, 'cancelled')}
+                                    className="px-3 py-1.5 border border-rose-100 hover:bg-rose-50 text-rose-650 rounded-lg text-[10px] font-bold"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              
+                              {b.status === 'approved' && (
+                                <button 
+                                  onClick={() => handleBookingAction(b, 'checked_in')}
+                                  className="px-3 py-1.5 bg-purple-650 hover:bg-purple-700 text-white rounded-lg text-[10px] font-bold"
+                                >
+                                  Check In
+                                </button>
+                              )}
+
+                              {b.status === 'checked_in' && (
+                                <button 
+                                  onClick={() => handleBookingAction(b, 'checked_out')}
+                                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold"
+                                >
+                                  Check Out
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: MAINTENANCE */}
+          {activeTab === 'maintenance' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-500">Maintenance &amp; Blockouts Logs</span>
+                <button 
+                  onClick={openMaintenanceForm}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition-all"
+                >
+                  Schedule Lockout
+                </button>
+              </div>
+
+              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden p-8 text-center shadow-sm">
+                <AlertCircle className="mx-auto text-amber-500 mb-3" size={32} />
+                <p className="text-slate-500 text-xs font-bold">Property cleaning, room repairs, and restoration lockouts scheduler records logs will appear here.</p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Property Modal Form */}
+      {showPropertyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white border border-slate-100 w-full max-w-2xl rounded-2xl shadow-2xl my-8 max-h-[95vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-sm font-black text-slate-800">{propertyEditId ? 'Edit Property Details' : 'Register New Property'}</h3>
+              <button onClick={() => setShowPropertyModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-655"><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={handlePropertySubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-slate-600">
+              <div className="grid grid-cols-2 gap-4 text-xs font-bold">
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Dharmashala Name</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.name}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">City</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.city}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">State</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.state}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, state: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Full Address</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.address}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Pincode</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.pincode}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, pincode: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Manager Name</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.contactPerson}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, contactPerson: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Manager Phone</label>
+                  <input 
+                    type="text" required
+                    value={propertyForm.contactNumber}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, contactNumber: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Email Address</label>
+                  <input 
+                    type="email"
+                    value={propertyForm.email}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Amenities List Select</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {allAmenities.map(amenity => (
+                      <label key={amenity} className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={propertyForm.amenities.includes(amenity)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setPropertyForm(prev => ({ ...prev, amenities: [...prev.amenities, amenity] }));
+                            } else {
+                              setPropertyForm(prev => ({ ...prev, amenities: prev.amenities.filter(a => a !== amenity) }));
+                            }
+                          }}
+                          className="accent-indigo-600"
+                        />
+                        {amenity}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Description</label>
+                  <textarea 
+                    rows="3"
+                    value={propertyForm.description}
+                    onChange={(e) => setPropertyForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowPropertyModal(false)} className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-500">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Room Modal Form */}
+      {showRoomModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white border border-slate-100 w-full max-w-md rounded-2xl shadow-2xl">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-sm font-black text-slate-805">{roomEditId ? 'Edit Room Configuration' : 'Add New Room'}</h3>
+              <button onClick={() => setShowRoomModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-655"><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={handleRoomSubmit} className="p-5 space-y-4 text-slate-600 text-xs font-bold">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Room Number</label>
+                <input 
+                  type="text" required
+                  value={roomForm.roomNumber}
+                  onChange={(e) => setRoomForm(prev => ({ ...prev, roomNumber: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Room Name / Label</label>
+                <input 
+                  type="text" placeholder="e.g. Deluxe Double Room"
+                  value={roomForm.roomName}
+                  onChange={(e) => setRoomForm(prev => ({ ...prev, roomName: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Room Category</label>
+                  <select 
+                    value={roomForm.roomCategory}
+                    onChange={(e) => setRoomForm(prev => ({ ...prev, roomCategory: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500"
+                  >
+                    <option value="Standard">Standard</option>
+                    <option value="Deluxe">Deluxe</option>
+                    <option value="Suite">Suite</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Floor</label>
+                  <input 
+                    type="text" placeholder="e.g. 1st Floor"
+                    value={roomForm.floor}
+                    onChange={(e) => setRoomForm(prev => ({ ...prev, floor: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-850 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 py-1">
+                <label className="flex items-center gap-2 cursor-pointer font-bold">
+                  <input 
+                    type="checkbox"
+                    checked={roomForm.isAc}
+                    onChange={(e) => setRoomForm(prev => ({ ...prev, isAc: e.target.checked }))}
+                    className="accent-indigo-600"
+                  />
+                  Air Conditioned (AC) Room
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Price per Night</label>
+                  <input 
+                    type="number" required
+                    value={roomForm.price}
+                    onChange={(e) => setRoomForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Max Guests capacity</label>
+                  <input 
+                    type="number"
+                    value={roomForm.maxGuests}
+                    onChange={(e) => setRoomForm(prev => ({ ...prev, maxGuests: parseInt(e.target.value) || 2 }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowRoomModal(false)} className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm">Save Room</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Acceptance Drawer/Modal */}
+      {showBookingModal && activeBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white border border-slate-100 w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-sm font-black text-slate-800">Assign Room &amp; Approve</h3>
+              <button onClick={() => setShowBookingModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-655"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-bold text-slate-600">
+              <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-2xl">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Guest Profile</p>
+                <p className="text-slate-800 text-sm font-bold mt-0.5">{activeBooking.bookedBy}</p>
+                <p className="text-[10px] text-indigo-600 mt-1 block">Requested: <span className="font-extrabold text-slate-850">{activeBooking.roomType} room</span></p>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Select Room to Assign</label>
+                <select 
+                  multiple
+                  value={assignedRoomIds}
+                  onChange={(e) => {
+                    const options = [...e.target.selectedOptions].map(o => o.value);
+                    setAssignedRoomIds(options);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none h-28 focus:border-indigo-500"
+                >
+                  {rooms.filter(r => r.status === 'Available').map(r => (
+                    <option key={r._id} value={r._id}>Room {r.roomNumber} - {r.roomCategory} ({r.isAc ? 'AC' : 'Non-AC'})</option>
+                  ))}
+                </select>
+                <span className="text-[9px] text-slate-450 mt-1 block font-semibold">Hold Ctrl key to assign multiple rooms.</span>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Remarks / Note</label>
+                <input 
+                  type="text"
+                  value={bookingRemarks}
+                  onChange={(e) => setBookingRemarks(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex gap-2">
+                <button onClick={() => setShowBookingModal(false)} className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-xl">Cancel</button>
+                <button 
+                  onClick={handleConfirmApproval}
+                  disabled={assignedRoomIds.length === 0}
+                  className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-50 text-white font-bold rounded-xl shadow-sm"
+                >
+                  Confirm Approval
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Maintenance Blocks Form Modal */}
+      {showMaintenanceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white border border-slate-100 w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-sm font-black text-slate-805">Schedule Room Lockout</h3>
+              <button onClick={() => setShowMaintenanceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-655"><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={handleMaintenanceSubmit} className="p-5 space-y-4 text-xs font-bold text-slate-600">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-450 block mb-1">Select Room</label>
+                <select 
+                  value={maintenanceForm.roomId}
+                  onChange={(e) => setMaintenanceForm(prev => ({ ...prev, roomId: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500"
+                >
+                  <option value="">Block Entire Property</option>
+                  {rooms.map(r => (
+                    <option key={r._id} value={r._id}>Room {r.roomNumber}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-450 block mb-1">Start Date</label>
+                  <input 
+                    type="date" required
+                    value={maintenanceForm.startDate}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-805 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-450 block mb-1">End Date</label>
+                  <input 
+                    type="date" required
+                    value={maintenanceForm.endDate}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-805 outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-450 block mb-1">Reason</label>
+                <select 
+                  value={maintenanceForm.reason}
+                  onChange={(e) => setMaintenanceForm(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-805 outline-none"
+                >
+                  <option value="Cleaning">Cleaning</option>
+                  <option value="Repair">Repair</option>
+                  <option value="Renovation">Renovation</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-450 block mb-1">Internal Note</label>
+                <input 
+                  type="text"
+                  value={maintenanceForm.remarks}
+                  onChange={(e) => setMaintenanceForm(prev => ({ ...prev, remarks: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-805 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex gap-2">
+                <button type="button" onClick={() => setShowMaintenanceModal(false)} className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500">Cancel</button>
+                <button type="submit" className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Confirm Block</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -158,17 +158,22 @@ export default function InvitationDetailPage() {
 
   const canShowDirectory = canInviteMore && directoryTabs.length > 0;
 
+  const isFieldEnabled = (fieldId) => {
+    const field = invitationFormConfig?.formFields?.find(f => f.id === fieldId);
+    return field ? field.enabled !== false : true;
+  };
+
   // Build schedule list dynamically based on availability
   const hasGroomBride = inv.groomName && inv.brideName && !inv.title;
   const scheduleItems = [];
   if (hasGroomBride) {
-    if (inv.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Reception', value: inv.timeFood });
-    if (inv.timeBaraat && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Baraat', value: inv.timeBaraat });
-    if (inv.timePhere && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Phere', value: inv.timePhere });
+    if (inv.timeFood && isFieldEnabled('timeFood')) scheduleItems.push({ label: 'Reception', value: inv.timeFood });
+    if (inv.timeBaraat && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Baraat', value: inv.timeBaraat });
+    if (inv.timePhere && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Phere', value: inv.timePhere });
   } else {
-    if (inv.timeFood && invitationFormConfig?.enableFeastTime !== false) scheduleItems.push({ label: 'Feast Time', value: inv.timeFood });
-    if ((inv.timeProgram || inv.timeBaraat) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
-    if ((inv.timeOther || inv.timePhere) && invitationFormConfig?.enableProgramTime !== false) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
+    if (inv.timeFood && isFieldEnabled('timeFood')) scheduleItems.push({ label: 'Feast Time', value: inv.timeFood });
+    if ((inv.timeProgram || inv.timeBaraat) && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Program Time', value: inv.timeProgram || inv.timeBaraat });
+    if ((inv.timeOther || inv.timePhere) && isFieldEnabled('timeProgram')) scheduleItems.push({ label: 'Other Time', value: inv.timeOther || inv.timePhere });
   }
 
   // --- Directory definitions for invite more ---
@@ -461,7 +466,7 @@ export default function InvitationDetailPage() {
                   </>
                 )}
                 
-                {invitationFormConfig?.enableMessage !== false && (
+                {isFieldEnabled('message') && (
                   <p className="text-white/70 text-[13px] font-medium mt-4 z-10 border-t border-white/20 pt-2 px-8">
                     {inv.message || 'You are cordially invited.'}
                   </p>
@@ -551,12 +556,12 @@ export default function InvitationDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex gap-2.5 mt-6">
-            {inv.mapLink && invitationFormConfig?.enableMapLink !== false && (
+            {inv.mapLink && isFieldEnabled('mapLink') && (
               <a href={inv.mapLink} target="_blank" rel="noreferrer" className="flex-1 py-2.5 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-blue-200 transition-colors">
                 <MapPin size={14} /> Directions
               </a>
             )}
-            {inv.contact && invitationFormConfig?.enableContact !== false && (
+            {inv.contact && isFieldEnabled('contact') && (
               <a href={`tel:${inv.contact}`} className="flex-1 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center gap-1.5 font-bold text-[12px] hover:bg-emerald-200 transition-colors">
                 <Phone size={14} /> Call
               </a>

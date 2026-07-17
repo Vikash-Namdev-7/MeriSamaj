@@ -8,6 +8,7 @@ import {
   Lock, Eye, AlertCircle, ClipboardCheck, Globe, EyeOff, Trash2, Edit3, Heart
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { useAuth } from '../../../../core/auth/useAuth';
 import { authService } from '../../../../core/auth/authService';
 // ─── MOCK DATA ───────────────────────────────────────────────────────────────
 const communityData = {
@@ -165,6 +166,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Select', disabl
 const OnboardingScreen = () => {
   const navigate = useNavigate();
   const { loginUser, setLanguage, language } = useData();
+  const { setAuth } = useAuth();
 
   // Onboarding Wizard State
   const [step, setStep] = useState('onboarding-1'); 
@@ -428,6 +430,13 @@ const OnboardingScreen = () => {
       
       // Update local storage with the complete returned object
       localStorage.setItem('merisamaj_registered_user', JSON.stringify(response));
+      
+      // Sync AuthContext user
+      setAuth(prev => ({
+        ...prev,
+        user: response
+      }));
+
       setStep('onboarding-11');
       setToastMessage('Profile saved successfully!');
       setTimeout(() => setToastMessage(''), 3000);

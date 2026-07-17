@@ -4,8 +4,7 @@ const Expense = require('../../models/Expense');
 
 // Helper to get community ID of the head
 const getCommunityId = (req) => {
-  // In a real app, extract from req.user.communityId
-  return req.user?.communityId || 'c1'; 
+  return req.user?.community || req.user?.communityId || 'c1'; 
 };
 
 // 1. Dashboard Stats
@@ -85,12 +84,38 @@ exports.getAllCampaigns = async (req, res) => {
   }
 };
 
+const parseCampaignBody = (body, file) => {
+  const data = { ...body };
+  if (file) {
+    data.bannerImage = file.path;
+  }
+  
+  // Clean up bannerImage if it is not a valid URL/string (e.g. sent as an empty object or string)
+  if (data.bannerImage !== undefined && data.bannerImage !== null) {
+    if (typeof data.bannerImage !== 'string' || data.bannerImage === '[object Object]' || data.bannerImage === '') {
+      delete data.bannerImage;
+    }
+  }
+  
+  if (typeof data.locations === 'string') {
+    try { data.locations = JSON.parse(data.locations); } catch (e) { data.locations = []; }
+  }
+  if (typeof data.targetedMembers === 'string') {
+    try { data.targetedMembers = JSON.parse(data.targetedMembers); } catch (e) { data.targetedMembers = []; }
+  }
+  if (typeof data.targetAudiences === 'string') {
+    try { data.targetAudiences = JSON.parse(data.targetAudiences); } catch (e) { data.targetAudiences = []; }
+  }
+  return data;
+};
+
 // 3. Create Campaign
 exports.createCampaign = async (req, res) => {
   try {
     const community = getCommunityId(req);
+    const parsedData = parseCampaignBody(req.body, req.file);
     const newCampaign = new Campaign({
-      ...req.body,
+      ...parsedData,
       community,
       createdBy: req.user?._id
     });
@@ -105,7 +130,8 @@ exports.createCampaign = async (req, res) => {
 // 4. Update Campaign
 exports.updateCampaign = async (req, res) => {
   try {
-    const campaign = await Campaign.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const parsedData = parseCampaignBody(req.body, req.file);
+    const campaign = await Campaign.findByIdAndUpdate(req.params.id, parsedData, { new: true });
     if (!campaign) return res.status(404).json({ status: 'error', message: 'Campaign not found' });
     res.status(200).json({ status: 'success', data: campaign });
   } catch (error) {

@@ -17,12 +17,16 @@ const headDonationService = {
   },
 
   createCampaign: async (campaignData) => {
-    const response = await axiosPrivate.post('/head/donations/campaigns', campaignData);
+    const response = await axiosPrivate.post('/head/donations/campaigns', campaignData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data.data;
   },
 
   updateCampaign: async (id, campaignData) => {
-    const response = await axiosPrivate.put(`/head/donations/campaigns/${id}`, campaignData);
+    const response = await axiosPrivate.put(`/head/donations/campaigns/${id}`, campaignData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data.data;
   },
 

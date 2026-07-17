@@ -1,0 +1,790 @@
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Layout, Image, Edit2, Link2, Plus, Trash2, Eye, MoveUp, MoveDown, CheckCircle, 
+  HelpCircle, Settings2, PlusCircle, AlertCircle, Save, Check, RefreshCw
+} from 'lucide-react';
+import { useData } from '../../../member/context/DataProvider';
+import { useHeadAuth } from '../../auth/useHeadAuth';
+import { useCommunitySettings } from '../settings/hooks/useCommunitySettings';
+import * as LucideIcons from 'lucide-react';
+
+export const HomepageContentManager = () => {
+  const { currentUser } = useData();
+  const { headAuth } = useHeadAuth();
+  const headUser = headAuth?.headUser;
+
+  // Deriving isolated community ID
+  const communityId = useMemo(() => {
+    return headUser?.communityId || 
+           headUser?.community?.toLowerCase().replace(/\s/g, '_') || 
+           currentUser?.communityId || 
+           currentUser?.community?.toLowerCase().replace(/\s/g, '_') || 
+           'cm_123';
+  }, [headUser, currentUser]);
+
+  const {
+    settings,
+    loading,
+    saving,
+    hasUnsavedChanges,
+    updateDraft,
+    saveSettings,
+    discardChanges
+  } = useCommunitySettings(communityId);
+
+  const [activeTab, setActiveTab] = useState('hero'); // 'hero' | 'features' | 'promotions'
+  const [toast, setToast] = useState(null);
+  
+  // Modals / Editor States
+  const [editingFeature, setEditingFeature] = useState(null);
+  const [editingPromotion, setEditingPromotion] = useState(null);
+  const [isAddingPromo, setIsAddingPromo] = useState(false);
+
+  // New Promo form state
+  const [newPromo, setNewPromo] = useState({
+    title: '',
+    desc: '',
+    image: '',
+    buttonText: '',
+    buttonLink: '',
+    enabled: true
+  });
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+
+  const handleSave = async () => {
+    const success = await saveSettings();
+    if (success) {
+      showToast('Homepage settings saved successfully!');
+    } else {
+      showToast('Failed to save settings.');
+    }
+  };
+
+  // Helper to extract homepageContent safely with default structures
+  const homepageContent = useMemo(() => {
+    const defaultHero = {
+      backgroundImage: '',
+      title: 'Welcome to our Samaj Hub',
+      subtitle: 'Connecting and empowering community members across the region.',
+      buttonText: 'Directory Search',
+      buttonLink: '/member/directory'
+    };
+    const defaultFeatures = [
+      { id: 'professional', label: 'Professional Network', desc: 'Find jobs & hire within the community', path: '/member/professional', icon: 'Briefcase', displayOrder: 1, enabled: true },
+      { id: 'directory', label: 'Directory', desc: 'Browse Samaj Members', path: '/member/directory', icon: 'BookOpen', displayOrder: 2, enabled: true },
+      { id: 'groups', label: 'Groups', desc: 'Discussions', path: '/member/groups', icon: 'Users', displayOrder: 3, enabled: true },
+      { id: 'voting', label: 'Voting', desc: 'Community Polls', path: '/member/voting', icon: 'Vote', displayOrder: 4, enabled: true },
+      { id: 'dharmashala', label: 'Dharmashala', desc: 'Book Rooms', path: '/member/dharmashala', icon: 'Home', displayOrder: 5, enabled: true },
+      { id: 'fund', label: 'Samaj Fund', desc: 'Community Fund', path: '/member/fund', icon: 'Wallet', displayOrder: 6, enabled: true }
+    ];
+
+    const content = settings?.homepageContent || {};
+    return {
+      hero: { ...defaultHero, ...content.hero },
+      exclusiveFeatures: Array.isArray(content.exclusiveFeatures) ? content.exclusiveFeatures : defaultFeatures,
+      promotions: Array.isArray(content.promotions) ? content.promotions : []
+    };
+  }, [settings]);
+
+  // Update specific sub-nodes
+  const updateHeroField = (field, value) => {
+    const newHero = { ...homepageContent.hero, [field]: value };
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      hero: newHero
+    });
+  };
+
+  const toggleFeatureStatus = (id) => {
+    const updatedFeatures = homepageContent.exclusiveFeatures.map(f => 
+      f.id === id ? { ...f, enabled: !f.enabled } : f
+    );
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      exclusiveFeatures: updatedFeatures
+    });
+    showToast('Toggled feature visibility status');
+  };
+
+  const reorderFeature = (index, direction) => {
+    const features = [...homepageContent.exclusiveFeatures];
+    if (direction === 'up' && index > 0) {
+      const temp = features[index];
+      features[index] = features[index - 1];
+      features[index - 1] = temp;
+    } else if (direction === 'down' && index < features.length - 1) {
+      const temp = features[index];
+      features[index] = features[index + 1];
+      features[index + 1] = temp;
+    }
+    
+    // Recalculate displayOrder
+    const updated = features.map((f, i) => ({ ...f, displayOrder: i + 1 }));
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      exclusiveFeatures: updated
+    });
+  };
+
+  const saveFeatureEdit = (e) => {
+    e.preventDefault();
+    const updatedFeatures = homepageContent.exclusiveFeatures.map(f => 
+      f.id === editingFeature.id ? editingFeature : f
+    );
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      exclusiveFeatures: updatedFeatures
+    });
+    setEditingFeature(null);
+    showToast('Updated feature card configurations');
+  };
+
+  const togglePromotionStatus = (id) => {
+    const updatedPromos = homepageContent.promotions.map(p => 
+      p.id === id ? { ...p, enabled: !p.enabled } : p
+    );
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      promotions: updatedPromos
+    });
+  };
+
+  const deletePromotion = (id) => {
+    const updatedPromos = homepageContent.promotions.filter(p => p.id !== id);
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      promotions: updatedPromos
+    });
+    showToast('Deleted promotional banner card');
+  };
+
+  const handleAddPromotion = (e) => {
+    e.preventDefault();
+    if (!newPromo.title) return;
+    const item = {
+      ...newPromo,
+      id: `promo_${Date.now()}`
+    };
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      promotions: [...homepageContent.promotions, item]
+    });
+    setIsAddingPromo(false);
+    setNewPromo({ title: '', desc: '', image: '', buttonText: '', buttonLink: '', enabled: true });
+    showToast('Created new promotional banner');
+  };
+
+  const savePromoEdit = (e) => {
+    e.preventDefault();
+    const updatedPromos = homepageContent.promotions.map(p => 
+      p.id === editingPromotion.id ? editingPromotion : p
+    );
+    updateDraft('homepageContent', undefined, {
+      ...homepageContent,
+      promotions: updatedPromos
+    });
+    setEditingPromotion(null);
+    showToast('Updated promotional configurations');
+  };
+
+  // Helper for dynamic Lucide Icon rendering
+  const renderIconComponent = (iconName) => {
+    const IconComp = LucideIcons[iconName];
+    if (IconComp) {
+      return <IconComp size={18} />;
+    }
+    return <LucideIcons.HelpCircle size={18} />;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <RefreshCw size={28} className="text-indigo-600 animate-spin" />
+        <span className="text-sm font-semibold text-slate-500">Loading home content settings...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 pb-16 relative">
+      
+      {/* ─── TOAST NOTIFICATION ─── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-semibold"
+          >
+            <CheckCircle size={16} />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── STICKY SAVE BAR ─── */}
+      <AnimatePresence>
+        {hasUnsavedChanges && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-5 py-3.5 rounded-2xl bg-amber-500 text-amber-950 shadow-2xl flex items-center justify-between border border-amber-405"
+          >
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="shrink-0" />
+              <div>
+                <h4 className="font-bold text-xs">Unsaved changes in homepage layout</h4>
+                <p className="text-[10px] opacity-80">You have modified the homepage layout configs. Please save to apply changes.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={discardChanges}
+                className="px-3 py-1.5 rounded-lg border border-amber-950/20 hover:bg-amber-600 text-[10px] font-bold transition-all cursor-pointer"
+              >
+                Discard
+              </button>
+              <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-1.5 rounded-lg bg-amber-950 text-amber-100 text-[10px] font-bold hover:bg-amber-900 transition-all flex items-center gap-1 cursor-pointer"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── HEADER ─── */}
+      <div className="bg-white p-6 border border-slate-100 rounded-2xl shadow-sm relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <Layout size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Homepage Content Management</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Customize static layout and features for: <strong className="text-slate-655">{headUser?.community || 'Agrawal Samaj'}</strong></p>
+          </div>
+        </div>
+
+        {hasUnsavedChanges && (
+          <button 
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Save size={14} /> {saving ? 'Saving...' : 'Save All Changes'}
+          </button>
+        )}
+      </div>
+
+      {/* ─── TABS SELECTOR ─── */}
+      <div className="flex bg-white p-1.5 border border-slate-100 rounded-xl shadow-sm gap-2">
+        <button
+          onClick={() => setActiveTab('hero')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === 'hero' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Image size={14} /> Hero Banner
+        </button>
+        <button
+          onClick={() => setActiveTab('features')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === 'features' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Settings2 size={14} /> Exclusive Features (Bento)
+        </button>
+        <button
+          onClick={() => setActiveTab('promotions')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === 'promotions' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <PlusCircle size={14} /> Custom Promo &amp; CTAs
+        </button>
+      </div>
+
+      {/* ─── TABS BODY ─── */}
+      <div className="bg-white p-6 border border-slate-100 rounded-2xl shadow-sm space-y-6">
+
+        {/* 1. HERO BANNER TAB */}
+        {activeTab === 'hero' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Hero Banner Customization</h3>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Banner Background Image URL</label>
+                <input 
+                  type="text" 
+                  placeholder="Paste direct Unsplash or Image CDN link..." 
+                  value={homepageContent.hero.backgroundImage}
+                  onChange={(e) => updateHeroField('backgroundImage', e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-slate-700"
+                />
+                <span className="text-[9px] text-slate-450 block italic">Leave empty to use the standard landing illustration background.</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Banner Title</label>
+                <input 
+                  type="text" 
+                  value={homepageContent.hero.title}
+                  onChange={(e) => updateHeroField('title', e.target.value)}
+                  placeholder="e.g. Welcome to our Samaj Hub"
+                  className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-slate-700"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Banner Subtitle / Tagline</label>
+                <textarea 
+                  rows={3}
+                  value={homepageContent.hero.subtitle}
+                  onChange={(e) => updateHeroField('subtitle', e.target.value)}
+                  placeholder="e.g. Connecting and empowering community members across the region."
+                  className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-slate-700"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">CTA Button Text</label>
+                  <input 
+                    type="text" 
+                    value={homepageContent.hero.buttonText}
+                    onChange={(e) => updateHeroField('buttonText', e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">CTA Button Link</label>
+                  <input 
+                    type="text" 
+                    value={homepageContent.hero.buttonLink}
+                    onChange={(e) => updateHeroField('buttonLink', e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* PREVIEW CONTAINER */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                <Eye size={14} className="text-slate-400" /> Member App Banner Live Preview
+              </h3>
+              
+              <div className="relative w-full rounded-2xl overflow-hidden border border-slate-100 shadow-sm" style={{ minHeight: '220px' }}>
+                <img 
+                  src={homepageContent.hero.backgroundImage || 'https://images.unsplash.com/photo-1595844730298-b9f149588260?auto=format&fit=crop&w=800&q=80'} 
+                  alt="samaj landmark"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#3C1777]/80 via-[#4C1D95]/45 to-[#1e1145]/90" />
+                
+                <div className="absolute inset-0 p-5 flex flex-col justify-between text-white relative z-10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold bg-white/20 border border-white/20 px-2.5 py-0.5 rounded-full uppercase">
+                      {headUser?.community || 'Agrawal Samaj'}
+                    </span>
+                    <span className="text-[9px] text-white/60">Member Portal View</span>
+                  </div>
+
+                  <div className="space-y-2 mt-auto text-left">
+                    <h1 className="text-lg font-bold tracking-tight drop-shadow-md">
+                      {homepageContent.hero.title || 'Welcome to our Samaj Hub'}
+                    </h1>
+                    <p className="text-[11px] text-white/70 max-w-sm leading-snug">
+                      {homepageContent.hero.subtitle || 'Connecting and empowering community members across the region.'}
+                    </p>
+                    
+                    <button className="px-3.5 py-1.5 bg-white text-indigo-950 font-bold rounded-lg text-[10px] mt-2 shadow-md">
+                      {homepageContent.hero.buttonText} →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. EXCLUSIVE FEATURES TAB */}
+        {activeTab === 'features' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-800">Configure Bento Exclusive Features Grid</h3>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">6 standard slots max</span>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+              <table className="w-full text-left border-collapse text-xs text-slate-700">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-450 tracking-wider bg-slate-50/50">
+                    <th className="p-3">Order</th>
+                    <th className="p-3">Icon</th>
+                    <th className="p-3">Label / Title</th>
+                    <th className="p-3">Description</th>
+                    <th className="p-3">App Action Link</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {homepageContent.exclusiveFeatures.map((feat, idx) => (
+                    <tr key={feat.id} className="hover:bg-slate-50/40 transition-all">
+                      <td className="p-3">
+                        <div className="flex items-center gap-1">
+                          <button 
+                            disabled={idx === 0}
+                            onClick={() => reorderFeature(idx, 'up')}
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-500 disabled:opacity-30 cursor-pointer"
+                          >
+                            <MoveUp size={10} />
+                          </button>
+                          <button 
+                            disabled={idx === homepageContent.exclusiveFeatures.length - 1}
+                            onClick={() => reorderFeature(idx, 'down')}
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-500 disabled:opacity-30 cursor-pointer"
+                          >
+                            <MoveDown size={10} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                          {renderIconComponent(feat.icon)}
+                        </span>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800">{feat.label}</td>
+                      <td className="p-3 text-slate-400 max-w-xs truncate">{feat.desc}</td>
+                      <td className="p-3 font-mono text-[10px] text-indigo-500">{feat.path}</td>
+                      <td className="p-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${
+                          feat.enabled 
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                            : 'bg-slate-50 text-slate-400 border-slate-100'
+                        }`}>
+                          {feat.enabled ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => toggleFeatureStatus(feat.id)}
+                            className={`px-2 py-1 rounded text-[10px] font-bold transition-all border cursor-pointer ${
+                              feat.enabled 
+                                ? 'bg-slate-50 border-slate-200 text-slate-650' 
+                                : 'bg-emerald-50 border-emerald-250 text-emerald-600'
+                            }`}
+                          >
+                            {feat.enabled ? 'Disable' : 'Enable'}
+                          </button>
+                          <button 
+                            onClick={() => setEditingFeature(feat)}
+                            className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-500 cursor-pointer"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 3. PROMOTIONS & CTA TAB */}
+        {activeTab === 'promotions' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-800">Manage Custom Promotional Banners</h3>
+              <button 
+                onClick={() => setIsAddingPromo(true)}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1 shadow-sm"
+              >
+                <Plus size={14} /> Add New Banner
+              </button>
+            </div>
+
+            {homepageContent.promotions.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 border border-slate-100 rounded-xl">
+                <HelpCircle className="mx-auto text-slate-300 mb-2" size={24} />
+                <h4 className="text-xs font-bold text-slate-650">No promotional banners defined yet</h4>
+                <p className="text-[10px] text-slate-400 mt-1">Add banners below the census grid to promote community campaigns, referrals or custom links.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {homepageContent.promotions.map((promo) => (
+                  <div key={promo.id} className="border border-slate-150 rounded-xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition-all">
+                    <div className="flex items-start gap-4">
+                      <div className="min-w-0 flex-1 text-left space-y-1">
+                        <h4 className="font-bold text-slate-800 truncate leading-tight">{promo.title}</h4>
+                        <p className="text-[10.5px] text-slate-450 line-clamp-2 leading-relaxed">{promo.desc}</p>
+                        {promo.buttonLink && (
+                          <div className="flex items-center gap-1 text-[9px] font-mono text-indigo-500 truncate">
+                            <Link2 size={10} /> {promo.buttonLink}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                      <span className={`px-2 py-0.5 rounded text-[8.5px] font-semibold ${
+                        promo.enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
+                      }`}>
+                        {promo.enabled ? 'Live on app' : 'Draft'}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => togglePromotionStatus(promo.id)}
+                          className="px-2 py-1 rounded bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] font-semibold text-slate-655 cursor-pointer"
+                        >
+                          {promo.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button 
+                          onClick={() => setEditingPromotion(promo)}
+                          className="p-1.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 cursor-pointer"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+                        <button 
+                          onClick={() => deletePromotion(promo.id)}
+                          className="p-1.5 rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─── ADD PROMOTION MODAL ─── */}
+      <AnimatePresence>
+        {isAddingPromo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <PlusCircle className="text-indigo-650" size={16} /> Add Promotional Banner Card
+                </h3>
+                <button onClick={() => setIsAddingPromo(false)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 cursor-pointer">
+                  <LucideIcons.X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddPromotion} className="space-y-4 text-left">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Banner Title *</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. Join the samaj marriage forum"
+                    value={newPromo.title}
+                    onChange={(e) => setNewPromo({...newPromo, title: e.target.value})}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description text</label>
+                  <textarea 
+                    rows={2}
+                    placeholder="Provide short explanation here..."
+                    value={newPromo.desc}
+                    onChange={(e) => setNewPromo({...newPromo, desc: e.target.value})}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                  />
+                </div>
+
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Button label</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Find Match"
+                      value={newPromo.buttonText}
+                      onChange={(e) => setNewPromo({...newPromo, buttonText: e.target.value})}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Button path link</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. /member/matrimonial"
+                      value={newPromo.buttonLink}
+                      onChange={(e) => setNewPromo({...newPromo, buttonLink: e.target.value})}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                >
+                  Create Promotional Card
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── EDIT EXCLUSIVE FEATURE DIALOG MODAL ─── */}
+      <AnimatePresence>
+        {editingFeature && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Edit2 className="text-indigo-650" size={15} /> Edit Bento Feature Card
+                </h3>
+                <button onClick={() => setEditingFeature(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 cursor-pointer">
+                  <LucideIcons.X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={saveFeatureEdit} className="space-y-4 text-left">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Feature Title</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editingFeature.label}
+                    onChange={(e) => setEditingFeature({...editingFeature, label: e.target.value})}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Feature Sub-text / Desc</label>
+                  <textarea 
+                    rows={3}
+                    value={editingFeature.desc}
+                    onChange={(e) => setEditingFeature({...editingFeature, desc: e.target.value})}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Lucide Icon Name</label>
+                  <input 
+                    type="text" 
+                    value={editingFeature.icon}
+                    onChange={(e) => setEditingFeature({...editingFeature, icon: e.target.value})}
+                    placeholder="e.g. Briefcase, BookOpen, Users"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2"
+                  />
+                </div>
+
+
+
+                <button 
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer animate-fade-in"
+                >
+                  Save Feature Card Config
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── EDIT PROMOTION MODAL ─── */}
+      <AnimatePresence>
+        {editingPromotion && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Edit2 className="text-indigo-650" size={15} /> Edit Promotion Settings
+                </h3>
+                <button onClick={() => setEditingPromotion(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 cursor-pointer">
+                  <LucideIcons.X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={savePromoEdit} className="space-y-4 text-left">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Promo Title</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editingPromotion.title}
+                    onChange={(e) => setEditingPromotion({...editingPromotion, title: e.target.value})}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Promo Tagline / Description</label>
+                  <textarea 
+                    rows={2}
+                    value={editingPromotion.desc}
+                    onChange={(e) => setEditingPromotion({...editingPromotion, desc: e.target.value})}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
+                  />
+                </div>
+
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Button Label</label>
+                    <input 
+                      type="text" 
+                      value={editingPromotion.buttonText}
+                      onChange={(e) => setEditingPromotion({...editingPromotion, buttonText: e.target.value})}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Button Link Link</label>
+                    <input 
+                      type="text" 
+                      value={editingPromotion.buttonLink}
+                      onChange={(e) => setEditingPromotion({...editingPromotion, buttonLink: e.target.value})}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                >
+                  Save Promotion
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+};
+
+export default HomepageContentManager;

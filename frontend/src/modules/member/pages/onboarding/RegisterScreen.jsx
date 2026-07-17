@@ -143,6 +143,9 @@ const RegisterScreen = () => {
         referralCode: referralCodeInput
       });
       
+      localStorage.setItem('merisamaj_register_phone', registerPhone);
+      localStorage.setItem('merisamaj_register_email', registerEmail);
+      
       setToastMessage('Registration successful! Launching profile setup.');
       setTimeout(() => {
         // Fallback backward compat
@@ -151,6 +154,8 @@ const RegisterScreen = () => {
       }, 1000);
     } catch (error) {
       setToastMessage(error?.response?.data?.message || 'Registration error. Simulated success used.');
+      localStorage.setItem('merisamaj_register_phone', registerPhone);
+      localStorage.setItem('merisamaj_register_email', registerEmail);
       setTimeout(() => {
         loginUser({ name: 'New User', mobile: registerPhone, email: registerEmail, isVerified: true });
         navigate('/member/onboarding');

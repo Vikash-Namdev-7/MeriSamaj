@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, RefreshCw, Eye, Edit, Trash2, Users, HeartHandshake, AlertCircle, IndianRupee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import headDonationService from '../../../../core/api/headDonationService';
+import { useHeadAuth } from '../../auth/useHeadAuth';
 
 import DonationFormModal from './components/DonationFormModal';
 import DonationDetailModal from './components/DonationDetailModal';
@@ -11,9 +12,10 @@ import ExpenseManagementModal from './components/ExpenseManagementModal';
 import LedgerView from './components/LedgerView';
 
 const DonationManagement = () => {
+  const { headAuth } = useHeadAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [stats, setStats] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Filter & Search
   const [activeTab, setActiveTab] = useState('All');
@@ -45,8 +47,10 @@ const DonationManagement = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (headAuth.isAuthenticated) {
+      fetchDashboardData();
+    }
+  }, [headAuth.isAuthenticated]);
 
   const handleAction = (action, campaign = null) => {
     setSelectedCampaign(campaign);
@@ -68,16 +72,32 @@ const DonationManagement = () => {
 
   const handleFormSubmit = async (formData) => {
     try {
+      const data = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'bannerImage') {
+          if (formData[key] instanceof File) {
+            data.append('bannerImage', formData[key]);
+          } else if (typeof formData[key] === 'string') {
+            data.append('bannerImage', formData[key]);
+          }
+        } else if (Array.isArray(formData[key])) {
+          data.append(key, JSON.stringify(formData[key]));
+        } else if (formData[key] !== undefined && formData[key] !== null) {
+          data.append(key, formData[key]);
+        }
+      });
+
       if (selectedCampaign) {
-        await headDonationService.updateCampaign(selectedCampaign.id || selectedCampaign._id, formData);
+        await headDonationService.updateCampaign(selectedCampaign.id || selectedCampaign._id, data);
       } else {
-        await headDonationService.createCampaign(formData);
+        await headDonationService.createCampaign(data);
       }
       setIsFormOpen(false);
       fetchDashboardData();
     } catch (error) {
       console.error('Submission failed', error);
-      alert('Action failed. Please check console for details.');
+      const errMsg = error.response?.data?.message || error.message;
+      alert(`Action failed: ${errMsg}`);
     }
   };
 

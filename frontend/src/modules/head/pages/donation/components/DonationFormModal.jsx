@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, IndianRupee, Image, Info, Users, Settings, Search, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { X, Save, IndianRupee, Image, Info, Users, Settings, Search, ChevronDown, ChevronUp, Check, Upload, Trash2 } from 'lucide-react';
 import { useData } from '../../../../member/context/DataProvider';
 
 const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
@@ -53,9 +53,9 @@ const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
 
   const toggleLocation = (loc) => {
     setFormData(prev => {
-      const locations = prev.locations.includes(city)
-        ? prev.locations.filter(l => l !== city)
-        : [...prev.locations, city];
+      const locations = prev.locations.includes(loc)
+        ? prev.locations.filter(l => l !== loc)
+        : [...prev.locations, loc];
       return { ...prev, locations };
     });
   };
@@ -68,6 +68,37 @@ const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       return { ...prev, targetedMembers };
     });
   };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => ({ ...prev, bannerImage: file }));
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setFormData(prev => ({ ...prev, bannerImage: file }));
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, bannerImage: '' }));
+  };
+
+  const imagePreview = useMemo(() => {
+    if (!formData.bannerImage) return null;
+    if (formData.bannerImage instanceof File) {
+      return URL.createObjectURL(formData.bannerImage);
+    }
+    return formData.bannerImage;
+  }, [formData.bannerImage]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -205,6 +236,44 @@ const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all resize-none"
                         placeholder="Detailed information about the cause..."
                       ></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Campaign Banner Image</label>
+                      
+                      {imagePreview ? (
+                        <div className="relative rounded-2xl overflow-hidden border border-gray-200 h-40 bg-gray-50 flex items-center justify-center">
+                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={removeImage}
+                            className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors shadow-md"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          className="border-2 border-dashed border-gray-300 hover:border-brand-primary rounded-2xl p-6 text-center transition-colors cursor-pointer bg-gray-50/50 flex flex-col items-center justify-center gap-2 group"
+                          onClick={() => document.getElementById('banner-image-file').click()}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-purple-50 group-hover:bg-purple-100 flex items-center justify-center transition-colors">
+                            <Upload size={18} className="text-brand-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-700">Click to upload or drag & drop</p>
+                            <p className="text-[10px] text-gray-500 mt-1">PNG, JPG or JPEG (Max 5MB)</p>
+                          </div>
+                          <input
+                            type="file"
+                            id="banner-image-file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

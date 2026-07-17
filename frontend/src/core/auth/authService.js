@@ -1,4 +1,5 @@
 import { axiosPublic } from '../api/axiosConfig';
+import { axiosPrivate } from '../api/axiosPrivate';
 
 export const authService = {
   login: async (credentials) => {
@@ -43,7 +44,7 @@ export const authService = {
   updateProfile: async (profileData) => {
     // Determine if data is FormData (for file uploads) or normal object
     const isFormData = profileData instanceof FormData;
-    const response = await axiosPublic.put('/auth/update-profile', profileData, {
+    const response = await axiosPrivate.put('/auth/update-profile', profileData, {
       headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
       withCredentials: true
     });

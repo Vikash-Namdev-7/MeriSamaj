@@ -200,72 +200,97 @@ export const MemberManagement = () => {
     showToast(`Exported ${filteredMembers.length} records in ${format} format!`);
   };
 
+  const handleApprove = (id, name) => {
+    verifyMember(id);
+    showToast(`Approved membership for ${name}!`);
+    if (verificationDoc?.id === id) setVerificationDoc(null);
+    if (activeDrawerMember?.id === id) setActiveDrawerMember(null);
+  };
+
+  const handleReject = (id, name) => {
+    rejectMember(id);
+    showToast(`Rejected membership for ${name}`);
+    if (verificationDoc?.id === id) setVerificationDoc(null);
+    if (activeDrawerMember?.id === id) setActiveDrawerMember(null);
+  };
+
   return (
-    <div className="space-y-6 pb-16 relative text-black [&_*]:!text-black">
+    <div className="space-y-6 pb-16 relative">
       
       {/* ─── TOAST NOTIFICATION ─── */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-55 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 backdrop-blur-md animate-fade-in font-bold text-xs tracking-wider">
-          <CheckCircle2 size={16} />
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-semibold"
+          >
+            <CheckCircle2 size={16} />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── PAGE HEADER & STATS ─── */}
-      <section className="card-neo p-6 relative overflow-hidden flex flex-col gap-6">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-brand-primary/5 rounded-full filter blur-3xl pointer-events-none" />
+      <section className="bg-white p-6 border border-slate-100 rounded-2xl shadow-sm relative overflow-hidden flex flex-col gap-6">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-          <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              <Users className="text-purple-400" />
-              Member Directory Governance
-            </h2>
-            <p className="text-xs text-text-muted mt-0.5">Council Head Executive Panel: {headCommunityName}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+              <Users size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                Member Directory Governance
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">Council Head Executive Panel: {headCommunityName}</p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button 
               onClick={() => setActiveModal('add')}
-              className="px-4 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-bold uppercase tracking-wider press-scale flex items-center gap-2 shadow"
+              className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm shadow-indigo-500/10 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <UserPlus size={14} /> Add Member
             </button>
             
             {/* Export options */}
             <div className="relative group">
-              <button className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider border border-white/5 flex items-center gap-2">
+              <button className="px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-650 text-xs font-semibold border border-slate-200/80 flex items-center gap-1.5 cursor-pointer">
                 <Download size={14} /> Export <ChevronDown size={12} />
               </button>
-              <div className="absolute right-0 top-full mt-1.5 w-36 bg-gradient-to-b from-[#13093a] to-[#21124f] border border-white/10 rounded-xl overflow-hidden shadow-2xl invisible group-hover:visible z-20">
+              <div className="absolute right-0 top-full mt-1.5 w-36 bg-white border border-slate-100 rounded-xl overflow-hidden shadow-xl invisible group-hover:visible z-20 transition-all duration-200">
                 {['CSV', 'Excel', 'PDF'].map((fmt) => (
                   <button 
                     key={fmt}
                     onClick={() => handleExport(fmt)}
-                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-purple-200 hover:bg-white/5 hover:text-white transition-all"
+                    className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer"
                   >
                     Export as {fmt}
                   </button>
                 ))}
                 <button 
                   onClick={() => window.print()}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-purple-200 border-t border-white/5 hover:bg-white/5 hover:text-white transition-all"
+                  className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-600 border-t border-slate-100 hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer"
                 >
                   Print Directory
                 </button>
               </div>
             </div>
 
-            <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+            <div className="flex bg-slate-50 border border-slate-200/80 rounded-lg p-0.5">
               <button 
                 onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-brand-primary text-white' : 'text-text-muted hover:text-white'}`}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${viewMode === 'table' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 <List size={14} />
               </button>
               <button 
                 onClick={() => setViewMode('directory')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'directory' ? 'bg-brand-primary text-white' : 'text-text-muted hover:text-white'}`}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${viewMode === 'directory' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 <Grid size={14} />
               </button>
@@ -275,38 +300,38 @@ export const MemberManagement = () => {
 
         {/* Dynamic counters grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Samaj Members</span>
-            <h3 className="text-xl font-black text-white mt-1">{stats.total}</h3>
+          <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Samaj Members</span>
+            <h3 className="text-xl font-bold text-slate-800 mt-1">{stats.total}</h3>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Pending Approvals</span>
-            <h3 className="text-xl font-black text-amber-400 mt-1">{stats.pending}</h3>
+          <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+            <span className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">Pending Approvals</span>
+            <h3 className="text-xl font-bold text-amber-600 mt-1">{stats.pending}</h3>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Verified Accounts</span>
-            <h3 className="text-xl font-black text-emerald-400 mt-1">{stats.verified}</h3>
+          <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+            <span className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider">Verified Accounts</span>
+            <h3 className="text-xl font-bold text-emerald-600 mt-1">{stats.verified}</h3>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-            <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Active Members</span>
-            <h3 className="text-xl font-black text-purple-200 mt-1">{stats.active}</h3>
+          <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
+            <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">Active Members</span>
+            <h3 className="text-xl font-bold text-indigo-600 mt-1">{stats.active}</h3>
           </div>
         </div>
 
       </section>
 
       {/* ─── FILTERS & CONTROLS ─── */}
-      <section className="card-neo p-5 space-y-4">
+      <section className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search box */}
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
               placeholder="Search directory by Name, Mobile, ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-brand-primary transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50/50 border border-slate-200/80 rounded-lg text-xs text-slate-850 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 transition-all"
             />
           </div>
 
@@ -315,7 +340,7 @@ export const MemberManagement = () => {
             <select 
               value={filters.city}
               onChange={(e) => setFilters({...filters, city: e.target.value})}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-purple-200 outline-none focus:border-brand-primary"
+              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
             >
               <option value="all">All Cities</option>
               <option value="indore">Indore</option>
@@ -327,7 +352,7 @@ export const MemberManagement = () => {
             <select 
               value={filters.gender}
               onChange={(e) => setFilters({...filters, gender: e.target.value})}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-purple-200 outline-none focus:border-brand-primary"
+              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
             >
               <option value="all">All Genders</option>
               <option value="Male">Male</option>
@@ -338,7 +363,7 @@ export const MemberManagement = () => {
             <select 
               value={filters.verification}
               onChange={(e) => setFilters({...filters, verification: e.target.value})}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-purple-200 outline-none focus:border-brand-primary"
+              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
             >
               <option value="all">Verification Status</option>
               <option value="verified">Verified Only</option>
@@ -349,7 +374,7 @@ export const MemberManagement = () => {
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-purple-200 outline-none focus:border-brand-primary"
+              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
             >
               <option value="newest">Sort: Newest</option>
               <option value="oldest">Sort: Oldest</option>
@@ -359,11 +384,11 @@ export const MemberManagement = () => {
         </div>
 
         {/* Filter Action panel */}
-        <div className="flex items-center justify-between border-t border-white/5 pt-3">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Filtered: {filteredMembers.length} Accounts found</span>
+        <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Filtered: {filteredMembers.length} Accounts found</span>
           <button 
             onClick={handleResetFilters}
-            className="text-[10px] font-black text-rose-400 hover:text-white uppercase tracking-wider"
+            className="text-[10px] font-semibold text-rose-500 hover:text-rose-600 uppercase tracking-wider cursor-pointer"
           >
             Clear Filters
           </button>
@@ -372,13 +397,13 @@ export const MemberManagement = () => {
 
       {/* ─── STICKY BULK ACTIONS BAR ─── */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gradient-to-r from-purple-950 via-indigo-950 to-purple-900 border border-purple-500/30 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 text-xs font-bold text-white animate-slide-up">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 border border-slate-800 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 text-xs font-semibold text-white animate-slide-up">
           <span>{selectedIds.length} members selected</span>
           <div className="h-4 w-[1px] bg-white/15" />
           <div className="flex gap-2">
-            <button onClick={() => handleBulkAction('verify')} className="px-3 py-1 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/25">Approve</button>
-            <button onClick={() => handleBulkAction('suspend')} className="px-3 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/25">Suspend</button>
-            <button onClick={() => setSelectedIds([])} className="px-2 py-1 text-text-muted hover:text-white">Cancel</button>
+            <button onClick={() => handleBulkAction('verify')} className="px-3 py-1 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/25 cursor-pointer">Approve</button>
+            <button onClick={() => handleBulkAction('suspend')} className="px-3 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/25 cursor-pointer">Suspend</button>
+            <button onClick={() => setSelectedIds([])} className="px-2 py-1 text-slate-400 hover:text-white cursor-pointer">Cancel</button>
           </div>
         </div>
       )}
@@ -386,11 +411,11 @@ export const MemberManagement = () => {
       {/* ─── PRIMARY CONTENT SWITCH ─── */}
       {viewMode === 'table' ? (
         /* TABLE LIST VIEW */
-        <div className="card-neo p-5 space-y-4">
-          <div className="overflow-x-auto rounded-2xl border border-white/5 bg-white/3">
-            <table className="w-full text-left border-collapse text-xs text-white">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+            <table className="w-full text-left border-collapse text-xs text-slate-700">
               <thead>
-                <tr className="border-b border-white/5 text-[10px] font-black uppercase text-text-muted tracking-wider bg-white/5">
+                <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400 tracking-wider bg-slate-50/50">
                   <th className="p-3.5 w-10">
                     <input 
                       type="checkbox" 
@@ -399,7 +424,7 @@ export const MemberManagement = () => {
                         if (e.target.checked) setSelectedIds(filteredMembers.map(m => m.id));
                         else setSelectedIds([]);
                       }}
-                      className="w-4 h-4 rounded bg-white/5 border-white/10 accent-purple-600"
+                      className="w-4 h-4 rounded bg-slate-50 border-slate-200 accent-indigo-600 cursor-pointer"
                     />
                   </th>
                   <th className="p-3.5">Member Details</th>
@@ -410,10 +435,10 @@ export const MemberManagement = () => {
                   <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="p-8 text-center text-text-muted">
+                    <td colSpan="7" className="p-8 text-center text-slate-400">
                       No members match the query filters.
                     </td>
                   </tr>
@@ -421,7 +446,7 @@ export const MemberManagement = () => {
                   filteredMembers.map((member) => {
                     const isChecked = selectedIds.includes(member.id);
                     return (
-                      <tr key={member.id} className="hover:bg-white/5 transition-all">
+                      <tr key={member.id} className="hover:bg-slate-50/40 transition-all">
                         <td className="p-3.5">
                           <input 
                             type="checkbox" 
@@ -430,31 +455,31 @@ export const MemberManagement = () => {
                               if (isChecked) setSelectedIds(selectedIds.filter(id => id !== member.id));
                               else setSelectedIds([...selectedIds, member.id]);
                             }}
-                            className="w-4 h-4 rounded bg-white/5 border-white/10 accent-purple-600"
+                            className="w-4 h-4 rounded bg-slate-50 border-slate-200 accent-indigo-600 cursor-pointer"
                           />
                         </td>
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
                             <Avatar initials={member.initials} size="sm" imageUrl={member.avatar} />
                             <div>
-                              <h4 className="font-bold text-white leading-tight">{member.name}</h4>
-                              <p className="text-[10px] text-text-muted mt-0.5">{member.city} • {member.profession || 'Business'}</p>
+                              <h4 className="font-semibold text-slate-800 leading-tight">{member.name}</h4>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{member.city} • {member.profession || 'Business'}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3.5 font-mono tracking-wider text-purple-300 font-bold">{member.memberId}</td>
+                        <td className="p-3.5 font-mono tracking-wider text-indigo-600 font-semibold">{member.memberId}</td>
                         <td className="p-3.5">
-                          <p className="text-white font-bold">{member.phone}</p>
-                          <p className="text-[9px] text-text-muted font-medium mt-0.5">{member.email}</p>
+                          <p className="text-slate-800 font-semibold">{member.phone}</p>
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">{member.email}</p>
                         </td>
-                        <td className="p-3.5 font-bold">{member.familySize} Members</td>
+                        <td className="p-3.5 font-semibold text-slate-700">{member.familySize} Members</td>
                         <td className="p-3.5">
                           {member.isVerified ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100/60">
                               <ShieldCheck size={9} /> Verified
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100/60 animate-pulse">
                               <AlertCircle size={9} /> Pending
                             </span>
                           )}
@@ -463,21 +488,21 @@ export const MemberManagement = () => {
                           <div className="flex items-center justify-end gap-1.5">
                             <button 
                               onClick={() => setActiveDrawerMember(member)}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-brand-primary text-purple-200 hover:text-white transition-all"
+                              className="p-1.5 rounded-md bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-500 cursor-pointer transition-all"
                             >
                               <Eye size={12} />
                             </button>
                             {!member.isVerified ? (
                               <button 
                                 onClick={() => setVerificationDoc(member)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500 text-emerald-350 hover:text-white border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider transition-all"
+                                className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100/60 text-[10px] font-semibold transition-all cursor-pointer"
                               >
                                 Audit
                               </button>
                             ) : (
                               <button 
                                 onClick={() => triggerStatusChange(member, 'suspend')}
-                                className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-350 hover:text-white border border-rose-500/25 text-[10px] font-bold transition-all"
+                                className="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100/60 text-[10px] font-semibold transition-all cursor-pointer"
                               >
                                 Suspend
                               </button>
@@ -496,40 +521,40 @@ export const MemberManagement = () => {
         /* GRID VIEW DIRECTORY */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMembers.map((member) => (
-            <div key={member.id} className="card-neo p-5 flex flex-col justify-between space-y-4 hover:border-purple-500/20 transition-all">
+            <div key={member.id} className="bg-white p-5 border border-slate-100 rounded-2xl shadow-sm flex flex-col justify-between space-y-4 hover:border-indigo-150 hover:shadow-md transition-all duration-200">
               <div className="flex items-start gap-4">
                 <Avatar initials={member.initials} size="md" imageUrl={member.avatar} />
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-white truncate leading-tight">{member.name}</h4>
-                  <p className="text-xs text-brand-secondary font-semibold mt-0.5 truncate">{member.profession || 'Business'}</p>
-                  <p className="text-[10px] text-text-muted mt-1 flex items-center gap-1"><MapPin size={10} /> {member.city}</p>
+                  <h4 className="text-sm font-bold text-slate-800 truncate leading-tight">{member.name}</h4>
+                  <p className="text-xs text-indigo-600 font-semibold mt-0.5 truncate">{member.profession || 'Business'}</p>
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1"><MapPin size={10} /> {member.city}</p>
                 </div>
               </div>
 
-              <div className="pt-3.5 border-t border-white/5 grid grid-cols-2 gap-2 text-center text-xs">
-                <div className="p-2 rounded-xl bg-white/5">
-                  <span className="text-[9px] text-text-muted font-bold uppercase block">Family Count</span>
-                  <span className="font-bold text-white mt-0.5 block">{member.familySize} Members</span>
+              <div className="pt-3.5 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="p-2 rounded-xl bg-slate-50/50 border border-slate-100">
+                  <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block">Family Count</span>
+                  <span className="font-semibold text-slate-700 mt-0.5 block">{member.familySize} Members</span>
                 </div>
-                <div className="p-2 rounded-xl bg-white/5">
-                  <span className="text-[9px] text-text-muted font-bold uppercase block">Verification</span>
-                  <span className={`font-bold mt-0.5 block ${member.isVerified ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`}>
+                <div className="p-2 rounded-xl bg-slate-50/50 border border-slate-100">
+                  <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block">Verification</span>
+                  <span className={`font-bold mt-0.5 block ${member.isVerified ? 'text-emerald-600' : 'text-amber-600 animate-pulse'}`}>
                     {member.isVerified ? 'Verified' : 'Pending'}
                   </span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-white/5 flex gap-2">
+              <div className="pt-3 border-t border-slate-100 flex gap-2">
                 <button 
                   onClick={() => setActiveDrawerMember(member)}
-                  className="flex-1 py-2 text-xs font-bold text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all"
+                  className="flex-1 py-2 text-xs font-semibold text-slate-650 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg transition-all cursor-pointer"
                 >
                   View Profile
                 </button>
                 {!member.isVerified && (
                   <button 
                     onClick={() => setVerificationDoc(member)}
-                    className="flex-1 py-2 text-xs font-black text-white bg-brand-primary hover:bg-purple-600 rounded-xl transition-all shadow"
+                    className="flex-1 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-500/10 transition-all cursor-pointer"
                   >
                     Audit Credentials
                   </button>
@@ -559,35 +584,35 @@ export const MemberManagement = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="w-full max-w-lg h-full bg-gradient-to-b from-[#0f072e] via-[#160b37] to-[#1e1045] border-l border-white/10 shadow-2xl relative z-10 flex flex-col p-6 overflow-hidden"
+              className="w-full max-w-lg h-full bg-white border-l border-slate-150 shadow-2xl relative z-10 flex flex-col p-6 overflow-hidden"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                 <div className="flex items-center gap-3">
                   <Avatar initials={activeDrawerMember.initials} size="md" imageUrl={activeDrawerMember.avatar} />
                   <div>
-                    <h3 className="text-md font-black text-white">{activeDrawerMember.name}</h3>
-                    <p className="text-[10px] text-brand-secondary font-bold tracking-widest uppercase">{activeDrawerMember.memberId}</p>
+                    <h3 className="text-md font-bold text-slate-800">{activeDrawerMember.name}</h3>
+                    <p className="text-[10px] text-indigo-600 font-semibold tracking-wider uppercase">{activeDrawerMember.memberId}</p>
                   </div>
                 </div>
-                <button onClick={() => setActiveDrawerMember(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 text-white/50 hover:text-white transition-colors">
+                <button onClick={() => setActiveDrawerMember(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer">
                   <X size={16} />
                 </button>
               </div>
 
               {/* Tabs selector */}
-              <div className="flex border-b border-white/5 mb-4">
+              <div className="flex border-b border-slate-100 mb-4">
                 {['profile', 'family', 'activities'].map((tab) => (
                   <button 
                     key={tab}
                     onClick={() => setDrawerTab(tab)}
-                    className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-all relative ${
-                      drawerTab === tab ? 'text-white' : 'text-text-muted hover:text-purple-300'
+                    className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer ${
+                      drawerTab === tab ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-650'
                     }`}
                   >
                     {tab}
                     {drawerTab === tab && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand-primary" />
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-indigo-650" />
                     )}
                   </button>
                 ))}
@@ -596,17 +621,17 @@ export const MemberManagement = () => {
               {/* Scrollable Contents */}
               <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                 {drawerTab === 'profile' && (
-                  <div className="space-y-4 text-xs text-purple-200">
-                    <div className="card-neo p-4 space-y-2">
-                      <h4 className="font-bold text-white uppercase text-[10px] tracking-wider text-brand-secondary">Contact details</h4>
+                  <div className="space-y-4 text-xs text-slate-600">
+                    <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl space-y-2">
+                      <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider block mb-1">Contact details</h4>
                       <p><strong>Mobile:</strong> {activeDrawerMember.phone}</p>
                       <p><strong>Email:</strong> {activeDrawerMember.email}</p>
                       <p><strong>Gotra/Sub-gotra:</strong> Garg / Agrawal</p>
                       <p><strong>Blood Group:</strong> {activeDrawerMember.bloodGroup}</p>
                     </div>
 
-                    <div className="card-neo p-4 space-y-2">
-                      <h4 className="font-bold text-white uppercase text-[10px] tracking-wider text-brand-secondary">Profession Details</h4>
+                    <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl space-y-2">
+                      <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider block mb-1">Profession Details</h4>
                       <p><strong>Profession:</strong> {activeDrawerMember.profession || 'CA'}</p>
                       <p><strong>Location:</strong> {activeDrawerMember.area}, {activeDrawerMember.city}</p>
                     </div>
@@ -615,18 +640,18 @@ export const MemberManagement = () => {
 
                 {drawerTab === 'family' && (
                   <div className="space-y-3">
-                    <h4 className="font-bold text-white uppercase text-[10px] tracking-wider text-brand-secondary flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider block mb-1 flex items-center justify-between">
                       <span>Family Tree Nodes</span>
-                      <button onClick={() => showToast('Redirected to node configuration')} className="text-[9px] text-purple-300 uppercase">+ Add node</button>
+                      <button onClick={() => showToast('Redirected to node configuration')} className="text-[9px] text-indigo-500 uppercase cursor-pointer">+ Add node</button>
                     </h4>
                     
                     {activeDrawerMember.familyMembers.map((fm, idx) => (
-                      <div key={idx} className="p-3.5 rounded-2xl bg-white/3 border border-white/5 flex items-center justify-between text-xs text-white">
+                      <div key={idx} className="p-3 rounded-xl bg-white border border-slate-100 flex items-center justify-between text-xs text-slate-600 shadow-sm">
                         <div>
-                          <p className="font-bold">{fm.name}</p>
-                          <p className="text-[10px] text-text-muted mt-0.5">{fm.relationship} • {fm.occupation} • Age: {fm.age}</p>
+                          <p className="font-semibold text-slate-800">{fm.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{fm.relationship} • {fm.occupation} • Age: {fm.age}</p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${fm.isVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-semibold uppercase ${fm.isVerified ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50' : 'bg-amber-50 text-amber-600 border border-amber-100/50'}`}>
                           {fm.isVerified ? 'Verified' : 'Pending'}
                         </span>
                       </div>
@@ -636,14 +661,14 @@ export const MemberManagement = () => {
 
                 {drawerTab === 'activities' && (
                   <div className="space-y-4">
-                    <h4 className="font-bold text-white uppercase text-[10px] tracking-wider text-brand-secondary">Auditable activity timeline</h4>
-                    <div className="space-y-3 relative pl-4 border-l border-white/10 ml-2">
+                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider block mb-1">Auditable activity timeline</h4>
+                    <div className="space-y-3 relative pl-4 border-l border-slate-100 ml-2">
                       {activeDrawerMember.activities.map((act, idx) => (
                         <div key={idx} className="relative space-y-1">
-                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-brand-primary border-2 border-surface" />
-                          <div className="p-3 rounded-2xl bg-white/3 border border-white/5 text-xs text-purple-200">
-                            <span className="font-bold text-white">{act.action}</span>
-                            <span className="text-[9px] text-text-muted block mt-0.5">{act.date} {act.time} • {act.device}</span>
+                          <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-indigo-600 border-2 border-white" />
+                          <div className="p-3 rounded-xl bg-white border border-slate-100 text-xs text-slate-600 shadow-sm">
+                            <span className="font-semibold text-slate-850">{act.action}</span>
+                            <span className="text-[9px] text-slate-450 block mt-0.5">{act.date} {act.time} • {act.device}</span>
                           </div>
                         </div>
                       ))}
@@ -653,16 +678,16 @@ export const MemberManagement = () => {
               </div>
 
               {/* Action commands */}
-              <div className="border-t border-white/5 pt-4 mt-auto flex gap-3">
+              <div className="border-t border-slate-100 pt-4 mt-auto flex gap-3">
                 <button 
                   onClick={() => triggerStatusChange(activeDrawerMember, 'suspend')}
-                  className="flex-1 py-2.5 rounded-xl bg-rose-500/15 text-rose-350 font-bold border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all text-center text-xs"
+                  className="flex-1 py-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100/60 font-semibold transition-all text-center text-xs cursor-pointer"
                 >
                   Suspend Account
                 </button>
                 <button 
                   onClick={() => triggerStatusChange(activeDrawerMember, 'verify')}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-350 font-bold border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all text-center text-xs"
+                  className="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm shadow-indigo-500/10 transition-all text-center text-xs cursor-pointer"
                 >
                   Verify Member
                 </button>
@@ -688,23 +713,23 @@ export const MemberManagement = () => {
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-gradient-to-b from-[#13093a] to-[#21124f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
+              className="w-full max-w-md bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-md font-black text-white">Document Audit Desk</h3>
-                  <p className="text-[10px] text-text-muted mt-0.5">Auditing: {verificationDoc.name}</p>
+                  <h3 className="text-md font-bold text-slate-800">Document Audit Desk</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Auditing: {verificationDoc.name}</p>
                 </div>
-                <button onClick={() => setVerificationDoc(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 text-white/50 hover:text-white">
+                <button onClick={() => setVerificationDoc(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer">
                   <X size={16} />
                 </button>
               </div>
 
-              <div className="w-full aspect-[4/3] rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-950 p-4 border border-white/10 flex flex-col justify-between text-white select-none relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full filter blur-xl pointer-events-none" />
+              <div className="w-full aspect-[4/3] rounded-xl bg-gradient-to-br from-indigo-950 to-indigo-900 p-4 border border-indigo-950/20 flex flex-col justify-between text-white select-none relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full filter blur-xl pointer-events-none" />
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-[10px] font-bold tracking-wider text-purple-300">INDORE SAMAJ ARCHIVE</h4>
+                    <h4 className="text-[10px] font-bold tracking-wider text-purple-350">INDORE SAMAJ ARCHIVE</h4>
                     <p className="text-[7px] text-purple-400 font-bold uppercase mt-0.5">Identity Verification Card</p>
                   </div>
                   <span className="w-6 h-6 rounded bg-amber-500/20 text-[9px] flex items-center justify-center">🇮🇳</span>
@@ -728,13 +753,13 @@ export const MemberManagement = () => {
               <div className="flex gap-3 pt-2">
                 <button 
                   onClick={() => handleReject(verificationDoc.id, verificationDoc.name)}
-                  className="flex-1 py-2.5 rounded-xl bg-rose-500/10 text-rose-350 text-xs font-bold border border-rose-500/20 active:scale-95 transition-all text-center"
+                  className="flex-1 py-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold border border-rose-100/60 active:scale-95 transition-all text-center cursor-pointer"
                 >
                   Reject Proof
                 </button>
                 <button 
-                  onClick={() => handleVerify(verificationDoc.id, verificationDoc.name)}
-                  className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-bold active:scale-95 transition-all text-center"
+                  onClick={() => handleApprove(verificationDoc.id, verificationDoc.name)}
+                  className="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all text-center cursor-pointer"
                 >
                   Approve & Verify
                 </button>
@@ -760,27 +785,27 @@ export const MemberManagement = () => {
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="w-full max-w-sm bg-gradient-to-b from-[#13093a] to-[#21124f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
+              className="w-full max-w-sm bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
             >
-              <div className="flex items-center gap-3 text-amber-400">
+              <div className="flex items-center gap-3 text-amber-500">
                 <AlertTriangle size={24} className="animate-pulse" />
-                <h3 className="text-md font-black text-white">Confirm Action</h3>
+                <h3 className="text-md font-bold text-slate-800">Confirm Action</h3>
               </div>
 
-              <p className="text-xs text-purple-200 leading-relaxed">
+              <p className="text-xs text-slate-650 leading-relaxed">
                 Are you sure you want to change the status of <strong>{selectedMemberForStatus.name}</strong> to: <strong>{targetStatus}</strong>? This action updates directory databases and triggers system notifications.
               </p>
 
               <div className="flex gap-3 pt-2">
                 <button 
                   onClick={() => setActiveModal(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold border border-white/5 transition-all text-center"
+                  className="flex-1 py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 text-xs font-semibold transition-all text-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={confirmStatusChange}
-                  className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-bold active:scale-95 transition-all text-center"
+                  className="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all text-center cursor-pointer"
                 >
                   Confirm Action
                 </button>
@@ -806,69 +831,69 @@ export const MemberManagement = () => {
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-gradient-to-b from-[#13093a] to-[#21124f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
+              className="w-full max-w-md bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-2xl relative z-10 p-6 space-y-4"
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                <h3 className="text-md font-black text-white flex items-center gap-2">
-                  <UserPlus size={18} className="text-purple-400" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
+                  <UserPlus size={18} className="text-indigo-650" />
                   Add Community Member
                 </h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 text-white/50 hover:text-white">
+                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer">
                   <X size={16} />
                 </button>
               </div>
 
               <form onSubmit={handleAddMember} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Full Name *</label>
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Full Name *</label>
                   <input 
                     type="text" 
                     required
                     placeholder="e.g., Rajesh Kumar Agrawal" 
                     value={addForm.name}
                     onChange={(e) => setAddForm({...addForm, name: e.target.value})}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-brand-primary text-xs text-white"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Mobile Number *</label>
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Mobile Number *</label>
                   <input 
                     type="tel" 
                     required
                     placeholder="e.g., +91 90248 12848" 
                     value={addForm.phone}
                     onChange={(e) => setAddForm({...addForm, phone: e.target.value})}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-brand-primary text-xs text-white"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">City Location</label>
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">City Location</label>
                     <input 
                       type="text" 
                       placeholder="e.g., Indore" 
                       value={addForm.city}
                       onChange={(e) => setAddForm({...addForm, city: e.target.value})}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-brand-primary text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Profession</label>
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Profession</label>
                     <input 
                       type="text" 
                       placeholder="e.g., Software Architect" 
                       value={addForm.profession}
                       onChange={(e) => setAddForm({...addForm, profession: e.target.value})}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-brand-primary text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all"
                     />
                   </div>
                 </div>
 
                 <button 
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-brand-primary text-white font-bold uppercase tracking-wider text-xs shadow-lg shadow-purple-500/25 press-scale"
+                  className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 active:scale-95 transition-all cursor-pointer"
                 >
                   Register Member Profile
                 </button>

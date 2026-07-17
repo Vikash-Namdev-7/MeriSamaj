@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Send } from 'lucide-react';
 import { Avatar } from './Avatar';
@@ -88,6 +88,80 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
   }
 
   const [isPaused, setIsPaused] = useState(false);
+  const touchStartTimeRef = useRef(0);
+  const holdTimeoutRef = useRef(null);
+  const tappedSideRef = useRef('right');
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+
+  const goToNextUser = () => {
+    if (currentMemberIndex < memberIds.length - 1) {
+      const nextMemberId = memberIds[currentMemberIndex + 1];
+      const nextMemberStories = stories.filter(s => s.memberId === nextMemberId);
+      if (nextMemberStories.length > 0) {
+        onStoryChange(nextMemberStories[0]);
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  const goToPrevUser = () => {
+    if (currentMemberIndex > 0) {
+      const prevMemberId = memberIds[currentMemberIndex - 1];
+      const prevMemberStories = stories.filter(s => s.memberId === prevMemberId);
+      if (prevMemberStories.length > 0) {
+        onStoryChange(prevMemberStories[0]);
+      }
+    } else {
+      setProgress(0);
+    }
+  };
+
+  const handleTouchStart = (side, e) => {
+    tappedSideRef.current = side;
+    touchStartTimeRef.current = Date.now();
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    touchStartXRef.current = clientX;
+    touchStartYRef.current = clientY;
+
+    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
+    holdTimeoutRef.current = setTimeout(() => {
+      setIsPaused(true);
+    }, 200);
+  };
+
+  const handleTouchEnd = (e) => {
+    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
+    
+    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    
+    const diffX = clientX - touchStartXRef.current;
+    const diffY = clientY - touchStartYRef.current;
+    const touchDuration = Date.now() - touchStartTimeRef.current;
+    setIsPaused(false);
+    
+    // Swipe left/right detection threshold: 40 pixels
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX < 0) {
+        goToNextUser();
+      } else {
+        goToPrevUser();
+      }
+    } else {
+      if (touchDuration < 200) {
+        handleTap(tappedSideRef.current);
+      }
+    }
+  };
+
+  const handleTouchCancel = () => {
+    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
+    setIsPaused(false);
+  };
 
   // Reset progress when story changes
   useEffect(() => {
@@ -326,9 +400,25 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
         </AnimatePresence>
 
         {/* Static Overlay Tap Targets in the middle viewport */}
-        <div className="absolute top-20 bottom-24 left-0 right-0 z-30 flex">
-          <div className="w-1/3 h-full cursor-pointer" onClick={() => handleTap('left')} />
-          <div className="w-2/3 h-full cursor-pointer" onClick={() => handleTap('right')} />
+        <div className="absolute top-20 bottom-24 left-0 right-0 z-30 flex select-none">
+          <div 
+            className="w-1/3 h-full cursor-pointer" 
+            onMouseDown={(e) => handleTouchStart('left', e)}
+            onMouseUp={(e) => handleTouchEnd(e)}
+            onMouseLeave={handleTouchCancel}
+            onTouchStart={(e) => { e.preventDefault(); handleTouchStart('left', e); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleTouchEnd(e); }}
+            onTouchCancel={handleTouchCancel}
+          />
+          <div 
+            className="w-2/3 h-full cursor-pointer" 
+            onMouseDown={(e) => handleTouchStart('right', e)}
+            onMouseUp={(e) => handleTouchEnd(e)}
+            onMouseLeave={handleTouchCancel}
+            onTouchStart={(e) => { e.preventDefault(); handleTouchStart('right', e); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleTouchEnd(e); }}
+            onTouchCancel={handleTouchCancel}
+          />
         </div>
 
       </motion.div>

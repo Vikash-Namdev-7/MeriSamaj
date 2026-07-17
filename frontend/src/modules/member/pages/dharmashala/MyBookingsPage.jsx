@@ -2,21 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Plus, MapPin, User, Hash, AlertCircle, CheckCircle2,
-  X, CreditCard, QrCode, Landmark 
+  X, CreditCard, QrCode, Landmark, Loader
 } from 'lucide-react';
-import { mockBookings } from '../../data/mockDharmashala';
+import dharmashalaService from '../../../../core/api/dharmashalaService';
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
-  
-  // Persistent bookings list from localStorage
-  const [bookings, setBookings] = useState(() => {
-    const saved = localStorage.getItem('merisamaj_dharmashala_bookings');
-    if (saved) return JSON.parse(saved);
-    localStorage.setItem('merisamaj_dharmashala_bookings', JSON.stringify(mockBookings));
-    return mockBookings;
-  });
+  const [bookings, setBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentToastMsg, setPaymentToastMsg] = useState('');
@@ -34,14 +28,28 @@ export default function MyBookingsPage() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
 
-  useEffect(() => {
-    // Poll localStorage for status updates (e.g. simulation completed)
-    const interval = setInterval(() => {
-      const saved = localStorage.getItem('merisamaj_dharmashala_bookings');
-      if (saved) {
-        setBookings(JSON.parse(saved));
+  const fetchBookings = async (showLoader = true) => {
+    if (showLoader) setIsLoading(true);
+    try {
+      const res = await dharmashalaService.getBookingHistory();
+      if (res.status === 'success') {
+        setBookings(res.data);
       }
-    }, 2000);
+    } catch (error) {
+      console.error("Failed to load booking history", error);
+    } finally {
+      if (showLoader) setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings(true);
+    
+    // Poll updates every 4 seconds in the background to automatically get Approved/simulation states
+    const interval = setInterval(() => {
+      fetchBookings(false);
+    }, 4000);
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -76,25 +84,26 @@ export default function MyBookingsPage() {
     setShowPaymentModal(true);
   };
 
-  const processPayment = () => {
+  const processPayment = async () => {
     setPaymentStep('processing');
-    setTimeout(() => {
-      // Update local storage
-      const updated = bookings.map(b => {
-        if (b.id === activeBooking.id) {
-          return { ...b, status: 'upcoming' }; // marks booking as upcoming (confirmed & paid)
-        }
-        return b;
-      });
-      setBookings(updated);
-      localStorage.setItem('merisamaj_dharmashala_bookings', JSON.stringify(updated));
-
-      // Set success screen
-      setPaymentStep('success');
-      setPaymentToastMsg('भुगतान सफल! आपकी धर्मशाला बुकिंग सफलतापूर्वक पुष्टीकृत हो गई है। 🎉');
-      setShowPaymentSuccess(true);
-      setTimeout(() => setShowPaymentSuccess(false), 4000);
-    }, 2500);
+    try {
+      const targetId = activeBooking._id || activeBooking.id;
+      const res = await dharmashalaService.payBooking(targetId);
+      
+      if (res.status === 'success') {
+        setPaymentStep('success');
+        setPaymentToastMsg('भुगतान सफल! आपकी धर्मशाला बुकिंग सफलतापूर्वक पुष्टीकृत हो गई है। 🎉');
+        setShowPaymentSuccess(true);
+        setTimeout(() => setShowPaymentSuccess(false), 4000);
+        
+        // Refresh listings without spinner
+        fetchBookings(false);
+      }
+    } catch (error) {
+      console.error("Payment failed", error);
+      alert(error.response?.data?.message || "भुगतान प्रसंस्करण विफल रहा।");
+      setPaymentStep('select');
+    }
   };
 
   const tabs = [
@@ -152,14 +161,18 @@ export default function MyBookingsPage() {
       </div>
 
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-10">
+            <Loader className="animate-spin text-indigo-600" size={32} />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-10">
             <AlertCircle size={40} className="mx-auto text-slate-300 mb-3" />
             <p className="text-slate-500 font-bold text-sm">कोई बुकिंग नहीं मिली</p>
           </div>
         ) : (
           filtered.map(b => (
-            <div key={b.id} className="bg-white p-4 rounded-[24px] border border-slate-100 shadow-sm relative">
+            <div key={b._id || b.id} className="bg-white p-4 rounded-[24px] border border-slate-100 shadow-sm relative">
               <div className="absolute top-4 right-4">{getStatusBadge(b.status)}</div>
               
               <h3 className="font-bold text-slate-800 text-[15px] pr-16">{b.dharmashalaName}</h3>
@@ -210,9 +223,6 @@ export default function MyBookingsPage() {
                     <p className="text-[10px] text-slate-500 font-medium">{b.phone}</p>
                   </div>
                 </div>
-                <button className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <ChevronLeft size={16} className="rotate-180" />
-                </button>
               </div>
             </div>
           ))

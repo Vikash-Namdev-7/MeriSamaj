@@ -426,12 +426,15 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
   );
 };
 
-const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
+const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '', isFilterOpen: propIsFilterOpen, setIsFilterOpen: propSetIsFilterOpen }) => {
+  const [localIsFilterOpen, localSetIsFilterOpen] = useState(false);
+  const isFilterOpen = propIsFilterOpen !== undefined ? propIsFilterOpen : localIsFilterOpen;
+  const setIsFilterOpen = propSetIsFilterOpen !== undefined ? propSetIsFilterOpen : localSetIsFilterOpen;
+
   const navigate = useNavigate();
   const { posts, members: mockMembers, currentUser, language, stories = [], getUnreadCountForModule, logoutUser } = useData();
   const [activeTab, setActiveTab] = useState('all');
   const [searchText, setSearchText] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   // Close dropdown on click outside
@@ -457,6 +460,7 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeStory, setActiveStory] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const storiesRef = useDraggableScroll();
 
   const lang = 'en'; // Force English for Feed Section as requested
@@ -551,55 +555,11 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '' }) => {
         </div>
       )}
       
-      <div className="px-4.5 pt-4">
-        {/* ─── SEARCH & FILTER CONTAINER ─── */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 bg-white rounded-2xl flex items-center px-4 py-2.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)] focus-within:border-brand-primary/20 transition-all">
-            <Search size={18} className="text-gray-400 shrink-0 mr-2.5" />
-            <input
-              type="text"
-              placeholder={localT[lang].searchPlaceholder}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="bg-transparent outline-none w-full text-[13.5px] text-slate-800 placeholder:text-gray-400 font-medium"
-            />
-            {searchText && (
-              <button onClick={() => setSearchText('')} className="text-slate-400 hover:text-slate-600 active:scale-90 p-0.5">
-                <X size={14} className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          
-          <button 
-            onClick={() => setIsFilterOpen(true)}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border transition-all press-scale shadow-sm relative ${
-              activeTab !== 'all' 
-                ? 'bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20' 
-                : 'bg-white border-slate-100 text-slate-500 hover:text-slate-700 hover:border-slate-200'
-            }`}
-            title="Filter Category"
-          >
-            <SlidersHorizontal size={18} />
-            {activeTab !== 'all' && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border border-white text-[8px] font-black text-white flex items-center justify-center shadow-sm" />
-            )}
-          </button>
+      <div className="px-4.5 pt-2">
 
-          {/* Profile Button */}
-          <div className="relative shrink-0">
-            <div 
-              className="w-11 h-11 rounded-2xl border-2 border-transparent hover:border-brand-primary/30 transition-all cursor-pointer overflow-hidden shadow-sm shadow-brand-primary/10 flex items-center justify-center bg-white p-0.5"
-              onClick={() => navigate('/member/profile')}
-            >
-              <div className="w-full h-full rounded-xl overflow-hidden pointer-events-none">
-                <Avatar initials={currentUser?.initials || 'U'} src={currentUser?.avatar} size="xs" className="w-full h-full object-cover" color="bg-blue-100 text-blue-700" />
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* ─── STORY CARDS (FACEBOOK STYLE) ─── */}
-        <div className="pb-3 mb-1 mt-2">
+        <div className="pb-1 mb-1 mt-0">
           <div 
             ref={storiesRef} 
             className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-4.5 px-4.5"
