@@ -391,13 +391,13 @@ export const AdminLayout = () => {
             style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
           >
             <Avatar 
-              initials={currentUser?.initials || 'A'} 
+              initials={adminUser?.initials || (adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'A')} 
               size="sm" 
-              imageUrl={currentUser?.avatar}
+              imageUrl={adminUser?.avatar}
               color="bg-gradient-to-br from-violet-400 to-purple-600 text-white font-bold"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-bold text-white truncate leading-none">{currentUser?.name || 'Administrator'}</p>
+              <p className="text-[12px] font-bold text-white truncate leading-none">{adminUser?.name || 'Administrator'}</p>
               <p className="text-[9px] font-semibold truncate mt-1 leading-none" style={{ color: 'rgba(167,139,250,0.55)' }}>Council Admin</p>
             </div>
           </div>
