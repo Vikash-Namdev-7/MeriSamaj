@@ -1,47 +1,133 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataProvider';
 import { 
   Search, 
-  MapPin, 
-  Briefcase, 
-  Users, 
-  Award, 
-  BookOpen, 
-  Heart, 
-  Cpu, 
   Menu, 
   Bell,
-  ArrowRight,
-  Store,
-  GraduationCap,
-  Filter
+  Users,
+  Filter,
+  MessageCircle, 
+  CheckCircle, 
+  ChevronDown, 
+  Check, 
+  MapPin, 
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
-import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
+import { Avatar } from '../../components/common/Avatar';
+import { getMembers } from '../../services/directoryApi';
 
 const DirectoryPage = () => {
   const navigate = useNavigate();
   const { setMobileMenuOpen, getUnreadCountForModule } = useData();
+
+  // API State
+  const [membersList, setMembersList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Local Search & Filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const scrollRef = useDraggableScroll();
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Categories with hardcoded display counts matching the mockup
-  const categories = [
-    { id: 'executive', name: 'Executive Members', count: 120, icon: Award, iconColor: 'text-amber-600 bg-amber-50', filterVal: 'Executive' },
-    { id: 'business', name: 'Business Owners', count: 350, icon: Briefcase, iconColor: 'text-purple-600 bg-purple-50', filterVal: 'Business Owner' },
-    { id: 'teacher', name: 'Teachers', count: 85, icon: BookOpen, iconColor: 'text-blue-600 bg-blue-50', filterVal: 'Teacher' },
-    { id: 'doctor', name: 'Doctors', count: 45, icon: Heart, iconColor: 'text-rose-600 bg-rose-50', filterVal: 'Doctor' },
-    { id: 'engineer', name: 'Engineers', count: 60, icon: Cpu, iconColor: 'text-emerald-600 bg-emerald-50', filterVal: 'Software Engineer' }
-  ];
+  // Filter Drawer selectors state
+  const [selectedCity, setSelectedCity] = useState('All Cities');
+  const [selectedProfession, setSelectedProfession] = useState('All Professions');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [selectedAge, setSelectedAge] = useState('All Ages');
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    navigate('/member/directory/list', { state: { initialSearch: searchQuery } });
+  // Selector dropdown visibility toggles
+  const [activeDropdown, setActiveDropdown] = useState(null);
+
+  // Dropdown lists
+  const [cities, setCities] = useState(['All Cities']);
+  const professions = ['All Professions', 'Architect', 'Doctor', 'Software Engineer', 'Teacher', 'CA', 'Pharmacist', 'Lawyer', 'Business Owner', 'Interior Designer', 'Homemaker'];
+  const categories = ['All Categories', 'Executive Members', 'Business Owners', 'Teachers', 'Doctors', 'Engineers'];
+  const ageGroups = ['All Ages', 'youth', 'senior'];
+
+  // Load Cities dynamically
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const { axiosPublic } = await import('../../../../core/api/axiosConfig');
+        const res = await axiosPublic.get('/auth/cities');
+        if (res.data.success) {
+          setCities(['All Cities', ...res.data.data.map(c => c.name)]);
+        }
+      } catch (err) {
+        console.error('Failed to load cities for directory filters:', err);
+      }
+    };
+    loadCities();
+  }, []);
+
+  // Fetch Members from Backend
+  const fetchMembersData = async (isLoadMore = false) => {
+    try {
+      if (isLoadMore) setLoadingMore(true);
+      else setLoading(true);
+
+      const params = {
+        page: isLoadMore ? page + 1 : 1,
+        limit: 10,
+        search: searchQuery || undefined,
+        city: selectedCity !== 'All Cities' ? selectedCity : undefined,
+        profession: selectedProfession !== 'All Professions' ? selectedProfession : undefined,
+        category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+        age: selectedAge !== 'All Ages' ? selectedAge : undefined,
+      };
+
+      const response = await getMembers(params);
+      
+      if (response.success) {
+        if (isLoadMore) {
+          setMembersList(prev => [...prev, ...response.data]);
+          setPage(prev => prev + 1);
+        } else {
+          setMembersList(response.data);
+          setPage(1);
+        }
+        setTotalCount(response.pagination.total);
+        setHasMore(response.pagination.page < response.pagination.pages);
+      }
+    } catch (error) {
+      console.error("Failed to fetch directory members:", error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
-  const handleQuickFilterClick = (type, val) => {
-    navigate('/member/directory/list', { state: { filterType: type, filterVal: val } });
+  // Run fetch on mount and filter change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchMembersData(false);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCity, selectedProfession, selectedCategory, selectedAge]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedCity('All Cities');
+    setSelectedProfession('All Professions');
+    setSelectedCategory('All Categories');
+    setSelectedAge('All Ages');
+    setActiveDropdown(null);
   };
+
+  const toggleDropdown = (dropdownName) => {
+    if (activeDropdown === dropdownName) {
+      setActiveDropdown(null);
+    } else {
+      setActiveDropdown(dropdownName);
+    }
+  };
+
+  const hasActiveFilters = searchQuery !== '' || selectedCity !== 'All Cities' || selectedProfession !== 'All Professions' || selectedCategory !== 'All Categories' || selectedAge !== 'All Ages';
 
   return (
     <div className="min-h-screen bg-surface pb-16">
@@ -99,9 +185,9 @@ const DirectoryPage = () => {
           </div>
         </div>
 
-        {/* Search Bar — Glass */}
-        <form onSubmit={handleSearchSubmit} className="space-y-1.5">
-          <div className="flex items-center bg-white/85 backdrop-blur-md rounded-2xl px-4 py-3.5 gap-2.5 border border-purple-100/30 shadow-sm focus-within:border-brand-primary/40 focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] transition-all">
+        {/* Search Bar & Filter Button */}
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center bg-white/85 backdrop-blur-md rounded-2xl px-4 py-3.5 gap-2.5 border border-purple-100/30 shadow-sm focus-within:border-brand-primary/40 focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] transition-all duration-200">
             <Search size={18} className="text-text-secondary shrink-0" />
             <input 
               type="text" 
@@ -110,111 +196,254 @@ const DirectoryPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent text-xs font-semibold text-text-primary flex-1 outline-none placeholder-text-secondary"
             />
-            <button 
-              type="button"
-              onClick={() => navigate('/member/directory/list', { state: { openFilters: true, initialSearch: searchQuery } })} 
-              className="p-1 text-text-secondary hover:text-brand-primary press-scale transition-colors"
-            >
-              <Filter size={18} />
-            </button>
-            <button type="submit" className="p-1 -mr-1 press-scale text-brand-primary font-bold text-xs ml-1 border-l border-purple-100/30 pl-2">
-              Search
-            </button>
           </div>
-        </form>
-
-        {/* Quick Filters */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Quick Filters</label>
-          
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" ref={scrollRef}>
-            <button
-              onClick={() => handleQuickFilterClick('city', 'Indore')}
-              className="shrink-0 card-neo py-3.5 px-5 flex flex-col items-center justify-center gap-1.5 w-20 text-center press-scale"
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-50 flex items-center justify-center text-brand-primary">
-                <MapPin size={16} />
-              </div>
-              <span className="text-[10px] font-bold text-text-primary">City</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickFilterClick('profession', 'all')}
-              className="shrink-0 card-neo py-3.5 px-5 flex flex-col items-center justify-center gap-1.5 w-20 text-center press-scale"
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-100 to-violet-50 flex items-center justify-center text-purple-600">
-                <Briefcase size={16} />
-              </div>
-              <span className="text-[10px] font-bold text-text-primary">Profession</span>
-            </button>
-
-            <button
-              onClick={() => navigate('/member/professional')}
-              className="shrink-0 card-neo py-3.5 px-5 flex flex-col items-center justify-center gap-1.5 w-20 text-center press-scale"
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center text-amber-600">
-                <Store size={16} />
-              </div>
-              <span className="text-[10px] font-bold text-text-primary">Business</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickFilterClick('age', 'youth')}
-              className="shrink-0 card-neo py-3.5 px-5 flex flex-col items-center justify-center gap-1.5 w-20 text-center press-scale"
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-100 to-green-50 flex items-center justify-center text-emerald-600">
-                <Users size={16} />
-              </div>
-              <span className="text-[10px] font-bold text-text-primary">Youth</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickFilterClick('age', 'senior')}
-              className="shrink-0 card-neo py-3.5 px-5 flex flex-col items-center justify-center gap-1.5 w-20 text-center press-scale"
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-100 to-pink-50 flex items-center justify-center text-rose-600">
-                <GraduationCap size={16} />
-              </div>
-              <span className="text-[10px] font-bold text-text-primary">Seniors</span>
-            </button>
-          </div>
+          <button 
+            onClick={() => setShowFilters(true)}
+            className={`p-3.5 rounded-2xl border flex items-center justify-center press-scale shadow-sm transition-all duration-200 ${
+              showFilters || hasActiveFilters
+                ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-purple-500/25' 
+                : 'bg-white border-purple-100/50 text-text-primary hover:border-purple-200'
+            }`}
+          >
+            <Filter size={18} />
+          </button>
         </div>
 
-        {/* Categories Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Categories</h3>
+        {/* Count Indicator */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-extrabold text-text-secondary uppercase tracking-wider">
+            Total Members: {totalCount}
+          </span>
+          {hasActiveFilters && (
             <button 
-              onClick={() => navigate('/member/directory/list')}
-              className="text-xs font-bold text-brand-primary hover:text-purple-800 flex items-center gap-0.5 cursor-pointer"
+              onClick={handleResetFilters} 
+              className="text-xs font-extrabold text-brand-primary cursor-pointer hover:underline uppercase tracking-wider"
             >
-              View All <ArrowRight size={13} />
+              Clear Filters
             </button>
-          </div>
+          )}
+        </div>
 
-          <div className="card-neo overflow-hidden divide-y divide-purple-100/20">
-            {categories.map((cat) => (
+        {/* Members List Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
+          {loading ? (
+            <div className="col-span-full py-12 flex justify-center items-center">
+              <Loader2 className="animate-spin text-brand-primary" size={32} />
+            </div>
+          ) : membersList.length > 0 ? (
+            membersList.map((member) => (
               <div 
-                key={cat.id}
-                onClick={() => handleQuickFilterClick('profession', cat.filterVal)}
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-purple-50/30 transition-colors"
+                key={member._id}
+                onClick={() => navigate(`/member/directory/${member._id}`)}
+                className="bg-white rounded-2xl p-4 border border-purple-100/20 flex items-center justify-between shadow-[0_4px_16px_rgba(109,40,217,0.02)] hover:border-purple-200/50 hover:shadow-[0_8px_24px_rgba(109,40,217,0.06)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${cat.iconColor}`}>
-                    <cat.icon size={18} />
+                  <div className="relative">
+                    <Avatar src={member.avatar} initials={member.name ? member.name.charAt(0) : '?'} size="md" />
                   </div>
-                  <span className="text-xs font-bold text-text-primary">{cat.name}</span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-extrabold text-text-primary leading-tight group-hover:text-brand-primary transition-colors duration-200">{member.name}</span>
+                      {member.verificationStatus === 'verified' && <CheckCircle size={14} className="text-emerald-500 fill-emerald-50 shrink-0" />}
+                    </div>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mt-0.5">{member.profession || member.role || 'Member'}</p>
+                    <p className="text-[9.5px] font-semibold text-text-muted mt-0.5 flex items-center gap-1">
+                      <MapPin size={9} className="text-purple-300" /> {member.city || 'Location not specified'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-text-secondary font-medium">
-                  <span className="text-xs font-bold bg-purple-50 border border-purple-100/40 px-2.5 py-0.5 rounded-full text-brand-primary">{cat.count}</span>
-                  <span className="text-purple-300 text-xs font-bold">&gt;</span>
+
+                {/* Quick actions (Chat only) */}
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button 
+                    onClick={() => navigate(`/member/chat/${member._id}`)}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-brand-primary border border-purple-100/50 hover:bg-brand-primary hover:text-white transition-all duration-200 press-scale"
+                    style={{ background: 'rgba(124,58,237,0.05)' }}
+                  >
+                    <MessageCircle size={13} strokeWidth={2.2} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div className="col-span-full bg-white rounded-2xl py-12 px-4 text-center border border-dashed border-purple-200/50">
+              <p className="text-xs text-text-secondary font-medium">No members found</p>
+              <button 
+                onClick={handleResetFilters}
+                className="mt-3 text-xs font-bold text-brand-primary bg-purple-50 border border-purple-150/15 px-4 py-2 rounded-full press-scale"
+              >
+                Clear Search & Filters
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Load More Pagination */}
+        {hasMore && !loading && membersList.length > 0 && (
+          <div className="flex justify-center -mt-2 pb-6">
+            <button 
+              onClick={() => fetchMembersData(true)}
+              disabled={loadingMore}
+              className="bg-brand-primary text-white font-bold text-xs py-3 px-8 rounded-full shadow-lg shadow-brand-primary/30 hover:bg-brand-secondary transition-colors press-scale flex items-center gap-2"
+            >
+              {loadingMore ? (
+                <><Loader2 className="animate-spin" size={14} /> Loading...</>
+              ) : (
+                'Load More'
+              )}
+            </button>
+          </div>
+        )}
+
       </div>
+
+      {/* Advanced Filter Drawer */}
+      {showFilters && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 transition-opacity">
+          <div className="absolute inset-0" onClick={() => { setShowFilters(false); setActiveDropdown(null); }} />
+
+          <div className="relative bg-card rounded-t-3xl max-h-[85vh] overflow-y-auto flex flex-col shadow-2xl z-10 animate-slide-up pb-8">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => { setShowFilters(false); setActiveDropdown(null); }}
+                  className="p-1 -ml-1 press-scale"
+                >
+                  <ArrowLeft size={22} className="text-text-primary" />
+                </button>
+                <h2 className="text-base font-bold text-text-primary">Filters</h2>
+              </div>
+              <button 
+                onClick={handleResetFilters}
+                className="text-xs font-bold text-rose-600 press-scale"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="p-4 space-y-5 flex-1">
+              {/* Filter 1: City */}
+              <div className={`space-y-1.5 relative ${activeDropdown === 'city' ? 'z-50' : 'z-10'}`}>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">City</label>
+                <button 
+                  onClick={() => toggleDropdown('city')}
+                  className="w-full flex items-center justify-between bg-surface border border-gray-150 px-4 py-3 rounded-2xl text-xs font-semibold text-text-primary"
+                >
+                  <span>{selectedCity}</span>
+                  <ChevronDown size={16} className={`text-text-secondary transition-transform ${activeDropdown === 'city' ? 'rotate-180' : ''}`} />
+                </button>
+                {activeDropdown === 'city' && (
+                  <div className="absolute top-[68px] left-0 right-0 bg-white border border-gray-150 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto py-2">
+                    {cities.map((city) => (
+                      <button 
+                        key={city}
+                        onClick={() => { setSelectedCity(city); setActiveDropdown(null); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-text-primary flex-1 flex items-center justify-between"
+                      >
+                        <span className={selectedCity === city ? 'text-indigo-600' : ''}>{city}</span>
+                        {selectedCity === city && <Check size={14} className="text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Filter 2: Profession */}
+              <div className={`space-y-1.5 relative ${activeDropdown === 'profession' ? 'z-50' : 'z-10'}`}>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Profession</label>
+                <button 
+                  onClick={() => toggleDropdown('profession')}
+                  className="w-full flex items-center justify-between bg-surface border border-gray-150 px-4 py-3 rounded-2xl text-xs font-semibold text-text-primary"
+                >
+                  <span>{selectedProfession}</span>
+                  <ChevronDown size={16} className={`text-text-secondary transition-transform ${activeDropdown === 'profession' ? 'rotate-180' : ''}`} />
+                </button>
+                {activeDropdown === 'profession' && (
+                  <div className="absolute top-[68px] left-0 right-0 bg-white border border-gray-150 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto py-2">
+                    {professions.map((prof) => (
+                      <button 
+                        key={prof}
+                        onClick={() => { setSelectedProfession(prof); setActiveDropdown(null); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-text-primary flex-1 flex items-center justify-between"
+                      >
+                        <span className={selectedProfession === prof ? 'text-indigo-600' : ''}>{prof}</span>
+                        {selectedProfession === prof && <Check size={14} className="text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Filter 3: Category */}
+              <div className={`space-y-1.5 relative ${activeDropdown === 'category' ? 'z-50' : 'z-10'}`}>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Category</label>
+                <button 
+                  onClick={() => toggleDropdown('category')}
+                  className="w-full flex items-center justify-between bg-surface border border-gray-150 px-4 py-3 rounded-2xl text-xs font-semibold text-text-primary"
+                >
+                  <span>{selectedCategory}</span>
+                  <ChevronDown size={16} className={`text-text-secondary transition-transform ${activeDropdown === 'category' ? 'rotate-180' : ''}`} />
+                </button>
+                {activeDropdown === 'category' && (
+                  <div className="absolute top-[68px] left-0 right-0 bg-white border border-gray-150 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto py-2">
+                    {categories.map((cat) => (
+                      <button 
+                        key={cat}
+                        onClick={() => { setSelectedCategory(cat); setActiveDropdown(null); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-text-primary flex-1 flex items-center justify-between"
+                      >
+                        <span className={selectedCategory === cat ? 'text-indigo-600' : ''}>{cat}</span>
+                        {selectedCategory === cat && <Check size={14} className="text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Filter 4: Age */}
+              <div className={`space-y-1.5 relative ${activeDropdown === 'age' ? 'z-50' : 'z-10'}`}>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Age Group</label>
+                <button 
+                  onClick={() => toggleDropdown('age')}
+                  className="w-full flex items-center justify-between bg-surface border border-gray-150 px-4 py-3 rounded-2xl text-xs font-semibold text-text-primary"
+                >
+                  <span className="capitalize">{selectedAge}</span>
+                  <ChevronDown size={16} className={`text-text-secondary transition-transform ${activeDropdown === 'age' ? 'rotate-180' : ''}`} />
+                </button>
+                {activeDropdown === 'age' && (
+                  <div className="absolute top-[68px] left-0 right-0 bg-white border border-gray-150 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto py-2">
+                    {ageGroups.map((age) => (
+                      <button 
+                        key={age}
+                        onClick={() => { setSelectedAge(age); setActiveDropdown(null); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-text-primary flex-1 flex items-center justify-between"
+                      >
+                        <span className={`capitalize ${selectedAge === age ? 'text-indigo-600' : ''}`}>{age}</span>
+                        {selectedAge === age && <Check size={14} className="text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-4 pt-4 border-t border-gray-100 flex gap-3">
+              <button 
+                onClick={handleResetFilters}
+                className="flex-1 py-3.5 border border-gray-200 text-text-primary rounded-2xl font-bold text-xs press-scale text-center hover:bg-gray-50"
+              >
+                Reset
+              </button>
+              <button 
+                onClick={() => { setShowFilters(false); setActiveDropdown(null); fetchMembersData(false); }}
+                className="flex-1 py-3.5 bg-indigo-600 text-white rounded-2xl font-bold text-xs press-scale text-center hover:bg-indigo-700 shadow-md"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

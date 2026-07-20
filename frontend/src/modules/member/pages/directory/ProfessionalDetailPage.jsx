@@ -151,13 +151,16 @@ const ProfessionalDetailPage = () => {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm space-y-1">
             <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Working Hours</h4>
-            <p className="text-[13px] font-black text-gray-800 mt-1">09:00 AM - 08:00 PM</p>
+            <p className="text-[13px] font-black text-gray-800 mt-1">{activeProfessional.businessTiming || '09:00 AM - 08:00 PM'}</p>
             <p className="text-[11px] text-emerald-500 font-black">Open Now</p>
           </div>
           <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm space-y-1">
             <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Location</h4>
-            <p className="text-[13px] font-black text-gray-800 leading-snug truncate mt-1 flex items-center gap-1"><MapPin size={12}/> {activeProfessional.city || 'Indore'}, MP</p>
-            <p className="text-[11px] text-gray-500 font-bold">1.2 km away</p>
+            <p className="text-[13px] font-black text-gray-800 leading-snug mt-1 flex items-center gap-1">
+              <MapPin size={12} className="shrink-0 text-indigo-600" />
+              <span className="truncate">{activeProfessional.address || activeProfessional.city || 'Indore'}</span>
+            </p>
+            <p className="text-[11px] text-gray-500 font-bold">{activeProfessional.city}</p>
           </div>
         </div>
 

@@ -92,13 +92,23 @@ export default function FundDashboardPage() {
   const totalExpenses = fundExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   const availableBalance = totalCollected - totalExpenses;
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (payAmount <= 0) return;
     setCheckoutStep('processing');
-    setTimeout(() => {
-      makePayment(fundId, currentUserId, Number(payAmount));
-      setCheckoutStep('success');
-    }, 2000);
+    try {
+      const mode = paymentMethod === 'upi' ? 'UPI' : paymentMethod === 'card' ? 'Card' : 'Net Banking';
+      const res = await makePayment(fundId, currentUserId, Number(payAmount), mode);
+      if (res.success) {
+        setCheckoutStep('success');
+      } else {
+        alert(res.message || 'Payment failed.');
+        setCheckoutStep('select-method');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred during payment processing.');
+      setCheckoutStep('select-method');
+    }
   };
 
   const openPaymentModal = () => {

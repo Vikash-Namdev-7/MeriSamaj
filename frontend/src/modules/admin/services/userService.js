@@ -1,80 +1,67 @@
-import { mockUsers } from '../pages/users/mockData';
+import { axiosPrivate } from '../../../core/api/axiosPrivate';
 
-// Mock service for user management
-class UserService {
-  constructor() {
-    this.users = [...mockUsers];
-  }
+const API = '/admin/users';
 
-  async getAllUsers(filters = {}) {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    let filteredUsers = [...this.users];
-    
-    if (filters.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      filteredUsers = filteredUsers.filter(u => 
-        u.name.toLowerCase().includes(q) ||
-        u.memberId.toLowerCase().includes(q) ||
-        u.phone.includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.communityName.toLowerCase().includes(q)
-      );
+export const userService = {
+  // ─── List users with server-side filter + pagination ───────────────────────
+  getUsers: async (filters = {}, page = 1) => {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('limit', 20);
+
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status && filters.status !== 'All') params.set('status', filters.status.toLowerCase());
+    if (filters.verificationStatus && filters.verificationStatus !== 'All') {
+      params.set('verificationStatus', filters.verificationStatus.toLowerCase());
     }
-    
-    if (filters.status && filters.status !== 'All') {
-      filteredUsers = filteredUsers.filter(u => u.accountStatus === filters.status);
-    }
-    
-    if (filters.community && filters.community !== 'All Communities') {
-      filteredUsers = filteredUsers.filter(u => u.communityName === filters.community);
-    }
+    if (filters.communityId && filters.communityId !== 'all') params.set('communityId', filters.communityId);
+    if (filters.city && filters.city !== 'All') params.set('city', filters.city);
 
-    return {
-      data: filteredUsers,
-      totalCount: filteredUsers.length
-    };
-  }
+    const res = await axiosPrivate.get(`${API}?${params.toString()}`);
+    return res.data; // { status, data, pagination }
+  },
 
-  async getUserDetails(userId) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return this.users.find(u => u.id === userId);
-  }
+  // ─── Dashboard stats ────────────────────────────────────────────────────────
+  getStats: async () => {
+    const res = await axiosPrivate.get(`${API}/stats`);
+    return res.data.data;
+  },
 
-  async updateUserStatus(userId, newStatus) {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const userIndex = this.users.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-      this.users[userIndex].accountStatus = newStatus;
-      return this.users[userIndex];
-    }
-    throw new Error('User not found');
-  }
+  // ─── Single user full detail ────────────────────────────────────────────────
+  getUserById: async (id) => {
+    const res = await axiosPrivate.get(`${API}/${id}`);
+    return res.data.data;
+  },
 
-  async verifyUser(userId) {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const userIndex = this.users.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-      this.users[userIndex].isVerified = true;
-      this.users[userIndex].verificationStatus = 'Verified';
-      this.users[userIndex].accountStatus = 'Active';
-      return this.users[userIndex];
-    }
-    throw new Error('User not found');
-  }
+  // ─── Update user profile ────────────────────────────────────────────────────
+  updateUser: async (id, data) => {
+    const res = await axiosPrivate.put(`${API}/${id}`, data);
+    return res.data.data;
+  },
 
-  async getDashboardStats() {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return {
-      totalUsers: this.users.length,
-      verifiedUsers: this.users.filter(u => u.isVerified).length,
-      pendingVerification: this.users.filter(u => u.verificationStatus === 'Pending').length,
-      suspendedUsers: this.users.filter(u => u.accountStatus === 'Suspended').length,
-      deletedUsers: this.users.filter(u => u.accountStatus === 'Soft Deleted').length,
-      onlineUsers: Math.floor(this.users.length * 0.15) // Mock
-    };
-  }
-}
+  // ─── Status actions ─────────────────────────────────────────────────────────
+  verifyUser: async (id) => {
+    const res = await axiosPrivate.patch(`${API}/${id}/verify`);
+    return res.data.data;
+  },
 
-export const userService = new UserService();
+  suspendUser: async (id, reason) => {
+    const res = await axiosPrivate.patch(`${API}/${id}/suspend`, { reason });
+    return res.data.data;
+  },
+
+  blockUser: async (id, reason) => {
+    const res = await axiosPrivate.patch(`${API}/${id}/block`, { reason });
+    return res.data.data;
+  },
+
+  activateUser: async (id) => {
+    const res = await axiosPrivate.patch(`${API}/${id}/activate`);
+    return res.data.data;
+  },
+
+  deleteUser: async (id) => {
+    const res = await axiosPrivate.delete(`${API}/${id}`);
+    return res.data;
+  },
+};

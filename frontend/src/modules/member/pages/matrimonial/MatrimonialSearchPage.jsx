@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, X, Check, SlidersHorizontal, Sliders } from 'lucide-react';
 import { useMatrimonial } from './MatrimonialContext';
@@ -27,6 +27,23 @@ const MatrimonialSearchPage = () => {
     { id: '1', name: 'Delhi Veg Garg Profiles', criteria: { diet: 'Vegetarian', gotra: 'Garg', city: 'Delhi' } },
     { id: '2', name: 'Software Engineers near me', criteria: { city: 'Bangalore' } }
   ]);
+
+  const [apiCities, setApiCities] = useState([]);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const { axiosPublic } = await import('../../../../core/api/axiosConfig');
+        const res = await axiosPublic.get('/auth/cities');
+        if (res.data.success) {
+          setApiCities(res.data.data.map(c => c.name));
+        }
+      } catch (err) {
+        console.error('Failed to load cities:', err);
+      }
+    };
+    loadCities();
+  }, []);
 
   const handleApply = () => {
     setSearchFilters(filters);
@@ -149,7 +166,7 @@ const MatrimonialSearchPage = () => {
               className={inputClass}
             >
               <option value="All">All Cities</option>
-              {['Delhi', 'Mumbai', 'Bangalore', 'Indore', 'Pune', 'Surat'].map(c => (
+              {apiCities.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>

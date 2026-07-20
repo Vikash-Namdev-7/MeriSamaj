@@ -182,6 +182,44 @@ const OnboardingScreen = () => {
   const [pincode, setPincode] = useState('');
   const [district, setDistrict] = useState('');
   const [stateName, setStateName] = useState('');
+  
+  // Dynamic API Data
+  const [apiCommunities, setApiCommunities] = useState([]);
+  const [apiCities, setApiCities] = useState([]);
+
+  useEffect(() => {
+    const loadCommunities = async () => {
+      try {
+        const { axiosPublic } = await import('../../../../core/api/axiosConfig');
+        const res = await axiosPublic.get('/auth/communities');
+        if (res.data.success) {
+          setApiCommunities(res.data.data.map(c => ({ label: c.name, value: c._id })));
+        }
+      } catch (err) {
+        console.error('Failed to load public communities:', err);
+      }
+    };
+    loadCommunities();
+  }, []);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      if (!selectedCommunity) {
+        setApiCities([]);
+        return;
+      }
+      try {
+        const { axiosPublic } = await import('../../../../core/api/axiosConfig');
+        const res = await axiosPublic.get(`/auth/cities?communityId=${selectedCommunity}`);
+        if (res.data.success) {
+          setApiCities(res.data.data.map(c => ({ label: c.name, value: c.name })));
+        }
+      } catch (err) {
+        console.error('Failed to load public cities:', err);
+      }
+    };
+    loadCities();
+  }, [selectedCommunity]);
 
   // Step 4 Personal
   const [avatar, setAvatar] = useState(null);
@@ -383,13 +421,20 @@ const OnboardingScreen = () => {
       const formData = new FormData();
       
       // Append text fields
+      console.log('Onboarding: Saving profile...');
+      const resolvedComm = apiCommunities.find(c => c.value === selectedCommunity);
+      const communityName = resolvedComm ? resolvedComm.label : '';
+      console.log('Onboarding: selectedCommunity ID:', selectedCommunity, 'resolved Name:', communityName);
+      console.log('Onboarding: selectedSubCommunity:', selectedSubCommunity, 'selectedCity:', selectedCity);
+      
       formData.append('name', name || 'Guest User');
       formData.append('gender', gender || 'Male');
       formData.append('dob', dob || '1996-07-02');
       formData.append('bloodGroup', bloodGroup || 'A+');
       formData.append('maritalStatus', maritalStatus || 'Single');
       formData.append('gotra', gotra);
-      formData.append('community', selectedCommunity || 'Gupta Samaj');
+      formData.append('community', communityName || 'Gupta Samaj');
+      formData.append('communityId', selectedCommunity || '');
       formData.append('subCommunity', selectedSubCommunity || 'Vaishya Gupta');
       formData.append('city', selectedCity || 'Delhi');
       formData.append('district', district || 'Delhi');
@@ -426,10 +471,13 @@ const OnboardingScreen = () => {
         formData.append('avatar', avatar);
       }
 
+      console.log('Onboarding: Sending API request to update profile...');
       const response = await authService.updateProfile(formData);
+      console.log('Onboarding: API update response:', response);
       
       // Update local storage with the complete returned object
       localStorage.setItem('merisamaj_registered_user', JSON.stringify(response));
+      localStorage.setItem('merisamaj_user', JSON.stringify(response));
       
       // Sync AuthContext user
       setAuth(prev => ({
@@ -437,11 +485,12 @@ const OnboardingScreen = () => {
         user: response
       }));
 
+      console.log('Onboarding: Transitioning to step 11');
       setStep('onboarding-11');
       setToastMessage('Profile saved successfully!');
       setTimeout(() => setToastMessage(''), 3000);
     } catch (error) {
-      console.error('Failed to save profile', error);
+      console.error('Onboarding: Failed to save profile error:', error);
       setToastMessage(error?.response?.data?.message || 'Failed to save profile');
       setTimeout(() => setToastMessage(''), 3000);
       
@@ -631,7 +680,7 @@ const OnboardingScreen = () => {
                   <CustomSelect
                     value={selectedCommunity}
                     onChange={(val) => { setSelectedCommunity(val); setSelectedSubCommunity(''); setSelectedCity(''); }}
-                    options={COMMUNITY_KEYS}
+                    options={apiCommunities}
                     placeholder="Select community"
                   />
                 </div>
@@ -640,7 +689,7 @@ const OnboardingScreen = () => {
                   <CustomSelect
                     value={selectedSubCommunity}
                     onChange={setSelectedSubCommunity}
-                    options={selectedCommunity ? communityData[selectedCommunity]?.subCommunities : []}
+                    options={selectedCommunity ? ['General'] : []}
                     placeholder="Select sub-community"
                     disabled={!selectedCommunity}
                   />
@@ -662,7 +711,7 @@ const OnboardingScreen = () => {
                     <CustomSelect
                       value={selectedCity}
                       onChange={setSelectedCity}
-                      options={selectedCommunity ? communityData[selectedCommunity]?.cities : []}
+                      options={selectedCity ? [{ label: selectedCity, value: selectedCity }, ...apiCities.filter(c => c.value !== selectedCity)] : apiCities}
                       placeholder="Select city"
                       disabled={!selectedCommunity || !pincode}
                     />
@@ -1023,11 +1072,125 @@ const OnboardingScreen = () => {
             </div>
           )}
 
-          {/* Step 8: Profile Completion Checklist Summary */}
+          {/* Step 8: Verification */}
           {onboardingStepNum === 8 && (
             <div className="space-y-4 text-left animate-fade-in">
               <div>
-                <h1 className="text-xl font-black text-slate-800">Step 8: Your Profile Progress</h1>
+                <h1 className="text-xl font-black text-slate-800">Step 8: Verification (Optional)</h1>
+                <p className="text-xs text-slate-500 font-semibold mt-1">Verify your profile for more trust and matches</p>
+              </div>
+              
+              <div className="space-y-3.5 pt-2">
+                <div className="bg-white p-4.5 rounded-3xl border border-purple-100/30 flex items-center justify-between shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-55 flex items-center justify-center text-brand-primary shrink-0"><Camera size={18} /></div>
+                    <div>
+                      <p className="text-xs font-black text-slate-800">Face Verification</p>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verify using selfie check</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setVerifyingFace(true);
+                      setTimeout(() => {
+                        setVerifyingFace(false);
+                        setIsFaceVerified(true);
+                        setToastMessage('Face verification successful!');
+                        setTimeout(() => setToastMessage(''), 2000);
+                      }, 1500);
+                    }}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all border ${
+                      isFaceVerified ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
+                    }`}
+                  >
+                    {isFaceVerified ? 'Verified ✓' : verifyingFace ? 'Verifying...' : 'Verify'}
+                  </button>
+                </div>
+
+                <div className="bg-white p-4.5 rounded-3xl border border-purple-100/30 flex items-center justify-between shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-55 flex items-center justify-center text-brand-primary shrink-0"><ShieldCheck size={18} /></div>
+                    <div>
+                      <p className="text-xs font-black text-slate-800">Aadhaar Verification</p>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verify using UIDAI e-Aadhaar</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setVerifyingAadhar(true);
+                      setTimeout(() => {
+                        setVerifyingAadhar(false);
+                        setIsAadharVerified(true);
+                        setToastMessage('Aadhaar verification successful!');
+                        setTimeout(() => setToastMessage(''), 2000);
+                      }, 1500);
+                    }}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all border ${
+                      isAadharVerified ? 'bg-emerald-50 border-[#A7F3D0] text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
+                    }`}
+                  >
+                    {isAadharVerified ? 'Verified ✓' : verifyingAadhar ? 'Verifying...' : 'Verify'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 9: Partner Preferences */}
+          {onboardingStepNum === 9 && (
+            <div className="space-y-4 text-left animate-fade-in">
+              <div>
+                <h1 className="text-xl font-black text-slate-800">Step 9: Partner Preferences</h1>
+                <p className="text-xs text-slate-500 font-semibold mt-1">Add preferences to get matching matrimonial profiles</p>
+              </div>
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Education Preference</label>
+                  <CustomSelect
+                    value={prefEducation}
+                    onChange={setPrefEducation}
+                    options={['Graduation and above', 'Post Graduation', 'PhD', 'Any', 'Doctor / Engineer']}
+                    placeholder="Select preference"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Age Preference</label>
+                  <CustomSelect
+                    value={prefAge}
+                    onChange={setPrefAge}
+                    options={['18 - 22 Years', '22 - 28 Years', '28 - 35 Years', 'Any']}
+                    placeholder="Select preference"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Height Preference</label>
+                  <CustomSelect
+                    value={prefHeight}
+                    onChange={setPrefHeight}
+                    options={["4'5\" - 5'2\"", "5'2\" - 6'0\"", "6'0\"+", 'Any']}
+                    placeholder="Select preference"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Occupation Preference</label>
+                  <CustomSelect
+                    value={prefOccupation}
+                    onChange={setPrefOccupation}
+                    options={['Software Professional', 'Government Job', 'Business Owner', 'Any', 'CA / Doctor']}
+                    placeholder="Select preference"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 10: Profile Completion Checklist Summary */}
+          {onboardingStepNum === 10 && (
+            <div className="space-y-4 text-left animate-fade-in">
+              <div>
+                <h1 className="text-xl font-black text-slate-800">Step 10: Your Profile Progress</h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">Complete your profile to get better matches</p>
               </div>
               <div className="space-y-4 pt-1">
@@ -1069,120 +1232,6 @@ const OnboardingScreen = () => {
                       </span>
                     </div>
                   ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 9: Verification */}
-          {onboardingStepNum === 9 && (
-            <div className="space-y-4 text-left animate-fade-in">
-              <div>
-                <h1 className="text-xl font-black text-slate-800">Step 9: Verification (Optional)</h1>
-                <p className="text-xs text-slate-500 font-semibold mt-1">Verify your profile for more trust and matches</p>
-              </div>
-              
-              <div className="space-y-3.5 pt-2">
-                <div className="bg-white p-4.5 rounded-3xl border border-purple-100/30 flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-brand-primary shrink-0"><Camera size={18} /></div>
-                    <div>
-                      <p className="text-xs font-black text-slate-800">Face Verification</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verify using selfie check</p>
-                    </div>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setVerifyingFace(true);
-                      setTimeout(() => {
-                        setVerifyingFace(false);
-                        setIsFaceVerified(true);
-                        setToastMessage('Face verification successful!');
-                        setTimeout(() => setToastMessage(''), 2000);
-                      }, 1500);
-                    }}
-                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all border ${
-                      isFaceVerified ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
-                    }`}
-                  >
-                    {isFaceVerified ? 'Verified ✓' : verifyingFace ? 'Verifying...' : 'Verify'}
-                  </button>
-                </div>
-
-                <div className="bg-white p-4.5 rounded-3xl border border-purple-100/30 flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-brand-primary shrink-0"><ShieldCheck size={18} /></div>
-                    <div>
-                      <p className="text-xs font-black text-slate-800">Aadhaar Verification</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verify using UIDAI e-Aadhaar</p>
-                    </div>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setVerifyingAadhar(true);
-                      setTimeout(() => {
-                        setVerifyingAadhar(false);
-                        setIsAadharVerified(true);
-                        setToastMessage('Aadhaar verification successful!');
-                        setTimeout(() => setToastMessage(''), 2000);
-                      }, 1500);
-                    }}
-                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all border ${
-                      isAadharVerified ? 'bg-emerald-50 border-[#A7F3D0] text-emerald-600' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
-                    }`}
-                  >
-                    {isAadharVerified ? 'Verified ✓' : verifyingAadhar ? 'Verifying...' : 'Verify'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 10: Partner Preferences */}
-          {onboardingStepNum === 10 && (
-            <div className="space-y-4 text-left animate-fade-in">
-              <div>
-                <h1 className="text-xl font-black text-slate-800">Step 10: Partner Preferences</h1>
-                <p className="text-xs text-slate-500 font-semibold mt-1">Add preferences to get matching matrimonial profiles</p>
-              </div>
-              <div className="space-y-4 pt-2">
-                <div>
-                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Education Preference</label>
-                  <CustomSelect
-                    value={prefEducation}
-                    onChange={setPrefEducation}
-                    options={['Graduation and above', 'Post Graduation', 'PhD', 'Any', 'Doctor / Engineer']}
-                    placeholder="Select preference"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Age Preference</label>
-                  <CustomSelect
-                    value={prefAge}
-                    onChange={setPrefAge}
-                    options={['18 - 22 Years', '22 - 28 Years', '28 - 35 Years', 'Any']}
-                    placeholder="Select preference"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Height Preference</label>
-                  <CustomSelect
-                    value={prefHeight}
-                    onChange={setPrefHeight}
-                    options={["4'5\" - 5'2\"", "5'2\" - 6'0\"", "6'0\"+", 'Any']}
-                    placeholder="Select preference"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Occupation Preference</label>
-                  <CustomSelect
-                    value={prefOccupation}
-                    onChange={setPrefOccupation}
-                    options={['Software Professional', 'Government Job', 'Business Owner', 'Any', 'CA / Doctor']}
-                    placeholder="Select preference"
-                  />
                 </div>
               </div>
             </div>
@@ -1238,7 +1287,7 @@ const OnboardingScreen = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {[4, 5, 6, 9, 10].includes(onboardingStepNum) && (
+            {[4, 5, 6, 8, 9].includes(onboardingStepNum) && (
               <button
                 type="button"
                 onClick={() => {

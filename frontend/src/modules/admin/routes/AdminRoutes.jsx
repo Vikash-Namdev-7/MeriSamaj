@@ -9,17 +9,28 @@ import EventsDesk from '../pages/events/EventsDesk';
 import SystemConfig from '../pages/config/SystemConfig';
 import CityManagement from '../pages/cities/CityManagement';
 import CommunityHeadManagement from '../pages/community-heads/CommunityHeadManagement';
+import HeadDetailsPage from '../pages/community-heads/HeadDetailsPage';
+import HeadActivityMonitor from '../pages/community-heads/HeadActivityMonitor';
+import HeadReports from '../pages/community-heads/HeadReports';
 import SubscriptionManagement from '../pages/subscriptions/SubscriptionManagement';
 import ContentManagementSystem from '../pages/cms/ContentManagementSystem';
 import GlobalFamilyManagement from '../pages/families/GlobalFamilyManagement';
-import GlobalProfessionalDirectory from '../pages/professionals/GlobalProfessionalDirectory';
+import GlobalProfessionalOverview from '../pages/professionals/GlobalProfessionalOverview';
+import GlobalProfessionalGrid from '../pages/professionals/GlobalProfessionalGrid';
+import GlobalProfessionalApprovals from '../pages/professionals/GlobalProfessionalApprovals';
+import GlobalProfessionalCategories from '../pages/professionals/GlobalProfessionalCategories';
 import GlobalDonationManagement from '../pages/donations/GlobalDonationManagement';
-import GlobalApprovalWorkflowCenter from '../pages/approvals/GlobalApprovalWorkflowCenter';
+import GlobalFundManagement from '../pages/fund/GlobalFundManagement';
 import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementCenter';
+import CommunitiesPage from '../pages/communities/CommunitiesPage';
+import AdminLogin from '../pages/login/AdminLogin';
 
 export const AdminRoutes = () => {
   return (
     <Routes>
+      {/* Public Admin Login Route */}
+      <Route path="login" element={<AdminLogin />} />
+
       <Route element={<AdminProtectedRoute />}>
         <Route element={<AdminLayout />}>
           {/* Default /admin redirects to admin dashboard */}
@@ -33,15 +44,30 @@ export const AdminRoutes = () => {
         <Route path="matrimonial" element={<PlatformMatrimonialManagement />} />
         <Route path="events" element={<EventsDesk />} />
         <Route path="cities" element={<CityManagement />} />
-        <Route path="community-heads" element={<CommunityHeadManagement />} />
+        {/* Community Head Management */}
+        <Route path="community-heads">
+          <Route index element={<CommunityHeadManagement />} />
+          <Route path="activity" element={<HeadActivityMonitor />} />
+          <Route path="reports" element={<HeadReports />} />
+          <Route path=":id" element={<HeadDetailsPage />} />
+        </Route>
         <Route path="subscriptions" element={<SubscriptionManagement />} />
         <Route path="config" element={<SystemConfig />} />
         <Route path="cms" element={<ContentManagementSystem />} />
         <Route path="families" element={<GlobalFamilyManagement />} />
-        <Route path="professionals" element={<GlobalProfessionalDirectory />} />
+        <Route path="professionals">
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<GlobalProfessionalOverview />} />
+          <Route path="grid" element={<GlobalProfessionalGrid />} />
+          <Route path="approvals" element={<GlobalProfessionalApprovals />} />
+          <Route path="categories" element={<GlobalProfessionalCategories />} />
+        </Route>
         <Route path="donations" element={<GlobalDonationManagement />} />
-        <Route path="approvals" element={<GlobalApprovalWorkflowCenter />} />
+        <Route path="funds" element={<GlobalFundManagement />} />
         <Route path="announcements" element={<GlobalAnnouncementCenter />} />
+
+        {/* 🏛️ Multi-Community Management — Master Admin Core Feature */}
+        <Route path="communities" element={<CommunitiesPage />} />
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="dashboard" replace />} />

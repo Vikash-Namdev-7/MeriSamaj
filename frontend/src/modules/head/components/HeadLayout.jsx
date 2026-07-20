@@ -48,9 +48,8 @@ export const HeadLayout = () => {
           name: 'Professionals',
           icon: Briefcase,
           children: [
-            { name: 'Directory', path: '/head/professionals', search: '?tab=directory' },
-            { name: 'Verification Requests', path: '/head/professionals', search: '?tab=verification' },
-            { name: 'Compliance Monitor', path: '/head/professionals', search: '?tab=compliance' }
+            { name: 'Directory', path: '/head/professionals' },
+            { name: 'Category Management', path: '/head/professionals/categories' }
           ]
         },
         {
@@ -68,11 +67,14 @@ export const HeadLayout = () => {
       category: 'EVENTS & GOVERNANCE',
       items: [
         {
-          name: 'Events Desk',
+          name: 'Event Management',
           icon: Calendar,
           children: [
-            { name: 'Event Planner', path: '/head/events', search: '?tab=planner' },
-            { name: 'Bookings & Check-ins', path: '/head/events', search: '?tab=bookings' }
+            { name: 'Overview', path: '/head/events', search: '?tab=overview' },
+            { name: 'All Events', path: '/head/events', search: '?tab=all' },
+            { name: 'Create Event', path: '/head/events', search: '?tab=create' },
+            { name: 'Event Monitoring', path: '/head/events', search: '?tab=monitoring' },
+            { name: 'Event Analytics', path: '/head/events', search: '?tab=analytics' }
           ]
         },
         {
@@ -194,13 +196,19 @@ export const HeadLayout = () => {
             return (
               <div key={item.name} className="space-y-1">
                 <button
-                  onClick={() => toggleExpand(item.name)}
+                  onClick={() => {
+                    toggleExpand(item.name);
+                    if (item.children && item.children.length > 0) {
+                      navigate(`${item.children[0].path}${item.children[0].search || ''}`);
+                    }
+                  }}
                   className={`w-full flex items-center justify-between px-3.5 py-2 rounded-lg transition-all duration-200 group relative cursor-pointer border ${
                     isParentActive 
                       ? 'bg-violet-500/15 border-violet-500/30 text-white font-semibold' 
                       : 'hover:bg-white/5 border-transparent text-white/80 font-medium'
                   }`}
                 >
+
                   <div className="flex items-center">
                     <Icon 
                       size={18} 
@@ -351,9 +359,16 @@ export const HeadLayout = () => {
               />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-white truncate leading-none">{headUser?.name || 'Community Head'}</p>
-                <p className="text-[10px] font-semibold text-purple-300/60 truncate mt-1.5 leading-none">{headUser?.title || 'Adhyaksh (Head)'}</p>
+                <p className="text-[10px] font-semibold text-purple-300/60 truncate mt-1 leading-none">{headUser?.title || 'Adhyaksh (Head)'}</p>
+                {/* Community badge — shows community from DB (communityId.name) */}
+                {(headUser?.communityId?.name || headUser?.community) && (
+                  <p className="text-[9px] font-bold text-amber-400/80 truncate mt-1 leading-none">
+                    🏛️ {headUser?.communityId?.name || headUser?.community}
+                  </p>
+                )}
               </div>
             </div>
+
 
             <button 
               onClick={handleSignOut}

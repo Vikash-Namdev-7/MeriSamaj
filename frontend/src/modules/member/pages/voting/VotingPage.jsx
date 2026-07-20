@@ -20,11 +20,11 @@ import { votingInstructions, votingGuidelines, securityFeatures } from './mockVo
 const VotingPage = () => {
   const navigate = useNavigate();
   const { setMobileMenuOpen, getUnreadCountForModule } = useData();
-  const { elections, votedElections } = useVoting();
+  const { elections, votedElections, loading, error, refresh } = useVoting();
 
   const activeElections = elections.filter(e => e.status === 'Active');
-  const firstActiveElection = activeElections.find(e => e.id === 'el1');
-  const pastElections = elections.filter(e => e.status === 'Completed');
+  const firstActiveElection = activeElections.find(e => e.status === 'Active'); // Find first one rather than hardcoded 'el1'
+  const pastElections = elections.filter(e => e.status === 'Completed' || e.status === 'Closed');
 
   const [timeLeft, setTimeLeft] = useState(15); // 15 seconds countdown
   const [isVotingEnded, setIsVotingEnded] = useState(false);
@@ -58,6 +58,25 @@ const VotingPage = () => {
     { name: "Manish Gupta", votes: "876", percentage: 19, color: "bg-amber-500", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face", initials: "MG" },
     { name: "Ajay Singh", votes: "266", percentage: 5, color: "bg-rose-500", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face", initials: "AS" }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4">
+        <AlertTriangle size={48} className="text-red-500 mb-4" />
+        <h2 className="text-lg font-bold text-text-primary mb-2">Failed to load elections</h2>
+        <p className="text-sm text-text-secondary mb-4">{error}</p>
+        <button onClick={refresh} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold">Try Again</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface pb-16">

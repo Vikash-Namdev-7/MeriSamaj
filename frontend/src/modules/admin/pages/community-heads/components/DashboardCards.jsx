@@ -33,30 +33,16 @@ export const DashboardCards = ({ stats }) => {
       iconColor: 'text-rose-400'
     },
     {
-      title: 'Pending Verification',
-      value: stats.pendingInvitations,
-      icon: Clock,
-      color: 'from-amber-500/20 to-orange-500/20',
-      iconColor: 'text-amber-400'
-    },
-    {
       title: 'Assigned Communities',
       value: stats.communitiesAssigned,
       icon: Building2,
       color: 'from-purple-500/20 to-fuchsia-500/20',
       iconColor: 'text-purple-400'
-    },
-    {
-      title: 'Performance Index',
-      value: `${stats.averagePerformance}%`,
-      icon: Activity,
-      color: 'from-brand-primary/20 to-violet-500/20',
-      iconColor: 'text-brand-primary'
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
         <motion.div
           key={card.title}

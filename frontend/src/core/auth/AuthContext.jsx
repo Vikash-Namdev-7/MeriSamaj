@@ -29,12 +29,17 @@ export const AuthProvider = ({ children }) => {
       if (savedUser && savedToken) {
         // Fast path: credentials already in localStorage
         if (isMounted) {
-          setAuth({
-            user: JSON.parse(savedUser),
-            accessToken: savedToken,
-            isAuthenticated: true,
-            isInitialized: true,
-          });
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            setAuth({
+              user: parsedUser,
+              accessToken: savedToken,
+              isAuthenticated: true,
+              isInitialized: true,
+            });
+          } catch {
+            setAuth(prev => ({ ...prev, isInitialized: true }));
+          }
         }
       } else if (hasSession) {
         // Session flag exists but localStorage was cleared (e.g. different tab logout).

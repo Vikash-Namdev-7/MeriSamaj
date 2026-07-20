@@ -25,9 +25,21 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-    
-    // Fetch user to confirm existence and account status
-    const user = await User.findById(decoded.id).select('-password');
+
+    /**
+     * Populate communityId from Community model so:
+     *   req.user.communityId → full Community object (name, settings, isActive, etc.)
+     *   req.communityId      → plain ObjectId (use this in all Model.find() queries)
+     *
+     * Why separate?
+     *   Model.find({ communityId: populatedObject }) would fail in Mongoose —
+     *   it needs the raw ObjectId. So we always attach a plain _id to req.communityId.
+     */
+    const user = await User.findById(decoded.id)
+      .select('-password')
+      .populate('communityId', 'name slug isActive settings logoUrl description city')
+      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
+
     if (!user) {
       return res.status(401).json({
         status: 'error',
@@ -42,7 +54,7 @@ const protect = async (req, res, next) => {
         message: 'Your account has been blocked. Contact Samaj Admin.'
       });
     }
-    
+
     if (user.accountStatus === 'deleted') {
       return res.status(403).json({
         status: 'error',
@@ -58,6 +70,49 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+
+    /**
+     * req.communityId — always a plain ObjectId (or null for admin).
+     * - For member/head: extracted from their assigned communityId.
+     * - For admin: null (admin accesses all communities; uses req.body/query.communityId).
+     * - communityId?._id handles the populated-object case safely.
+     */
+    if (user.communityId) {
+      req.communityId = user.communityId._id
+        ? user.communityId._id   // populated object → extract _id
+        : user.communityId;      // already a plain ObjectId
+        
+      // Block write operations (POST/PUT/PATCH/DELETE) if the community is deactivated (isActive === false)
+      // Excludes master admin
+      if (
+        user.communityId.isActive === false &&
+        user.role !== 'admin' &&
+        ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+      ) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Your community has been deactivated. New content creation and updates are disabled.'
+        });
+      }
+    } else if (user.community) {
+      // Dynamic Migration: Auto-migrate users with legacy community string to communityId reference
+      const Community = require('../models/Community');
+      let communityDoc = await Community.findOne({ name: user.community });
+      if (!communityDoc) {
+        communityDoc = await Community.create({
+          name: user.community,
+          city: user.city || 'Indore',
+          state: user.state || 'Madhya Pradesh',
+          country: 'India'
+        });
+      }
+      user.communityId = communityDoc._id;
+      await user.save();
+      req.communityId = communityDoc._id;
+    } else {
+      req.communityId = null;
+    }
+
     return next();
   } catch (error) {
     console.error('JWT Verification Error:', error.message);
@@ -77,10 +132,10 @@ const authorize = (...roles) => {
         message: 'Not authorized'
       });
     }
-    
+
     // Define role hierarchy or equivalents for flexible checks
     const userRole = req.user.role;
-    
+
     const hasRole = roles.some(role => {
       if (role === 'admin' && userRole === 'admin') return true;
       if (role === 'head' && ['head', 'admin'].includes(userRole)) return true;
@@ -98,4 +153,30 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+/**
+ * communityAccess — Middleware to verify a Head/Member is accessing their own community's resource.
+ * Usage: router.put('/:id', protect, communityAccess, controller)
+ * Requires the document to have a `communityId` field.
+ */
+const communityAccess = (Model) => async (req, res, next) => {
+  // Admin bypasses community restriction
+  if (req.user.role === 'admin') return next();
+
+  const doc = await Model.findById(req.params.id).select('communityId');
+  if (!doc) {
+    return res.status(404).json({ status: 'error', message: 'Resource not found' });
+  }
+
+  const docCommunityId = doc.communityId?._id ?? doc.communityId;
+  if (!docCommunityId || !docCommunityId.equals(req.communityId)) {
+    return res.status(403).json({
+      status: 'error',
+      message: 'Access denied. This resource belongs to a different community.'
+    });
+  }
+
+  next();
+};
+
+module.exports = { protect, authorize, communityAccess };
+

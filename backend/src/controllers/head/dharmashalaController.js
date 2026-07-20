@@ -8,13 +8,26 @@ const getCommunity = (req) => {
   return req.user?.community || 'Agrawal Samaj';
 };
 
+const getCommunityFilter = (req) => {
+  if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
+    return { communityId: { $in: req.user.assignedCommunityIds } };
+  }
+  if (req.communityId) {
+    return { communityId: req.communityId };
+  }
+  if (req.user?.community) {
+    return { community: req.user.community };
+  }
+  return {};
+};
+
 // 1. Dashboard Analytics Stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const community = getCommunity(req);
+    const communityFilter = getCommunityFilter(req);
     
     // Find all Dharmashalas in community
-    const properties = await Dharmashala.find({ community });
+    const properties = await Dharmashala.find(communityFilter);
     const propertyIds = properties.map(p => p._id);
     
     const totalDharmashalas = properties.length;
@@ -111,8 +124,8 @@ exports.getDashboardStats = async (req, res) => {
 // 2. CRUD Properties
 exports.getProperties = async (req, res) => {
   try {
-    const community = getCommunity(req);
-    const properties = await Dharmashala.find({ community }).sort({ createdAt: -1 });
+    const communityFilter = getCommunityFilter(req);
+    const properties = await Dharmashala.find(communityFilter).sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', data: properties });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -144,6 +157,7 @@ exports.createProperty = async (req, res) => {
     
     const property = new Dharmashala({
       ...req.body,
+      communityId: req.communityId,
       community,
       amenities,
       image,
@@ -298,8 +312,8 @@ exports.deleteRoom = async (req, res) => {
 // 4. Bookings Management
 exports.getAllBookings = async (req, res) => {
   try {
-    const community = getCommunity(req);
-    const properties = await Dharmashala.find({ community });
+    const communityFilter = getCommunityFilter(req);
+    const properties = await Dharmashala.find(communityFilter);
     const propertyIds = properties.map(p => p._id);
     
     const { propertyId, status, search, checkInDate, checkOutDate } = req.query;

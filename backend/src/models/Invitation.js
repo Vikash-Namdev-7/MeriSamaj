@@ -14,6 +14,17 @@ const rsvpSchema = new mongoose.Schema({
 }, { _id: false });
 
 const invitationSchema = new mongoose.Schema({
+  /**
+   * communityId — Community isolation key.
+   * Always set server-side from req.user.communityId.
+   * Client cannot override this field.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    required: true,
+    index: true,
+  },
   title: {
     type: String,
     required: true,

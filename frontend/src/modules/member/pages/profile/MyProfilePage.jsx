@@ -84,8 +84,9 @@ const MyProfilePage = () => {
   const [newHighlightTitle, setNewHighlightTitle] = useState('Highlights');
 
   
-  const userGranular = granularPrivacy?.u1 || granularPrivacy || {};
-  const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.u1 || 'public');
+  const myId = currentUser?.id || currentUser?._id || 'u1';
+  const userGranular = granularPrivacy?.[myId] || granularPrivacy?.u1 || granularPrivacy || {};
+  const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.[myId] || profilePrivacy?.u1 || 'public');
   const [myPhoneSetting, setMyPhoneSetting] = useState(userGranular.phone || 'followers');
   const [myEmailSetting, setMyEmailSetting] = useState(userGranular.email || 'followers');
   const [myFamilySetting, setMyFamilySetting] = useState(userGranular.familyTree || 'followers');
@@ -93,13 +94,13 @@ const MyProfilePage = () => {
   // Sync form state when modal opens
   useEffect(() => {
     if (showPrivacyModal) {
-      setMyPrivacySetting(profilePrivacy?.u1 || 'public');
-      const latestGranular = granularPrivacy?.u1 || granularPrivacy || {};
+      setMyPrivacySetting(profilePrivacy?.[myId] || profilePrivacy?.u1 || 'public');
+      const latestGranular = granularPrivacy?.[myId] || granularPrivacy?.u1 || granularPrivacy || {};
       setMyPhoneSetting(latestGranular.phone || 'followers');
       setMyEmailSetting(latestGranular.email || 'followers');
       setMyFamilySetting(latestGranular.familyTree || 'followers');
     }
-  }, [showPrivacyModal, profilePrivacy, granularPrivacy]);
+  }, [showPrivacyModal, profilePrivacy, granularPrivacy, myId]);
 
   // Members lists Modal State (Followers/Following)
   const [membersListModalType, setMembersListModalType] = useState(null); // 'followers', 'following', or null
@@ -134,18 +135,18 @@ const MyProfilePage = () => {
   };
 
   // Follow states derivations
-  const myFollowerRelations = followRelations?.filter(r => r.followingId === 'u1' && r.status === 'accepted') || [];
-  const myFollowingRelations = followRelations?.filter(r => r.followerId === 'u1' && r.status === 'accepted') || [];
+  const myFollowerRelations = followRelations?.filter(r => r.followingId === myId && r.status === 'accepted') || [];
+  const myFollowingRelations = followRelations?.filter(r => r.followerId === myId && r.status === 'accepted') || [];
 
   const myFollowers = members.filter(m => myFollowerRelations.some(r => r.followerId === m.id));
   const myFollowing = members.filter(m => myFollowingRelations.some(r => r.followingId === m.id));
 
   // Pending Received Requests
-  const pendingRequestsRelations = followRelations?.filter(r => r.followingId === 'u1' && r.status === 'pending') || [];
+  const pendingRequestsRelations = followRelations?.filter(r => r.followingId === myId && r.status === 'pending') || [];
   const pendingRequests = members.filter(m => pendingRequestsRelations.some(r => r.followerId === m.id));
 
   // Blocked Members derivation
-  const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === 'u1').map(b => b.blockedId) || [];
+  const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === myId).map(b => b.blockedId) || [];
   const blockedMembersList = members.filter(m => blockedMembersIds.includes(m.id));
 
   // My Posts
@@ -629,7 +630,7 @@ const MyProfilePage = () => {
                 )}
                 <p className="flex items-center gap-2">
                   <Users size={14} className="text-slate-400 shrink-0" /> 
-                  <span>{currentUser.community || 'Agrawal Samaj'}{currentUser.subCommunity ? ` (${currentUser.subCommunity})` : ''}</span>
+                  <span>{currentUser.community || 'Community Not Assigned'}{currentUser.subCommunity ? ` (${currentUser.subCommunity})` : ''}</span>
                 </p>
                 {currentUser.phone && (
                   <p className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[13.5px] text-slate-450 mt-0.5">

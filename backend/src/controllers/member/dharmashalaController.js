@@ -10,7 +10,9 @@ exports.getAllDharmashalas = async (req, res) => {
     let query = { status: 'Active' };
     
     // Community isolation check (if user profile is community specific)
-    if (req.user?.community) {
+    if (req.communityId) {
+      query.communityId = req.communityId;
+    } else if (req.user?.community) {
       query.community = req.user.community;
     }
     
@@ -326,6 +328,7 @@ exports.createBooking = async (req, res) => {
     const booking = new DharmashalaBooking({
       bookingId,
       dharmashala: dharmashalaId,
+      communityId: dharamshala.communityId || req.communityId,
       rooms: [targetRoom._id],
       user: req.user._id,
       checkIn: checkInDate,

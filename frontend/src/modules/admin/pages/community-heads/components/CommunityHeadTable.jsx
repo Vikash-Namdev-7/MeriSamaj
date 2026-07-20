@@ -1,174 +1,181 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../../../../member/components/common/Avatar';
 import { 
-  MoreVertical, ShieldAlert, ShieldCheck, Clock, Settings, Search, Filter 
+  MoreVertical, ShieldAlert, ShieldCheck, Clock, Settings, Search, Filter, Mail, Phone, ChevronRight, Trash2, Edit
 } from 'lucide-react';
 
-export const CommunityHeadTable = ({ heads, searchQuery, setSearchQuery, onStatusChange }) => {
+export const CommunityHeadTable = ({ heads, searchQuery, onStatusChange, onDelete, onEdit, onRowClick }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   
   const getStatusBadge = (status) => {
-    switch(status) {
-      case 'Active':
-        return <span className="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">Active</span>;
-      case 'Suspended':
-        return <span className="px-2 py-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold uppercase tracking-wider">Suspended</span>;
-      case 'Pending Verification':
-        return <span className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider">Pending</span>;
+    switch(status?.toLowerCase()) {
+      case 'active':
+        return <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[11px] font-bold tracking-wide">Active</span>;
+      case 'inactive':
+      case 'suspended':
+        return <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 text-[11px] font-bold tracking-wide">Inactive</span>;
+      case 'pending verification':
+        return <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 text-[11px] font-bold tracking-wide">Pending</span>;
       default:
-        return <span className="px-2 py-1 rounded-md bg-gray-500/10 text-gray-400 border border-gray-500/20 text-[10px] font-bold uppercase tracking-wider">{status}</span>;
+        return <span className="px-2.5 py-1 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 text-[11px] font-bold tracking-wide">{status || 'Unknown'}</span>;
     }
   };
 
   const filteredHeads = heads.filter(h => 
-    h.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    h.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (h.community && h.community.toLowerCase().includes(searchQuery.toLowerCase()))
+    h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    h.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    h.community?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card-neo flex flex-col h-full bg-gradient-to-br from-brand-primary/5 to-transparent border-brand-primary/20"
-    >
-      {/* ─── TOOLBAR ─── */}
-      <div className="p-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-sm font-black text-white flex items-center gap-2">
-          Head Roster
-          <span className="px-2 py-0.5 rounded-full bg-brand-primary/20 text-brand-primary text-[10px]">{heads.length}</span>
-        </h2>
-        
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search heads, ID, community..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[12px] text-white focus:outline-none focus:border-brand-primary/50 w-full sm:w-[250px] transition-colors"
-            />
-          </div>
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-            <Filter size={16} />
-          </button>
-        </div>
-      </div>
+    <div className="w-full overflow-x-auto min-h-[400px]">
+      <table className="w-full text-left border-collapse whitespace-nowrap">
+        <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
+          <tr>
+            <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Head Profile</th>
+            <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Contact Info</th>
+            <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Assigned Communities</th>
+            <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+            <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {filteredHeads.map((head) => (
+            <tr 
+              key={head.id} 
+              onClick={() => onRowClick && onRowClick(head.id)}
+              className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
+            >
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <Avatar imageUrl={head.avatar} initials={head.name.charAt(0)} size="md" color="bg-gradient-to-br from-brand-primary to-indigo-600" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-brand-primary transition-colors">{head.name}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 font-mono">ID: {head.id.slice(-6).toUpperCase()}</p>
+                  </div>
+                </div>
+              </td>
+              
+              <td className="px-6 py-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Mail size={12} className="text-gray-400" />
+                    <span className="text-xs font-medium">{head.email || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Phone size={12} className="text-gray-400" />
+                    <span className="text-xs font-medium">{head.phone || 'N/A'}</span>
+                  </div>
+                </div>
+              </td>
 
-      {/* ─── TABLE ─── */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto min-h-[400px]">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead className="bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
-            <tr>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5">Profile</th>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5">Community</th>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5">Role</th>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5">Status</th>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5 text-center">Performance</th>
-              <th className="px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-white/5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {filteredHeads.map((head, idx) => (
-              <tr key={head.id} className="hover:bg-white/[0.02] transition-colors group">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar imageUrl={head.avatar} initials={head.name.charAt(0)} size="sm" color="bg-gradient-to-br from-indigo-500 to-purple-600" />
-                    <div>
-                      <p className="text-[13px] font-bold text-white leading-none">{head.name}</p>
-                      <p className="text-[10px] text-gray-500 mt-1 font-mono">{head.id} • {head.memberId}</p>
-                    </div>
+              <td className="px-6 py-4">
+                {head.community && head.community !== 'None' ? (
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-800 truncate max-w-[200px]">{head.community}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-wide">{head.assignedCommunityIds?.length || 1} Communities</p>
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  {head.community ? (
-                    <div>
-                      <p className="text-[12px] font-semibold text-gray-200">{head.community}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{head.city}</p>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] text-gray-500 italic">Unassigned</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <Settings size={12} className="text-purple-400" />
-                    <span className="text-[12px] font-medium text-gray-300">{head.role}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {getStatusBadge(head.status)}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex flex-col items-center">
-                    <span className={`text-[12px] font-black ${head.performanceScore >= 80 ? 'text-emerald-400' : head.performanceScore >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
-                      {head.performanceScore}%
-                    </span>
-                    <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden mt-1">
-                      <div 
-                        className={`h-full rounded-full ${head.performanceScore >= 80 ? 'bg-emerald-500' : head.performanceScore >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                        style={{ width: `${head.performanceScore}%` }}
-                      />
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2 !opacity-100 transition-opacity">
-                    {head.status === 'Active' ? (
-                      <button 
-                        onClick={() => onStatusChange(head.id, 'Suspended')}
-                        className="p-1.5 rounded-lg !text-rose-600 hover:bg-rose-50 transition-colors" title="Suspend Head"
-                      >
-                        <ShieldAlert size={14} />
-                      </button>
-                    ) : head.status === 'Suspended' ? (
-                      <button 
-                        onClick={() => onStatusChange(head.id, 'Active')}
-                        className="p-1.5 rounded-lg !text-emerald-600 hover:bg-emerald-50 transition-colors" title="Activate Head"
-                      >
-                        <ShieldCheck size={14} />
-                      </button>
-                    ) : null}
+                ) : (
+                  <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-500 text-[10px] font-bold tracking-wide">UNASSIGNED</span>
+                )}
+              </td>
+              
+              <td className="px-6 py-4 text-center">
+                {getStatusBadge(head.status)}
+              </td>
+              
+              <td className="px-6 py-4 text-right relative">
+                <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdownId(openDropdownId === head.id ? null : head.id);
+                      }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
                     
-                    <div className="relative">
-                      <button 
-                        onClick={() => setOpenDropdownId(openDropdownId === head.id ? null : head.id)}
-                        className="p-1.5 rounded-lg !text-black hover:bg-gray-200 transition-colors" title="Options"
-                      >
-                        <MoreVertical size={14} />
-                      </button>
-                      
+                    <AnimatePresence>
                       {openDropdownId === head.id && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} />
-                          <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
-                            <button onClick={() => setOpenDropdownId(null)} className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">Edit Profile</button>
-                            <button onClick={() => setOpenDropdownId(null)} className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">Manage Access</button>
-                            <button onClick={() => { setOpenDropdownId(null); onStatusChange(head.id, 'Removed'); }} className="w-full text-left px-4 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50">Delete Head</button>
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-10 w-48 bg-white border border-gray-100 shadow-xl rounded-xl overflow-hidden z-50 origin-top-right"
+                        >
+                          <div className="py-1 min-w-[160px]">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRowClick && onRowClick(head.id);
+                                setOpenDropdownId(null);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-brand-primary/5 hover:text-brand-primary flex items-center gap-2 transition-colors"
+                            >
+                              <Settings size={14} /> View Details
+                            </button>
+                            {head.status !== 'Active' ? (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onStatusChange(head.id, 'Active');
+                                  setOpenDropdownId(null);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                              >
+                                <ShieldCheck size={14} /> Activate Account
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onStatusChange(head.id, 'Suspended');
+                                  setOpenDropdownId(null);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                              >
+                                <ShieldAlert size={14} /> Suspend Account
+                              </button>
+                            )}
+                            <div className="h-px bg-gray-100 my-1"></div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete && onDelete(head.id);
+                                setOpenDropdownId(null);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                            >
+                              <Trash2 size={14} /> Delete Account
+                            </button>
                           </div>
-                        </>
+                        </motion.div>
                       )}
-                    </div>
+                    </AnimatePresence>
                   </div>
-                </td>
-              </tr>
-            ))}
-            
-            {filteredHeads.length === 0 && (
-              <tr>
-                <td colSpan="6" className="px-4 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center text-gray-500">
-                    <Search size={24} className="mb-2 opacity-50" />
-                    <p className="text-[13px] font-medium">No community heads found.</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </motion.div>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-brand-primary transition-colors" />
+                </div>
+              </td>
+            </tr>
+          ))}
+          
+          {filteredHeads.length === 0 && (
+            <tr>
+              <td colSpan="5" className="px-6 py-12 text-center">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Search size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-900 font-bold text-sm">No Community Heads Found</p>
+                <p className="text-gray-500 text-xs mt-1">Try adjusting your search criteria or add a new head.</p>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 };

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Users, CheckCircle, Share2, CalendarDays, Heart, Phone, MessageCircle, ExternalLink, ChevronRight, Star, Bookmark, BookmarkCheck, Bell, BellOff, X, Image, User, Ticket, ChevronDown } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
+import { eventService } from '../../services/eventService';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
 
 const categoryConfig = {
@@ -26,13 +27,14 @@ const mockAttendees = [
 const EventDetailPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { events, toggleEventRSVP, eventReminders, toggleEventReminder, eventRegistrations, registerForEvent } = useData();
+  const { toggleEventReminder, registerForEvent, toggleEventBookmark } = useData();
   const attendeesRef = useDraggableScroll();
   const galleryRef = useDraggableScroll();
 
-  const event = events.find(e => e.id === eventId);
-  const [isInterested, setIsInterested] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [showShareToast, setShowShareToast] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
 
@@ -46,7 +48,26 @@ const EventDetailPage = () => {
   const [showReminderToast, setShowReminderToast] = useState(false);
   const [reminderToastMsg, setReminderToastMsg] = useState('');
 
+  const fetchEventDetails = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await eventService.getEventById(eventId);
+      setEvent(res.data);
+    } catch (err) {
+      console.error('Failed to load event details:', err);
+      setError('Failed to load event details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId]);
+
+  React.useEffect(() => {
+    fetchEventDetails();
+  }, [fetchEventDetails]);
+
   const handleShare = () => {
+    if (!event) return;
     if (navigator.share) {
       navigator.share({
         title: event.title,
@@ -60,16 +81,46 @@ const EventDetailPage = () => {
     }
   };
 
-  const handleReminderToggle = () => {
+  const handleReminderToggle = async () => {
     if (!event) return;
-    toggleEventReminder(event.id);
-    const isNowSet = !eventReminders[event.id];
-    setReminderToastMsg(isNowSet ? 'Reminder set' : 'Reminder removed');
-    setShowReminderToast(true);
-    setTimeout(() => setShowReminderToast(false), 2500);
+    try {
+      await toggleEventReminder(event.id);
+      const isNowSet = !event.isReminderSet;
+      setEvent(prev => ({ ...prev, isReminderSet: isNowSet }));
+      setReminderToastMsg(isNowSet ? 'Reminder set' : 'Reminder removed');
+      setShowReminderToast(true);
+      setTimeout(() => setShowReminderToast(false), 2500);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleRSVPSubmit = () => {
+  const handleBookmarkToggle = async () => {
+    if (!event) return;
+    try {
+      const isBookmarked = await toggleEventBookmark(event.id);
+      setEvent(prev => ({ ...prev, isBookmarked }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleInterestToggle = async () => {
+    if (!event) return;
+    try {
+      const res = await eventService.toggleInterested(event.id);
+      setEvent(prev => ({
+        ...prev,
+        isInterested: res.data.isInterested,
+        interested: res.data.interestedCount
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRSVPSubmit = async () => {
+    if (!event) return;
     const errors = {};
     if (!rsvpForm.name.trim()) errors.name = true;
     if (!rsvpForm.phone.trim() || rsvpForm.phone.replace(/\D/g,'').length < 10) errors.phone = true;
@@ -77,15 +128,58 @@ const EventDetailPage = () => {
       setRsvpErrors(errors);
       return;
     }
-    registerForEvent(event.id, rsvpForm);
+    await registerForEvent(event.id, rsvpForm);
+    setEvent(prev => ({
+      ...prev,
+      isRegistered: true,
+      attendees: prev.attendees + 1
+    }));
     setRsvpStep(2);
   };
 
-  if (!event) return null;
+  const handleRSVPToggle = async () => {
+    if (!event) return;
+    try {
+      const res = await eventService.toggleAttend(event.id);
+      setEvent(prev => ({
+        ...prev,
+        isRegistered: res.data.isRegistered,
+        attendees: res.data.attendeesCount
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  const isReminderSet = !!(eventReminders && eventReminders[event.id]);
-  const registration = eventRegistrations && eventRegistrations[event.id];
-  const isRegistered = !!(registration || event.isRegistered);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f6fa] flex items-center justify-center max-w-md mx-auto w-full shadow-sm">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-gray-500 font-semibold">Loading event details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <div className="min-h-screen bg-[#f5f6fa] flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto w-full shadow-sm">
+        <p className="text-sm font-semibold text-rose-600 mb-4">{error || 'Event not found'}</p>
+        <button
+          onClick={fetchEventDetails}
+          className="px-6 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-bold shadow-sm shadow-brand-primary/20 press-scale"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  const isReminderSet = !!event.isReminderSet;
+  const isRegistered = !!event.isRegistered;
+  const isInterested = !!event.isInterested;
+  const isBookmarked = !!event.isBookmarked;
 
   // Gallery images: use event-specific gallery or fallback to category-based photos
   const galleryImages = event.gallery || [
@@ -100,7 +194,7 @@ const EventDetailPage = () => {
   const config = categoryConfig[event.category] || categoryConfig.Cultural;
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] pb-32">
+    <div className="min-h-screen bg-[#f5f6fa] pb-32 max-w-md mx-auto w-full shadow-sm">
       {/* ─── Hero Banner ─── */}
       <div className="relative bg-gray-900">
         <div className="h-[240px] relative overflow-hidden bg-gray-900">
@@ -138,7 +232,7 @@ const EventDetailPage = () => {
             </button>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsBookmarked(!isBookmarked)}
+                onClick={handleBookmarkToggle}
                 className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform border border-white/20"
               >
                 {isBookmarked ? <BookmarkCheck size={18} className="text-amber-300" fill="currentColor" /> : <Bookmark size={18} className="text-white" />}
@@ -369,33 +463,40 @@ const EventDetailPage = () => {
             </span>
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1" ref={attendeesRef}>
-            {mockAttendees.map((a, i) => (
+            {(event.attendeeProfiles || []).map((a, i) => (
               <div key={i} className="shrink-0 flex flex-col items-center w-[56px]">
-                <Avatar initials={a.initials} size="md" />
+                <Avatar imageUrl={a.avatar} initials={a.initials} size="md" />
                 <p className="text-[10px] text-gray-500 font-medium mt-1.5 truncate w-full text-center">{a.name}</p>
               </div>
             ))}
-            <div className="shrink-0 flex flex-col items-center justify-center w-[56px]">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-500">
-                +{Math.max(0, event.attendees - 7)}
+            {event.attendees > (event.attendeeProfiles || []).length && (
+              <div className="shrink-0 flex flex-col items-center justify-center w-[56px]">
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-500">
+                  +{event.attendees - (event.attendeeProfiles || []).length}
+                </div>
+                <p className="text-[10px] text-gray-400 font-medium mt-1.5">More</p>
               </div>
-              <p className="text-[10px] text-gray-400 font-medium mt-1.5">More</p>
-            </div>
+            )}
           </div>
 
           {/* Stacked Avatars Preview */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
-            <div className="flex -space-x-2">
-              {mockAttendees.slice(0, 4).map((a, i) => (
-                <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 border-2 border-white flex items-center justify-center text-[8px] font-bold text-brand-primary">
-                  {a.initials}
-                </div>
-              ))}
+          {(event.attendeeProfiles || []).length > 0 && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+              <div className="flex -space-x-2">
+                {(event.attendeeProfiles || []).slice(0, 4).map((a, i) => (
+                  <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 border-2 border-white flex items-center justify-center text-[8px] font-bold text-brand-primary overflow-hidden">
+                    {a.avatar ? <img src={a.avatar} alt="" className="w-full h-full object-cover" /> : a.initials}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-500">
+                <span className="font-bold text-gray-700">{event.attendeeProfiles[0].name}</span>
+                {event.attendees > 1 && (
+                  <> and <span className="font-bold text-gray-700">{event.attendees - 1} others</span></>
+                )} are attending
+              </p>
             </div>
-            <p className="text-[11px] text-gray-500">
-              <span className="font-bold text-gray-700">{mockAttendees[0].name}</span> and <span className="font-bold text-gray-700">{event.attendees - 1} others</span> are attending
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
@@ -436,7 +537,7 @@ const EventDetailPage = () => {
         <div className="flex gap-3">
           {/* Interest Button */}
           <button
-            onClick={() => setIsInterested(!isInterested)}
+            onClick={handleInterestToggle}
             className={`flex-1 py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border ${
               isInterested
                 ? 'bg-pink-50 text-pink-600 border-pink-200'
@@ -449,14 +550,14 @@ const EventDetailPage = () => {
 
           {/* Register/RSVP Button */}
           <button
-            onClick={() => toggleEventRSVP(event.id)}
+            onClick={handleRSVPToggle}
             className={`flex-[1.5] py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${
-              event.isRegistered
+              isRegistered
                 ? 'bg-emerald-500 text-white shadow-emerald-500/20'
                 : 'bg-brand-primary text-white shadow-brand-primary/20'
             }`}
           >
-            {event.isRegistered ? (
+            {isRegistered ? (
               <><CheckCircle size={16} /> Attending</>
             ) : (
               <>Join</>
@@ -488,29 +589,20 @@ const EventDetailPage = () => {
             </div>
             
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50 px-5">
-              {mockAttendees.map((a, idx) => (
+              {(event.attendeeProfiles || []).map((a, idx) => (
                 <div key={idx} className="py-3.5 flex items-center gap-3">
-                  <Avatar initials={a.initials} size="md" />
+                  <Avatar imageUrl={a.avatar} initials={a.initials} size="md" />
                   <div>
                     <h4 className="text-[13.5px] font-bold text-gray-900">{a.name}</h4>
                     <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Community Member</p>
                   </div>
                 </div>
               ))}
-              {[
-                { initials: 'MK', name: 'Manoj Kumar' },
-                { initials: 'SS', name: 'Sanjay Singh' },
-                { initials: 'VP', name: 'Vijay Patel' },
-                { initials: 'NS', name: 'Naveen Sharma' }
-              ].map((a, idx) => (
-                <div key={idx + 10} className="py-3.5 flex items-center gap-3">
-                  <Avatar initials={a.initials} size="md" />
-                  <div>
-                    <h4 className="text-[13.5px] font-bold text-gray-900">{a.name}</h4>
-                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Community Member</p>
-                  </div>
+              {(event.attendeeProfiles || []).length === 0 && (
+                <div className="text-center py-16">
+                  <p className="text-sm font-semibold text-gray-400">No attendees yet. Be the first to join!</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

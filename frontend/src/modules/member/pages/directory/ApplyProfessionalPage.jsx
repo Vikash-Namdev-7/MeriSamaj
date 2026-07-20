@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Briefcase, FileText, CheckCircle, ChevronDown, Check, Trash2, Image, Video, Plus } from 'lucide-react';
+import { ArrowLeft, Briefcase, FileText, CheckCircle, ChevronDown, Check, Trash2, Image, Video, Plus, Clock } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { professionalService } from '../../../../core/api/professionalService';
 
 const ApplyProfessionalPage = () => {
   const navigate = useNavigate();
@@ -16,10 +17,25 @@ const ApplyProfessionalPage = () => {
   const [companyName, setCompanyName] = useState('');
   const [experience, setExperience] = useState('');
   const [address, setAddress] = useState('');
+  const [businessTiming, setBusinessTiming] = useState('09:00 AM - 08:00 PM');
   const [description, setDescription] = useState('');
   const [mediaFiles, setMediaFiles] = useState([]); // array of { type: 'image' | 'video', url: string }
 
-  const categories = ['Finance', 'Healthcare', 'IT/Tech', 'Legal', 'Real Estate', 'Business / Trade'];
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await professionalService.getCategories();
+        if (res.success) {
+          setCategories(res.data.map(c => c.name));
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      }
+    };
+    fetchCats();
+  }, []);
 
   const handleMediaUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -42,52 +58,51 @@ const ApplyProfessionalPage = () => {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCategory) {
       alert('Please select a category');
       return;
     }
 
-    const categoryKey = selectedCategory.toLowerCase().replace(/[^a-z0-9]+/g, '');
-    const phone = currentUser?.phone || '+91 99999 88888';
-    const initials = companyName.substring(0, 2).toUpperCase();
-
-    // Create the business listing object
-    const newBusiness = {
-      id: `custom-p-${Date.now()}`,
-      title: companyName,
+    const payload = {
       category: selectedCategory,
-      categoryKey: categoryKey,
-      city: address.split(',').pop().trim() || 'Indore',
-      rating: 5.0,
-      initials: initials,
-      phone: phone,
-      verified: true, // auto-verified for demo
-      description: description,
-      experience: experience,
-      address: address,
-      logo: mediaFiles.find(f => f.type === 'image')?.url || null,
-      media: mediaFiles,
+      profession,
+      companyName,
+      yearsOfExperience: Number(experience),
+      workAddress: address,
+      businessTiming,
+      about: description,
+      media: mediaFiles.map(f => ({ type: f.type, url: f.url }))
     };
 
-    // Save to localStorage
-    const localListingsRaw = localStorage.getItem('merisamaj_custom_professionals');
-    const localListings = localListingsRaw ? JSON.parse(localListingsRaw) : [];
-    localStorage.setItem('merisamaj_custom_professionals', JSON.stringify([newBusiness, ...localListings]));
-
-    setSubmitted(true);
+    try {
+      const res = await professionalService.createProfessional(payload);
+      if (res.success) {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to register your business listing. Please try again.');
+    }
   };
 
   if (submitted) {
     return (
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
-          <CheckCircle size={40} className="text-emerald-500" />
+        <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
+          <Clock size={40} className="text-[#7C3AED]" />
         </div>
-        <h2 className="text-xl font-bold text-text-primary mb-2">Application Submitted!</h2>
-        <p className="text-sm text-text-secondary leading-relaxed mb-8">
-          Your professional listing request has been verified and published! You can view it now in the directory.
+        <h2 className="text-xl font-bold text-text-primary mb-2">Business Submitted Successfully</h2>
+        
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider mb-5">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          Status: Pending Approval
+        </div>
+
+        <p className="text-xs text-text-secondary leading-relaxed mb-8 max-w-sm mx-auto">
+          Your business has been submitted for approval. The request has been sent to both your **Community Head** and **Admin**. 
+          <br /><br />
+          Your business will appear in the Professional Directory once it is approved by either of them.
         </p>
         <button
           onClick={() => navigate('/member/professional')}
@@ -202,6 +217,18 @@ const ApplyProfessionalPage = () => {
           </div>
 
           <div>
+            <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">Business Timing / Working Hours</label>
+            <input 
+              required 
+              type="text" 
+              value={businessTiming} 
+              onChange={(e) => setBusinessTiming(e.target.value)} 
+              placeholder="e.g. 09:00 AM - 08:00 PM" 
+              className="w-full premium-input font-semibold" 
+            />
+          </div>
+
+          <div>
             <label className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest block mb-1.5 px-0.5">About Your Service</label>
             <textarea 
               required 
@@ -220,55 +247,57 @@ const ApplyProfessionalPage = () => {
             {mediaFiles.length > 0 && (
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {mediaFiles.map((media, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-purple-100 shrink-0 group">
+                  <div key={idx} className="w-[100px] h-[70px] rounded-xl overflow-hidden border border-purple-100 bg-white shrink-0 relative group">
                     {media.type === 'video' ? (
-                      <video src={media.url} className="w-full h-full object-cover" muted />
+                      <video src={media.url} className="w-full h-full object-cover pointer-events-none" muted />
                     ) : (
-                      <img src={media.url} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={media.url} alt="Upload preview" className="w-full h-full object-cover" />
                     )}
                     <button
                       type="button"
                       onClick={() => removeMedia(idx)}
-                      className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white rounded-full p-1 transition-all"
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/85 text-white flex items-center justify-center rounded-full text-[10px] transition-colors"
                     >
-                      <Trash2 size={12} />
+                      ×
                     </button>
-                    <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-md rounded-md px-1 py-0.5 text-[8px] font-bold text-white uppercase flex items-center gap-0.5 pointer-events-none">
-                      {media.type === 'video' ? <Video size={8} /> : <Image size={8} />}
+                    <span className="absolute bottom-1 left-1 bg-black/40 text-[7px] text-white px-1 rounded-sm uppercase pointer-events-none">
                       {media.type}
-                    </div>
+                    </span>
                   </div>
                 ))}
               </div>
             )}
 
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-purple-200/50 rounded-2xl p-6 bg-white cursor-pointer hover:border-brand-primary hover:bg-brand-primary/5 transition-all text-center group shadow-sm">
+            {/* Custom File Upload Input */}
+            <div className="relative">
               <input
                 type="file"
                 multiple
                 accept="image/*,video/*"
                 onChange={handleMediaUpload}
+                id="media-upload-input"
                 className="hidden"
               />
-              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-2 shadow-sm border border-slate-100 group-hover:bg-brand-primary/10 transition-colors">
-                <Plus size={20} className="text-slate-500 group-hover:text-brand-primary transition-colors" />
-              </div>
-              <span className="text-xs font-bold text-text-primary">Add Images or Videos</span>
-              <span className="text-[10px] text-text-muted mt-0.5">Upload product photos, work videos, or certificates</span>
-            </label>
+              <label
+                htmlFor="media-upload-input"
+                className="w-full flex flex-col items-center justify-center border-2 border-dashed border-purple-200/60 rounded-[20px] p-5 cursor-pointer bg-purple-50/5 hover:bg-purple-50/15 hover:border-purple-300 transition-all group active:scale-[0.98]"
+              >
+                <div className="w-9 h-9 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-[#7C3AED] mb-2 group-hover:scale-110 transition-transform">
+                  <Plus size={16} />
+                </div>
+                <span className="text-[11px] font-black text-purple-900">Add Images or Videos</span>
+                <span className="text-[9px] text-text-secondary mt-0.5">Upload product photos, work videos, or certificates</span>
+              </label>
+            </div>
           </div>
 
-          <div className="pt-4 pb-12">
-            <button 
-              type="submit" 
-              className="w-full py-3.5 bg-gradient-to-r from-brand-primary to-purple-600 hover:from-purple-600 hover:to-brand-primary text-white rounded-xl text-sm font-bold uppercase tracking-wider press-scale shadow-[0_4px_16px_rgba(124,58,237,0.25)] flex justify-center items-center gap-2 transition-all duration-300"
-            >
-              <FileText size={16} /> Submit Application
-            </button>
-            <p className="text-[10px] font-bold text-center text-text-muted mt-3 uppercase tracking-wider">
-              By submitting, you agree to the community verification process.
-            </p>
-          </div>
+          <button
+            type="submit"
+            className="w-full py-3.5 bg-gradient-to-r from-brand-primary to-purple-600 hover:from-purple-600 hover:to-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest press-scale shadow-lg shadow-purple-500/10 active:scale-95 transition-all mt-4 flex items-center justify-center gap-1.5"
+          >
+            <FileText size={14} />
+            Submit Application
+          </button>
         </form>
       </div>
     </div>

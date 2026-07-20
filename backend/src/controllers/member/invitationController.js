@@ -64,6 +64,11 @@ exports.createInvitation = async (req, res) => {
       message,
       images,
       creatorId: req.user._id,
+      /**
+       * communityId is ALWAYS set server-side from the authenticated user's community.
+       * Client body.communityId is intentionally ignored for security.
+       */
+      communityId: req.communityId,
       invitedMemberIds: parsedMemberIds,
       invitedGroupIds: parsedGroupIds,
       groomName,
@@ -80,14 +85,22 @@ exports.createInvitation = async (req, res) => {
   }
 };
 
-// @desc    Get all invitations
+// @desc    Get all invitations for the logged-in user's community
 // @route   GET /api/member/invitations
 // @access  Private
 exports.getInvitations = async (req, res) => {
   try {
-    // For now, fetch all invitations. 
-    // In the future, we could filter by creatorId, or invitedMemberIds for specific views.
-    const invitations = await Invitation.find({})
+    /**
+     * Community-scoped query: only return invitations belonging to the
+     * same community as the authenticated user. req.communityId is set
+     * by authMiddleware from the user's communityId field.
+     */
+    const filter = {};
+    if (req.communityId) {
+      filter.communityId = req.communityId;
+    }
+
+    const invitations = await Invitation.find(filter)
       .populate('creatorId', 'name email')
       .populate('rsvps.memberId', 'name')
       .sort({ createdAt: -1 });

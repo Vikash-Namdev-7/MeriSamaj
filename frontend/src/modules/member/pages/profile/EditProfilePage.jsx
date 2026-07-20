@@ -4,38 +4,17 @@ import { ArrowLeft, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Calen
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 
-const INDIAN_STATES_AND_CITIES = {
-  'Madhya Pradesh': [
-    'Indore', 'Bhopal', 'Ujjain', 'Jabalpur', 'Gwalior', 'Dewas', 'Ratlam', 
-    'Sanawad', 'Khargone', 'Dhamnod', 'Dhar', 'Maheshwar', 'Khandwa', 'Sagar', 'Satna', 'Rewa'
-  ],
-  'Rajasthan': [
-    'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Sikar', 'Alwar', 'Bhilwara'
-  ],
-  'Maharashtra': [
-    'Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 'Solapur', 'Amravati', 'Navi Mumbai', 'Kolhapur', 'Akola'
-  ],
-  'Gujarat': [
-    'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Anand', 'Nadiad', 'Morbi'
-  ],
-  'Delhi': [
-    'New Delhi', 'Delhi', 'Dwarka', 'Rohini', 'Vasant Kunj', 'Saket', 'Karol Bagh'
-  ],
-  'Uttar Pradesh': [
-    'Lucknow', 'Kanpur', 'Noida', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut', 'Prayagraj', 'Bareilly', 'Aligarh', 'Gorakhpur'
-  ],
-  'Karnataka': [
-    'Bengaluru', 'Mysuru', 'Hubballi', 'Mangaluru', 'Belagavi', 'Davangere', 'Ballari'
-  ],
-  'Tamil Nadu': [
-    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tiruppur', 'Erode'
-  ],
-  'Telangana': [
-    'Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam'
-  ],
-  'Andhra Pradesh': [
-    'Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Tirupati'
-  ]
+const DEFAULT_INDIAN_STATES_AND_CITIES = {
+  'Madhya Pradesh': [],
+  'Rajasthan': [],
+  'Maharashtra': [],
+  'Gujarat': [],
+  'Delhi': [],
+  'Uttar Pradesh': [],
+  'Karnataka': [],
+  'Tamil Nadu': [],
+  'Telangana': [],
+  'Andhra Pradesh': []
 };
 
 const EditProfilePage = () => {
@@ -56,6 +35,28 @@ const EditProfilePage = () => {
 
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dynamicStatesAndCities, setDynamicStatesAndCities] = useState(DEFAULT_INDIAN_STATES_AND_CITIES);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const { axiosPublic } = await import('../../../../core/api/axiosConfig');
+        const res = await axiosPublic.get('/auth/cities');
+        if (res.data.success) {
+          const grouped = {};
+          res.data.data.forEach(city => {
+            const state = city.state || 'Madhya Pradesh';
+            if (!grouped[state]) grouped[state] = [];
+            grouped[state].push(city.name);
+          });
+          setDynamicStatesAndCities(grouped);
+        }
+      } catch (err) {
+        console.error('Failed to load cities:', err);
+      }
+    };
+    loadCities();
+  }, []);
 
   // Parse date string 'YYYY-MM-DD'
   const [pickerDate, setPickerDate] = useState(() => {
@@ -93,39 +94,52 @@ const EditProfilePage = () => {
   const handleStateChange = (e) => {
     const val = e.target.value;
     setFormData((prev) => {
-      const allowedCities = INDIAN_STATES_AND_CITIES[val] || [];
+      const allowedCities = dynamicStatesAndCities[val] || [];
       const isCityValid = allowedCities.includes(prev.city);
       return {
         ...prev,
         state: val,
-        city: isCityValid ? prev.city : '',
+        city: isCityValid ? prev.city : (allowedCities[0] || '')
       };
     });
   };
 
   const handleSelectState = (stateVal) => {
     setFormData((prev) => {
-      const allowedCities = INDIAN_STATES_AND_CITIES[stateVal] || [];
+      const allowedCities = dynamicStatesAndCities[stateVal] || [];
       const isCityValid = allowedCities.includes(prev.city);
       return {
         ...prev,
         state: stateVal,
-        city: isCityValid ? prev.city : '',
+        city: isCityValid ? prev.city : (allowedCities[0] || ''),
       };
     });
   };
 
   const handleCityChange = (e) => {
-    const val = e.target.value;
-    setFormData((prev) => ({ ...prev, city: val }));
+    const cityVal = e.target.value;
+    setFormData((prev) => {
+      let stateVal = prev.state;
+      const allowedCities = dynamicStatesAndCities[stateVal] || [];
+      const isCityValid = allowedCities.includes(cityVal);
+      return {
+        ...prev,
+        city: cityVal,
+        state: isCityValid ? stateVal : prev.state
+      };
+    });
   };
 
   const handleSelectCity = (cityVal) => {
     setFormData((prev) => {
       let newState = prev.state;
-      if (!newState) {
-        const foundState = Object.keys(INDIAN_STATES_AND_CITIES).find(st =>
-          INDIAN_STATES_AND_CITIES[st].includes(cityVal)
+      const allowedCities = dynamicStatesAndCities[newState] || [];
+      const isCityValid = allowedCities.includes(cityVal);
+      
+      // Auto-detect state if city doesn't match current state
+      if (!isCityValid) {
+        const foundState = Object.keys(dynamicStatesAndCities).find(st => 
+          dynamicStatesAndCities[st].includes(cityVal)
         );
         if (foundState) {
           newState = foundState;
@@ -369,7 +383,7 @@ const EditProfilePage = () => {
               name="state"
               value={formData.state}
               onChange={handleStateChange}
-              suggestions={Object.keys(INDIAN_STATES_AND_CITIES)}
+              suggestions={Object.keys(dynamicStatesAndCities)}
               placeholder="Search / select state"
               onSelect={handleSelectState}
             />
@@ -380,8 +394,8 @@ const EditProfilePage = () => {
               onChange={handleCityChange}
               suggestions={
                 formData.state
-                  ? INDIAN_STATES_AND_CITIES[formData.state] || []
-                  : Object.values(INDIAN_STATES_AND_CITIES).flat()
+                  ? dynamicStatesAndCities[formData.state] || []
+                  : Object.values(dynamicStatesAndCities).flat()
               }
               placeholder={formData.state ? "Search / select city" : "Select state first"}
               onSelect={handleSelectCity}

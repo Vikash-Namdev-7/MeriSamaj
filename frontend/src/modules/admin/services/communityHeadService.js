@@ -1,146 +1,129 @@
-const mockHeads = [
-  {
-    id: 'CH-1001',
-    memberId: 'MEM-001',
-    name: 'Rahul Sharma',
-    email: 'rahul.s@example.com',
-    phone: '+91 9876543210',
-    avatar: 'https://i.pravatar.cc/150?u=rahul',
-    city: 'Mumbai',
-    community: 'Mumbai Central Samaj',
-    role: 'Full Head',
-    status: 'Active',
-    assignedDate: '2025-01-15T10:00:00Z',
-    lastLogin: '2026-07-08T09:30:00Z',
-    performanceScore: 92,
-    pendingTasks: 3,
-    membersCount: 450,
-    eventsCount: 12
-  },
-  {
-    id: 'CH-1002',
-    memberId: 'MEM-089',
-    name: 'Priya Patel',
-    email: 'priya.p@example.com',
-    phone: '+91 9876543211',
-    avatar: 'https://i.pravatar.cc/150?u=priya',
-    city: 'Surat',
-    community: 'Surat Diamond Samaj',
-    role: 'Limited Head',
-    status: 'Suspended',
-    assignedDate: '2025-03-20T11:30:00Z',
-    lastLogin: '2026-07-01T14:20:00Z',
-    performanceScore: 65,
-    pendingTasks: 28,
-    membersCount: 310,
-    eventsCount: 5
-  },
-  {
-    id: 'CH-1003',
-    memberId: 'MEM-142',
-    name: 'Amit Kumar',
-    email: 'amit.k@example.com',
-    phone: '+91 9876543212',
-    avatar: null,
-    city: 'Delhi',
-    community: 'Delhi North Samaj',
-    role: 'Full Head',
-    status: 'Pending Verification',
-    assignedDate: '2026-07-07T08:15:00Z',
-    lastLogin: null,
-    performanceScore: 0,
-    pendingTasks: 0,
-    membersCount: 120,
-    eventsCount: 2
-  }
-];
+import { axiosPrivate } from '../../../core/api/axiosPrivate';
 
-const mockAuditLogs = [
-  {
-    id: 'AL-001',
-    action: 'Head Created',
-    target: 'Amit Kumar',
-    performedBy: 'Master Admin',
-    timestamp: '2026-07-07T08:15:00Z',
-    details: 'Created new Community Head account.'
-  },
-  {
-    id: 'AL-002',
-    action: 'Suspended',
-    target: 'Priya Patel',
-    performedBy: 'Master Admin',
-    timestamp: '2026-07-01T15:00:00Z',
-    details: 'Suspended due to prolonged inactivity and pending approvals.'
-  }
-];
-
-// Simulated delay to mimic API calls
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1'}/admin/community-heads`;
 
 export const communityHeadService = {
   getHeads: async () => {
-    await delay(600);
-    return [...mockHeads];
+    try {
+      const response = await axiosPrivate.get(API_BASE);
+      // Map _id to id for frontend
+      return response.data.data.map(head => ({
+        ...head,
+        id: head._id,
+        status: head.accountStatus === 'active' ? 'Active' : (head.accountStatus === 'inactive' ? 'Suspended' : head.accountStatus),
+        // Map assignedCommunityIds into a simpler format for display
+        community: head.assignedCommunityIds && head.assignedCommunityIds.length > 0 
+          ? head.assignedCommunityIds.map(c => c.name).join(', ') 
+          : 'None'
+      }));
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch community heads');
+    }
   },
   
   getHeadById: async (id) => {
-    await delay(300);
-    return mockHeads.find(h => h.id === id);
-  },
-
-  createHead: async (data) => {
-    await delay(800);
-    const newHead = {
-      ...data,
-      id: `CH-${1000 + Math.floor(Math.random() * 900)}`,
-      status: 'Pending Verification',
-      assignedDate: new Date().toISOString(),
-      performanceScore: 0,
-      pendingTasks: 0,
-      membersCount: 0,
-      eventsCount: 0,
-      lastLogin: null
-    };
-    mockHeads.unshift(newHead);
-    return newHead;
+    try {
+      const response = await axiosPrivate.get(`${API_BASE}/${id}`);
+      const head = response.data.data;
+      return {
+        ...head,
+        id: head._id,
+        status: head.accountStatus === 'active' ? 'Active' : (head.accountStatus === 'inactive' ? 'Suspended' : head.accountStatus),
+        community: head.assignedCommunityIds && head.assignedCommunityIds.length > 0 
+          ? head.assignedCommunityIds.map(c => c.name).join(', ') 
+          : 'None'
+      };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch community head details');
+    }
   },
 
   updateHead: async (id, data) => {
-    await delay(600);
-    const index = mockHeads.findIndex(h => h.id === id);
-    if (index === -1) throw new Error('Head not found');
-    mockHeads[index] = { ...mockHeads[index], ...data };
-    return mockHeads[index];
+    try {
+      const response = await axiosPrivate.put(`${API_BASE}/${id}`, data);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update community head');
+    }
+  },
+
+  createHead: async (data) => {
+    try {
+      const response = await axiosPrivate.post(API_BASE, data);
+      const head = response.data.data;
+      return {
+        ...head,
+        id: head._id,
+        status: head.accountStatus === 'active' ? 'Active' : (head.accountStatus === 'inactive' ? 'Suspended' : head.accountStatus),
+      };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create community head');
+    }
+  },
+
+  updateHead: async (id, data) => {
+    try {
+      const response = await axiosPrivate.put(`${API_BASE}/${id}`, data);
+      const head = response.data.data;
+      return {
+        ...head,
+        id: head._id,
+        status: head.accountStatus === 'active' ? 'Active' : (head.accountStatus === 'inactive' ? 'Suspended' : head.accountStatus),
+      };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update community head');
+    }
   },
 
   updateStatus: async (id, status) => {
-    await delay(500);
-    const index = mockHeads.findIndex(h => h.id === id);
-    if (index === -1) throw new Error('Head not found');
-    mockHeads[index].status = status;
-    return mockHeads[index];
+    try {
+      const response = await axiosPrivate.patch(`${API_BASE}/${id}/status`, { status: status === 'Active' ? 'active' : 'inactive' });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update community head status');
+    }
   },
 
-  getAuditLogs: async () => {
-    await delay(500);
-    return [...mockAuditLogs];
+  deleteHead: async (id) => {
+    try {
+      const response = await axiosPrivate.delete(`${API_BASE}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to delete community head');
+    }
+  },
+
+  getAuditLogs: async (page = 1, limit = 20) => {
+    try {
+      const response = await axiosPrivate.get(`${API_BASE}/activities?page=${page}&limit=${limit}`);
+      return response.data.data.map(log => ({
+        ...log,
+        id: log._id,
+        target: log.communityId?.name || 'Unknown',
+        performedBy: log.headId?.name || 'Unknown',
+        details: log.description
+      }));
+    } catch (error) {
+      console.warn('Failed to fetch audit logs', error);
+      return []; // Return empty array to not break the UI if no logs exist yet
+    }
   },
 
   getStats: async () => {
-    await delay(400);
-    const total = mockHeads.length;
-    const active = mockHeads.filter(h => h.status === 'Active').length;
-    const suspended = mockHeads.filter(h => h.status === 'Suspended').length;
-    const pending = mockHeads.filter(h => h.status === 'Pending Verification').length;
-    
-    return {
-      totalHeads: total,
-      activeHeads: active,
-      suspendedHeads: suspended,
-      pendingInvitations: pending,
-      communitiesAssigned: mockHeads.filter(h => h.community).length,
-      communitiesWithoutHead: 3, // Mock value
-      averagePerformance: 78 // Mock value
-    };
+    try {
+      const response = await axiosPrivate.get(`${API_BASE}/stats`);
+      const { totalHeads, activeHeads, inactiveHeads, unassignedHeads, totalManagedCommunities } = response.data.data;
+      return {
+        totalHeads,
+        activeHeads,
+        suspendedHeads: inactiveHeads,
+        pendingInvitations: unassignedHeads,
+        communitiesAssigned: totalManagedCommunities,
+        communitiesWithoutHead: 0,
+        averagePerformance: 0
+      };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch head stats');
+    }
   }
 };

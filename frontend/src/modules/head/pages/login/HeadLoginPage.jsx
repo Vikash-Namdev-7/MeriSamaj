@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, ShieldCheck, AlertCircle, Loader2, ChevronRight, Award } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, ShieldCheck, AlertCircle, Loader2, ChevronRight, Award } from 'lucide-react';
 import { useHeadAuth } from '../../auth/useHeadAuth';
 
 const HeadLoginPage = () => {
@@ -8,7 +8,7 @@ const HeadLoginPage = () => {
   const location = useLocation();
   const { headAuth, headLogin } = useHeadAuth();
 
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ loginId: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,8 +32,8 @@ const HeadLoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.email.trim()) {
-      setError('Email address is required.');
+    if (!form.loginId.trim()) {
+      setError('Login ID is required.');
       return;
     }
     if (!form.password) {
@@ -45,7 +45,7 @@ const HeadLoginPage = () => {
     setError('');
 
     try {
-      await headLogin(form.email, form.password);
+      await headLogin(form.loginId, form.password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
@@ -179,33 +179,33 @@ const HeadLoginPage = () => {
                 className="block text-[11px] font-bold uppercase tracking-wider"
                 style={{ color: 'rgba(167,139,250,0.8)' }}
               >
-                Email Address
+                Login ID
               </label>
               <div className="relative">
                 <div
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                  style={{ color: focusedField === 'email' ? '#A78BFA' : 'rgba(255,255,255,0.3)' }}
+                  style={{ color: focusedField === 'loginId' ? '#A78BFA' : 'rgba(255,255,255,0.3)' }}
                 >
-                  <Mail size={15} />
+                  <User size={15} />
                 </div>
                 <input
-                  id="head-email"
-                  name="email"
-                  type="email"
+                  id="head-loginId"
+                  name="loginId"
+                  type="text"
                   autoComplete="username"
-                  value={form.email}
+                  value={form.loginId}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('email')}
+                  onFocus={() => setFocusedField('loginId')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="head@example.com"
+                  placeholder="e.g. rahul_head"
                   disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] text-white placeholder-white/25 transition-all duration-200 outline-none disabled:opacity-50"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
-                    border: focusedField === 'email'
+                    border: focusedField === 'loginId'
                       ? '1px solid rgba(167,139,250,0.6)'
                       : '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: focusedField === 'email' ? '0 0 0 3px rgba(124,58,237,0.15)' : 'none',
+                    boxShadow: focusedField === 'loginId' ? '0 0 0 3px rgba(124,58,237,0.15)' : 'none',
                   }}
                 />
               </div>

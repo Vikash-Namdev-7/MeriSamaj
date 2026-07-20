@@ -85,6 +85,18 @@ const obituarySchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  /**
+   * communityId — PRIMARY community isolation key (ObjectId).
+   * Server-set from req.user.communityId on create.
+   * @deprecated `community` String field below — will be removed after migration.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    index: true,
+    default: null,
+  },
+  // @deprecated — use communityId (ObjectId) instead.
   community: {
     type: String,
     required: true,

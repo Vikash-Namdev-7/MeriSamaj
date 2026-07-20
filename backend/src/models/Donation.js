@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
 
 const donationSchema = new mongoose.Schema({
+  /**
+   * communityId — Community isolation key.
+   * Set server-side from the parent Campaign's communityId.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    required: true,
+    index: true,
+  },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign', required: true },
   amount: { type: Number, required: true },

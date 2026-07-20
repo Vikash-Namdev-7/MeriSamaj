@@ -1,79 +1,382 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, ChevronRight, ChevronLeft, Shield, Building2, User, Key } from 'lucide-react';
+import { axiosPrivate } from '../../../../../core/api/axiosPrivate';
 
-export const CommunityHeadForm = ({ isOpen, onClose, onSubmit }) => {
+const defaultPermissions = {
+  canViewDashboard: true,
+  canViewMembers: true, canAddMembers: false, canEditMembers: false, canRemoveMembers: false, canExportMembers: false,
+  canViewProfiles: true, canApproveProfiles: false, canEditProfiles: false,
+  canCreateEvents: false, canEditEvents: false, canDeleteEvents: false, canManageBookings: false,
+  canCreateDonationCampaigns: false, canViewDonations: true, canManageExpenses: false,
+  canCreateInvitations: false, canManageInvitations: false,
+  canManageDirectory: false,
+  canSendNotifications: false, canViewReports: true
+};
+
+export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [step, setStep] = useState(1);
-  const totalSteps = 6;
+  const totalSteps = 4;
+  
+  const [formData, setFormData] = useState({
+    name: '', email: '', phone: '', loginId: '', password: '', assignedCommunityIds: []
+  });
+  
+  const [permissions, setPermissions] = useState(defaultPermissions);
+  const [availableCommunities, setAvailableCommunities] = useState([]);
+  const [isFetchingCommunities, setIsFetchingCommunities] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+      setError(null);
+      if (initialData) {
+        setFormData({
+          name: initialData.name || '',
+          email: initialData.email || '',
+          phone: initialData.phone || '',
+          loginId: initialData.loginId || '',
+          password: '', // Leave blank unless they want to change it
+          assignedCommunityIds: initialData.assignedCommunityIds?.map(c => c._id || c.id || c) || []
+        });
+        setPermissions({ ...defaultPermissions, ...initialData.headPermissions });
+      } else {
+        setFormData({ name: '', email: '', phone: '', loginId: '', password: '', assignedCommunityIds: [] });
+        setPermissions(defaultPermissions);
+      }
+      
+      const fetchCommunities = async () => {
+        setIsFetchingCommunities(true);
+        try {
+          const res = await axiosPrivate.get('/admin/communities');
+          setAvailableCommunities(res.data.data || []);
+        } catch (error) {
+          console.error("Failed to fetch communities", error);
+          setAvailableCommunities([]);
+        } finally {
+          setIsFetchingCommunities(false);
+        }
+      };
+      fetchCommunities();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const handleNext = () => {
+    setError(null);
+    setStep(prev => Math.min(totalSteps, prev + 1));
+  };
+  const handleBack = () => {
+    setError(null);
+    setStep(prev => Math.max(1, prev - 1));
+  };
+  
+  const handleSubmit = async () => {
+    setError(null);
+    setLoading(true);
+    const dataToSubmit = {
+      ...formData,
+      headPermissions: permissions
+    };
+    if (initialData && !dataToSubmit.password) {
+      delete dataToSubmit.password;
+    }
+    const result = await onSubmit(dataToSubmit);
+    if (result && !result.success) {
+      setError(result.error || 'Failed to save Community Head');
+    }
+    setLoading(false);
+  };
+
+  const steps = [
+    { title: 'Profile', icon: User },
+    { title: 'Communities', icon: Building2 },
+    { title: 'Permissions', icon: Shield },
+    { title: 'Review', icon: CheckCircle }
+  ];
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
         <motion.div 
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
           onClick={onClose}
         />
         
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-2xl bg-[#1e1e2d] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-4xl bg-white border border-gray-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         >
           {/* Header */}
-          <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-            <h2 className="text-lg font-black text-white">Create Community Head</h2>
-            <button onClick={onClose} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
-              <X size={18} />
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
+            <div>
+              <h2 className="text-xl font-black text-gray-900">
+                <Shield className="w-6 h-6 text-brand-primary inline mr-2" />
+                {initialData ? 'Edit Community Head' : 'Create Community Head'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Setup a new administrator account and assign communities.</p>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+              <X size={20} />
             </button>
           </div>
 
-          {/* Body - Wizard Steps Placeholder */}
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="flex items-center justify-between mb-8">
-              {[...Array(totalSteps)].map((_, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center relative">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 ${step > i + 1 ? 'bg-emerald-500 text-white' : step === i + 1 ? 'bg-brand-primary text-white ring-4 ring-brand-primary/30' : 'bg-white/10 text-gray-500'}`}>
-                    {step > i + 1 ? <CheckCircle size={14} /> : i + 1}
+          {/* Stepper */}
+          <div className="px-8 pt-6 pb-2 border-b border-gray-50 bg-gray-50/50">
+            <div className="flex items-center justify-between relative max-w-2xl mx-auto">
+              <div className="absolute left-0 top-5 w-full h-[2px] bg-gray-200 -z-0">
+                <div 
+                  className="h-full bg-brand-primary transition-all duration-300 ease-out"
+                  style={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
+                />
+              </div>
+              
+              {steps.map((s, i) => {
+                const isCompleted = step > i + 1;
+                const isCurrent = step === i + 1;
+                const Icon = s.icon;
+                return (
+                  <div key={i} className="relative z-10 flex flex-col items-center gap-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted ? 'bg-brand-primary text-white' : isCurrent ? 'bg-white border-2 border-brand-primary text-brand-primary shadow-md' : 'bg-white border-2 border-gray-200 text-gray-400'}`}>
+                      {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
+                    </div>
+                    <span className={`text-[11px] font-bold uppercase tracking-wider ${isCurrent ? 'text-brand-primary' : isCompleted ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {s.title}
+                    </span>
                   </div>
-                  {i < totalSteps - 1 && (
-                    <div className={`absolute top-4 left-1/2 w-full h-[2px] -z-0 ${step > i + 1 ? 'bg-emerald-500' : 'bg-white/10'}`} />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center py-10">
-              <h3 className="text-xl font-bold text-white mb-2">Step {step} placeholder</h3>
-              <p className="text-sm text-gray-400">Multi-step wizard content for Step {step} will go here.</p>
+                );
+              })}
             </div>
           </div>
 
+          {/* Body */}
+          <div className="p-8 flex-1 overflow-y-auto bg-gray-50/30">
+            {step === 1 && (
+              <div className="max-w-xl mx-auto space-y-6">
+                {/* Head Information Section */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
+                  <h3 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Head Information</h3>
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Full Name *</label>
+                      <input 
+                        type="text" 
+                        value={formData.name}
+                        onChange={e => setFormData({...formData, name: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all"
+                        placeholder="e.g. Rahul Sharma"
+                      />
+                    </div>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Phone Number *</label>
+                      <input 
+                        type="tel" 
+                        maxLength="10"
+                        value={formData.phone}
+                        onChange={e => {
+                          const numericValue = e.target.value.replace(/\D/g, '');
+                          setFormData({...formData, phone: numericValue});
+                        }}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all"
+                        placeholder="9876543210"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-600 uppercase">Email Address (Optional)</label>
+                    <input 
+                      type="email" 
+                      value={formData.email}
+                      onChange={e => setFormData({...formData, email: e.target.value})}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all"
+                      placeholder="head@community.com"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Official contact email for notifications.</p>
+                  </div>
+                </div>
+
+                {/* Head Panel Login Credentials Section */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
+                  <h3 className="text-sm font-bold text-brand-primary border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
+                    <Key size={16} /> Head Panel Login Credentials
+                  </h3>
+                  <div className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Login ID *</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <User size={18} className="text-gray-400" />
+                        </div>
+                        <input 
+                          type="text" 
+                          value={formData.loginId}
+                          onChange={e => setFormData({...formData, loginId: e.target.value})}
+                          className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm font-medium"
+                          style={{ paddingLeft: '2.75rem' }}
+                          placeholder="e.g. rahul_head"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Unique ID used to log in to the Head Panel.</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Login Password {initialData ? '(Leave blank to keep current)' : '*'}</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Key size={18} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm font-medium"
+                          style={{ paddingLeft: '2.75rem' }}
+                          placeholder={initialData ? "Leave blank to keep current" : "Set password for login"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="max-w-3xl mx-auto">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Select Communities</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {isFetchingCommunities ? (
+                    <div className="col-span-1 sm:col-span-2 text-center py-10 bg-white rounded-2xl border border-gray-100 text-gray-500 font-medium">
+                      Loading communities...
+                    </div>
+                  ) : availableCommunities.length === 0 ? (
+                    <div className="col-span-1 sm:col-span-2 text-center py-10 bg-white rounded-2xl border border-gray-100 text-gray-500 font-medium">
+                      No communities found. Please create a community first.
+                    </div>
+                  ) : (
+                    availableCommunities.map(c => (
+                      <label key={c._id} className={`flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${formData.assignedCommunityIds.includes(c._id) ? 'border-brand-primary bg-brand-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                        <div className="mt-0.5">
+                          <input 
+                            type="checkbox"
+                            className="w-5 h-5 rounded text-brand-primary focus:ring-brand-primary/50"
+                            checked={formData.assignedCommunityIds.includes(c._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(f => ({ ...f, assignedCommunityIds: [...f.assignedCommunityIds, c._id] }));
+                              } else {
+                                setFormData(f => ({ ...f, assignedCommunityIds: f.assignedCommunityIds.filter(id => id !== c._id) }));
+                              }
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{c.name}</p>
+                          <p className="text-xs text-gray-500 mt-1">{c.city || 'No City'} • {c.membersCount || 0} Members</p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.keys(permissions).map(key => {
+                  const label = key.replace('can', '').replace(/([A-Z])/g, ' $1').trim();
+                  return (
+                    <label key={key} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl cursor-pointer hover:border-brand-primary/30 transition-all shadow-sm">
+                      <span className="text-sm font-semibold text-gray-700">{label}</span>
+                      <div className={`w-10 h-6 rounded-full p-1 transition-colors ${permissions[key] ? 'bg-brand-primary' : 'bg-gray-200'}`}>
+                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                      {/* Hidden checkbox for a11y */}
+                      <input 
+                        type="checkbox" 
+                        className="hidden"
+                        checked={permissions[key]} 
+                        onChange={e => setPermissions({...permissions, [key]: e.target.checked})} 
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="max-w-2xl mx-auto bg-white border border-gray-100 rounded-2xl p-8 shadow-sm">
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                    <User size={32} />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900">{formData.name || 'Unknown Name'}</h3>
+                  <p className="text-gray-500 mt-1">{formData.email || 'No email provided'} • {formData.phone || 'No phone provided'}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-8 border-t border-gray-100 pt-8">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Assigned Communities</h4>
+                    {formData.assignedCommunityIds.length > 0 ? (
+                      <ul className="space-y-2">
+                        {formData.assignedCommunityIds.map(id => {
+                          const c = availableCommunities.find(c => c._id === id);
+                          return <li key={id} className="text-sm font-semibold text-gray-700 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />{c ? c.name : id}</li>;
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No communities assigned</p>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Key Permissions</h4>
+                    <ul className="space-y-2">
+                      <li className="text-sm text-gray-700 flex items-center justify-between">Members: <span className="font-bold">{permissions.canAddMembers ? 'Full' : 'Read-only'}</span></li>
+                      <li className="text-sm text-gray-700 flex items-center justify-between">Events: <span className="font-bold">{permissions.canCreateEvents ? 'Full' : 'Read-only'}</span></li>
+                      <li className="text-sm text-gray-700 flex items-center justify-between">Matrimonial: <span className="font-bold">{permissions.canApproveProfiles ? 'Full' : 'Read-only'}</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="px-6 py-3 bg-rose-50 border-t border-rose-100 text-rose-600 text-sm font-semibold flex items-center justify-center">
+              {error}
+            </div>
+          )}
+
           {/* Footer */}
-          <div className="p-4 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
+          <div className="p-6 border-t border-gray-100 bg-white flex items-center justify-between">
             <button 
-              onClick={() => setStep(prev => Math.max(1, prev - 1))}
+              onClick={handleBack}
               disabled={step === 1}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               Back
             </button>
             {step < totalSteps ? (
               <button 
-                onClick={() => setStep(prev => Math.min(totalSteps, prev + 1))}
-                className="px-4 py-2 rounded-xl bg-brand-primary text-white text-sm font-bold shadow-lg shadow-brand-primary/25 hover:bg-brand-primary/90 transition-all"
+                onClick={handleNext}
+                disabled={step === 1 && (!formData.name || !formData.phone || !formData.loginId || (!initialData && !formData.password))}
+                className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all"
               >
-                Continue
+                Continue <ChevronRight size={16} />
               </button>
             ) : (
               <button 
-                onClick={() => { onSubmit({}); onClose(); }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 transition-all"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all"
               >
-                Confirm & Create
+                {loading ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Administrator')} <CheckCircle size={16} />
               </button>
             )}
           </div>

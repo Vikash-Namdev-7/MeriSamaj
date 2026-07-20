@@ -31,7 +31,14 @@ const getUserResponsePayload = (user) => {
     bloodGroup: user.bloodGroup,
     maritalStatus: user.maritalStatus,
     gotra: user.gotra,
-    community: user.community || 'Agrawal Samaj',
+    communityId: user.communityId,
+    assignedCommunityId: user.assignedCommunityId,
+    assignedCommunityIds: user.assignedCommunityIds,
+    headPermissions: user.headPermissions,
+    community: user.communityId?.name || user.community || '',
+    communityLogo: user.communityId?.logoUrl || '',
+    communityDescription: user.communityId?.description || '',
+    communityCity: user.communityId?.city || '',
     subCommunity: user.subCommunity,
     city: user.city,
     district: user.district,
@@ -46,6 +53,7 @@ const getUserResponsePayload = (user) => {
     annualIncome: user.annualIncome,
     workCity: user.workCity,
     detailedAddress: user.detailedAddress,
+    address: user.detailedAddress,
     familyMembers: user.familyMembers || [],
     accountStatus: user.accountStatus,
     verificationStatus: user.verificationStatus,
@@ -86,6 +94,7 @@ const registerUser = async (req, res) => {
     const user = await User.create(userData);
 
     if (user) {
+      await user.populate('communityId', 'name slug isActive settings logoUrl description city');
       const { accessToken, refreshToken } = generateTokens(user);
       
       // Store Refresh Token in HttpOnly cookie
@@ -111,6 +120,7 @@ const registerUser = async (req, res) => {
 // @desc    Auth user & get tokens
 // @route   POST /api/auth/login
 // @access  Public
+// const loginUser
 const loginUser = async (req, res) => {
   const { identifier, password } = req.body;
 
@@ -119,10 +129,12 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Phone/Email and password are required' });
     }
 
-    // Check for user email or phone
+    // Find by email, phone, or loginId, and populate communityId and assignedCommunityIds so it's included in the login payload
     const user = await User.findOne({
-      $or: [{ email: identifier.trim().toLowerCase() }, { phone: identifier.trim() }]
-    });
+      $or: [{ email: identifier.trim().toLowerCase() }, { phone: identifier.trim() }, { loginId: identifier.trim() }]
+    })
+    .populate('communityId', 'name slug isActive settings logoUrl description city')
+    .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -134,6 +146,9 @@ const loginUser = async (req, res) => {
     }
     if (user.accountStatus === 'deleted') {
       return res.status(403).json({ message: 'Your account has been deleted.' });
+    }
+    if (user.role === 'head' && (user.accountStatus === 'inactive' || user.accountStatus === 'suspended')) {
+      return res.status(403).json({ message: 'Your Community Head account is currently inactive.' });
     }
 
     const isMatch = await user.matchPassword(password);
@@ -185,15 +200,20 @@ const refreshAuth = async (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id)
+      .populate('communityId', 'name slug isActive settings logoUrl description city')
+      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
 
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
 
     // Verify account status
-    if (user.accountStatus === 'blocked' || user.accountStatus === 'deleted' || user.accountStatus === 'inactive') {
+    if (user.accountStatus === 'blocked' || user.accountStatus === 'deleted') {
       return res.status(403).json({ message: 'Account status is not active' });
+    }
+    if (user.role === 'head' && (user.accountStatus === 'inactive' || user.accountStatus === 'suspended')) {
+      return res.status(403).json({ message: 'Your Community Head account is currently inactive.' });
     }
 
     const tokens = generateTokens(user);
@@ -240,6 +260,14 @@ const updateProfile = async (req, res) => {
       }
       
       // Community
+      if (req.body.communityId) {
+        const Community = require('../models/Community');
+        const targetComm = await Community.findById(req.body.communityId);
+        if (!targetComm || !targetComm.isActive) {
+          return res.status(400).json({ status: 'error', message: 'Selected community is inactive or does not exist.' });
+        }
+        user.communityId = req.body.communityId;
+      }
       user.community = req.body.community || user.community;
       user.subCommunity = req.body.subCommunity || user.subCommunity;
       
@@ -264,8 +292,8 @@ const updateProfile = async (req, res) => {
       user.streetAddress = req.body.streetAddress || user.streetAddress;
       user.landmark = req.body.landmark || user.landmark;
       user.areaAddress = req.body.areaAddress || user.areaAddress;
-      user.pincodeAddress = req.body.pincodeAddress || user.pincodeAddress;
-      user.detailedAddress = req.body.detailedAddress || user.detailedAddress;
+       user.pincodeAddress = req.body.pincodeAddress || user.pincodeAddress;
+      user.detailedAddress = req.body.detailedAddress || req.body.address || user.detailedAddress;
       user.alternatePhone = req.body.alternatePhone || user.alternatePhone;
       user.alternateEmail = req.body.alternateEmail || user.alternateEmail;
       
@@ -299,6 +327,8 @@ const updateProfile = async (req, res) => {
       user.isFaceVerified = req.body.isFaceVerified !== undefined ? req.body.isFaceVerified : user.isFaceVerified;
 
       const updatedUser = await user.save();
+      await updatedUser.populate('communityId', 'name slug isActive settings logoUrl description city');
+      await updatedUser.populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
 
       res.json({
         ...getUserResponsePayload(updatedUser),
@@ -369,6 +399,51 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// @desc    Get all active communities for public registration dropdown
+// @route   GET /api/v1/auth/communities
+// @access  Public
+const getPublicCommunities = async (req, res) => {
+  try {
+    const Community = require('../models/Community');
+    const communities = await Community.find({ isActive: true })
+      .select('name cityIds')
+      .sort({ name: 1 })
+      .lean();
+    res.json({ success: true, data: communities });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch communities' });
+  }
+};
+
+// @desc    Get all active cities mapped to a community
+// @route   GET /api/v1/auth/cities?communityId=XYZ
+// @access  Public
+const getPublicCities = async (req, res) => {
+  try {
+    const { communityId } = req.query;
+    const City = require('../models/City');
+    
+    let filter = { isActive: true };
+
+    if (communityId) {
+      const Community = require('../models/Community');
+      const community = await Community.findById(communityId);
+      if (community && community.cityIds && community.cityIds.length > 0) {
+        filter._id = { $in: community.cityIds };
+      }
+    }
+
+    const cities = await City.find(filter)
+      .select('name state')
+      .sort({ name: 1 })
+      .lean();
+      
+    res.json({ success: true, data: cities });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch cities' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -377,5 +452,7 @@ module.exports = {
   updateProfile,
   sendOtp,
   verifyOtp,
-  resetPassword
+  resetPassword,
+  getPublicCommunities,
+  getPublicCities
 };

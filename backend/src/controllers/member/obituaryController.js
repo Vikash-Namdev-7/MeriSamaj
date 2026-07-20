@@ -64,7 +64,13 @@ exports.createObituary = async (req, res) => {
       image,
       creatorId: req.user._id,
       relation: relation || 'Family Member',
-      community: req.user.community,
+      /**
+       * communityId is set server-side from req.communityId (ObjectId).
+       * community String is also set for backward compatibility during migration.
+       * communityId is the authoritative field going forward.
+       */
+      communityId: req.communityId,
+      community: req.user.community || '',
       privacy: privacy || 'public',
       familyContact: familyContact || '',
       status: status || 'Approved'
@@ -87,7 +93,17 @@ exports.createObituary = async (req, res) => {
 // @access  Private
 exports.getObituaries = async (req, res) => {
   try {
-    const query = { community: req.user.community };
+    /**
+     * Community-scoped query using communityId (ObjectId — primary).
+     * Falls back to community String for documents not yet migrated.
+     */
+    let query;
+    if (req.communityId) {
+      query = { communityId: req.communityId };
+    } else {
+      // Fallback: use String field for pre-migration documents
+      query = { community: req.user.community };
+    }
 
     // Regular members only see Approved posts and their own submissions
     if (req.user.role !== 'head' && req.user.role !== 'admin') {
@@ -120,8 +136,13 @@ exports.getObituaryById = async (req, res) => {
       return res.status(404).json({ message: 'Obituary not found' });
     }
 
-    // Community security check
-    if (obituary.community !== req.user.community) {
+    // Community security check — use communityId ObjectId (primary) with string fallback
+    const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
+    const isOwnCommunity = req.communityId && obCommunityId
+      ? obCommunityId.equals(req.communityId)
+      : obituary.community === req.user.community; // pre-migration fallback
+
+    if (!isOwnCommunity) {
       return res.status(403).json({ message: 'Unauthorized to view obituaries from other communities' });
     }
 
@@ -145,7 +166,12 @@ exports.updateObituary = async (req, res) => {
 
     // Verify ownership or community leadership role
     const isCreator = obituary.creatorId.toString() === req.user._id.toString();
-    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && obituary.community === req.user.community;
+    // Use communityId ObjectId check (primary) with string fallback for pre-migration
+    const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
+    const isSameCommunity = req.communityId && obCommunityId
+      ? obCommunityId.equals(req.communityId)
+      : obituary.community === req.user.community;
+    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity;
 
     if (!isCreator && !isLeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to update this obituary' });

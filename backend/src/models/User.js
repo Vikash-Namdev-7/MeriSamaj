@@ -5,7 +5,9 @@ const userSchema = new mongoose.Schema({
   // Basic Auth Fields
   phone: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
+  loginId: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
+  plainPassword: { type: String }, // Stored purely for Admin visibility in Head Panel
   
   // Basic Profile Fields
   name: { type: String },
@@ -17,6 +19,18 @@ const userSchema = new mongoose.Schema({
   gotra: { type: String },
   
   // Community Fields
+  /**
+   * communityId — PRIMARY community isolation key (ObjectId ref to Community model).
+   * This is the single source of truth for community membership.
+   * The old `community` String field below is DEPRECATED and kept only for migration.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    index: true,
+    default: null,
+  },
+  // @deprecated — use communityId (ObjectId) instead. Will be removed after migration.
   community: { type: String },
   subCommunity: { type: String },
   
@@ -105,6 +119,51 @@ const userSchema = new mongoose.Schema({
     type: String, 
     enum: ['user', 'admin', 'head'], 
     default: 'user' 
+  },
+
+  // Assigned communities for Head users (array of ObjectIds for multiple assignments)
+  assignedCommunityIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+  }],
+  
+  // Granular module permissions for Head users
+  headPermissions: {
+    canViewDashboard: { type: Boolean, default: true },
+    
+    // Members
+    canViewMembers: { type: Boolean, default: true },
+    canAddMembers: { type: Boolean, default: false },
+    canEditMembers: { type: Boolean, default: false },
+    canRemoveMembers: { type: Boolean, default: false },
+    canExportMembers: { type: Boolean, default: false },
+    
+    // Matrimonial
+    canViewProfiles: { type: Boolean, default: true },
+    canApproveProfiles: { type: Boolean, default: false },
+    canEditProfiles: { type: Boolean, default: false },
+    
+    // Events
+    canCreateEvents: { type: Boolean, default: false },
+    canEditEvents: { type: Boolean, default: false },
+    canDeleteEvents: { type: Boolean, default: false },
+    canManageBookings: { type: Boolean, default: false },
+    
+    // Donations
+    canCreateDonationCampaigns: { type: Boolean, default: false },
+    canViewDonations: { type: Boolean, default: true },
+    canManageExpenses: { type: Boolean, default: false },
+    
+    // Invitations
+    canCreateInvitations: { type: Boolean, default: false },
+    canManageInvitations: { type: Boolean, default: false },
+    
+    // Directory
+    canManageDirectory: { type: Boolean, default: false },
+    
+    // General Admin
+    canSendNotifications: { type: Boolean, default: false },
+    canViewReports: { type: Boolean, default: true }
   }
 }, {
   timestamps: true

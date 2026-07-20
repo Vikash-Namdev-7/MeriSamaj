@@ -1,52 +1,28 @@
 const Campaign = require('../../models/Campaign');
 const Donation = require('../../models/Donation');
 
-// Get all active campaigns
+// Get all active campaigns — community-scoped
 exports.getCampaigns = async (req, res) => {
   try {
-    const campaigns = await Campaign.find({ status: { $in: ['Active', 'Published'] } }).sort({ startDate: -1 });
-    const user = req.user; // Requires auth middleware to attach user
+    /**
+     * Community-scoped campaign query.
+     * Primary filter: communityId ObjectId.
+     * Fallback: community String (for pre-migration documents).
+     * Admin users (req.communityId = null) can optionally filter by req.query.communityId.
+     */
+    const filter = { status: { $in: ['Active', 'Published'] } };
 
-    console.log("DEBUG: All active/published campaigns found in DB:", campaigns.map(c => ({
-      title: c.title,
-      status: c.status,
-      visibility: c.visibility,
-      community: c.community,
-      locations: c.locations
-    })));
-    console.log("DEBUG: Current user fetching campaigns:", {
-      id: user._id,
-      name: user.name,
-      community: user.community,
-      city: user.city
-    });
+    if (req.communityId) {
+      // Member / Head: strictly scoped to their community
+      filter.communityId = req.communityId;
+    } else if (req.user.role === 'admin' && req.query.communityId) {
+      // Admin: optional filter by communityId query param
+      filter.communityId = req.query.communityId;
+    }
 
-    // Filter based on visibility
-    const visibleCampaigns = campaigns.filter(c => {
-      if (c.visibility === 'Entire Community') return true;
-      if (c.visibility === 'Selected Communities') {
-        // Assuming c.locations or c.targetAudiences holds community strings or IDs, but normally community field handles it.
-        // For now, if we match the user's community:
-        return !c.community || c.community === user.community;
-      }
-      if (c.visibility === 'All Locations' || c.visibility === 'All Members') return true;
-      if (['Selected Locations', 'Selected Cities', 'Selected States'].includes(c.visibility)) {
-        return c.locations && (c.locations.includes(user.city) || c.locations.includes(user.state));
-      }
-      if (c.visibility === 'Selected Members') {
-        // Allow mock data to be visible during testing (mock IDs like 'm1' are less than 24 chars)
-        const hasMockIds = c.targetedMembers && c.targetedMembers.some(id => id && id.toString().length < 24);
-        if (hasMockIds) return true;
-        
-        return c.targetedMembers && c.targetedMembers.some(id => id && id.toString() === user._id.toString());
-      }
-      return true; // default fallback
-    });
+    const campaigns = await Campaign.find(filter).sort({ startDate: -1 });
 
-    console.log("DEBUG: Visible campaigns after filtering:", visibleCampaigns.map(c => c.title));
-    
-    // Map to match frontend requirements
-    const formattedCampaigns = visibleCampaigns.map(c => ({
+    const formattedCampaigns = campaigns.map(c => ({
       id: c._id,
       title: c.title,
       raised: c.collectedAmount,
@@ -58,10 +34,7 @@ exports.getCampaigns = async (req, res) => {
       bannerImage: c.bannerImage
     }));
 
-    res.status(200).json({
-      status: 'success',
-      data: formattedCampaigns
-    });
+    res.status(200).json({ status: 'success', data: formattedCampaigns });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -73,6 +46,14 @@ exports.getCampaignById = async (req, res) => {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) {
       return res.status(404).json({ status: 'error', message: 'Campaign not found' });
+    }
+
+    // Community Isolation Guard
+    if (req.communityId && campaign.communityId) {
+      const campaignCommunityId = campaign.communityId._id ?? campaign.communityId;
+      if (!campaignCommunityId.equals(req.communityId)) {
+        return res.status(403).json({ status: 'error', message: 'Access denied. You cannot view a campaign of another community.' });
+      }
     }
 
     const formattedCampaign = {
@@ -164,10 +145,18 @@ exports.getRecentDonors = async (req, res) => {
 exports.createDonation = async (req, res) => {
   try {
     const { purposeId, amount, type } = req.body;
-    
+
     const campaign = await Campaign.findById(purposeId);
     if (!campaign) {
       return res.status(404).json({ status: 'error', message: 'Campaign not found' });
+    }
+
+    // Security: ensure member is donating to their own community's campaign
+    if (req.communityId && campaign.communityId) {
+      const campaignCommunityId = campaign.communityId._id ?? campaign.communityId;
+      if (!campaignCommunityId.equals(req.communityId)) {
+        return res.status(403).json({ status: 'error', message: 'Cannot donate to a campaign outside your community' });
+      }
     }
 
     const txnId = `TXN${Math.floor(1000000000 + Math.random() * 9000000000)}`;
@@ -175,6 +164,11 @@ exports.createDonation = async (req, res) => {
     const donation = new Donation({
       user: req.user._id,
       campaign: purposeId,
+      /**
+       * communityId is inherited from the campaign's community.
+       * This ensures all donations are community-scoped correctly.
+       */
+      communityId: campaign.communityId || req.communityId,
       amount: Number(amount),
       type: type || 'One-time',
       txnId,

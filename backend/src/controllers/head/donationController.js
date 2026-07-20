@@ -2,32 +2,49 @@ const Campaign = require('../../models/Campaign');
 const Donation = require('../../models/Donation');
 const Expense = require('../../models/Expense');
 
-// Helper to get community ID of the head
-const getCommunityId = (req) => {
-  return req.user?.community || req.user?.communityId || 'c1'; 
+/**
+ * Helper: build the community filter for Head queries.
+ * Uses req.communityId (ObjectId) from auth middleware — the authoritative isolation key.
+ * Head can ONLY see/manage their own community's data.
+ */
+const getCommunityFilter = (req) => {
+  if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
+    return { communityId: { $in: req.user.assignedCommunityIds } };
+  }
+  // req.communityId is always a plain ObjectId set by authMiddleware
+  if (req.communityId) {
+    return { communityId: req.communityId };
+  }
+  // Fallback for pre-migration data (community String)
+  if (req.user?.community) {
+    return { community: req.user.community };
+  }
+  return {};
 };
 
 // 1. Dashboard Stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const community = getCommunityId(req);
-    
-    const campaigns = await Campaign.find({ community });
+    const communityFilter = getCommunityFilter(req);
+
+    const campaigns = await Campaign.find(communityFilter);
     const totalCampaigns = campaigns.length;
     const activeCampaigns = campaigns.filter(c => c.status === 'Published' || c.status === 'Active').length;
     const scheduledCampaigns = campaigns.filter(c => c.status === 'Scheduled').length;
     const completedCampaigns = campaigns.filter(c => c.status === 'Completed').length;
-    
+
     const amountAggr = await Campaign.aggregate([
-      { $match: { community } },
-      { $group: { _id: null, totalTarget: { $sum: "$targetAmount" }, totalRaised: { $sum: "$collectedAmount" }, totalExpenses: { $sum: "$expenseAmount" } } }
+      { $match: req.communityId ? { communityId: req.communityId } : { community: req.user?.community } },
+      { $group: { _id: null, totalTarget: { $sum: '$targetAmount' }, totalRaised: { $sum: '$collectedAmount' }, totalExpenses: { $sum: '$expenseAmount' } } }
     ]);
     const totalTargetAmount = amountAggr.length > 0 ? amountAggr[0].totalTarget : 0;
     const totalRaisedAmount = amountAggr.length > 0 ? amountAggr[0].totalRaised : 0;
     const totalExpenseAmount = amountAggr.length > 0 ? amountAggr[0].totalExpenses : 0;
-    
-    const donationsCount = await Donation.countDocuments(); // Should filter by community campaigns
-    const uniqueDonorsList = await Donation.distinct('user');
+
+    // Count donations scoped to this community's campaigns
+    const campaignIds = campaigns.map(c => c._id);
+    const donationsCount = await Donation.countDocuments({ campaign: { $in: campaignIds } });
+    const uniqueDonorsList = await Donation.distinct('user', { campaign: { $in: campaignIds } });
     const totalDonors = uniqueDonorsList.length;
 
     res.status(200).json({
@@ -51,12 +68,12 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-// 2. Get All Campaigns (Data Table)
+// 2. Get All Campaigns (Data Table) — community-scoped
 exports.getAllCampaigns = async (req, res) => {
   try {
-    const community = getCommunityId(req);
-    const campaigns = await Campaign.find({ community }).sort({ createdAt: -1 }).populate('createdBy', 'name');
-    
+    const communityFilter = getCommunityFilter(req);
+    const campaigns = await Campaign.find(communityFilter).sort({ createdAt: -1 }).populate('createdBy', 'name');
+
     const formatted = campaigns.map(c => ({
       id: c._id,
       title: c.title,
@@ -112,10 +129,15 @@ const parseCampaignBody = (body, file) => {
 // 3. Create Campaign
 exports.createCampaign = async (req, res) => {
   try {
-    const community = getCommunityId(req);
+    const community = req.user?.community;
     const parsedData = parseCampaignBody(req.body, req.file);
     const newCampaign = new Campaign({
       ...parsedData,
+      /**
+       * communityId is ALWAYS set server-side from the authenticated Head's community.
+       * community String is kept for backward compatibility during migration period.
+       */
+      communityId: req.communityId || req.user?.communityId?._id || req.user?.communityId,
       community,
       createdBy: req.user?._id
     });
@@ -215,6 +237,11 @@ exports.addExpense = async (req, res) => {
     
     const expense = new Expense({
       campaign: id,
+      /**
+       * Inherit communityId from the parent Campaign.
+       * Falls back to req.communityId if campaign not yet migrated.
+       */
+      communityId: campaign.communityId || req.communityId,
       title,
       description,
       amount,
@@ -246,13 +273,13 @@ exports.getCampaignExpenses = async (req, res) => {
   }
 };
 
-// 11. Get Full Ledger
+// 11. Get Full Ledger — community-scoped
 exports.getLedger = async (req, res) => {
   try {
-    const community = getCommunityId(req);
+    const communityFilter = getCommunityFilter(req);
     
-    // Fetch all campaigns to get basic totals
-    const campaigns = await Campaign.find({ community }, 'title collectedAmount expenseAmount');
+    // Fetch all campaigns in the Head's community
+    const campaigns = await Campaign.find(communityFilter, 'title collectedAmount expenseAmount');
     
     // Fetch all expenses in the community
     const campaignIds = campaigns.map(c => c._id);

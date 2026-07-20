@@ -360,7 +360,7 @@ export default function NotificationManagement() {
   };
 
   return (
-    <div className="space-y-6 pb-16 text-white relative">
+    <div className="space-y-6 pb-16 text-slate-800 relative">
       
       {/* Toast Overlay */}
       <AnimatePresence>
@@ -384,13 +384,14 @@ export default function NotificationManagement() {
       {/* ─── PAGE HEADER ─── */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent flex items-center gap-2.5">
-            <Send className="text-purple-400 rotate-45" /> Notifications & Communication
+          <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider text-slate-900 flex items-center gap-2.5">
+            <Send className="text-brand-primary rotate-45" size={26} /> Notifications & Communication
           </h1>
-          <p className="text-[10px] md:text-xs text-text-muted mt-1 uppercase font-bold tracking-widest">
+          <p className="text-[10px] md:text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">
             Announcement Board • Composer Wizard • Template Engine • History Tracker
           </p>
         </div>
+
         
         {/* Quick actions panel */}
         <div className="flex flex-wrap items-center gap-2">

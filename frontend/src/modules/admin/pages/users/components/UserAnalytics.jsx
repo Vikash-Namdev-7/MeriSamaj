@@ -1,71 +1,106 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserCheck, UserX, Clock, Activity, ShieldBan } from 'lucide-react';
+import { Users, ShieldCheck, Clock, ShieldBan, UserPlus, Activity } from 'lucide-react';
 
 export const UserAnalytics = ({ stats }) => {
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
 
-  const statCards = [
+  const cards = [
     {
       title: 'Total Users',
-      value: stats.totalUsers,
+      value: stats.totalUsers ?? 0,
       icon: Users,
-      color: 'text-purple-500',
-      bg: 'bg-purple-500/10',
-      border: 'border-purple-500/20'
+      color: 'from-indigo-500/15 to-blue-500/15',
+      iconColor: 'text-indigo-500',
+      bg: 'bg-indigo-50',
     },
     {
-      title: 'Verified Members',
-      value: stats.verifiedUsers,
-      icon: UserCheck,
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/20'
+      title: 'Active Users',
+      value: stats.activeUsers ?? 0,
+      icon: ShieldCheck,
+      color: 'from-emerald-500/15 to-teal-500/15',
+      iconColor: 'text-emerald-500',
+      bg: 'bg-emerald-50',
     },
     {
       title: 'Pending Verification',
-      value: stats.pendingVerification,
+      value: stats.pendingVerification ?? 0,
       icon: Clock,
-      color: 'text-amber-500',
-      bg: 'bg-amber-500/10',
-      border: 'border-amber-500/20'
+      color: 'from-amber-500/15 to-orange-500/15',
+      iconColor: 'text-amber-500',
+      bg: 'bg-amber-50',
     },
     {
-      title: 'Online Now',
-      value: stats.onlineUsers,
+      title: 'Suspended',
+      value: stats.suspendedUsers ?? 0,
       icon: Activity,
-      color: 'text-blue-500',
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/20'
-    }
+      color: 'from-orange-500/15 to-red-500/15',
+      iconColor: 'text-orange-500',
+      bg: 'bg-orange-50',
+    },
+    {
+      title: 'Blocked',
+      value: stats.blockedUsers ?? 0,
+      icon: ShieldBan,
+      color: 'from-rose-500/15 to-pink-500/15',
+      iconColor: 'text-rose-500',
+      bg: 'bg-rose-50',
+    },
+    {
+      title: 'New This Month',
+      value: stats.newUsersThisMonth ?? 0,
+      icon: UserPlus,
+      color: 'from-purple-500/15 to-violet-500/15',
+      iconColor: 'text-purple-500',
+      bg: 'bg-purple-50',
+    },
+    {
+      title: 'Pending Complaints',
+      value: stats.pendingComplaints ?? 0,
+      icon: Clock,
+      color: 'from-amber-500/15 to-yellow-500/15',
+      iconColor: 'text-amber-600',
+      bg: 'bg-amber-50',
+    },
+    {
+      title: 'Transfer Requests',
+      value: stats.pendingTransfers ?? 0,
+      icon: Activity,
+      color: 'from-blue-500/15 to-cyan-500/15',
+      iconColor: 'text-blue-500',
+      bg: 'bg-blue-50',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {statCards.map((stat, idx) => (
-        <motion.div
-          key={stat.title}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: idx * 0.1 }}
-          className={`p-5 rounded-2xl border ${stat.border} ${stat.bg} backdrop-blur-md relative overflow-hidden group`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 group-hover:rotate-12">
-            <stat.icon size={64} className={stat.color} />
-          </div>
-          <div className="relative z-10">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.bg} ${stat.color} mb-3`}>
-              <stat.icon size={20} />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {cards.map((card, idx) => {
+        const Icon = card.icon;
+        return (
+          <motion.div
+            key={card.title}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`relative overflow-hidden bg-white rounded-2xl border border-gray-100 p-5 shadow-sm`}
+          >
+            <div className={`absolute -right-6 -top-6 w-20 h-20 rounded-full bg-gradient-to-br ${card.color} blur-2xl`} />
+            <div className={`w-9 h-9 ${card.bg} rounded-xl flex items-center justify-center mb-3`}>
+              <Icon size={18} className={card.iconColor} />
             </div>
-            <p className="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-1">
-              {stat.title}
-            </p>
-            <h3 className="text-3xl font-black text-gray-800">
-              {stat.value.toLocaleString()}
-            </h3>
-          </div>
-        </motion.div>
-      ))}
+            <p className="text-2xl font-black text-gray-900">{card.value.toLocaleString()}</p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{card.title}</p>
+          </motion.div>
+        );
+      })}
     </div>
   );
 };

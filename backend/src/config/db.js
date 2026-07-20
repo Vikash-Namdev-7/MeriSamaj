@@ -73,6 +73,39 @@ const connectDB = async () => {
       console.log('Default Head (President) database state verified and updated successfully.');
     }
 
+    // 2b. Seed/Update Default Admin User
+    const adminEmail = 'admin@merisamaj.com';
+    const adminPassword = 'Admin@123';
+    const adminPhone = '7777777777';
+
+    let adminUser = await User.findOne({ email: adminEmail });
+    if (!adminUser) {
+      adminUser = await User.findOne({ phone: adminPhone });
+    }
+
+    if (!adminUser) {
+      await User.create({
+        phone: adminPhone,
+        email: adminEmail,
+        password: adminPassword, // Pre-save hook hashes this
+        name: 'System Admin',
+        role: 'admin',
+        city: 'Indore',
+        isVerified: true,
+        accountStatus: 'active',
+        verificationStatus: 'verified'
+      });
+      console.log('Default Admin seeded successfully (Email: admin@merisamaj.com, Password: Admin@123).');
+    } else {
+      adminUser.email = adminEmail;
+      adminUser.password = adminPassword;
+      adminUser.role = 'admin';
+      adminUser.isVerified = true;
+      await adminUser.save();
+      console.log('Default Admin database state verified and updated successfully.');
+    }
+
+
     // 3. Seed Default Dharmashalas and Rooms
     const Dharmashala = require('../models/Dharmashala');
     const DharmashalaRoom = require('../models/DharmashalaRoom');
@@ -188,6 +221,153 @@ const connectDB = async () => {
         await prop.save();
       }
       console.log('Default Dharmashala items and rooms seeded successfully.');
+    }
+
+    // Seed Samaj Funds
+    const Fund = require('../models/Fund');
+    const Contribution = require('../models/Contribution');
+    const FundExpense = require('../models/FundExpense');
+    
+    const fundsCount = await Fund.countDocuments();
+    if (fundsCount === 0) {
+      const Community = require('../models/Community');
+      let community = await Community.findOne({ name: 'Meri Samaj' });
+      if (!community) {
+        community = await Community.create({
+          name: 'Meri Samaj',
+          city: 'Indore',
+          state: 'Madhya Pradesh',
+          country: 'India'
+        });
+      }
+      
+      // Update seeded users to have communityId
+      await User.updateMany({ community: 'Meri Samaj' }, { communityId: community._id });
+      await User.updateMany({ phone: defaultPhone }, { communityId: community._id, name: 'Rahul Sharma' }); // Ensure name matches mock
+      
+      // Seed other mock members so they are available in dues and reports
+      const mockMembersData = [
+        { name: 'Manish Jain', phone: '9822000010', email: 'manish@samaj.com' },
+        { name: 'Ashok Agrawal', phone: '9755000088', email: 'ashok@samaj.com' },
+        { name: 'Sonu Gupta', phone: '9687000021', email: 'sonu@samaj.com' },
+        { name: 'Virendra Joshi', phone: '9826000033', email: 'virendra@samaj.com' },
+        { name: 'Mahesh Patel', phone: '9988000044', email: 'mahesh@samaj.com' },
+        { name: 'Sanjay Kumar', phone: '9766000022', email: 'sanjay@samaj.com' },
+        { name: 'Dinesh Verma', phone: '9123000055', email: 'dinesh@samaj.com' }
+      ];
+
+      for (const m of mockMembersData) {
+        let existing = await User.findOne({ phone: m.phone });
+        if (!existing) {
+          await User.create({
+            phone: m.phone,
+            email: m.email,
+            password: 'Password123',
+            name: m.name,
+            role: 'user',
+            community: 'Meri Samaj',
+            communityId: community._id,
+            city: 'Indore',
+            isVerified: true
+          });
+        }
+      }
+
+      const rahul = await User.findOne({ phone: defaultPhone });
+      const manish = await User.findOne({ phone: '9822000010' });
+      const ashok = await User.findOne({ phone: '9755000088' });
+      const sonu = await User.findOne({ phone: '9687000021' });
+      const virendra = await User.findOne({ phone: '9826000033' });
+      const mahesh = await User.findOne({ phone: '9988000044' });
+      const sanjay = await User.findOne({ phone: '9766000022' });
+      const dinesh = await User.findOne({ phone: '9123000055' });
+
+      const f1 = await Fund.create({
+        name: 'Dharamshala Maintenance Fund',
+        purpose: 'Annual maintenance and repair of the Samaj Dharamshala',
+        description: 'We are raising funds for repairing the roof, painting the main hall, and upgrading the community kitchen facilities before the upcoming festival season.',
+        targetAmount: 500000,
+        contributionPerMember: 2500,
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-12-31'),
+        dueDate: new Date('2024-12-31'),
+        status: 'Active',
+        communityId: community._id,
+        assignedMembers: [rahul._id, manish._id, ashok._id, sonu._id, virendra._id, mahesh._id, sanjay._id, dinesh._id]
+      });
+
+      const f2 = await Fund.create({
+        name: 'Education Scholarship Fund 2024',
+        purpose: 'Support bright students from underprivileged families',
+        description: 'Provide financial assistance to 50 meritorious students for their higher education fees.',
+        targetAmount: 250000,
+        contributionPerMember: 1000,
+        startDate: new Date('2024-05-01'),
+        endDate: new Date('2024-08-15'),
+        dueDate: new Date('2024-08-15'),
+        status: 'Active',
+        communityId: community._id,
+        assignedMembers: [rahul._id, manish._id, sonu._id, mahesh._id, dinesh._id]
+      });
+
+      // Seed contributions
+      await Contribution.create([
+        { fundId: f1._id, memberId: rahul._id, communityId: community._id, assignedAmount: 2500, paidAmount: 0, transactions: [] },
+        { fundId: f1._id, memberId: manish._id, communityId: community._id, assignedAmount: 2500, paidAmount: 1000, lastPaymentDate: new Date('2024-06-10'), transactions: [{ txnId: 'TXN_DHF1', amount: 1000, paymentMode: 'UPI', date: new Date('2024-06-10') }] },
+        { fundId: f1._id, memberId: ashok._id, communityId: community._id, assignedAmount: 2500, paidAmount: 0, transactions: [] },
+        { fundId: f1._id, memberId: sonu._id, communityId: community._id, assignedAmount: 2500, paidAmount: 2500, lastPaymentDate: new Date('2024-06-01'), transactions: [{ txnId: 'TXN_DHF2', amount: 2500, paymentMode: 'UPI', date: new Date('2024-06-01') }] },
+        { fundId: f1._id, memberId: virendra._id, communityId: community._id, assignedAmount: 2500, paidAmount: 0, transactions: [] },
+        { fundId: f1._id, memberId: mahesh._id, communityId: community._id, assignedAmount: 2500, paidAmount: 2500, lastPaymentDate: new Date('2024-06-05'), transactions: [{ txnId: 'TXN_DHF3', amount: 2500, paymentMode: 'UPI', date: new Date('2024-06-05') }] },
+        { fundId: f1._id, memberId: sanjay._id, communityId: community._id, assignedAmount: 2500, paidAmount: 1500, lastPaymentDate: new Date('2024-06-12'), transactions: [{ txnId: 'TXN_DHF4', amount: 1500, paymentMode: 'UPI', date: new Date('2024-06-12') }] },
+        { fundId: f1._id, memberId: dinesh._id, communityId: community._id, assignedAmount: 2500, paidAmount: 2500, lastPaymentDate: new Date('2024-06-14'), transactions: [{ txnId: 'TXN_DHF5', amount: 2500, paymentMode: 'UPI', date: new Date('2024-06-14') }] }
+      ]);
+
+      await Contribution.create([
+        { fundId: f2._id, memberId: rahul._id, communityId: community._id, assignedAmount: 1000, paidAmount: 1000, lastPaymentDate: new Date('2024-07-01'), transactions: [{ txnId: 'TXN_SCH1', amount: 1000, paymentMode: 'UPI', date: new Date('2024-07-01') }] },
+        { fundId: f2._id, memberId: manish._id, communityId: community._id, assignedAmount: 1000, paidAmount: 500, lastPaymentDate: new Date('2024-07-05'), transactions: [{ txnId: 'TXN_SCH2', amount: 500, paymentMode: 'UPI', date: new Date('2024-07-05') }] },
+        { fundId: f2._id, memberId: sonu._id, communityId: community._id, assignedAmount: 1000, paidAmount: 0, transactions: [] },
+        { fundId: f2._id, memberId: mahesh._id, communityId: community._id, assignedAmount: 1000, paidAmount: 1000, lastPaymentDate: new Date('2024-07-10'), transactions: [{ txnId: 'TXN_SCH3', amount: 1000, paymentMode: 'UPI', date: new Date('2024-07-10') }] },
+        { fundId: f2._id, memberId: dinesh._id, communityId: community._id, assignedAmount: 1000, paidAmount: 0, transactions: [] }
+      ]);
+
+      // Seed expenses
+      await FundExpense.create([
+        { fundId: f1._id, communityId: community._id, title: 'Roof Waterproofing', amount: 45000, category: 'Maintenance', date: new Date('2024-05-15'), addedBy: 'Admin (Ramesh)', receiptAttached: true },
+        { fundId: f1._id, communityId: community._id, title: 'Plumbing Repairs', amount: 12500, category: 'Maintenance', date: new Date('2024-06-02'), addedBy: 'Admin (Ramesh)', receiptAttached: false },
+        { fundId: f2._id, communityId: community._id, title: 'First Semester Fees', amount: 150000, category: 'Education', date: new Date('2024-06-10'), addedBy: 'Admin (Ramesh)', receiptAttached: true }
+      ]);
+
+      console.log('Samaj Funds and ledger records seeded successfully.');
+    }
+
+    // Seed Professional Listings (Real only)
+    const Professional = require('../models/Professional');
+    await Professional.deleteMany({
+      companyName: {
+        $in: [
+          'Sharma Industries',
+          'Yadav Construction',
+          'Gupta Classes',
+          'Agrawal Diagnostics',
+          'Verma Law Associates',
+          'Mehta Architects',
+          'Jain Health Clinic'
+        ]
+      }
+    });
+
+    // Seed Categories
+    const Category = require('../models/Category');
+    const categoryCount = await Category.countDocuments({});
+    if (categoryCount === 0) {
+      await Category.create([
+        { name: 'Education', key: 'education', icon: 'GraduationCap', isActive: true },
+        { name: 'Health', key: 'health', icon: 'Heart', isActive: true },
+        { name: 'Construction', key: 'construction', icon: 'Hammer', isActive: true },
+        { name: 'Manufacturing', key: 'manufacturing', icon: 'Building', isActive: true },
+        { name: 'Others', key: 'others', icon: 'MoreHorizontal', isActive: true }
+      ]);
+      console.log('Default Business Categories seeded successfully.');
     }
 
   } catch (error) {

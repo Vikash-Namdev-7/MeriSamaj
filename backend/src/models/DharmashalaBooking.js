@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
 
 const dharmashalaBookingSchema = new mongoose.Schema({
+  /**
+   * communityId — Community isolation key.
+   * Inherited from parent Dharmashala document's communityId on booking creation.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    index: true,
+    default: null,
+  },
   bookingId: { type: String, required: true, unique: true },
   dharmashala: { type: mongoose.Schema.Types.ObjectId, ref: 'Dharmashala', required: true },
   rooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DharmashalaRoom' }],

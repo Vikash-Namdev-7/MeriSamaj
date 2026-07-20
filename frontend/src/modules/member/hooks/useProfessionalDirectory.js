@@ -1,26 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { mockProfessionals, categoryIconMap, cardColors } from '../data/mockProfessionals';
+import { useState, useEffect } from 'react';
+import { cardColors } from '../data/mockProfessionals';
+import { professionalService } from '../../../core/api/professionalService';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  useProfessionalDirectory — API-Ready Custom Hook
+//  useProfessionalDirectory — API Custom Hook
 // ─────────────────────────────────────────────────────────────────────────────
-//
-//  अभी:  Mock data से data load करता है (instant, offline-ready)
-//
-//  Backend connect करने पर — बस इस hook में ये बदलाव करें:
-//
-//    1. नीचे "MOCK DATA LAYER" block को हटाएं
-//    2. Uncomment करें "API DATA LAYER" block
-//    3. API_BASE_URL और endpoint सही करें
-//    4. Page component को कुछ नहीं बदलना पड़ेगा ✅
-//
-//  API Endpoints Expected:
-//    GET /api/professionals?communityId=xxx          → listings array
-//    GET /api/professionals/categories?communityId=xxx → categories array
-//
-// ─────────────────────────────────────────────────────────────────────────────
-
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const useProfessionalDirectory = (communityId) => {
   const [listings, setListings] = useState([]);
@@ -35,82 +19,59 @@ const useProfessionalDirectory = (communityId) => {
       setError(null);
 
       try {
-        // ─── MOCK DATA LAYER ─────────────────────────────────────────────────
-        // जब API तैयार हो तो यह block हटाएं और नीचे API LAYER uncomment करें
+        const res = await professionalService.getProfessionals();
+        const apiListings = res.success ? res.data : [];
 
-        await new Promise(resolve => setTimeout(resolve, 300)); // simulate network delay
-
-        // Enrich mock data: auto-assign color by index
-        const localListingsRaw = localStorage.getItem('merisamaj_custom_professionals');
-        const localListings = localListingsRaw ? JSON.parse(localListingsRaw) : [];
-        const combined = [...localListings, ...mockProfessionals];
-
-        const enriched = combined.map((item, idx) => ({
+        // Enrich listings with card colors
+        const enriched = apiListings.map((item, idx) => ({
           ...item,
           color: item.color || cardColors[idx % cardColors.length],
         }));
 
-        // Derive unique categories dynamically from data
-        const uniqueCategoryKeys = [...new Set(enriched.map(p => p.categoryKey || p.category?.toLowerCase() || 'others'))];
-        let derivedCategories = uniqueCategoryKeys
-          .map(key => {
-            const config = categoryIconMap[key] || categoryIconMap.others;
-            return {
-              id: key,
-              name: config.labelHi || key.toUpperCase(),
-              categoryKey: key,
-              icon: config.icon,
-              color: config.color,
-            };
-          });
+        // Fetch active categories dynamically from backend
+        const catRes = await professionalService.getCategories();
+        const apiCategories = catRes.success ? catRes.data : [];
 
-        if (derivedCategories.length > 0 && (derivedCategories[0].id === 'others' || derivedCategories[0].name === 'Others')) {
-          derivedCategories.shift();
+        const colorPalette = [
+          { text: 'text-emerald-600 bg-emerald-50 border-emerald-100', icon: 'GraduationCap' },
+          { text: 'text-rose-600 bg-rose-50 border-rose-100', icon: 'Heart' },
+          { text: 'text-gray-650 bg-gray-50 border-gray-100', icon: 'MoreHorizontal' },
+          { text: 'text-sky-600 bg-sky-50 border-sky-100', icon: 'Hammer' },
+          { text: 'text-orange-600 bg-orange-50 border-orange-100', icon: 'Building' },
+          { text: 'text-violet-600 bg-violet-50 border-violet-100', icon: 'Briefcase' }
+        ];
+
+        const derivedCategories = apiCategories.map((cat, idx) => {
+          const colorMatch = colorPalette[idx % colorPalette.length];
+          return {
+            id: cat.key,
+            name: cat.name,
+            categoryKey: cat.key,
+            iconName: cat.icon || colorMatch.icon,
+            color: colorMatch.text
+          };
+        });
+
+        // Derive unique cities dynamically from data and API fallback
+        let uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).filter(Boolean).sort())];
+        try {
+          const { axiosPublic } = await import('../../../core/api/axiosConfig');
+          const citiesRes = await axiosPublic.get('/auth/cities');
+          if (citiesRes.data.success) {
+            const apiCityNames = citiesRes.data.data.map(c => c.name);
+            uniqueCities = ['All Cities', ...new Set([...uniqueCities, ...apiCityNames]).sort()];
+          }
+        } catch (cityErr) {
+          console.error('Failed to fetch API cities for directory:', cityErr);
         }
-
-        // Derive unique cities dynamically from data
-        const uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).sort())];
 
         setListings(enriched);
         setCategories(derivedCategories);
         setCities(uniqueCities);
 
-        // ─── API DATA LAYER ────────────────────────────────────────────────────
-        // Backend connect होने पर यह uncomment करें:
-        //
-        // const [listRes, catRes] = await Promise.all([
-        //   fetch(`${API_BASE_URL}/api/professionals?communityId=${communityId}`),
-        //   fetch(`${API_BASE_URL}/api/professionals/categories?communityId=${communityId}`),
-        // ]);
-        //
-        // if (!listRes.ok || !catRes.ok) throw new Error('Failed to load data');
-        //
-        // const listData = await listRes.json();   // array of professional objects
-        // const catData  = await catRes.json();    // array of { key, labelHi }
-        //
-        // // Enrich listings with colors
-        // const enriched = listData.map((item, idx) => ({
-        //   ...item,
-        //   color: cardColors[idx % cardColors.length],
-        // }));
-        //
-        // // Build category UI config from API + iconMap
-        // const derivedCategories = catData.map(cat => {
-        //   const config = categoryIconMap[cat.key] || categoryIconMap.others;
-        //   return { id: cat.key, name: cat.labelHi, categoryKey: cat.key, icon: config.icon, color: config.color };
-        // });
-        //
-        // // Derive cities from data
-        // const uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).sort())];
-        //
-        // setListings(enriched);
-        // setCategories(derivedCategories);
-        // setCities(uniqueCities);
-        // ─────────────────────────────────────────────────────────────────────
-
       } catch (err) {
         console.error('[useProfessionalDirectory] Error:', err);
-        setError(err.message || 'डेटा लोड करने में समस्या हुई।');
+        setError(err.message || 'Failed to load professional listings.');
       } finally {
         setIsLoading(false);
       }

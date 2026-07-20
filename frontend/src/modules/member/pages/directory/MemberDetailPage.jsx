@@ -68,7 +68,8 @@ const MemberDetailPage = () => {
     blockUser,
     unblockUser,
     granularPrivacy,
-    posts
+    posts,
+    currentUser
   } = useData();
 
   // Find member in either members or admins list
@@ -115,20 +116,22 @@ const MemberDetailPage = () => {
   };
   const familyMembers = getMockFamilyMembers(member);
 
+  const myId = currentUser?.id || currentUser?._id || 'u1';
+
   // Follow system state derivations
-  const isBlocked = blockedUsers?.some(b => b.blockerId === 'u1' && b.blockedId === member.id);
+  const isBlocked = blockedUsers?.some(b => b.blockerId === myId && b.blockedId === member.id);
   const privacy = profilePrivacy?.[member.id] || 'public';
-  const isFollowing = followRelations?.some(r => r.followerId === 'u1' && r.followingId === member.id && r.status === 'accepted');
-  const hasRequested = followRelations?.some(r => r.followerId === 'u1' && r.followingId === member.id && r.status === 'pending');
+  const isFollowing = followRelations?.some(r => r.followerId === myId && r.followingId === member.id && r.status === 'accepted');
+  const hasRequested = followRelations?.some(r => r.followerId === myId && r.followingId === member.id && r.status === 'pending');
   const isPrivate = privacy === 'private';
-  const canAccess = member.id === 'u1' || !isPrivate || isFollowing;
+  const canAccess = member.id === myId || !isPrivate || isFollowing;
 
   // Get privacy settings for this member
   const memberGranular = granularPrivacy?.[member.id] || 
-                         (member.id === 'u1' ? (granularPrivacy?.u1 || granularPrivacy) : null) || 
+                         (member.id === myId ? (granularPrivacy?.[myId] || granularPrivacy) : null) || 
                          { phone: 'followers', email: 'followers', familyTree: 'followers' };
 
-  const isMe = member.id === 'u1';
+  const isMe = member.id === myId;
   
   const isFieldVisible = (fieldSetting) => {
     if (isMe) return true;

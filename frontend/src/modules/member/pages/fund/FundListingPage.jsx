@@ -6,8 +6,29 @@ import { useData } from '../../context/DataProvider';
 
 export default function FundListingPage() {
   const navigate = useNavigate();
-  const { funds, currentUserId, isAdmin, getUserFunds, contributions } = useFund();
+  const { funds, currentUserId, isAdmin, getUserFunds, contributions, loading, error } = useFund();
   const { setMobileMenuOpen } = useData();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col font-sans select-none justify-center items-center">
+        <div className="w-12 h-12 rounded-full border-4 border-purple-100 border-t-brand-primary animate-spin mb-4" />
+        <p className="text-sm font-bold text-text-secondary">Loading Community Funds...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col font-sans select-none justify-center items-center p-6 text-center">
+        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-3">
+          <AlertCircle size={24} />
+        </div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">{error}</h3>
+        <p className="text-xs text-slate-500 max-w-xs">Please verify your connection and try again.</p>
+      </div>
+    );
+  }
 
   // If Admin, they see all funds. If member, they see only assigned funds.
   const displayFunds = isAdmin ? funds : getUserFunds(currentUserId);

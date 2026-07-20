@@ -12,6 +12,8 @@ import { mockChats as initialChats, mockMessages as initialMessages } from '../d
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
 import invitationService from '../../../core/api/invitationService';
 import obituaryService from '../../../core/api/obituaryService';
+import { eventService } from '../services/eventService';
+import { headEventService } from '../../../core/api/headEventService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -490,7 +492,7 @@ const defaultGranularPrivacy = {
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
   const { headAuth } = useHeadAuth();
   // Helpers for localStorage
   const loadState = (key, defaultState) => {
@@ -523,6 +525,14 @@ export const DataProvider = ({ children }) => {
       communityId: loaded?.communityId || 'c1'
     };
   });
+
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.user) {
+      setCurrentUser(auth.user);
+    } else if (!auth.isAuthenticated) {
+      setCurrentUser(initialUser);
+    }
+  }, [auth.isAuthenticated, auth.user]);
   const [members, setMembers] = useState(() => loadState('members', initialMembers));
   const [admins, setAdmins] = useState(() => {
     const loaded = loadState('admins', initialAdmins);
@@ -565,47 +575,34 @@ export const DataProvider = ({ children }) => {
     events: true,
     groups: true
   }));
-  const [events, setEvents] = useState(() => {
-    const saved = loadState('events', initialEvents);
-    return saved.map((savedEv, index) => {
-      // Establish generic RBAC bindings: e1 and e6 belong to the head's community (c1)
-      let communityId = 'c2';
-      if (savedEv.id === 'e1' || savedEv.id === 'e6') communityId = 'c1';
-      else if (savedEv.id === 'e2') communityId = 'c2';
-      else if (savedEv.id === 'e3') communityId = 'c3';
-      else if (savedEv.id === 'e4') communityId = 'c4';
-      else if (savedEv.id === 'e5') communityId = 'c5';
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState(null);
 
-      const initEv = initialEvents.find(e => e.id === savedEv.id);
-      const merged = initEv ? { ...initEv, ...savedEv } : savedEv;
-      
-      return {
-        ...merged,
-        communityId,
-        status: merged.status || 'Published',
-        gallery: merged.gallery || [
-          { id: 'g1', fileType: 'Photo', fileUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', fileName: 'seminar_crowd.jpg', caption: 'Inauguration Ceremony', isCoverImage: true, isFeaturedImage: true, uploadMetadata: { fileSizeInBytes: 1204500, mimeType: 'image/jpeg', uploadedAt: '2026-07-01T10:00:00Z' }, sortOrder: 1 },
-          { id: 'g2', fileType: 'Photo', fileUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800', fileName: 'stage_setup.jpg', caption: 'Main Stage View', isCoverImage: false, isFeaturedImage: false, uploadMetadata: { fileSizeInBytes: 890400, mimeType: 'image/jpeg', uploadedAt: '2026-07-01T10:15:00Z' }, sortOrder: 2 },
-          { id: 'g3', fileType: 'Document', fileUrl: '#', fileName: 'Event_Brochure.pdf', caption: 'Official Brochure', isCoverImage: false, isFeaturedImage: false, uploadMetadata: { fileSizeInBytes: 2500000, mimeType: 'application/pdf', uploadedAt: '2026-07-02T12:00:00Z' }, sortOrder: 3 }
-        ],
-        announcements: merged.announcements || [
-          { id: 'ann1', content: 'Registrations are now open! Early bird discount available.', status: 'Published', scheduleTime: null, expirationTime: null, communityId, author: 'Shri Mohan Lal Agrawal' },
-          { id: 'ann2', content: 'Note: Please carry your membership ID card for automated check-in.', status: 'Published', scheduleTime: null, expirationTime: null, communityId, author: 'Shri Mohan Lal Agrawal' }
-        ],
-        registrations: merged.registrations || [
-          { id: 'reg1', memberId: 'm1', name: 'Suresh Agrawal', phone: '+91 94140 12345', email: 'suresh.architect@email.com', role: 'Architect', avatar: null, registeredAt: '2026-07-01T10:00:00Z', status: 'Approved', attendance: 'Attended', checkinTime: '2026-07-07T10:05:00Z' },
-          { id: 'reg2', memberId: 'm2', name: 'Kavita Agrawal', phone: '+91 98270 54321', email: 'dr.kavita.a@email.com', role: 'Doctor', avatar: null, registeredAt: '2026-07-02T11:30:00Z', status: 'Pending Approval', attendance: 'Registered', checkinTime: null },
-          { id: 'reg3', memberId: 'm5', name: 'Vikas Agrawal', phone: '+91 98260 44556', email: 'ca.vikas@email.com', role: 'CA', avatar: null, registeredAt: '2026-07-03T14:15:00Z', status: 'Approved', attendance: 'Late', checkinTime: '2026-07-07T10:45:00Z' },
-          { id: 'reg4', memberId: 'm3', name: 'Deepak Agrawal', phone: '+91 99810 98765', email: 'deepak.se@email.com', role: 'Software Engineer', avatar: null, registeredAt: '2026-07-04T09:00:00Z', status: 'Waiting List', attendance: 'Absent', checkinTime: null },
-          { id: 'reg5', memberId: 'm4', name: 'Anita Agrawal', phone: '+91 98930 11223', email: 'anita.teacher@email.com', role: 'Teacher', avatar: null, registeredAt: '2026-07-04T12:00:00Z', status: 'Cancelled', attendance: 'Cancelled', checkinTime: null }
-        ],
-        auditLogs: merged.auditLogs || [
-          { id: 'log1', action: 'Create Event', entityType: 'Event', entityId: merged.id || `e-${index}`, oldValue: null, newValue: `${merged.title} created as Draft`, performedBy: 'Shri Mohan Lal Agrawal', timestamp: '2026-06-30T09:00:00Z', ipAddress: '192.168.1.100', device: 'Chrome / Windows', reason: 'Initial scheduling' },
-          { id: 'log2', action: 'Publish Event', entityType: 'Event', entityId: merged.id || `e-${index}`, oldValue: 'Draft', newValue: 'Published', performedBy: 'Shri Mohan Lal Agrawal', timestamp: '2026-06-30T09:15:00Z', ipAddress: '192.168.1.100', device: 'Chrome / Windows', reason: 'Ready for public view' }
-        ]
-      };
-    });
-  });
+  const loadEvents = async () => {
+    setEventsLoading(true);
+    setEventsError(null);
+    try {
+      if (headAuth?.isAuthenticated) {
+        const res = await headEventService.getEvents();
+        setEvents(res.data || []);
+      } else if (auth.isAuthenticated) {
+        const res = await eventService.getEvents();
+        setEvents(res.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load events', error);
+      setEventsError(error.response?.data?.message || 'Failed to fetch events');
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (auth.isAuthenticated || headAuth?.isAuthenticated) {
+      loadEvents();
+    }
+  }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
   const [obituaries, setObituaries] = useState([]);
   const [obituariesLoading, setObituariesLoading] = useState(false);
   const [obituariesError, setObituariesError] = useState(null);
@@ -846,14 +843,15 @@ export const DataProvider = ({ children }) => {
 
   // Follow System Methods
   const sendFollowRequest = (targetUserId) => {
+    const myId = currentUser?.id || currentUser?._id || 'u1';
     setFollowRelations(prev => {
-      const exists = prev.some(r => r.followerId === 'u1' && r.followingId === targetUserId);
+      const exists = prev.some(r => r.followerId === myId && r.followingId === targetUserId);
       if (exists) return prev;
 
       const targetPrivacy = profilePrivacy[targetUserId] || 'public';
       const status = targetPrivacy === 'private' ? 'pending' : 'accepted';
 
-      return [...prev, { followerId: 'u1', followingId: targetUserId, status }];
+      return [...prev, { followerId: myId, followingId: targetUserId, status }];
     });
 
     // Add simulated follow notification for other user if private
@@ -873,12 +871,14 @@ export const DataProvider = ({ children }) => {
   };
 
   const cancelFollowRequest = (targetUserId) => {
-    setFollowRelations(prev => prev.filter(r => !(r.followerId === 'u1' && r.followingId === targetUserId && r.status === 'pending')));
+    const myId = currentUser?.id || currentUser?._id || 'u1';
+    setFollowRelations(prev => prev.filter(r => !(r.followerId === myId && r.followingId === targetUserId && r.status === 'pending')));
   };
 
   const acceptFollowRequest = (senderUserId) => {
+    const myId = currentUser?.id || currentUser?._id || 'u1';
     setFollowRelations(prev => prev.map(r => {
-      if (r.followerId === senderUserId && r.followingId === 'u1' && r.status === 'pending') {
+      if (r.followerId === senderUserId && r.followingId === myId && r.status === 'pending') {
         return { ...r, status: 'accepted' };
       }
       return r;
@@ -899,15 +899,18 @@ export const DataProvider = ({ children }) => {
   };
 
   const rejectFollowRequest = (senderUserId) => {
-    setFollowRelations(prev => prev.filter(r => !(r.followerId === senderUserId && r.followingId === 'u1' && r.status === 'pending')));
+    const myId = currentUser?.id || currentUser?._id || 'u1';
+    setFollowRelations(prev => prev.filter(r => !(r.followerId === senderUserId && r.followingId === myId && r.status === 'pending')));
   };
 
   const unfollowUser = (targetUserId) => {
-    setFollowRelations(prev => prev.filter(r => !(r.followerId === 'u1' && r.followingId === targetUserId)));
+    const myId = currentUser?.id || currentUser?._id || 'u1';
+    setFollowRelations(prev => prev.filter(r => !(r.followerId === myId && r.followingId === targetUserId)));
   };
 
   const removeFollower = (targetUserId) => {
-    setFollowRelations(prev => prev.filter(r => !(r.followerId === targetUserId && r.followingId === 'u1')));
+    const myId = currentUser?.id || currentUser?._id || 'u1';
+    setFollowRelations(prev => prev.filter(r => !(r.followerId === targetUserId && r.followingId === myId)));
   };
 
   const updateProfilePrivacy = (privacySetting) => {
@@ -942,31 +945,61 @@ export const DataProvider = ({ children }) => {
   };
 
   const blockUser = (targetUserId) => {
+    const myId = currentUser?.id || currentUser?._id || 'u1';
     setBlockedUsers(prev => {
-      if (prev.some(b => b.blockerId === 'u1' && b.blockedId === targetUserId)) return prev;
-      return [...prev, { blockerId: 'u1', blockedId: targetUserId }];
+      if (prev.some(b => b.blockerId === myId && b.blockedId === targetUserId)) return prev;
+      return [...prev, { blockerId: myId, blockedId: targetUserId }];
     });
     // Remove any follow relationships
     setFollowRelations(prev => prev.filter(r => 
-      !( (r.followerId === 'u1' && r.followingId === targetUserId) || (r.followerId === targetUserId && r.followingId === 'u1') )
+      !( (r.followerId === myId && r.followingId === targetUserId) || (r.followerId === targetUserId && r.followingId === myId) )
     ));
   };
 
   const unblockUser = (targetUserId) => {
-    setBlockedUsers(prev => prev.filter(b => !(b.blockerId === 'u1' && b.blockedId === targetUserId)));
+    const myId = currentUser?.id || currentUser?._id || 'u1';
+    setBlockedUsers(prev => prev.filter(b => !(b.blockerId === myId && b.blockedId === targetUserId)));
   };
 
-  const updateProfile = (updatedData) => {
-    setCurrentUser(prev => ({ ...prev, ...updatedData }));
+  const updateProfile = async (updatedData) => {
+    try {
+      const { authService } = await import('../../../core/auth/authService');
+      const response = await authService.updateProfile(updatedData);
+      localStorage.setItem('merisamaj_user', JSON.stringify(response));
+      setCurrentUser(response);
+      setAuth(prev => ({ ...prev, user: response }));
+    } catch (err) {
+      console.error('Failed to update profile via API', err);
+      setCurrentUser(prev => ({ ...prev, ...updatedData }));
+    }
   };
 
   const loginUser = (userData) => {
     setCurrentUser(userData);
   };
 
-  const logoutUser = () => {
+  const logoutUser = async () => {
+    // Clear localStorage keys
+    localStorage.removeItem('merisamaj_v6_currentUser');
+    localStorage.removeItem('merisamaj_v6_posts');
+    localStorage.removeItem('merisamaj_v6_followedAnnouncements');
+    localStorage.removeItem('merisamaj_v6_notifications');
+    localStorage.removeItem('merisamaj_v6_chats');
+    localStorage.removeItem('merisamaj_v6_chatMessages');
+    localStorage.removeItem('merisamaj_v6_eventReminders');
+    localStorage.removeItem('merisamaj_v6_eventRegistrations');
     localStorage.removeItem('posts');
-    setPosts(initialPosts);
+    
+    // Reset state values
+    setCurrentUser(initialUser);
+    setPosts(initialPosts.map((p) => ({ ...p, commentsList: p.commentsList || [] })));
+    setEvents([]);
+    setObituaries([]);
+    setNotifications(initialNotifications);
+    setChats(initialChats);
+    setChatMessages(initialMessages);
+    
+    await logout();
   };
 
   const addFamilyMember = (newMember) => {
@@ -1012,17 +1045,22 @@ export const DataProvider = ({ children }) => {
     setPosts(prev => [newPost, ...prev]);
   };
 
-  const toggleEventRSVP = (eventId) => {
-    setEvents(prev => prev.map(e => {
-      if (e.id === eventId) {
-        return {
-          ...e,
-          isRegistered: !e.isRegistered,
-          attendees: e.isRegistered ? e.attendees - 1 : e.attendees + 1
-        };
-      }
-      return e;
-    }));
+  const toggleEventRSVP = async (eventId) => {
+    try {
+      const res = await eventService.toggleAttend(eventId);
+      setEvents(prev => prev.map(e => {
+        if (e.id === eventId || e._id === eventId) {
+          return {
+            ...e,
+            isRegistered: res.data.isRegistered,
+            attendees: res.data.attendeesCount
+          };
+        }
+        return e;
+      }));
+    } catch (error) {
+      console.error('Failed to toggle event RSVP:', error);
+    }
   };
 
   const togglePostLike = (postId) => {
@@ -1922,117 +1960,52 @@ export const DataProvider = ({ children }) => {
     setMembers(prev => prev.filter(m => m.id !== memberId));
   };
 
-  const addEvent = (eventData) => {
-    const newEvent = {
-      ...eventData,
-      id: `e-${Date.now()}`,
-      communityId: currentUser?.communityId || 'c1',
-      status: eventData.status || 'Published',
-      attendees: 0,
-      isRegistered: false,
-      gallery: [],
-      announcements: [],
-      registrations: [],
-      auditLogs: [
-        {
-          id: `log-${Date.now()}`,
-          action: 'Create Event',
-          entityType: 'Event',
-          entityId: `e-${Date.now()}`,
-          oldValue: null,
-          newValue: `${eventData.title} created`,
-          performedBy: currentUser?.name || 'Admin',
-          timestamp: new Date().toISOString(),
-          ipAddress: '127.0.0.1',
-          device: 'Browser Console',
-          reason: 'Administrative creation'
-        }
-      ]
-    };
-    setEvents(prev => [newEvent, ...prev]);
+  const addEvent = async (eventData) => {
+    try {
+      const res = await headEventService.createEvent(eventData);
+      setEvents(prev => [res.data, ...prev]);
+    } catch (error) {
+      console.error('Failed to create event on backend:', error);
+      throw error;
+    }
   };
 
-  const updateEvent = (eventId, updatedData) => {
-    setEvents(prev => prev.map(ev => {
-      if (ev.id === eventId) {
-        const merged = { ...ev, ...updatedData };
-        // Log changes
-        const changes = Object.keys(updatedData).map(k => `${k}: ${JSON.stringify(ev[k])} -> ${JSON.stringify(updatedData[k])}`).join(', ');
-        const log = {
-          id: `log-${Date.now()}`,
-          action: 'Edit Event',
-          entityType: 'Event',
-          entityId: eventId,
-          oldValue: `Fields updated: ${Object.keys(updatedData).join(', ')}`,
-          newValue: changes,
-          performedBy: currentUser?.name || 'Admin',
-          timestamp: new Date().toISOString(),
-          ipAddress: '127.0.0.1',
-          device: 'Browser Console',
-          reason: 'Manual event updates'
-        };
-        merged.auditLogs = [log, ...(merged.auditLogs || [])];
-        return merged;
-      }
-      return ev;
-    }));
+  const updateEvent = async (eventId, updatedData) => {
+    try {
+      const res = await headEventService.updateEvent(eventId, updatedData);
+      setEvents(prev => prev.map(ev => (ev.id === eventId || ev._id === eventId) ? res.data : ev));
+    } catch (error) {
+      console.error('Failed to update event on backend:', error);
+      throw error;
+    }
   };
 
-  const deleteEvent = (eventId) => {
-    // Soft delete
-    setEvents(prev => prev.map(ev => {
-      if (ev.id === eventId) {
-        const log = {
-          id: `log-${Date.now()}`,
-          action: 'Soft Delete Event',
-          entityType: 'Event',
-          entityId: eventId,
-          oldValue: 'Active',
-          newValue: 'Deleted (isDeleted = true)',
-          performedBy: currentUser?.name || 'Admin',
-          timestamp: new Date().toISOString(),
-          ipAddress: '127.0.0.1',
-          device: 'Browser Console',
-          reason: 'Administrative deletion'
-        };
-        return { ...ev, isDeleted: true, auditLogs: [log, ...(ev.auditLogs || [])] };
-      }
-      return ev;
-    }));
+  const deleteEvent = async (eventId) => {
+    try {
+      await headEventService.deleteEvent(eventId);
+      setEvents(prev => prev.filter(ev => ev.id !== eventId && ev._id !== eventId));
+    } catch (error) {
+      console.error('Failed to delete event on backend:', error);
+      throw error;
+    }
   };
 
-  const duplicateEvent = (eventId) => {
-    setEvents(prev => {
-      const src = prev.find(ev => ev.id === eventId);
-      if (!src) return prev;
-      const dupId = `e-${Date.now()}`;
-      const duplicated = {
+  const duplicateEvent = async (eventId) => {
+    try {
+      const src = events.find(ev => ev.id === eventId || ev._id === eventId);
+      if (!src) return;
+      const copyData = {
         ...src,
-        id: dupId,
         title: `${src.title} (Copy)`,
         titleEn: src.titleEn ? `${src.titleEn} (Copy)` : undefined,
         status: 'Draft',
-        registrations: [],
-        gallery: [],
-        announcements: [],
-        auditLogs: [
-          {
-            id: `log-${Date.now()}`,
-            action: 'Duplicate Event',
-            entityType: 'Event',
-            entityId: dupId,
-            oldValue: `Source: ${src.title} (${src.id})`,
-            newValue: 'Created duplicate event copy as Draft',
-            performedBy: currentUser?.name || 'Admin',
-            timestamp: new Date().toISOString(),
-            ipAddress: '127.0.0.1',
-            device: 'Browser Console',
-            reason: 'Cloned from existing'
-          }
-        ]
+        startDate: src.startDate || new Date().toISOString()
       };
-      return [duplicated, ...prev];
-    });
+      const res = await headEventService.createEvent(copyData);
+      setEvents(prev => [res.data, ...prev]);
+    } catch (error) {
+      console.error('Failed to duplicate event on backend:', error);
+    }
   };
 
   const updateRegistrationStatus = (eventId, regId, status) => {
@@ -2459,12 +2432,30 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
+  const toggleEventBookmark = async (eventId) => {
+    try {
+      const res = await eventService.toggleBookmark(eventId);
+      setEvents(prev => prev.map(ev => {
+        if (ev.id === eventId || ev._id === eventId) {
+          return { ...ev, isBookmarked: res.data.isBookmarked };
+        }
+        return ev;
+      }));
+      return res.data.isBookmarked;
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+    }
+  };
+
   const value = {
     currentUser,
     members: adaptedMembersList,
     admins: adaptedAdminsList,
     posts: adaptedPostsList,
     events,
+    eventsLoading,
+    eventsError,
+    loadEvents,
     verifyMember,
     rejectMember,
     addEvent,
@@ -2588,28 +2579,62 @@ export const DataProvider = ({ children }) => {
 
     // Event Reminders
     eventReminders,
-    toggleEventReminder: (eventId) => {
-      setEventReminders(prev => {
-        const updated = { ...prev, [eventId]: !prev[eventId] };
-        return updated;
-      });
+    toggleEventReminder: async (eventId) => {
+      try {
+        const res = await eventService.toggleReminder(eventId);
+        setEventReminders(prev => ({
+          ...prev,
+          [eventId]: res.data.isReminderSet
+        }));
+        setEvents(prev => prev.map(ev => {
+          if (ev.id === eventId || ev._id === eventId) {
+            return { ...ev, isReminderSet: res.data.isReminderSet };
+          }
+          return ev;
+        }));
+      } catch (error) {
+        console.error('Failed to toggle reminder:', error);
+      }
     },
 
     // Event RSVP Registrations
     eventRegistrations,
-    registerForEvent: (eventId, registrationData) => {
-      setEventRegistrations(prev => ({
-        ...prev,
-        [eventId]: { ...registrationData, registeredAt: new Date().toISOString() }
-      }));
+    registerForEvent: async (eventId, registrationData) => {
+      try {
+        const res = await eventService.toggleAttend(eventId);
+        setEventRegistrations(prev => ({
+          ...prev,
+          [eventId]: { ...registrationData, registeredAt: new Date().toISOString() }
+        }));
+        setEvents(prev => prev.map(ev => {
+          if (ev.id === eventId || ev._id === eventId) {
+            return { ...ev, isRegistered: res.data.isRegistered, attendees: res.data.attendeesCount };
+          }
+          return ev;
+        }));
+      } catch (error) {
+        console.error('Failed to register for event:', error);
+      }
     },
-    cancelEventRegistration: (eventId) => {
-      setEventRegistrations(prev => {
-        const updated = { ...prev };
-        delete updated[eventId];
-        return updated;
-      });
+    cancelEventRegistration: async (eventId) => {
+      try {
+        const res = await eventService.toggleAttend(eventId);
+        setEventRegistrations(prev => {
+          const updated = { ...prev };
+          delete updated[eventId];
+          return updated;
+        });
+        setEvents(prev => prev.map(ev => {
+          if (ev.id === eventId || ev._id === eventId) {
+            return { ...ev, isRegistered: res.data.isRegistered, attendees: res.data.attendeesCount };
+          }
+          return ev;
+        }));
+      } catch (error) {
+        console.error('Failed to cancel event registration:', error);
+      }
     },
+    toggleEventBookmark,
 
     // Survey Responses
     surveyResponses,

@@ -1,20 +1,56 @@
-import React, { createContext, useContext, useState } from 'react';
-import { initialFunds, initialContributions, initialExpenses, mockUsers } from '../data/mockFund';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import fundService from '../../../core/api/fundService';
+import { useAuth } from '../../../core/auth/useAuth';
 
 const FundContext = createContext();
 
 export const useFund = () => useContext(FundContext);
 
 export const FundProvider = ({ children }) => {
-  const [funds, setFunds] = useState(initialFunds);
-  const [contributions, setContributions] = useState(initialContributions);
-  const [expenses, setExpenses] = useState(initialExpenses);
+  const { auth } = useAuth();
   
-  // For demonstration, assume the logged-in user is 'm1'
-  const currentUserId = 'm1';
+  const [funds, setFunds] = useState([]);
+  const [contributions, setContributions] = useState({});
+  const [expenses, setExpenses] = useState({});
+  const [mockUsers, setMockUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  // Also provide a way to toggle Admin mode for UI demonstration
-  const [isAdmin, setIsAdmin] = useState(true);
+  // Resolve logged-in user dynamically from session
+  const currentUserId = auth.user?.id || auth.user?._id || '';
+  const isAdmin = ['admin', 'head'].includes(auth.user?.role || '');
+
+  const fetchFundsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fundService.getFundsData();
+      if (res.success && res.data) {
+        setFunds(res.data.funds || []);
+        setContributions(res.data.contributions || {});
+        setExpenses(res.data.expenses || {});
+        setMockUsers(res.data.mockUsers || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch funds data:', err);
+      setError('Failed to load Samaj funds data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      fetchFundsData();
+    } else {
+      // Reset state on logout
+      setFunds([]);
+      setContributions({});
+      setExpenses({});
+      setMockUsers([]);
+      setLoading(false);
+    }
+  }, [auth.isAuthenticated, currentUserId]);
 
   // Get funds assigned to a specific user (or all if admin viewing global)
   const getUserFunds = (userId) => {
@@ -31,52 +67,47 @@ export const FundProvider = ({ children }) => {
   };
 
   // Actions
-  const makePayment = (fundId, userId, amount) => {
-    setContributions(prev => {
-      const fundData = prev[fundId] || [];
-      const updatedFundData = fundData.map(c => {
-        if (c.memberId === userId) {
-          return {
-            ...c,
-            paidAmount: c.paidAmount + amount,
-            lastPaymentDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-          };
-        }
-        return c;
-      });
-      return { ...prev, [fundId]: updatedFundData };
-    });
+  const makePayment = async (fundId, userId, amount, paymentMethod) => {
+    try {
+      const details = { paymentMethod };
+      const res = await fundService.payFund(fundId, amount, details);
+      if (res.success) {
+        await fetchFundsData(); // reload statistics and contributions list
+        return { success: true };
+      }
+      return { success: false, message: res.message };
+    } catch (err) {
+      console.error('Payment error:', err);
+      return { success: false, message: 'Server error occurred during payment processing.' };
+    }
   };
 
-  const addFund = (newFundData) => {
-    const newId = 'f' + (funds.length + 1);
-    const newFund = { ...newFundData, id: newId, status: 'Active' };
-    
-    // Initialize contributions for assigned members
-    const fundContributions = newFund.assignedMembers.map(memberId => ({
-      memberId,
-      assignedAmount: newFund.contributionPerMember,
-      paidAmount: 0,
-      lastPaymentDate: null
-    }));
-
-    setFunds([...funds, newFund]);
-    setContributions(prev => ({ ...prev, [newId]: fundContributions }));
-    setExpenses(prev => ({ ...prev, [newId]: [] }));
+  const addFund = async (newFundData) => {
+    try {
+      const res = await fundService.addFund(newFundData);
+      if (res.success) {
+        await fetchFundsData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (err) {
+      console.error('Failed to create fund:', err);
+      return { success: false };
+    }
   };
 
-  const addExpense = (fundId, expenseData) => {
-    const newExpense = {
-      ...expenseData,
-      id: 'e' + Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      addedBy: isAdmin ? 'Admin' : 'Member',
-    };
-    
-    setExpenses(prev => {
-      const fundExpenses = prev[fundId] || [];
-      return { ...prev, [fundId]: [...fundExpenses, newExpense] };
-    });
+  const addExpense = async (fundId, expenseData) => {
+    try {
+      const res = await fundService.addExpense(fundId, expenseData);
+      if (res.success) {
+        await fetchFundsData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (err) {
+      console.error('Failed to add expense:', err);
+      return { success: false };
+    }
   };
 
   return (
@@ -86,7 +117,8 @@ export const FundProvider = ({ children }) => {
       expenses,
       currentUserId,
       isAdmin,
-      setIsAdmin,
+      loading,
+      error,
       getUserFunds,
       getFundById,
       getContributionsByFund,
@@ -95,7 +127,8 @@ export const FundProvider = ({ children }) => {
       makePayment,
       addFund,
       addExpense,
-      mockUsers
+      mockUsers,
+      fetchFundsData
     }}>
       {children}
     </FundContext.Provider>

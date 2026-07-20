@@ -16,6 +16,18 @@ const campaignSchema = new mongoose.Schema({
   currency: { type: String, default: 'INR' },
   
   city: { type: String },
+  /**
+   * communityId — PRIMARY community isolation key (ObjectId).
+   * Admin sets this when creating a campaign.
+   * @deprecated `community` String field below — will be removed after migration.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    index: true,
+    default: null,
+  },
+  // @deprecated — use communityId (ObjectId) instead.
   community: { type: String },
   locations: [{ type: String }],
   

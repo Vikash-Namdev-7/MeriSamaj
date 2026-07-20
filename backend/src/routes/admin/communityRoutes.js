@@ -1,0 +1,39 @@
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../../middleware/authMiddleware');
+const {
+  getCommunities,
+  getCommunityById,
+  createCommunity,
+  updateCommunity,
+  assignHead,
+  removeHead,
+  deleteCommunity,
+} = require('../../controllers/admin/communityController');
+
+// Secure all endpoints under /admin/communities with Admin Auth
+router.use(protect);
+router.use(authorize('admin'));
+
+// GET  /api/v1/admin/communities
+router.get('/', getCommunities);
+
+// POST /api/v1/admin/communities
+router.post('/', createCommunity);
+
+// GET  /api/v1/admin/communities/:id
+router.get('/:id', getCommunityById);
+
+// PUT  /api/v1/admin/communities/:id
+router.put('/:id', updateCommunity);
+
+// DELETE /api/v1/admin/communities/:id
+router.delete('/:id', deleteCommunity);
+
+// PUT    /api/v1/admin/communities/:id/assign-head  → Assign head (atomic)
+router.put('/:id/assign-head', assignHead);
+
+// DELETE /api/v1/admin/communities/:id/assign-head  → Remove head (atomic)
+router.delete('/:id/assign-head', removeHead);
+
+module.exports = router;

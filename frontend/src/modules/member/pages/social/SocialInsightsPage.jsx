@@ -158,7 +158,7 @@ export default function SocialInsightsPage() {
               <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-brand-primary to-brand-glow rounded-full" style={{ width: '85%' }} />
               </div>
-              <p className="text-[10px] text-slate-400 font-medium pt-1">Your profile strength is higher than 92% of members in Agrawal Samaj.</p>
+              <p className="text-[10px] text-slate-400 font-medium pt-1">Your profile strength is higher than 92% of members in {currentUser?.community || 'your community'}.</p>
             </div>
           </div>
 

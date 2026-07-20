@@ -1,183 +1,312 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MoreVertical, Eye, ShieldAlert, Edit, Trash2, CheckCircle2, ShieldBan, X, RotateCcw, Clock } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  MoreVertical, Eye, ShieldAlert, CheckCircle2, ShieldBan, Trash2, RotateCcw, Clock,
+  ChevronLeft, ChevronRight, User, ShieldCheck
+} from 'lucide-react';
 import { Avatar } from '../../../../member/components/common/Avatar';
+import { StatusChangeModal } from './StatusChangeModal';
 
-export const UserTable = ({ users, onStatusChange, onViewProfile }) => {
-  const [activeDropdown, setActiveDropdown] = useState(null);
+const statusColors = {
+  active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  inactive: 'bg-amber-50 text-amber-700 border-amber-200',
+  blocked: 'bg-rose-50 text-rose-700 border-rose-200',
+  deleted: 'bg-gray-100 text-gray-500 border-gray-200',
+  'pending verification': 'bg-blue-50 text-blue-700 border-blue-200',
+};
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Active': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
-      case 'Inactive': return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
-      case 'Suspended': return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-      case 'Soft Deleted': return 'bg-rose-500/10 text-rose-600 border-rose-500/20';
-      default: return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+const verifyColors = {
+  verified: 'bg-blue-50 text-blue-700 border-blue-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+export const UserTable = ({
+  users,
+  pagination,
+  page,
+  onPageChange,
+  actionLoading,
+  onViewProfile,
+  onVerify,
+  onSuspend,
+  onBlock,
+  onActivate,
+  onDelete,
+}) => {
+  // ── Dropdown state ──────────────────────────────────────────────────────────
+  const [openRow, setOpenRow] = useState(null);       // user object of open row
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const dropdownRef = useRef(null);
+  const btnRefs = useRef({});                         // map userId → button el
+
+  // ── Modal state ─────────────────────────────────────────────────────────────
+  const [modal, setModal] = useState({ open: false, type: null, userId: null, userName: '' });
+
+  // ── Close dropdown on outside click ─────────────────────────────────────────
+  useEffect(() => {
+    if (!openRow) return;
+    const handler = (e) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+        !btnRefs.current[openRow.id]?.contains(e.target)
+      ) {
+        setOpenRow(null);
+      }
+    };
+    // Use setTimeout so this listener doesn't catch the same click that opened it
+    const t = setTimeout(() => document.addEventListener('click', handler), 0);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('click', handler);
+    };
+  }, [openRow]);
+
+  const handleToggle = useCallback((user) => {
+    if (openRow?.id === user.id) {
+      setOpenRow(null);
+      return;
     }
+    const btn = btnRefs.current[user.id];
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setDropPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpenRow(user);
+  }, [openRow]);
+
+  const openModal = (type, user) => {
+    setOpenRow(null);
+    setModal({ open: true, type, userId: user.id, userName: user.name });
+  };
+  const closeModal = () => setModal({ open: false, type: null, userId: null, userName: '' });
+
+  const handleConfirm = async (reason) => {
+    const { type, userId } = modal;
+    let result;
+    if (type === 'verify') result = await onVerify(userId);
+    else if (type === 'suspend') result = await onSuspend(userId, reason);
+    else if (type === 'block') result = await onBlock(userId, reason);
+    else if (type === 'activate') result = await onActivate(userId);
+    else if (type === 'delete') result = await onDelete(userId);
+    if (result?.success) closeModal();
   };
 
+  // ── Shared dropdown rendered via portal (outside overflow containers) ────────
+  const DropdownMenu = openRow ? createPortal(
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'fixed',
+        top: dropPos.top,
+        right: dropPos.right,
+        zIndex: 9999,
+        minWidth: '13rem',
+      }}
+      className="bg-white border border-gray-100 shadow-2xl rounded-xl overflow-hidden"
+    >
+      <div className="py-1">
+        <button
+          onClick={() => { onViewProfile(openRow); setOpenRow(null); }}
+          className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-brand-primary/5 hover:text-brand-primary flex items-center gap-2 transition-colors"
+        >
+          <Eye size={14} /> View Profile
+        </button>
+
+        {openRow.verificationStatus !== 'verified' && (
+          <button
+            onClick={() => openModal('verify', openRow)}
+            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+          >
+            <CheckCircle2 size={14} /> Verify User
+          </button>
+        )}
+
+        {openRow.accountStatus !== 'active' && (
+          <button
+            onClick={() => openModal('activate', openRow)}
+            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+          >
+            <RotateCcw size={14} /> Activate Account
+          </button>
+        )}
+
+        {openRow.accountStatus === 'active' && (
+          <button
+            onClick={() => openModal('suspend', openRow)}
+            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-amber-600 hover:bg-amber-50 flex items-center gap-2 transition-colors"
+          >
+            <ShieldAlert size={14} /> Suspend Account
+          </button>
+        )}
+
+        {openRow.accountStatus !== 'blocked' && (
+          <button
+            onClick={() => openModal('block', openRow)}
+            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+          >
+            <ShieldBan size={14} /> Block Account
+          </button>
+        )}
+
+        <div className="my-1 border-t border-gray-100" />
+
+        <button
+          onClick={() => openModal('delete', openRow)}
+          className="w-full text-left px-4 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+        >
+          <Trash2 size={14} /> Delete Account
+        </button>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-wider text-[11px]">
-            <tr>
-              <th className="px-6 py-4">User</th>
-              <th className="px-6 py-4">Contact</th>
-              <th className="px-6 py-4">Community & Location</th>
-              <th className="px-6 py-4">Verification</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.length === 0 ? (
+    <>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-wider text-[11px]">
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-medium">
-                  No users found matching the current filters.
-                </td>
+                <th className="px-6 py-4">Member</th>
+                <th className="px-6 py-4">Contact</th>
+                <th className="px-6 py-4">Community &amp; Location</th>
+                <th className="px-6 py-4">Verification</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Joined</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ) : (
-              users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar 
-                        initials={user.name.charAt(0)} 
-                        imageUrl={user.avatar} 
-                        size="md" 
-                        color="bg-purple-100 text-purple-600"
-                      />
-                      <div>
-                        <p className="font-bold text-gray-800">{user.name}</p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">{user.memberId}</p>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
+                        <User size={24} className="text-gray-400" />
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-700">{user.phone}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-gray-700">{user.communityName}</p>
-                    <p className="text-xs text-gray-500">{user.city}, {user.state}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    {user.isVerified ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 text-xs font-bold">
-                        <CheckCircle2 size={12} /> Verified
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-600 border border-amber-100 text-xs font-bold">
-                        <Clock size={12} /> Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[11px] font-bold border uppercase tracking-wide ${getStatusColor(user.accountStatus)}`}>
-                      {user.accountStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 relative">
-                      <button 
-                        onClick={() => onViewProfile(user)}
-                        className="p-2 !text-black hover:bg-gray-100 rounded-lg transition-colors"
-                        title="View Profile"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      
-                      <button 
-                        onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
-                        className="p-2 !text-black hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <MoreVertical size={18} />
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      <AnimatePresence>
-                        {activeDropdown === user.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute right-0 top-[calc(100%+4px)] w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden"
-                          >
-                            <div className="px-3 py-2 border-b border-gray-100">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quick Actions</p>
-                            </div>
-                            
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); }}
-                              className="w-full text-left px-4 py-2 text-sm !text-black hover:bg-gray-50 flex items-center gap-2 font-medium"
-                            >
-                              <Edit size={14} className="text-blue-500" /> Edit User
-                            </button>
-                            
-                            {user.accountStatus !== 'Suspended' && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onStatusChange(user.id, 'Suspended');
-                                  setActiveDropdown(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm !text-black hover:bg-amber-50 flex items-center gap-2 font-medium"
-                              >
-                                <ShieldAlert size={14} className="text-amber-500" /> Suspend User
-                              </button>
-                            )}
-
-                            {user.accountStatus === 'Suspended' && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onStatusChange(user.id, 'Active');
-                                  setActiveDropdown(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm !text-black hover:bg-emerald-50 flex items-center gap-2 font-medium"
-                              >
-                                <ShieldBan size={14} className="text-emerald-500" /> Activate User
-                              </button>
-                            )}
-
-                            <div className="my-1 border-t border-gray-100"></div>
-
-                            {user.accountStatus !== 'Soft Deleted' ? (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onStatusChange(user.id, 'Soft Deleted');
-                                  setActiveDropdown(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm !text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium"
-                              >
-                                <Trash2 size={14} /> Soft Delete
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onStatusChange(user.id, 'Active');
-                                  setActiveDropdown(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm !text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 font-medium"
-                              >
-                                <RotateCcw size={14} /> Restore User
-                              </button>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      <p className="text-gray-500 font-semibold">No users found</p>
+                      <p className="text-gray-400 text-xs">Try adjusting your search or filters</p>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                    {/* Member */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          initials={user.name?.charAt(0) || '?'}
+                          imageUrl={user.avatar}
+                          size="md"
+                          color="bg-purple-100 text-purple-600"
+                        />
+                        <div>
+                          <p className="font-bold text-gray-800">{user.name}</p>
+                          <p className="text-xs text-gray-400 font-mono mt-0.5">{String(user.id).slice(-8).toUpperCase()}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Contact */}
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-700">{user.phone}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{user.email || '—'}</p>
+                    </td>
+
+                    {/* Community & Location */}
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-gray-700">{user.community || '—'}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {[user.city, user.state].filter(Boolean).join(', ') || '—'}
+                      </p>
+                    </td>
+
+                    {/* Verification */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold ${verifyColors[user.verificationStatus] || verifyColors.pending}`}>
+                        {user.verificationStatus === 'verified'
+                          ? <><ShieldCheck size={11} /> Verified</>
+                          : user.verificationStatus === 'rejected'
+                          ? <><ShieldBan size={11} /> Rejected</>
+                          : <><Clock size={11} /> Pending</>
+                        }
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold border uppercase tracking-wide ${statusColors[user.accountStatus] || statusColors.active}`}>
+                        {user.accountStatus}
+                      </span>
+                    </td>
+
+                    {/* Joined */}
+                    <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        ref={el => { btnRefs.current[user.id] = el; }}
+                        onClick={() => handleToggle(user)}
+                        className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-500 font-medium">
+              Showing <span className="font-bold text-gray-700">{((page - 1) * pagination.limit) + 1}–{Math.min(page * pagination.limit, pagination.totalCount)}</span> of <span className="font-bold text-gray-700">{pagination.totalCount}</span> users
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={!pagination.hasPrevPage}
+                className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs font-bold text-gray-700 px-2">{page} / {pagination.totalPages}</span>
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={!pagination.hasNextPage}
+                className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Shared portal dropdown — rendered at document.body, outside all overflow containers */}
+      {DropdownMenu}
+
+      {/* Status Change Modal */}
+      <StatusChangeModal
+        isOpen={modal.open}
+        onClose={closeModal}
+        onConfirm={handleConfirm}
+        type={modal.type}
+        userName={modal.userName}
+        loading={actionLoading}
+      />
+    </>
   );
 };

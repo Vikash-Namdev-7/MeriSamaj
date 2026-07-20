@@ -8,12 +8,16 @@ const {
   updateProfile,
   sendOtp,
   verifyOtp,
-  resetPassword
+  resetPassword,
+  getPublicCommunities,
+  getPublicCities
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
 // Public routes
+router.get('/communities', getPublicCommunities);
+router.get('/cities', getPublicCities);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);

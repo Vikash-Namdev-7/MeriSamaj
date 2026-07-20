@@ -29,7 +29,6 @@ import SettingsPage from '../pages/settings/SettingsPage';
 import CreatePostPage from '../pages/social/CreatePostPage';
 import PostDetailPage from '../pages/social/PostDetailPage';
 import MemberDetailPage from '../pages/directory/MemberDetailPage';
-import DirectoryListPage from '../pages/directory/DirectoryListPage';
 import EventDetailPage from '../pages/events/EventDetailPage';
 import ChatPage from '../pages/social/ChatPage';
 
@@ -164,7 +163,6 @@ export const MemberRoutes = () => {
             <Route path="social/create" element={<AnimatedPage><CreatePostPage /></AnimatedPage>} />
             <Route path="social/:postId" element={<AnimatedPage><PostDetailPage /></AnimatedPage>} />
 
-            <Route path="directory/list" element={<AnimatedPage><DirectoryListPage /></AnimatedPage>} />
             <Route path="directory/:memberId" element={<AnimatedPage><MemberDetailPage /></AnimatedPage>} />
             <Route path="chat/:memberId" element={<AnimatedPage><ChatRouteWrapper /></AnimatedPage>} />
 

@@ -10,6 +10,7 @@ import CommunitySettings from '../pages/settings/CommunitySettings';
 import HomepageContentManager from '../pages/home/HomepageContentManager';
 import EventManagement from '../pages/events/EventManagement';
 import ProfessionalDirectoryManagement from '../pages/professionals/ProfessionalDirectoryManagement';
+import HeadProfessionalCategories from '../pages/professionals/HeadProfessionalCategories';
 import NotificationManagement from '../pages/notifications/NotificationManagement';
 import MatrimonialManagement from '../pages/matrimonial/MatrimonialManagement';
 import CommunityReports from '../pages/reports/CommunityReports';
@@ -42,7 +43,10 @@ export const HeadRoutes = () => {
 
           {/* Other Head views */}
           <Route path="events" element={<EventManagement />} />
-          <Route path="professionals" element={<ProfessionalDirectoryManagement />} />
+          <Route path="professionals">
+            <Route index element={<ProfessionalDirectoryManagement />} />
+            <Route path="categories" element={<HeadProfessionalCategories />} />
+          </Route>
           <Route path="invitations" element={<InvitationManagement />} />
           <Route path="donations" element={<DonationManagement />} />
           <Route path="obituaries" element={<ObituaryManagement />} />

@@ -23,6 +23,17 @@ const dharmashalaSchema = new mongoose.Schema({
   rules: { type: String },
   checkInTime: { type: String, default: '10:00' },
   checkOutTime: { type: String, default: '10:00' },
+  /**
+   * communityId — PRIMARY community isolation key (ObjectId).
+   * @deprecated `community` String field below — will be removed after migration.
+   */
+  communityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    index: true,
+    default: null,
+  },
+  // @deprecated — use communityId (ObjectId) instead.
   community: { type: String, required: true }
 }, {
   timestamps: true

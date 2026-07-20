@@ -1,81 +1,88 @@
 import React from 'react';
-import { Search, Filter, RefreshCcw } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+
+const STATUS_OPTIONS = ['All', 'active', 'inactive', 'blocked', 'deleted', 'pending verification'];
+const VERIFY_OPTIONS = ['All', 'verified', 'pending', 'rejected'];
 
 export const UserFilters = ({ filters, setFilters }) => {
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
+  const hasActiveFilters = filters.search ||
+    filters.status !== 'All' ||
+    filters.verificationStatus !== 'All' ||
+    (filters.city && filters.city !== 'All');
 
-  const handleReset = () => {
+  const clearFilters = () => {
     setFilters({
-      searchQuery: '',
+      search: '',
       status: 'All',
-      community: 'All Communities',
-      role: 'All Roles'
+      verificationStatus: 'All',
+      communityId: 'all',
+      city: 'All',
     });
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4 relative z-10">
-      <div className="flex flex-col md:flex-row gap-4 items-end">
-        {/* Search */}
-        <div className="flex-1 w-full">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Global Search</label>
-          <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              name="searchQuery"
-              value={filters.searchQuery}
-              onChange={handleChange}
-              placeholder="Search by Name, ID, Phone, Email..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all"
-            />
-          </div>
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-4">
+      {/* Search Row */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone..."
+            value={filters.search}
+            onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:bg-white focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all text-gray-700 font-medium placeholder-gray-400"
+          />
         </div>
 
-        {/* Status Filter */}
-        <div className="w-full md:w-48">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Account Status</label>
-          <select 
-            name="status" 
-            value={filters.status}
-            onChange={handleChange}
-            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/20 outline-none"
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50 hover:text-rose-500 transition-all"
           >
-            <option value="All">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
-            <option value="Soft Deleted">Soft Deleted</option>
-          </select>
+            <X size={14} /> Clear Filters
+          </button>
+        )}
+      </div>
+
+      {/* Filter Row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <SlidersHorizontal size={14} /> Filters:
         </div>
 
-        {/* Community Filter */}
-        <div className="w-full md:w-48">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Community</label>
-          <select 
-            name="community" 
-            value={filters.community}
-            onChange={handleChange}
-            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/20 outline-none"
-          >
-            <option value="All Communities">All Communities</option>
-            <option value="Brahmin Samaj">Brahmin Samaj</option>
-            <option value="Patidar Samaj">Patidar Samaj</option>
-            <option value="Rajput Samaj">Rajput Samaj</option>
-            <option value="Agarwal Samaj">Agarwal Samaj</option>
-          </select>
-        </div>
-
-        {/* Reset Button */}
-        <button 
-          onClick={handleReset}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 border border-transparent"
+        {/* Account Status */}
+        <select
+          value={filters.status}
+          onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
+          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
         >
-          <RefreshCcw size={16} /> Reset
-        </button>
+          <option value="All">All Statuses</option>
+          {STATUS_OPTIONS.slice(1).map(s => (
+            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+          ))}
+        </select>
+
+        {/* Verification Status */}
+        <select
+          value={filters.verificationStatus}
+          onChange={e => setFilters(prev => ({ ...prev, verificationStatus: e.target.value }))}
+          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
+        >
+          <option value="All">All Verifications</option>
+          {VERIFY_OPTIONS.slice(1).map(v => (
+            <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
+          ))}
+        </select>
+
+        {/* City */}
+        <input
+          type="text"
+          placeholder="Filter by city..."
+          value={filters.city === 'All' ? '' : filters.city}
+          onChange={e => setFilters(prev => ({ ...prev, city: e.target.value || 'All' }))}
+          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary transition-all placeholder-gray-400 w-36"
+        />
       </div>
     </div>
   );

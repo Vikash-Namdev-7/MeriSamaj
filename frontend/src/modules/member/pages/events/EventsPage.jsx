@@ -271,7 +271,7 @@ const FilterSheet = ({ isOpen, onClose, filters, setFilters, categories }) => {
 
 /* ─── Main Events Page ─── */
 const EventsPage = () => {
-  const { events } = useData();
+  const { events, eventsLoading, eventsError, loadEvents } = useData();
   const navigate = useNavigate();
   const featuredRef = useDraggableScroll();
   const [searchQuery, setSearchQuery] = useState('');
@@ -319,7 +319,7 @@ const EventsPage = () => {
   const hasActiveFilters = filters.category !== 'all' || filters.registration !== 'all';
 
   return (
-    <div className="min-h-screen bg-surface pb-28">
+    <div className="min-h-screen bg-surface pb-28 max-w-md mx-auto w-full shadow-sm">
       {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-30 border-b border-purple-100/30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
         <div className="flex items-center justify-between px-4 h-14">
@@ -354,7 +354,7 @@ const EventsPage = () => {
       </div>
 
       {/* ─── Featured Events Carousel ─── */}
-      {featuredEvents.length > 0 && !searchQuery && filters.category === 'all' && (
+      {!searchQuery && filters.category === 'all' && (eventsLoading || featuredEvents.length > 0) && (
         <div className="pt-5 pb-2">
           <div className="px-5 flex items-center justify-between mb-3">
             <div>
@@ -368,13 +368,19 @@ const EventsPage = () => {
             ref={featuredRef}
             className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 px-5 pb-3"
           >
-            {featuredEvents.map(event => (
-              <FeaturedEventCard
-                key={event.id}
-                event={event}
-                onClick={() => navigate(`/member/events/${event.id}`)}
-              />
-            ))}
+            {eventsLoading ? (
+              [1, 2, 3].map(n => (
+                <div key={n} className="shrink-0 w-[88%] max-w-[340px] h-[200px] rounded-[24px] bg-gray-100/60 animate-pulse border border-gray-100" />
+              ))
+            ) : (
+              featuredEvents.map(event => (
+                <FeaturedEventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => navigate(`/member/events/${event.id}`)}
+                />
+              ))
+            )}
           </div>
         </div>
       )}
@@ -396,7 +402,28 @@ const EventsPage = () => {
 
       {/* ─── Events List ─── */}
       <div className="px-4 pb-6 flex flex-col gap-3">
-        {filteredEvents.length > 0 ? (
+        {eventsLoading ? (
+          [1, 2, 3, 4, 5].map(n => (
+            <div key={n} className="bg-white rounded-2xl p-4 flex gap-4 animate-pulse border border-gray-100/50 shadow-[0_2px_12px_rgba(0,0,0,0.01)]">
+              <div className="w-[56px] h-[64px] bg-gray-100 rounded-2xl shrink-0" />
+              <div className="flex-1 space-y-3">
+                <div className="h-4 bg-gray-100 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-3 bg-gray-100 rounded w-1/3" />
+              </div>
+            </div>
+          ))
+        ) : eventsError ? (
+          <div className="text-center py-16 px-4 bg-white rounded-3xl border border-rose-100/40 shadow-sm">
+            <p className="text-sm font-semibold text-rose-600">{eventsError || 'Unable to load events'}</p>
+            <button
+              onClick={loadEvents}
+              className="mt-4 px-6 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-bold shadow-sm shadow-brand-primary/20 press-scale"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : filteredEvents.length > 0 ? (
           filteredEvents.map((event, i) => (
             <EventCard key={event.id} event={event} index={i} />
           ))

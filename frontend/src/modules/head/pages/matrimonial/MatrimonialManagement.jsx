@@ -144,7 +144,7 @@ export default function MatrimonialManagement() {
   };
 
   return (
-    <div className="space-y-6 pb-20 text-white relative">
+    <div className="space-y-6 pb-20 text-slate-800 relative">
       
       {/* Toast Overlay */}
       <AnimatePresence>
@@ -166,13 +166,14 @@ export default function MatrimonialManagement() {
       {/* ─── PAGE HEADER ─── */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent flex items-center gap-2.5">
-            <Heart className="text-rose-400" /> Matrimonial Management
+          <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider text-slate-900 flex items-center gap-2.5">
+            <Heart className="text-brand-primary" size={26} /> Matrimonial Management
           </h1>
-          <p className="text-[10px] md:text-xs text-text-muted mt-1 uppercase font-bold tracking-widest">
+          <p className="text-[10px] md:text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">
             Profile Validations • Match Metrics • Document Audits • Moderation Desk
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <button 
             onClick={() => exportCSV(filteredProfiles)}

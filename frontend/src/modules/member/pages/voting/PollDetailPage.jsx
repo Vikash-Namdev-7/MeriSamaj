@@ -63,10 +63,20 @@ const PollDetailPage = () => {
     ].join(':');
   };
 
-  if (!election) {
+  const { loading, error } = useVoting();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error || !election) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <p className="text-sm font-semibold text-text-secondary">Election not found</p>
+        <p className="text-sm font-semibold text-text-secondary">{error || 'Election not found'}</p>
         <button 
           onClick={() => navigate('/member/voting')}
           className="mt-4 px-4 py-2 bg-[#7C3AED] text-white text-xs font-bold rounded-xl"

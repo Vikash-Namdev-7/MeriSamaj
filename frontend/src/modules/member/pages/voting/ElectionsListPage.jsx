@@ -5,10 +5,18 @@ import { useVoting } from './VotingContext';
 
 const ElectionsListPage = () => {
   const navigate = useNavigate();
-  const { elections, votedElections } = useVoting();
+  const { elections, votedElections, loading } = useVoting();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const activeElections = elections.filter(e => e.status === 'Active');
-  const pastElections = elections.filter(e => e.status === 'Completed');
+  const pastElections = elections.filter(e => e.status === 'Completed' || e.status === 'Closed');
 
   return (
     <div className="min-h-screen bg-surface pb-16 animate-fade-in">

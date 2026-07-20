@@ -48,16 +48,45 @@ export const useCommunityHeads = () => {
     }
   };
 
+  const handleDeleteHead = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this Community Head? This action cannot be undone.")) return false;
+    try {
+      await communityHeadService.deleteHead(id);
+      const newStats = await communityHeadService.getStats();
+      setStats(newStats);
+      // Refresh locally
+      setHeads(prev => prev.filter(h => h.id !== id));
+      return true;
+    } catch (err) {
+      console.error('Failed to delete head:', err);
+      alert(err.message || 'Failed to delete head');
+      return false;
+    }
+  };
+
+  const handleUpdateHead = async (id, data) => {
+    setLoading(true);
+    try {
+      await communityHeadService.updateHead(id, data);
+      await fetchDashboardData();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createHead = async (data) => {
     try {
       const newHead = await communityHeadService.createHead(data);
       const newStats = await communityHeadService.getStats();
       setStats(newStats);
       setHeads(prev => [newHead, ...prev]);
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Failed to create head:', err);
-      return false;
+      return { success: false, error: err.message || 'Failed to create head' };
     }
   };
 
@@ -69,6 +98,8 @@ export const useCommunityHeads = () => {
     error,
     refreshData: fetchDashboardData,
     handleStatusChange,
+    handleDeleteHead,
+    handleUpdateHead,
     createHead
   };
 };

@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import {
   ArrowLeft, Search, Star, CheckCircle, X,
   SlidersHorizontal, MapPin, AlertCircle
 } from 'lucide-react';
-import { useData } from '../../context/DataProvider';
+import * as Icons from 'lucide-react';
 import useProfessionalDirectory from '../../hooks/useProfessionalDirectory';
+import { useData } from '../../context/DataProvider';
 
 const SkeletonCard = () => (
   <div className="bg-card rounded-2xl p-4 border border-gray-100 flex items-center justify-between shadow-sm animate-pulse">
@@ -186,7 +186,7 @@ const ProfessionalDirectoryPage = () => {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {categories.map(cat => {
-                  const IconComp = cat.icon;
+                  const IconComp = Icons[cat.iconName] || Icons.Briefcase;
                   const isSelected = selectedCategory === cat.id;
                   return (
                     <button

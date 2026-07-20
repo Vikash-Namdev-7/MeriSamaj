@@ -1,33 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone
+  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone, Landmark
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { Avatar } from '../../member/components/common/Avatar';
+import { useAuth } from '../../../core/auth/useAuth';
 
 export const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, members, logoutUser } = useData();
+  const { logout } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
 
   // Calculate real-time pending approvals count
   const pendingCount = members.filter(m => !m.isVerified).length;
-
-  // Calculate real-time global approvals pending count
-  let approvalsPendingCount = 0;
-  try {
-    const raw = localStorage.getItem('merisamaj_v6_approvals');
-    if (raw) {
-      const list = JSON.parse(raw);
-      approvalsPendingCount = list.filter(item => ['Pending', 'Under Review', 'Assigned Reviewer', 'Waiting Documents'].includes(item.status)).length;
-    }
-  } catch (e) {
-    console.error(e);
-  }
 
   const navigationConfig = [
     {
@@ -37,17 +27,6 @@ export const AdminLayout = () => {
           name: 'Admin Dashboard', 
           path: '/admin/dashboard', 
           icon: LayoutDashboard 
-        },
-        { 
-          name: 'Approval Center', 
-          icon: ShieldAlert,
-          badge: approvalsPendingCount > 0 ? approvalsPendingCount : null,
-          children: [
-            { name: 'Unified Queue', path: '/admin/approvals', search: '?tab=queue' },
-            { name: 'Analytics Workspace', path: '/admin/approvals', search: '?tab=analytics' },
-            { name: 'Audit History', path: '/admin/approvals', search: '?tab=audits' },
-            { name: 'Alert History Log', path: '/admin/approvals', search: '?tab=notifications' }
-          ]
         }
       ]
     },
@@ -60,10 +39,13 @@ export const AdminLayout = () => {
           badge: pendingCount > 0 ? pendingCount : null,
           children: [
             { name: 'All Users', path: '/admin/users', search: '?tab=list' },
-            { name: 'User Bookings', path: '/admin/users', search: '?tab=bookings' },
             { name: 'User Analytics', path: '/admin/users', search: '?tab=analytics' },
-            { name: 'Referral Settings', path: '/admin/users', search: '?tab=referrals' }
           ]
+        },
+        { 
+          name: 'Communities', 
+          path: '/admin/communities', 
+          icon: Landmark 
         },
         { 
           name: 'Community Heads', 
@@ -99,27 +81,25 @@ export const AdminLayout = () => {
           ]
         },
         { 
-          name: 'Events Desk', 
+          name: 'Event Management', 
           icon: Calendar,
           children: [
-            { name: 'Events Planner', path: '/admin/events', search: '?tab=planner' },
-            { name: 'Event Bookings', path: '/admin/events', search: '?tab=bookings' },
-            { name: 'Attendee Check-ins', path: '/admin/events', search: '?tab=checkins' }
+            { name: 'Overview', path: '/admin/events', search: '?tab=overview' },
+            { name: 'All Events', path: '/admin/events', search: '?tab=all' },
+            { name: 'Create Event', path: '/admin/events', search: '?tab=create' },
+            { name: 'Event Monitoring', path: '/admin/events', search: '?tab=monitoring' },
+            { name: 'Featured Events', path: '/admin/events', search: '?tab=featured' },
+            { name: 'Event Analytics', path: '/admin/events', search: '?tab=analytics' }
           ]
         },
         { 
           name: 'Global Professional Directory', 
           icon: Briefcase,
           children: [
-            { name: 'Overview', path: '/admin/professionals', search: '?tab=overview' },
-            { name: 'Directory Grid', path: '/admin/professionals', search: '?tab=directory' },
-            { name: 'Approval Queue', path: '/admin/professionals', search: '?tab=verification' },
-            { name: 'Compliance Monitor', path: '/admin/professionals', search: '?tab=compliance' },
-            { name: 'Duplicates Scan', path: '/admin/professionals', search: '?tab=duplicates' },
-            { name: 'Featured Center', path: '/admin/professionals', search: '?tab=featured' },
-            { name: 'Interactive Charts', path: '/admin/professionals', search: '?tab=analytics' },
-            { name: 'Samaj Comparison', path: '/admin/professionals', search: '?tab=comparison' },
-            { name: 'Audit Tracker', path: '/admin/professionals', search: '?tab=audits' }
+            { name: 'Overview', path: '/admin/professionals/overview' },
+            { name: 'Directory Grid', path: '/admin/professionals/grid' },
+            { name: 'Approval Queue', path: '/admin/professionals/approvals' },
+            { name: 'Category Manager', path: '/admin/professionals/categories' }
           ]
         },
         { 
@@ -133,6 +113,11 @@ export const AdminLayout = () => {
             { name: 'Community Comparison', path: '/admin/donations', search: '?tab=comparison' },
             { name: 'Audit Tracker', path: '/admin/donations', search: '?tab=audit' }
           ]
+        },
+        {
+          name: 'Samaj Funds',
+          path: '/admin/funds',
+          icon: Landmark
         }
       ]
     },
@@ -218,9 +203,9 @@ export const AdminLayout = () => {
     }));
   };
 
-  const handleSignOut = () => {
-    logoutUser();
-    navigate('/member/login');
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/admin/login');
   };
 
   const renderNavItems = (isMobile) => {
