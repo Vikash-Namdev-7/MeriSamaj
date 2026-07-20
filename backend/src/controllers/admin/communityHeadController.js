@@ -120,6 +120,7 @@ exports.createCommunityHead = async (req, res) => {
       role: 'head',
       accountStatus: 'active',
       assignedCommunityIds: assignedCommunityIds || [],
+      communityId: (assignedCommunityIds && assignedCommunityIds.length > 0) ? assignedCommunityIds[0] : null,
       headPermissions: headPermissions || {},
       createdBy: req.user.id
     });
@@ -182,7 +183,10 @@ exports.updateCommunityHead = async (req, res) => {
       head.password = password; // pre('save') hook will hash this if changed
       head.plainPassword = password;
     }
-    if (assignedCommunityIds !== undefined) head.assignedCommunityIds = assignedCommunityIds;
+    if (assignedCommunityIds !== undefined) {
+      head.assignedCommunityIds = assignedCommunityIds;
+      head.communityId = (assignedCommunityIds && assignedCommunityIds.length > 0) ? assignedCommunityIds[0] : null;
+    }
     
     // Merge new permissions with existing
     if (headPermissions) {

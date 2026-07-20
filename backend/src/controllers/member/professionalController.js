@@ -112,6 +112,14 @@ exports.getProfessionalById = async (req, res) => {
 // 3. Create Professional Listing
 exports.createProfessional = async (req, res) => {
   try {
+    console.log('CREATE PROFESSIONAL DEBUG: req.user =', {
+      _id: req.user?._id,
+      name: req.user?.name,
+      phone: req.user?.phone,
+      role: req.user?.role,
+      communityId: req.user?.communityId,
+      assignedCommunityIds: req.user?.assignedCommunityIds
+    });
     const communityId = getCommunityId(req);
     if (!communityId) {
       return res.status(400).json({ success: false, message: 'No community context found.' });

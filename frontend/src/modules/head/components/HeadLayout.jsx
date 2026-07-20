@@ -457,9 +457,9 @@ export const HeadLayout = () => {
               
               <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
                 <Avatar 
-                  initials="MA" 
+                  initials={headUser?.initials || (headUser?.name ? headUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'MA')} 
                   size="sm" 
-                  imageUrl={currentUser?.avatar}
+                  imageUrl={headUser?.avatar}
                   color="bg-gradient-to-br from-amber-400 to-purple-600 text-white font-bold"
                 />
                 <div className="min-w-0 flex-1">
@@ -507,9 +507,9 @@ export const HeadLayout = () => {
                 <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">{headUser?.role === 'head' ? 'Administrator' : 'Head Panel'}</p>
               </div>
               <Avatar 
-                initials="MA" 
+                initials={headUser?.initials || (headUser?.name ? headUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'MA')} 
                 size="sm" 
-                imageUrl={currentUser?.avatar}
+                imageUrl={headUser?.avatar}
                 color="bg-indigo-600 text-white font-bold"
               />
             </div>

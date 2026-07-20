@@ -166,7 +166,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Select', disabl
 const OnboardingScreen = () => {
   const navigate = useNavigate();
   const { loginUser, setLanguage, language } = useData();
-  const { setAuth } = useAuth();
+  const { auth, setAuth } = useAuth();
 
   // Onboarding Wizard State
   const [step, setStep] = useState('onboarding-1'); 
@@ -283,55 +283,64 @@ const OnboardingScreen = () => {
     const regEmail = localStorage.getItem('merisamaj_register_email') || '';
     if (regPhone) setPhone(regPhone);
     if (regEmail) setEmail(regEmail);
+  }, []);
 
-    // Resume flow check
+  // Prefill and lock community/onboarding details from authenticated user or local session
+  useEffect(() => {
+    const userToLoad = auth.user || JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null') || JSON.parse(localStorage.getItem('merisamaj_user') || 'null');
+    if (userToLoad) {
+      if (userToLoad.name) setName(userToLoad.name);
+      if (userToLoad.phone) setPhone(userToLoad.phone);
+      if (userToLoad.gender) setGender(userToLoad.gender);
+      if (userToLoad.communityId) {
+        const cId = userToLoad.communityId._id || userToLoad.communityId;
+        setSelectedCommunity(cId);
+      } else if (userToLoad.community && apiCommunities.length > 0) {
+        const matched = apiCommunities.find(c => c.label === userToLoad.community);
+        if (matched) setSelectedCommunity(matched.value);
+      }
+      if (userToLoad.subCommunity) setSelectedSubCommunity(userToLoad.subCommunity);
+      if (userToLoad.city) setSelectedCity(userToLoad.city);
+      if (userToLoad.pincode) setPincode(userToLoad.pincode);
+      if (userToLoad.district) setDistrict(userToLoad.district);
+      if (userToLoad.state) setStateName(userToLoad.state);
+      if (userToLoad.avatar) setAvatar(userToLoad.avatar);
+      if (userToLoad.dob) setDob(userToLoad.dob);
+      if (userToLoad.bloodGroup) setBloodGroup(userToLoad.bloodGroup);
+      if (userToLoad.maritalStatus) setMaritalStatus(userToLoad.maritalStatus);
+      if (userToLoad.gotra) setGotra(userToLoad.gotra);
+      if (userToLoad.qualification) setQualification(userToLoad.qualification);
+      if (userToLoad.school) setSchool(userToLoad.school);
+      if (userToLoad.passingYear) setPassingYear(userToLoad.passingYear);
+      if (userToLoad.profession) setProfession(userToLoad.profession);
+      if (userToLoad.company) setCompany(userToLoad.company);
+      if (userToLoad.annualIncome) setAnnualIncome(userToLoad.annualIncome);
+      if (userToLoad.workCity) setWorkCity(userToLoad.workCity);
+      if (userToLoad.houseNumber) setHouseNumber(userToLoad.houseNumber);
+      if (userToLoad.streetAddress) setStreetAddress(userToLoad.streetAddress);
+      if (userToLoad.landmark) setLandmark(userToLoad.landmark);
+      if (userToLoad.areaAddress) setAreaAddress(userToLoad.areaAddress);
+      if (userToLoad.pincodeAddress) setPincodeAddress(userToLoad.pincodeAddress);
+      if (userToLoad.detailedAddress) setDetailedAddress(userToLoad.detailedAddress);
+      if (userToLoad.alternatePhone) setAlternatePhone(userToLoad.alternatePhone);
+      if (userToLoad.alternateEmail) setAlternateEmail(userToLoad.alternateEmail);
+      if (userToLoad.familyMembers) setFamilyMembers(userToLoad.familyMembers);
+      if (userToLoad.isAadharVerified !== undefined) setIsAadharVerified(userToLoad.isAadharVerified);
+      if (userToLoad.isFaceVerified !== undefined) setIsFaceVerified(userToLoad.isFaceVerified);
+      if (userToLoad.prefEducation) setPrefEducation(userToLoad.prefEducation);
+      if (userToLoad.prefAge) setPrefAge(userToLoad.prefAge);
+      if (userToLoad.prefHeight) setPrefHeight(userToLoad.prefHeight);
+      if (userToLoad.prefOccupation) setPrefOccupation(userToLoad.prefOccupation);
+      if (userToLoad.prefCity) setPrefCity(userToLoad.prefCity);
+    }
+
+    // Resume flow step check
     const resumeStep = localStorage.getItem('merisamaj_onboarding_resume_step');
-    const savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null');
-    
-    if (resumeStep && savedUser) {
+    if (resumeStep) {
       localStorage.removeItem('merisamaj_onboarding_resume_step');
-      
-      setName(savedUser.name || '');
-      setPhone(savedUser.phone || '');
-      setGender(savedUser.gender || '');
-      setSelectedCommunity(savedUser.community || '');
-      setSelectedSubCommunity(savedUser.subCommunity || '');
-      setSelectedCity(savedUser.city || '');
-      setPincode(savedUser.pincode || '');
-      setDistrict(savedUser.district || '');
-      setStateName(savedUser.state || '');
-      setAvatar(savedUser.avatar || null);
-      setDob(savedUser.dob || '');
-      setBloodGroup(savedUser.bloodGroup || '');
-      setMaritalStatus(savedUser.maritalStatus || '');
-      setGotra(savedUser.gotra || '');
-      setQualification(savedUser.qualification || '');
-      setSchool(savedUser.school || '');
-      setPassingYear(savedUser.passingYear || '');
-      setProfession(savedUser.profession || '');
-      setCompany(savedUser.company || '');
-      setAnnualIncome(savedUser.annualIncome || '');
-      setWorkCity(savedUser.workCity || '');
-      setHouseNumber(savedUser.houseNumber || '');
-      setStreetAddress(savedUser.streetAddress || '');
-      setLandmark(savedUser.landmark || '');
-      setAreaAddress(savedUser.areaAddress || '');
-      setPincodeAddress(savedUser.pincodeAddress || '');
-      setDetailedAddress(savedUser.detailedAddress || '');
-      setAlternatePhone(savedUser.alternatePhone || '');
-      setAlternateEmail(savedUser.alternateEmail || '');
-      setFamilyMembers(savedUser.familyMembers || []);
-      setIsAadharVerified(savedUser.isAadharVerified || false);
-      setIsFaceVerified(savedUser.isFaceVerified || false);
-      setPrefEducation(savedUser.prefEducation || '');
-      setPrefAge(savedUser.prefAge || '');
-      setPrefHeight(savedUser.prefHeight || '');
-      setPrefOccupation(savedUser.prefOccupation || '');
-      setPrefCity(savedUser.prefCity || '');
-
       setStep(resumeStep);
     }
-  }, []);
+  }, [auth.user, apiCommunities]);
 
   // Autofill state and district based on pincode
   useEffect(() => {
@@ -682,6 +691,7 @@ const OnboardingScreen = () => {
                     onChange={(val) => { setSelectedCommunity(val); setSelectedSubCommunity(''); setSelectedCity(''); }}
                     options={apiCommunities}
                     placeholder="Select community"
+                    disabled={!!auth.user?.communityId}
                   />
                 </div>
                 <div>

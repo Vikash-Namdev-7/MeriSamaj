@@ -11,9 +11,17 @@ const protect = async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
-  } else if (req.cookies && req.cookies.jwt) {
-    // Keep cookie fallback for compatibility, but verify statelessly
-    token = req.cookies.jwt;
+  } else if (req.cookies) {
+    const isApiAdmin = req.baseUrl.startsWith('/api/v1/admin') || req.path.startsWith('/admin');
+    const isApiHead = req.baseUrl.startsWith('/api/v1/head') || req.path.startsWith('/head');
+    
+    if (isApiAdmin) {
+      token = req.cookies.admin_jwt || req.cookies.jwt;
+    } else if (isApiHead) {
+      token = req.cookies.head_jwt || req.cookies.jwt;
+    } else {
+      token = req.cookies.member_jwt || req.cookies.jwt;
+    }
   }
 
   if (!token) {
@@ -81,11 +89,24 @@ const protect = async (req, res, next) => {
       req.communityId = user.communityId._id
         ? user.communityId._id   // populated object → extract _id
         : user.communityId;      // already a plain ObjectId
-        
+    } else if (user.role === 'head' && user.assignedCommunityIds && user.assignedCommunityIds.length > 0) {
+      const firstComm = user.assignedCommunityIds[0];
+      req.communityId = firstComm._id ? firstComm._id : firstComm;
+      // Self-heal user model
+      user.communityId = req.communityId;
+      await user.save();
+    }
+
+    if (req.communityId) {
       // Block write operations (POST/PUT/PATCH/DELETE) if the community is deactivated (isActive === false)
       // Excludes master admin
+      const communityObj = user.communityId && user.communityId.isActive !== undefined 
+        ? user.communityId 
+        : (user.assignedCommunityIds && user.assignedCommunityIds.length > 0 ? user.assignedCommunityIds[0] : null);
+
       if (
-        user.communityId.isActive === false &&
+        communityObj &&
+        communityObj.isActive === false &&
         user.role !== 'admin' &&
         ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
       ) {

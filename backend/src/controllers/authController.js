@@ -3,16 +3,18 @@ const User = require('../models/User');
 
 // Helper to generate stateless access and refresh tokens
 const generateTokens = (user) => {
+  const isPrivileged = ['admin', 'head'].includes(user.role);
+  
   const accessToken = jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET || 'fallback_secret',
-    { expiresIn: '30m' } // Access Token expires in 30 minutes
+    { expiresIn: isPrivileged ? '1d' : '30m' }
   );
 
   const refreshToken = jwt.sign(
     { id: user._id },
     process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
-    { expiresIn: '7d' } // Refresh Token expires in 7 days
+    { expiresIn: isPrivileged ? '1d' : '7d' }
   );
 
   return { accessToken, refreshToken };
@@ -97,13 +99,15 @@ const registerUser = async (req, res) => {
       await user.populate('communityId', 'name slug isActive settings logoUrl description city');
       const { accessToken, refreshToken } = generateTokens(user);
       
-      // Store Refresh Token in HttpOnly cookie
-      res.cookie('jwt', refreshToken, {
+      // Store Refresh Token in HttpOnly cookies
+      const cookieOptions = {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      };
+      res.cookie('member_jwt', refreshToken, cookieOptions);
+      res.cookie('jwt', refreshToken, cookieOptions);
 
       res.status(201).json({
         user: getUserResponsePayload(user),
@@ -155,13 +159,24 @@ const loginUser = async (req, res) => {
     if (isMatch) {
       const { accessToken, refreshToken } = generateTokens(user);
       
-      // Store Refresh Token in HttpOnly cookie
-      res.cookie('jwt', refreshToken, {
+      const isPrivileged = ['admin', 'head'].includes(user.role);
+      const maxAge = isPrivileged ? 1 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+      
+      const cookieOptions = {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+        maxAge
+      };
+
+      if (user.role === 'admin') {
+        res.cookie('admin_jwt', refreshToken, cookieOptions);
+      } else if (user.role === 'head') {
+        res.cookie('head_jwt', refreshToken, cookieOptions);
+      } else {
+        res.cookie('member_jwt', refreshToken, cookieOptions);
+        res.cookie('jwt', refreshToken, cookieOptions);
+      }
 
       res.json({
         user: getUserResponsePayload(user),
@@ -179,6 +194,12 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
+  res.cookie('member_jwt', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: true,
+    sameSite: 'none'
+  });
   res.cookie('jwt', '', {
     httpOnly: true,
     expires: new Date(0),
@@ -188,11 +209,31 @@ const logoutUser = (req, res) => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
+const logoutAdmin = (req, res) => {
+  res.cookie('admin_jwt', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: true,
+    sameSite: 'none'
+  });
+  res.status(200).json({ message: 'Admin logged out successfully' });
+};
+
+const logoutHead = (req, res) => {
+  res.cookie('head_jwt', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: true,
+    sameSite: 'none'
+  });
+  res.status(200).json({ message: 'Head logged out successfully' });
+};
+
 // @desc    Refresh access token (Stateless)
 // @route   POST /api/auth/refresh
 // @access  Public
 const refreshAuth = async (req, res) => {
-  const refreshToken = req.cookies.jwt;
+  const refreshToken = req.cookies.member_jwt || req.cookies.jwt;
 
   if (!refreshToken) {
     return res.status(401).json({ message: 'No refresh token provided' });
@@ -212,19 +253,18 @@ const refreshAuth = async (req, res) => {
     if (user.accountStatus === 'blocked' || user.accountStatus === 'deleted') {
       return res.status(403).json({ message: 'Account status is not active' });
     }
-    if (user.role === 'head' && (user.accountStatus === 'inactive' || user.accountStatus === 'suspended')) {
-      return res.status(403).json({ message: 'Your Community Head account is currently inactive.' });
-    }
 
     const tokens = generateTokens(user);
 
-    // Rotate refresh token cookie
-    res.cookie('jwt', tokens.refreshToken, {
+    // Rotate refresh token cookies
+    const cookieOptions = {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    };
+    res.cookie('member_jwt', tokens.refreshToken, cookieOptions);
+    res.cookie('jwt', tokens.refreshToken, cookieOptions);
 
     res.json({
       user: getUserResponsePayload(user),
@@ -233,6 +273,80 @@ const refreshAuth = async (req, res) => {
   } catch (error) {
     console.error('Refresh Token Verification Failed:', error.message);
     return res.status(401).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
+const refreshAdmin = async (req, res) => {
+  const refreshToken = req.cookies.admin_jwt;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'No admin refresh token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Admin not found' });
+    }
+
+    const tokens = generateTokens(user);
+
+    res.cookie('admin_jwt', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 1 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      user: getUserResponsePayload(user),
+      accessToken: tokens.accessToken
+    });
+  } catch (error) {
+    console.error('Admin Refresh Token Failed:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired admin refresh token' });
+  }
+};
+
+const refreshHead = async (req, res) => {
+  const refreshToken = req.cookies.head_jwt;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'No head refresh token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
+    const user = await User.findById(decoded.id)
+      .populate('communityId', 'name slug isActive settings logoUrl description city')
+      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
+
+    if (!user || !['head', 'admin'].includes(user.role)) {
+      return res.status(401).json({ message: 'Head user not found' });
+    }
+
+    if (user.accountStatus === 'inactive' || user.accountStatus === 'suspended') {
+      return res.status(403).json({ message: 'Your Community Head account is currently inactive.' });
+    }
+
+    const tokens = generateTokens(user);
+
+    res.cookie('head_jwt', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 1 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      user: getUserResponsePayload(user),
+      accessToken: tokens.accessToken
+    });
+  } catch (error) {
+    console.error('Head Refresh Token Failed:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired head refresh token' });
   }
 };
 
@@ -261,6 +375,9 @@ const updateProfile = async (req, res) => {
       
       // Community
       if (req.body.communityId) {
+        if (user.communityId && user.communityId.toString() !== req.body.communityId.toString() && req.user.role !== 'admin') {
+          return res.status(400).json({ status: 'error', message: 'Community selection is permanent and cannot be changed.' });
+        }
         const Community = require('../models/Community');
         const targetComm = await Community.findById(req.body.communityId);
         if (!targetComm || !targetComm.isActive) {
@@ -448,7 +565,11 @@ module.exports = {
   registerUser,
   loginUser,
   logoutUser,
+  logoutAdmin,
+  logoutHead,
   refreshAuth,
+  refreshAdmin,
+  refreshHead,
   updateProfile,
   sendOtp,
   verifyOtp,

@@ -7,6 +7,7 @@ import { DataProvider } from './modules/member/context/DataProvider';
 import { FundProvider } from './modules/member/context/FundContext';
 import { AuthProvider } from './core/auth/AuthContext';
 import { HeadAuthProvider } from './modules/head/auth/HeadAuthContext';
+import { AdminAuthProvider } from './modules/admin/auth/AdminAuthContext';
 import { useAxiosPrivate } from './core/auth/useAxiosPrivate';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -43,11 +44,13 @@ const App = () => {
   return (
     <AuthProvider>
     <HeadAuthProvider>
+    <AdminAuthProvider>
     <DataProvider>
       <FundProvider>
         <AppContent />
       </FundProvider>
     </DataProvider>
+    </AdminAuthProvider>
     </HeadAuthProvider>
     </AuthProvider>
   );

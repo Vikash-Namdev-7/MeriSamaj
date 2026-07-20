@@ -4,7 +4,11 @@ const {
   registerUser,
   loginUser,
   logoutUser,
+  logoutAdmin,
+  logoutHead,
   refreshAuth,
+  refreshAdmin,
+  refreshHead,
   updateProfile,
   sendOtp,
   verifyOtp,
@@ -21,10 +25,14 @@ router.get('/cities', getPublicCities);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
+router.post('/logout/admin', logoutAdmin);
+router.post('/logout/head', logoutHead);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
 router.post('/refresh', refreshAuth); // Public stateless refresh endpoint
+router.post('/refresh/admin', refreshAdmin);
+router.post('/refresh/head', refreshHead);
 
 // Profile update handles avatar upload via Cloudinary
 router.put('/update-profile', protect, upload.single('avatarFile'), updateProfile);

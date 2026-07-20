@@ -5,13 +5,14 @@ import {
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { Avatar } from '../../member/components/common/Avatar';
-import { useAuth } from '../../../core/auth/useAuth';
+import { useAdminAuth } from '../auth/useAdminAuth';
 
 export const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, members, logoutUser } = useData();
-  const { logout } = useAuth();
+  const { members, logoutUser } = useData();
+  const { adminAuth, adminLogout } = useAdminAuth();
+  const adminUser = adminAuth.adminUser;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
@@ -204,7 +205,7 @@ export const AdminLayout = () => {
   };
 
   const handleSignOut = async () => {
-    await logout();
+    await adminLogout();
     navigate('/admin/login');
   };
 
@@ -501,12 +502,12 @@ export const AdminLayout = () => {
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
               >
                 <Avatar 
-                  initials={currentUser?.initials || 'A'} 
+                  initials={adminUser?.initials || (adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'A')} 
                   size="sm" 
-                  imageUrl={currentUser?.avatar}
+                  imageUrl={adminUser?.avatar}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-bold text-white truncate leading-none">{currentUser?.name || 'Admin'}</p>
+                  <p className="text-[12px] font-bold text-white truncate leading-none">{adminUser?.name || 'Admin'}</p>
                   <p className="text-[9px] font-semibold truncate mt-1 leading-none" style={{ color: 'rgba(167,139,250,0.55)' }}>Council Admin</p>
                 </div>
               </div>
@@ -553,13 +554,13 @@ export const AdminLayout = () => {
             <div className="h-8 w-[1px] bg-gray-200"></div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-[12px] font-bold text-gray-800 leading-none">{currentUser?.name || 'Administrator'}</p>
+                <p className="text-[12px] font-bold text-gray-800 leading-none">{adminUser?.name || 'Administrator'}</p>
                 <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Master Admin</p>
               </div>
               <Avatar 
-                initials={currentUser?.initials || 'A'} 
+                initials={adminUser?.initials || (adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'A')} 
                 size="sm" 
-                imageUrl={currentUser?.avatar}
+                imageUrl={adminUser?.avatar}
                 color="bg-brand-primary text-white"
               />
             </div>

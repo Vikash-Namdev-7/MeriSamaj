@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../../core/auth/useAuth';
+import { useAdminAuth } from '../../auth/useAdminAuth';
 import { ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export const AdminLogin = () => {
-  const { login, logout } = useAuth();
+  const { adminLogin } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -27,18 +27,10 @@ export const AdminLogin = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await login({ identifier: identifier.trim(), password });
-      
-      // Strict role check: must be admin to access Admin Panel
-      if (res.user?.role !== 'admin') {
-        setError('Access Denied: Only platform administrators are authorized to log in here.');
-        // Clear session immediately if a non-admin tried to log in here
-        await logout();
-      } else {
-        navigate(from, { replace: true });
-      }
+      await adminLogin(identifier.trim(), password);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please verify credentials.');
+      setError(err.message || 'Login failed. Please verify credentials.');
     } finally {
       setLoading(false);
     }

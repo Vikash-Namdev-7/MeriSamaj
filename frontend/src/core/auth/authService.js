@@ -41,6 +41,20 @@ export const authService = {
     return response.data;
   },
 
+  refreshAdmin: async () => {
+    const response = await axiosPublic.post('/auth/refresh/admin', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
+  refreshHead: async () => {
+    const response = await axiosPublic.post('/auth/refresh/head', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
   updateProfile: async (profileData) => {
     // Determine if data is FormData (for file uploads) or normal object
     const isFormData = profileData instanceof FormData;
@@ -53,6 +67,20 @@ export const authService = {
 
   logout: async () => {
     const response = await axiosPublic.post('/auth/logout', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
+  logoutAdmin: async () => {
+    const response = await axiosPublic.post('/auth/logout/admin', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
+  logoutHead: async () => {
+    const response = await axiosPublic.post('/auth/logout/head', {}, {
       withCredentials: true
     });
     return response.data;
