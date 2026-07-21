@@ -80,12 +80,14 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
   const [direction, setDirection] = useState(1);
   const [prevStoryId, setPrevStoryId] = useState(story?.id);
 
-  if (story && story.id !== prevStoryId) {
-    const oldIdx = stories.findIndex(s => s.id === prevStoryId);
-    const newIdx = stories.findIndex(s => s.id === story.id);
-    setDirection(newIdx > oldIdx ? 1 : -1);
-    setPrevStoryId(story.id);
-  }
+  useEffect(() => {
+    if (story && story.id !== prevStoryId) {
+      const oldIdx = stories.findIndex(s => s.id === prevStoryId);
+      const newIdx = stories.findIndex(s => s.id === story.id);
+      setDirection(newIdx > oldIdx ? 1 : -1);
+      setPrevStoryId(story.id);
+    }
+  }, [story, stories, prevStoryId]);
 
   const [isPaused, setIsPaused] = useState(false);
   const touchStartTimeRef = useRef(0);
@@ -406,8 +408,8 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
             onMouseDown={(e) => handleTouchStart('left', e)}
             onMouseUp={(e) => handleTouchEnd(e)}
             onMouseLeave={handleTouchCancel}
-            onTouchStart={(e) => { e.preventDefault(); handleTouchStart('left', e); }}
-            onTouchEnd={(e) => { e.preventDefault(); handleTouchEnd(e); }}
+            onTouchStart={(e) => { handleTouchStart('left', e); }}
+            onTouchEnd={(e) => { handleTouchEnd(e); }}
             onTouchCancel={handleTouchCancel}
           />
           <div 
@@ -415,8 +417,8 @@ export const StoryViewer = ({ story, stories = [], onStoryChange, onClose }) => 
             onMouseDown={(e) => handleTouchStart('right', e)}
             onMouseUp={(e) => handleTouchEnd(e)}
             onMouseLeave={handleTouchCancel}
-            onTouchStart={(e) => { e.preventDefault(); handleTouchStart('right', e); }}
-            onTouchEnd={(e) => { e.preventDefault(); handleTouchEnd(e); }}
+            onTouchStart={(e) => { handleTouchStart('right', e); }}
+            onTouchEnd={(e) => { handleTouchEnd(e); }}
             onTouchCancel={handleTouchCancel}
           />
         </div>

@@ -14,6 +14,7 @@ import invitationService from '../../../core/api/invitationService';
 import obituaryService from '../../../core/api/obituaryService';
 import { eventService } from '../services/eventService';
 import { headEventService } from '../../../core/api/headEventService';
+import socialService from '../../../core/api/socialService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -517,6 +518,17 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const deduplicateById = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    return arr.filter(item => {
+      if (!item || !item.id) return true;
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  };
+
   // State Definitions
   const [currentUser, setCurrentUser] = useState(() => {
     const loaded = loadState('currentUser', initialUser);
@@ -542,32 +554,18 @@ export const DataProvider = ({ children }) => {
     }
     return loaded;
   });
-  const [posts, setPosts] = useState(() => {
-    return initialPosts.map((p) => ({
-      ...p,
-      commentsList: p.commentsList || []
-    }));
-  });
-
-  const [stories, setStories] = useState(() => {
-    return [
-      { id: 's1', memberId: 'm1', name: 'Suresh Agrawal', initials: 'SA', avatar: null, image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', timestamp: '2 hours ago', hasSeen: false },
-      { id: 's1_2', memberId: 'm1', name: 'Suresh Agrawal', initials: 'SA', avatar: null, image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800', timestamp: '1 hour ago', text: 'Indore Samaj General Meeting', hasSeen: false },
-      { id: 's2', memberId: 'm2', name: 'Kavita Agrawal', initials: 'KA', avatar: null, image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800', timestamp: '4 hours ago', hasSeen: false },
-      { id: 's2_2', memberId: 'm2', name: 'Kavita Agrawal', initials: 'KA', avatar: null, image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800', timestamp: '3 hours ago', text: 'Mahila Udyog Exhibition', hasSeen: false },
-      { id: 's3', memberId: 'm3', name: 'Deepak Agrawal', initials: 'DA', avatar: null, image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800', timestamp: '6 hours ago', hasSeen: false },
-      { id: 's4', memberId: 'm4', name: 'Anita Agrawal', initials: 'AA', avatar: null, image: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800', timestamp: '8 hours ago', hasSeen: false }
-    ];
-  });
+  const [posts, setPosts] = useState([]);
+  const [cityPosts, setCityPosts] = useState([]);
+  const [communityPosts, setCommunityPosts] = useState([]);
+  const [stories, setStories] = useState([]);
 
   useEffect(() => {
-    localStorage.removeItem('merisamaj_v6_posts');
-    localStorage.removeItem('posts');
-    setPosts(initialPosts.map((p) => ({
-      ...p,
-      commentsList: p.commentsList || []
-    })));
-  }, [initialPosts]);
+    if (currentUser && (currentUser.id || currentUser._id)) {
+      fetchFeedPosts('city');
+      fetchFeedPosts('community');
+      fetchStoriesList();
+    }
+  }, [currentUser]);
 
   const [followedAnnouncements, setFollowedAnnouncements] = useState(() => loadState('followedAnnouncements', {
     announcements: true,
@@ -764,7 +762,10 @@ export const DataProvider = ({ children }) => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Direct Message Chats & Messages States
-  const [chats, setChats] = useState(() => loadState('chats', initialChats));
+  const [chats, setChats] = useState(() => {
+    const loaded = loadState('chats', initialChats);
+    return deduplicateById(loaded);
+  });
   const [chatMessages, setChatMessages] = useState(() => loadState('chatMessages', initialMessages));
 
   // Follow System & Privacy States
@@ -1024,27 +1025,6 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
-  const createPost = (postContent, images = [], options = {}) => {
-    const newPost = {
-      id: `p${Date.now()}`,
-      author: {
-        id: currentUser.id,
-        name: currentUser.name,
-        initials: currentUser.initials,
-        avatar: currentUser.avatar
-      },
-      community: currentUser.community,
-      content: postContent,
-      images,
-      timestamp: 'Just now',
-      likes: 0,
-      comments: 0,
-      isLiked: false,
-      ...options
-    };
-    setPosts(prev => [newPost, ...prev]);
-  };
-
   const toggleEventRSVP = async (eventId) => {
     try {
       const res = await eventService.toggleAttend(eventId);
@@ -1063,107 +1043,265 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const togglePostLike = (postId) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          isLiked: !p.isLiked,
-          likes: p.isLiked ? p.likes - 1 : p.likes + 1
-        };
+  const fetchFeedPosts = async (feedType, category = '', cursor = '') => {
+    try {
+      const res = await socialService.getPosts(feedType, category, 10, cursor);
+      const data = res.data.map(p => ({
+        ...p,
+        id: p._id,
+        author: {
+          id: p.userId?._id || p.userId?.id || 'Unknown',
+          name: p.userId?.name || 'Member',
+          avatar: p.userId?.avatar,
+          initials: p.userId?.name ? p.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'
+        },
+        images: p.media?.map(m => m.url) || [],
+        likes: p.likesCount || 0,
+        comments: p.commentsCount || 0,
+        views: p.viewsCount || 0
+      }));
+
+      if (feedType === 'city') {
+        setCityPosts(prev => cursor ? [...prev, ...data] : data);
+        setPosts(prev => cursor ? [...prev, ...data] : data);
+      } else {
+        setCommunityPosts(prev => cursor ? [...prev, ...data] : data);
+        setPosts(prev => cursor ? [...prev, ...data] : data);
       }
-      return p;
-    }));
+      return res;
+    } catch (error) {
+      console.error('Failed to fetch feed posts:', error);
+    }
   };
 
-  const togglePostSave = (postId) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          isSaved: !p.isSaved
-        };
-      }
-      return p;
-    }));
+  const fetchStoriesList = async () => {
+    try {
+      const res = await socialService.getStories();
+      const formatted = res.data.map(s => ({
+        id: s._id,
+        memberId: s.userId?._id || s.userId?.id,
+        name: s.userId?.name || 'Member',
+        initials: s.userId?.name ? s.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U',
+        avatar: s.userId?.avatar,
+        image: s.media,
+        text: s.text,
+        timestamp: 'Active',
+        hasSeen: false
+      }));
+      setStories(formatted);
+    } catch (error) {
+      console.error('Failed to fetch stories:', error);
+    }
   };
 
-  const addPostComment = (postId, commentText) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const newComment = {
-          id: `c${Date.now()}`,
-          author: {
-            id: currentUser.id,
-            name: currentUser.name,
-            initials: currentUser.initials,
-            avatar: currentUser.avatar
-          },
-          text: commentText,
-          time: 'Just now',
-          likes: 0,
-          isLiked: false
-        };
-        return {
-          ...p,
-          comments: (p.comments || 0) + 1,
-          commentsList: [...(p.commentsList || []), newComment]
-        };
+  const createPost = async (postContent, images = [], options = {}) => {
+    try {
+      const media = images.map(url => ({ url }));
+      const res = await socialService.createPost({
+        content: postContent,
+        category: options.category || 'Notice',
+        media,
+        location: options.city,
+        feedType: options.feedType || 'city'
+      });
+      
+      const formatted = {
+        ...res.data,
+        id: res.data._id,
+        city: options.city || currentUser?.city || 'Indore',
+        community: currentUser?.community || 'Agrawal Samaj',
+        feedType: options.feedType || 'city',
+        author: {
+          id: res.data.userId?._id || res.data.userId?.id || currentUser?.id,
+          name: res.data.userId?.name || currentUser?.name || 'Member',
+          avatar: res.data.userId?.avatar || currentUser?.avatar,
+          initials: res.data.userId?.name 
+            ? res.data.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+            : (currentUser?.initials || 'U')
+        },
+        images: res.data.media?.map(m => m.url) || [],
+        likes: res.data.likesCount || 0,
+        comments: res.data.commentsCount || 0,
+        views: res.data.viewsCount || 0
+      };
+
+      if (formatted.feedType === 'city') {
+        setCityPosts(prev => [formatted, ...prev]);
+      } else {
+        setCommunityPosts(prev => [formatted, ...prev]);
       }
-      return p;
-    }));
+      setPosts(prev => [formatted, ...prev]);
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    }
   };
 
-  const addCommentReply = (postId, commentId, replyText) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          commentsList: (p.commentsList || []).map(c => {
-            if (c.id === commentId) {
-              const newReply = {
-                id: `r-${Date.now()}`,
-                author: {
-                  name: currentUser.name,
-                  initials: currentUser.initials,
-                  avatar: currentUser.avatar,
-                  isVerified: true
-                },
-                text: replyText,
-                time: 'Just now'
-              };
-              return {
-                ...c,
-                replies: [...(c.replies || []), newReply]
-              };
-            }
-            return c;
-          })
-        };
-      }
-      return p;
-    }));
+  const togglePostLike = async (postId) => {
+    try {
+      const res = await socialService.toggleLike(postId);
+      const updateFn = p => (p._id === postId || p.id === postId)
+        ? { ...p, isLiked: res.liked, likes: res.liked ? (p.likes || 0) + 1 : Math.max(0, (p.likes || 0) - 1) }
+        : p;
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+    } catch (error) {
+      console.error('Failed to toggle post like:', error);
+    }
   };
 
-  const toggleCommentLike = (postId, commentId) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          commentsList: (p.commentsList || []).map(c => {
-            if (c.id === commentId) {
-              return {
-                ...c,
-                isLiked: !c.isLiked,
-                likes: c.isLiked ? c.likes - 1 : c.likes + 1
-              };
-            }
-            return c;
-          })
-        };
-      }
-      return p;
-    }));
+  const togglePostSave = async (postId) => {
+    try {
+      const res = await socialService.toggleSave(postId);
+      const updateFn = p => (p._id === postId || p.id === postId)
+        ? { ...p, isSaved: res.saved }
+        : p;
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+    } catch (error) {
+      console.error('Failed to toggle post save:', error);
+    }
+  };
+
+  const fetchPostComments = async (postId) => {
+    try {
+      const res = await socialService.getComments(postId);
+      const commentsData = res.data || [];
+      
+      const allFormatted = commentsData.map(c => ({
+        ...c,
+        id: c._id || c.id,
+        parentCommentId: c.parentCommentId ? String(c.parentCommentId) : null,
+        author: {
+          id: c.userId?._id || c.userId?.id || 'Unknown',
+          name: c.userId?.name || 'Member',
+          avatar: c.userId?.avatar,
+          initials: c.userId?.name ? c.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M',
+          isVerified: true
+        },
+        text: c.text,
+        time: c.createdAt ? new Date(c.createdAt).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        likes: 0,
+        isLiked: false,
+        replies: []
+      }));
+
+      // Separate top-level comments and replies
+      const topLevel = allFormatted.filter(c => !c.parentCommentId);
+      const replies = allFormatted.filter(c => c.parentCommentId);
+
+      // Attach replies to their parent comments
+      topLevel.forEach(parent => {
+        parent.replies = replies.filter(r => String(r.parentCommentId) === String(parent.id));
+      });
+
+      const updateFn = p => (p._id === postId || p.id === postId)
+        ? { ...p, commentsList: topLevel, comments: topLevel.length }
+        : p;
+
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+      return topLevel;
+    } catch (error) {
+      console.error('Failed to fetch post comments:', error);
+    }
+  };
+
+  const addPostComment = async (postId, commentText) => {
+    try {
+      const res = await socialService.addComment(postId, { text: commentText });
+      const commentDoc = res.data;
+      const formattedComment = {
+        ...commentDoc,
+        id: commentDoc._id || commentDoc.id || `c_${Date.now()}`,
+        author: {
+          id: commentDoc.userId?._id || commentDoc.userId?.id || currentUser?.id,
+          name: commentDoc.userId?.name || currentUser?.name || 'Member',
+          avatar: commentDoc.userId?.avatar || currentUser?.avatar,
+          initials: commentDoc.userId?.name 
+            ? commentDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+            : (currentUser?.initials || 'M')
+        },
+        text: commentDoc.text || commentText,
+        time: 'Just now',
+        likes: 0,
+        isLiked: false,
+        replies: []
+      };
+
+      const updateFn = p => (p._id === postId || p.id === postId)
+        ? { 
+            ...p, 
+            comments: (p.comments || 0) + 1, 
+            commentsList: [...(p.commentsList || []), formattedComment] 
+          }
+        : p;
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  const addCommentReply = async (postId, commentId, replyText) => {
+    try {
+      const res = await socialService.addComment(postId, { text: replyText, parentCommentId: commentId });
+      const replyDoc = res.data;
+      const formattedReply = {
+        ...replyDoc,
+        id: replyDoc._id || replyDoc.id || `r_${Date.now()}`,
+        author: {
+          id: replyDoc.userId?._id || replyDoc.userId?.id || currentUser?.id,
+          name: replyDoc.userId?.name || currentUser?.name || 'Member',
+          avatar: replyDoc.userId?.avatar || currentUser?.avatar,
+          initials: replyDoc.userId?.name 
+            ? replyDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+            : (currentUser?.initials || 'M'),
+          isVerified: true
+        },
+        text: replyDoc.text || replyText,
+        time: 'Just now'
+      };
+
+      const updateFn = p => {
+        if (p._id === postId || p.id === postId) {
+          return {
+            ...p,
+            commentsList: (p.commentsList || []).map(c => (c._id === commentId || c.id === commentId)
+              ? { ...c, replies: [...(c.replies || []), formattedReply] }
+              : c
+            )
+          };
+        }
+        return p;
+      };
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+    } catch (error) {
+      console.error('Failed to add reply:', error);
+    }
+  };
+
+  const toggleCommentLike = async (postId, commentId) => {
+    // Comment likes can be supported in database commentlikes later
+  };
+
+  const recordPostView = async (postId) => {
+    try {
+      await socialService.recordView(postId);
+      const updateFn = p => (p._id === postId || p.id === postId)
+        ? { ...p, views: (p.views || 0) + 1 }
+        : p;
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+    } catch (error) {
+      console.error('Failed to record post view:', error);
+    }
   };
 
   const toggleFollowedAnnouncement = (type) => {
@@ -1259,7 +1397,8 @@ export const DataProvider = ({ children }) => {
   };
 
   const getOrCreateChat = (memberId) => {
-    const existing = chats.find(c => !c.isGroup && c.participants.includes(memberId) && c.participants.includes('u1'));
+    const newChatId = `c_dm_${memberId}`;
+    const existing = chats.find(c => c.id === newChatId || (!c.isGroup && c.participants && c.participants.includes(memberId)));
     if (existing) {
       return existing.id;
     }
@@ -1268,14 +1407,14 @@ export const DataProvider = ({ children }) => {
                       matrimonialProfiles.find(p => p.id === memberId) || 
                       { name: 'Samaj Member', initials: 'SM' };
 
-    const newChatId = `c_dm_${memberId}`;
+    const myId = currentUser?.id || currentUser?._id || 'u1';
     const newChat = {
       id: newChatId,
       isGroup: false,
-      participants: ['u1', memberId],
+      participants: [myId, memberId],
       name: recipient.name,
       avatar: recipient.avatar || null,
-      initials: recipient.initials || recipient.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+      initials: recipient.initials || (recipient.name ? recipient.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'SM'),
       lastMessage: {
         text: 'No messages yet',
         timestamp: new Date().toISOString(),
@@ -1286,10 +1425,10 @@ export const DataProvider = ({ children }) => {
       online: recipient.online || false
     };
 
-    setChats(prev => [newChat, ...prev]);
+    setChats(prev => deduplicateById([newChat, ...prev]));
     setChatMessages(prev => ({
       ...prev,
-      [newChatId]: []
+      [newChatId]: prev[newChatId] || []
     }));
 
     return newChatId;
@@ -1447,19 +1586,31 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const addStory = (storyImage, storyText = '') => {
-    const newStory = {
-      id: `story-${Date.now()}`,
-      memberId: 'me',
-      name: currentUser.name,
-      initials: currentUser.initials,
-      avatar: currentUser.avatar,
-      image: storyImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-      text: storyText,
-      timestamp: 'Just now',
-      hasSeen: false
-    };
-    setStories(prev => [newStory, ...prev]);
+  const addStory = async (storyImage, storyText = '') => {
+    try {
+      const res = await socialService.createStory({
+        media: storyImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
+        mediaType: 'image',
+        text: storyText,
+        background: storyImage.startsWith('http') ? undefined : storyImage
+      });
+
+      const formatted = {
+        id: res.data._id,
+        memberId: res.data.userId?._id || res.data.userId?.id,
+        name: res.data.userId?.name || 'Member',
+        initials: res.data.userId?.name ? res.data.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U',
+        avatar: res.data.userId?.avatar,
+        image: res.data.media,
+        text: res.data.text,
+        timestamp: 'Active',
+        hasSeen: false
+      };
+
+      setStories(prev => [formatted, ...prev]);
+    } catch (error) {
+      console.error('Failed to add story:', error);
+    }
   };
 
   const updateObituary = async (id, obituaryData) => {
@@ -2497,10 +2648,14 @@ export const DataProvider = ({ children }) => {
     deleteFamilyMember,
     updateFamilyMember,
     createPost,
+    fetchFeedPosts,
+    fetchStoriesList,
     toggleEventRSVP,
     togglePostLike,
     togglePostSave,
     addPostComment,
+    fetchPostComments,
+    recordPostView,
     addCommentReply,
     toggleCommentLike,
     followedAnnouncements,

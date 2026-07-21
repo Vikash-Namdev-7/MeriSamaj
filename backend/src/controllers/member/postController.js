@@ -1,4 +1,5 @@
 const Post = require('../../models/Post');
+const Community = require('../../models/Community');
 
 // ─────────────────────────────────────────────
 // @desc    Get all posts for user's community
@@ -7,26 +8,56 @@ const Post = require('../../models/Post');
 // ─────────────────────────────────────────────
 exports.getPosts = async (req, res) => {
   try {
-    /**
-     * Community-scoped query.
-     * req.communityId is set by authMiddleware as a plain ObjectId.
-     * Members only see their own community's posts.
-     */
-    const filter = {};
-    if (req.communityId) {
-      filter.communityId = req.communityId;
+    const { feed, feedType } = req.query;
+    const requestedFeed = feed || feedType;
+
+    const filter = { isDeleted: false };
+    
+    // Resolve user community IDs
+    const commIds = [];
+    let primaryId = req.communityId || req.user?.communityId?._id || req.user?.communityId;
+    if (primaryId) commIds.push(primaryId);
+
+    if (req.user?.assignedCommunityIds && Array.isArray(req.user.assignedCommunityIds)) {
+      req.user.assignedCommunityIds.forEach(item => {
+        const id = item._id ? item._id : item;
+        if (id && !commIds.some(existing => existing.toString() === id.toString())) {
+          commIds.push(id);
+        }
+      });
     }
-    // Only show approved posts (+ user's own pending posts)
-    if (req.user.role === 'user') {
-      filter.$or = [
-        { status: 'Approved' },
-        { authorId: req.user._id }
-      ];
+
+    if (commIds.length === 0 && req.user?.community) {
+      const commDoc = await Community.findOne({ name: new RegExp('^' + req.user.community.trim() + '$', 'i') });
+      if (commDoc) commIds.push(commDoc._id);
+    }
+
+    if (requestedFeed === 'community') {
+      filter.feedType = 'community';
+      if (commIds.length > 0) {
+        filter.communityId = commIds.length === 1 ? commIds[0] : { $in: commIds };
+      }
+    } else if (requestedFeed === 'city') {
+      filter.feedType = { $ne: 'community' };
+      if (commIds.length > 0) {
+        filter.$or = [
+          { feedType: { $ne: 'community' } },
+          { communityId: commIds.length === 1 ? commIds[0] : { $in: commIds } }
+        ];
+      }
+    } else if (commIds.length > 0) {
+      filter.communityId = commIds.length === 1 ? commIds[0] : { $in: commIds };
+    }
+
+    if (req.user?.role === 'user' || req.user?.role === 'member') {
+      filter.status = 'published';
     }
 
     const posts = await Post.find(filter)
-      .populate('authorId', 'name avatar community')
-      .populate('comments.userId', 'name avatar')
+      .populate('authorId', 'name avatar community city communityId')
+      .populate('userId', 'name avatar community city communityId')
+      .populate('communityId', 'name slug city')
+      .populate('cityId', 'name')
       .sort({ isPinned: -1, createdAt: -1 });
 
     res.json({ success: true, data: posts });
@@ -44,20 +75,12 @@ exports.getPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('authorId', 'name avatar community')
-      .populate('comments.userId', 'name avatar')
-      .populate('likes', 'name avatar');
+      .populate('authorId', 'name avatar community city')
+      .populate('userId', 'name avatar community city')
+      .populate('communityId', 'name slug city');
 
     if (!post) {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
-    }
-
-    // Community access check (non-admin)
-    if (req.communityId && post.communityId) {
-      const postCommunityId = post.communityId._id ?? post.communityId;
-      if (!postCommunityId.equals(req.communityId)) {
-        return res.status(403).json({ status: 'error', message: 'Access denied. Post belongs to a different community.' });
-      }
     }
 
     res.json({ success: true, data: post });
@@ -86,20 +109,30 @@ exports.createPost = async (req, res) => {
       images = req.files.map(file => file.path);
     }
 
+    const formattedMedia = images.map(img => ({ type: 'image', url: img, provider: 'upload' }));
+
+    let targetCommunityId = req.communityId || req.user?.communityId?._id || req.user?.communityId;
+    if (!targetCommunityId) {
+      const Community = require('../../models/Community');
+      const defaultComm = await Community.findOne({});
+      if (defaultComm) targetCommunityId = defaultComm._id;
+    }
+
     const post = await Post.create({
       content: content.trim(),
       images,
+      media: formattedMedia,
+      userId: req.user._id,
       authorId: req.user._id,
-      /**
-       * communityId is ALWAYS set server-side from the authenticated user.
-       * Client body.communityId is intentionally ignored — security measure.
-       */
-      communityId: req.communityId,
-      status: 'Approved',
+      communityId: targetCommunityId,
+      feedType: req.body.feedType || 'city',
+      status: 'published',
     });
 
     const populated = await Post.findById(post._id)
-      .populate('authorId', 'name avatar community');
+      .populate('userId', 'name avatar community city')
+      .populate('authorId', 'name avatar community city')
+      .populate('communityId', 'name slug city');
 
     res.status(201).json({ success: true, data: populated });
   } catch (error) {

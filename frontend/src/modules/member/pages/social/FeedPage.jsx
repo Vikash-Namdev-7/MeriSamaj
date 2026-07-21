@@ -171,10 +171,7 @@ const getCategoryStyles = (category, lang) => {
   };
 };
 
-const MultiImageGrid = ({ images, onClick }) => {
-  if (!images || images.length === 0) return null;
-
-  // Unsplash Premium Fallback placeholders
+const RenderMedia = ({ url, onClick }) => {
   const placeholders = {
     women_workshop_1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800',
     women_workshop_2: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600',
@@ -183,36 +180,85 @@ const MultiImageGrid = ({ images, onClick }) => {
     youth_chess: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=600'
   };
 
-  const getUrl = (img) => placeholders[img] || img || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600';
+  let cleanUrl = placeholders[url] || url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600';
+  if (cleanUrl.startsWith('blob:')) {
+    cleanUrl = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600';
+  }
+  const lowercase = cleanUrl.toLowerCase();
+
+  const isVideo = lowercase.endsWith('.mp4') || lowercase.endsWith('.webm') || lowercase.endsWith('.ogg') || lowercase.endsWith('.mov') || lowercase.includes('video');
+  const isYoutube = lowercase.includes('youtube.com') || lowercase.includes('youtu.be');
+  const isInstagram = lowercase.includes('instagram.com');
+
+  if (isYoutube) {
+    let videoId = '';
+    if (cleanUrl.includes('youtube.com/watch')) {
+      const params = new URLSearchParams(cleanUrl.split('?')[1]);
+      videoId = params.get('v');
+    } else if (cleanUrl.includes('youtu.be/')) {
+      videoId = cleanUrl.split('youtu.be/')[1]?.split('?')[0];
+    } else if (cleanUrl.includes('youtube.com/embed/')) {
+      videoId = cleanUrl.split('youtube.com/embed/')[1]?.split('?')[0];
+    }
+    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    return embedUrl ? (
+      <iframe src={embedUrl} className="w-full h-full border-0 aspect-video bg-black" allowFullScreen title="YouTube Video" />
+    ) : (
+      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-400">Invalid YouTube Link</div>
+    );
+  }
+
+  if (isInstagram) {
+    return (
+      <div className="w-full h-full bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800" onClick={onClick}>
+        <span className="text-[12px] font-bold text-pink-500">Instagram Embed</span>
+        <span className="text-[9px] text-slate-500 truncate max-w-full mt-1">{cleanUrl}</span>
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <video src={cleanUrl} controls muted loop className="w-full h-full object-cover hover:scale-102 transition-transform duration-300 bg-black" />
+    );
+  }
+
+  return (
+    <img src={cleanUrl} alt="Post Attachment" className="w-full h-full object-cover hover:scale-102 transition-transform duration-300 cursor-pointer" onClick={onClick} />
+  );
+};
+
+const MultiImageGrid = ({ images, onClick }) => {
+  if (!images || images.length === 0) return null;
 
   if (images.length === 1) {
     return (
-      <div className="w-full mb-3 h-64 overflow-hidden rounded-none cursor-pointer" onClick={onClick}>
-        <img src={getUrl(images[0])} alt="Post Attachment" className="w-full h-full object-cover hover:scale-102 transition-transform duration-300" />
+      <div className="w-full mb-3 h-64 overflow-hidden rounded-none">
+        <RenderMedia url={images[0]} onClick={onClick} />
       </div>
     );
   }
 
   if (images.length === 2) {
     return (
-      <div className="w-full mb-3 h-48 grid grid-cols-2 gap-1.5 overflow-hidden rounded-none cursor-pointer" onClick={onClick}>
-        <img src={getUrl(images[0])} alt="Post Attachment 1" className="w-full h-full object-cover hover:scale-102 transition-transform duration-350" />
-        <img src={getUrl(images[1])} alt="Post Attachment 2" className="w-full h-full object-cover hover:scale-102 transition-transform duration-350" />
+      <div className="w-full mb-3 h-48 grid grid-cols-2 gap-1.5 overflow-hidden rounded-none">
+        <RenderMedia url={images[0]} onClick={onClick} />
+        <RenderMedia url={images[1]} onClick={onClick} />
       </div>
     );
   }
 
   return (
-    <div className="w-full mb-3 h-56 grid grid-cols-3 gap-1.5 overflow-hidden rounded-none cursor-pointer" onClick={onClick}>
+    <div className="w-full mb-3 h-56 grid grid-cols-3 gap-1.5 overflow-hidden rounded-none">
       <div className="col-span-2 h-full">
-        <img src={getUrl(images[0])} alt="Post Attachment 1" className="w-full h-full object-cover hover:scale-102 transition-transform duration-350" />
+        <RenderMedia url={images[0]} onClick={onClick} />
       </div>
       <div className="grid grid-rows-2 gap-1.5 h-full">
-        <img src={getUrl(images[1])} alt="Post Attachment 2" className="w-full h-full object-cover hover:scale-102 transition-transform duration-350" />
+        <RenderMedia url={images[1]} onClick={onClick} />
         <div className="relative w-full h-full">
-          <img src={getUrl(images[2])} alt="Post Attachment 3" className="w-full h-full object-cover hover:scale-102 transition-transform duration-350" />
+          <RenderMedia url={images[2]} onClick={onClick} />
           {images.length > 3 && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center text-white font-extrabold text-sm.5">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center text-white font-extrabold text-sm.5 pointer-events-none">
               +{images.length - 3}
             </div>
           )}
@@ -379,7 +425,9 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
           <span className="text-slate-500 font-semibold">{post.likes} {localT[lang].likes}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-slate-500 font-semibold">{post.commentsList?.length || 0} {localT[lang].comments}</span>
+          <span className="text-slate-500 font-semibold">
+            {post.commentsList ? post.commentsList.length : (post.comments || 0)} {localT[lang].comments}
+          </span>
           <span className="flex items-center gap-1 font-semibold text-slate-450">
             <Eye size={13} className="text-slate-350" />
             {post.views ? `${post.views >= 1000 ? (post.views / 1000).toFixed(1) + 'K' : post.views} ${localT[lang].views}` : `0 ${localT[lang].views}`}
@@ -500,11 +548,9 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '', isFilter
     // Feed Visibility Filter
     let matchesFeedType = false;
     if (feedType === 'city') {
-      // City Feed: only posts from the user's specific city
-      matchesFeedType = post.city === currentUser.city && (post.feedType === 'city' || !post.feedType);
+      matchesFeedType = post.feedType !== 'community';
     } else if (feedType === 'community') {
-      // Community Feed: only posts from the user's community
-      matchesFeedType = post.community === currentUser.community && (post.feedType === 'community' || !post.feedType);
+      matchesFeedType = post.feedType === 'community';
     } else {
       matchesFeedType = true;
     }

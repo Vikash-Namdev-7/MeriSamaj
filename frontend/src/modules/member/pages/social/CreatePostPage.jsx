@@ -1,16 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Camera, MapPin, X, Send, Mic, Square, Radio, Check, Users, Heart, Sparkles, Folder, Grid, Layers, ImagePlus } from 'lucide-react';
+import { 
+  ArrowLeft, Camera, MapPin, X, Send, Mic, Radio, Check, Users, 
+  Heart, Sparkles, Folder, Layers, ImagePlus, UploadCloud, Play, 
+  Trash2, Monitor, Smartphone, Link, AlertCircle 
+} from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 
-const MOCK_GALLERY = [
-  { id: 'g1', url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', label: 'Indore Meetup' },
-  { id: 'g2', url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800', label: 'Samaj Bhawan Event' },
-  { id: 'g3', url: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800', label: 'Community Service' },
-  { id: 'g4', url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800', label: 'Youth Conference' },
-  { id: 'g5', url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800', label: 'Health Camp' },
-  { id: 'g6', url: 'https://images.unsplash.com/photo-1607190074257-dd4b7af0309f?w=800', label: 'Matrimonial Meet' }
+const Instagram = (props) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={props.size || "24"}
+    height={props.size || "24"}
+    stroke="currentColor"
+    strokeWidth="2"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
+
+const Youtube = (props) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={props.size || "24"}
+    height={props.size || "24"}
+    stroke="currentColor"
+    strokeWidth="2"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z" />
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+  </svg>
+);
+
+const BG_PRESETS = [
+  { name: 'Pure White', value: '#ffffff', textColor: 'text-gray-900 bg-white/80' },
+  { name: 'Dark Mode', value: '#121212', textColor: 'text-white bg-black/55' },
+  { name: 'Ocean Blue', value: '#2563eb', textColor: 'text-white bg-blue-900/60' },
+  { name: 'Royal Purple', value: '#7c3aed', textColor: 'text-white bg-purple-900/60' },
+  { name: 'Sunset Glow', value: 'linear-gradient(135deg, #f472b6 0%, #7c3aed 100%)', textColor: 'text-white bg-black/40' }
 ];
 
 const CreatePostPage = () => {
@@ -18,249 +56,279 @@ const CreatePostPage = () => {
   const location = useLocation();
   const { createPost, currentUser, addStory } = useData();
 
-  // Route composition modes
   const createStoryMode = location.state?.createStoryMode || false;
-  const initialFeedType = location.state?.feedType || 'city';
 
-  // Creator Sub-Tabs: 'post' | 'story' | 'voice'
-  const [creatorTab, setCreatorTab] = useState(createStoryMode ? 'story' : 'post');
+  // Tabs: 'post' | 'story'
+  const [activeTab, setActiveTab] = useState(createStoryMode ? 'story' : 'post');
+
+  // Input states
+  const [caption, setCaption] = useState('');
+  const [category, setCategory] = useState('Notice');
+  const [feedType, setFeedType] = useState('city');
+  const [locationInput, setLocationInput] = useState(currentUser?.city || '');
   
-  // Post states
-  const [text, setText] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Notice');
-  const [feedTypeSelection, setFeedTypeSelection] = useState(initialFeedType);
-  const [locationInput, setLocationInput] = useState(currentUser.city || '');
+  // Media attachments: array of { type: 'image'|'video'|'youtube'|'instagram', url: string, file?: File }
+  const [attachments, setAttachments] = useState([]);
+  const [mediaLink, setMediaLink] = useState('');
   
-  // Gallery states
-  const [localUploadedImages, setLocalUploadedImages] = useState([]);
-  const [selectedImages, setSelectedImages] = useState([MOCK_GALLERY[0].url]);
-  const [previewImage, setPreviewImage] = useState(MOCK_GALLERY[0].url);
-  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  // Story specific states
+  const [storyText, setStoryText] = useState('');
+  const [selectedBg, setSelectedBg] = useState(BG_PRESETS[4]); // default Sunset gradient
+
+  // Upload emulation
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Drag & drop state
+  const [isDragging, setIsDragging] = useState(false);
+
   const fileInputRef = useRef(null);
 
-  // Story background state
-  const [storyBg, setStoryBg] = useState(MOCK_GALLERY[1].url);
-
-  // Voice Broadcast states
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const timerRef = useRef(null);
-
-  // Merge uploaded images and stock photos for select grid
-  const galleryItems = [...localUploadedImages, ...MOCK_GALLERY.map(img => img.url)];
-
+  // Auto detect pasted media link format
   useEffect(() => {
-    if (selectedImages.length > 0) {
-      setPreviewImage(selectedImages[selectedImages.length - 1]);
-    }
-  }, [selectedImages]);
+    if (!mediaLink.trim()) return;
 
-  // Handle Photo Grid Selection
-  const handlePhotoSelect = (url) => {
-    if (isMultiSelect) {
-      if (selectedImages.includes(url)) {
-        // Don't allow empty selection list
-        if (selectedImages.length > 1) {
-          setSelectedImages(prev => prev.filter(img => img !== url));
-        }
-      } else {
-        setSelectedImages(prev => [...prev, url]);
-      }
+    const link = mediaLink.trim();
+    let type = 'image';
+    let cleanUrl = link;
+
+    if (link.includes('youtube.com') || link.includes('youtu.be')) {
+      type = 'youtube';
+    } else if (link.includes('instagram.com/')) {
+      type = 'instagram';
+    } else if (link.match(/\.(mp4|webm|ogg|mov)$/i) || link.includes('video')) {
+      type = 'video';
     } else {
-      setSelectedImages([url]);
+      type = 'image'; // default fallback for raw image links
+    }
+
+    // Add media attachment
+    if (activeTab === 'story') {
+      // Story allows exactly 1 media attachment
+      setAttachments([{ type, url: cleanUrl }]);
+    } else {
+      setAttachments(prev => [...prev, { type, url: cleanUrl }]);
+    }
+
+    setMediaLink('');
+  }, [mediaLink, activeTab]);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files));
     }
   };
 
-  // Handle local device image selection
+  const triggerFileSelect = () => {
+    fileInputRef.current.click();
+  };
+
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    // Generate local browser resource URLs
-    const urls = files.map(file => URL.createObjectURL(file));
-
-    // Prepend to uploaded items list to show at beginning of the grid
-    setLocalUploadedImages(prev => [...urls, ...prev]);
-
-    if (isMultiSelect) {
-      setSelectedImages(prev => [...prev, ...urls]);
-    } else {
-      setSelectedImages(urls);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(Array.from(e.target.files));
     }
   };
 
-  const handlePublish = () => {
-    if (creatorTab === 'post') {
-      if (!text.trim()) return;
+  // Handle uploaded files (images, videos, gifs)
+  const handleFiles = (files) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    // Emulate progress bar
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setIsUploading(false), 200);
+          return 100;
+        }
+        return prev + 25;
+      });
+    }, 150);
+
+    files.forEach(file => {
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const url = reader.result;
+        const item = { type, url, file };
+        if (activeTab === 'story') {
+          setAttachments([item]);
+        } else {
+          setAttachments(prev => [...prev, item]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handlePublish = async () => {
+    const mediaUrls = attachments.map(att => att.url);
+
+    if (activeTab === 'post') {
+      if (!caption.trim() && mediaUrls.length === 0) return;
 
       const payloadOptions = {
-        title: `${activeCategory} Update`,
-        category: activeCategory,
-        city: locationInput.trim() || currentUser.city,
+        title: `${category} Update`,
+        category,
+        city: locationInput.trim() || currentUser?.city || 'Indore',
         audience: 'all',
-        likes: 0,
-        comments: 0,
-        views: 1,
-        isLiked: false,
-        images: selectedImages,
-        feedType: feedTypeSelection,
-        author: {
-          name: currentUser.name,
-          initials: currentUser.initials,
-          avatar: currentUser.avatar,
-          isVerified: true
-        }
+        likes: [],
+        comments: [],
+        images: mediaUrls, // arrays of images/videos/links are stored here
+        feedType,
       };
 
-      createPost(text.trim(), selectedImages, payloadOptions);
+      await createPost(caption.trim() || "Shared media", mediaUrls, payloadOptions);
       navigate(-1);
-    } else if (creatorTab === 'story') {
-      addStory(storyBg, text.trim());
+    } else if (activeTab === 'story') {
+      // storyBg is either the media attachment URL, or the color code/gradient string
+      const storyBg = attachments.length > 0 ? attachments[0].url : selectedBg.value;
+      addStory(storyBg, storyText.trim());
       navigate(-1);
     }
   };
 
-  // Voice Broadcast triggers
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        createPost("Voice Broadcast", [], { 
-          type: 'audio', 
-          audioUrl,
-          category: 'Notice',
-          title: 'Voice Announcement',
-          feedType: feedTypeSelection,
-          author: {
-            name: currentUser.name,
-            initials: currentUser.initials,
-            avatar: currentUser.avatar,
-            isVerified: true
-          }
-        });
-        
-        stream.getTracks().forEach(track => track.stop());
-        navigate(-1);
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingDuration(0);
-      
-      timerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-
-    } catch (err) {
-      console.error('Microphone access denied:', err);
-      alert('Please allow microphone permissions to record a Voice Broadcast.');
+  // Extract YouTube ID for embed preview
+  const getYoutubeEmbedUrl = (url) => {
+    if (!url) return '';
+    let videoId = '';
+    if (url.includes('youtube.com/watch')) {
+      const params = new URLSearchParams(url.split('?')[1]);
+      videoId = params.get('v');
+    } else if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0];
+    } else if (url.includes('youtube.com/embed/')) {
+      videoId = url.split('youtube.com/embed/')[1]?.split('?')[0];
     }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-    clearInterval(timerRef.current);
-  };
-
-  const formatDuration = (seconds) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
   };
 
   const categories = ['Notice', 'Event', 'Matrimony', 'Business', 'Achievement', 'Women', 'Youth', 'Obituary'];
 
   return (
-    <div className="h-screen bg-black flex flex-col overflow-hidden text-white select-none">
+    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 select-none pb-8 md:pb-0">
       
-      {/* Hidden File Picker Input */}
+      {/* Hidden File Upload Element */}
       <input 
         type="file" 
         ref={fileInputRef} 
-        accept="image/*" 
-        multiple 
+        accept="image/*,video/*" 
+        multiple={activeTab === 'post'} 
         onChange={handleFileChange} 
         className="hidden" 
       />
 
-      {/* ─── INSTAGRAM HEADER ─── */}
-      <div className="h-14 border-b border-white/10 px-4 flex items-center justify-between bg-black z-30 shrink-0">
-        <button onClick={() => navigate(-1)} className="p-1 active:opacity-60">
-          <ArrowLeft size={24} />
-        </button>
-        <span className="font-bold text-[16px] tracking-tight">
-          {creatorTab === 'post' && 'New Post'}
-          {creatorTab === 'story' && 'New Story'}
-          {creatorTab === 'voice' && 'Voice Broadcast'}
-        </span>
-        <button
-          onClick={handlePublish}
-          disabled={creatorTab === 'post' && !text.trim()}
-          className={`font-bold text-[15px] transition-opacity ${
-            creatorTab === 'post' && !text.trim() ? 'opacity-30 cursor-not-allowed' : 'text-[#0095F6] active:opacity-60'
-          }`}
-        >
-          {creatorTab === 'voice' ? '' : 'Share'}
-        </button>
-      </div>
+      {/* HEADER SECTION */}
+      <header className="h-16 border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between bg-white sticky top-0 z-40 shrink-0 shadow-sm gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-slate-500 hover:text-slate-800 shrink-0">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-[15px] sm:text-[16px] tracking-tight text-slate-900 whitespace-nowrap">Create Content</h1>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider hidden sm:block truncate">Facebook + Instagram + LinkedIn Composer</p>
+          </div>
+        </div>
 
-      {/* ─── CREATOR CONTENT VIEWPORT ─── */}
-      <div className="flex-1 overflow-y-auto bg-black flex flex-col">
+        {/* Tab Selector */}
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button
+            onClick={() => { setActiveTab('post'); setAttachments([]); }}
+            className={`px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
+              activeTab === 'post' 
+                ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Post
+          </button>
+          <button
+            onClick={() => { setActiveTab('story'); setAttachments([]); }}
+            className={`px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
+              activeTab === 'story' 
+                ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Story
+          </button>
+        </div>
+
+        {/* Publish Action Button */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePublish}
+            disabled={isUploading || (activeTab === 'post' && !caption.trim() && attachments.length === 0)}
+            className={`px-5 py-2 rounded-xl text-[12px] font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 ${
+              isUploading || (activeTab === 'post' && !caption.trim() && attachments.length === 0)
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:brightness-110 shadow-lg shadow-indigo-500/10'
+            }`}
+          >
+            <Send size={13} />
+            <span>Publish</span>
+          </button>
+        </div>
+      </header>
+
+      {/* CORE WORKSPACE */}
+      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-6 md:py-8 overflow-y-auto animate-fade-in">
         
-        {/* POST MODE */}
-        {creatorTab === 'post' && (
-          <div className="flex flex-col flex-1">
-            {/* Top Image Preview & Caption Block */}
-            <div className="relative aspect-square w-full bg-slate-900 shrink-0 overflow-hidden">
-              <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
-            </div>
+        <div className="flex flex-col gap-6">
+          
+          {/* Post Content Area */}
+          {activeTab === 'post' && (
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-5 shadow-sm">
+              
+              {/* Creator details */}
+              <div className="flex items-center gap-3">
+                <Avatar initials={currentUser?.initials || 'U'} size="sm" imageUrl={currentUser?.avatar} color="bg-indigo-600 text-white" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800">{currentUser?.name || 'Community Member'}</h3>
+                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Sharing updates to Samaj Feed</p>
+                </div>
+              </div>
 
-            {/* Caption Area */}
-            <div className="p-4 border-y border-white/10 bg-black flex gap-3.5 shrink-0">
-              <Avatar initials={currentUser.initials} size="sm" color="bg-brand-primary text-white" />
+              {/* Caption Text Box */}
               <textarea
-                placeholder="Write a caption..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="bg-transparent text-[14px] text-white placeholder-white/40 outline-none flex-1 h-14 resize-none font-medium leading-relaxed"
-                autoFocus
+                placeholder="What's on your mind? Share news, events, or announcements..."
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[14px] text-slate-800 placeholder-slate-400 outline-none h-32 resize-none leading-relaxed transition-all focus:border-indigo-500/50 focus:bg-white"
               />
-            </div>
 
-            {/* Post Details & Settings Section */}
-            <div className="p-4 bg-black space-y-4 shrink-0">
-              {/* Category selector */}
+              {/* Category Options */}
               <div>
-                <span className="text-[11.5px] font-bold text-white/50 uppercase tracking-wider block mb-2 px-0.5">Post Category</span>
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4">
+                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Post Category</label>
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                   {categories.map(cat => {
-                    const isSelected = activeCategory === cat;
+                    const isSelected = category === cat;
                     return (
                       <button
                         key={cat}
                         type="button"
-                        onClick={() => setActiveCategory(cat)}
-                        className={`px-4.5 py-2.5 rounded-full border text-[11px] font-bold transition-all shrink-0 active:scale-95 ${
+                        onClick={() => setCategory(cat)}
+                        className={`px-4.5 py-2 rounded-full border text-[11px] font-extrabold transition-all shrink-0 active:scale-95 ${
                           isSelected 
-                            ? 'border-white bg-white text-black shadow-sm'
-                            : 'border-white/15 bg-black text-white/70 hover:bg-white/5'
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'
                         }`}
                       >
                         {cat}
@@ -270,267 +338,203 @@ const CreatePostPage = () => {
                 </div>
               </div>
 
-              {/* Feed selection */}
-              <div>
-                <span className="text-[11.5px] font-bold text-white/50 uppercase tracking-wider block mb-2 px-0.5">Target Feed Section</span>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFeedTypeSelection('city')}
-                    className={`flex-1 py-3 text-[12.5px] font-bold rounded-2xl border transition-all active:scale-95 ${
-                      feedTypeSelection === 'city' ? 'bg-[#0095F6] text-white border-transparent' : 'bg-black text-white border-white/15'
-                    }`}
-                  >
-                    📍 City Feed ({currentUser.city})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFeedTypeSelection('community')}
-                    className={`flex-1 py-3 text-[12.5px] font-bold rounded-2xl border transition-all active:scale-95 ${
-                      feedTypeSelection === 'community' ? 'bg-[#0095F6] text-white border-transparent' : 'bg-black text-white border-white/15'
-                    }`}
-                  >
-                    👥 Community Feed ({currentUser.community})
-                  </button>
+              {/* Feed Scope & Location details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Target Feed</label>
+                  <div className="flex gap-2 bg-slate-100 rounded-2xl p-1 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setFeedType('city')}
+                      className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
+                        feedType === 'city' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      📍 City Feed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFeedType('community')}
+                      className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
+                        feedType === 'community' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      👥 Community
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Add Location</label>
+                  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5">
+                    <MapPin size={15} className="text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Add location details..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      className="bg-transparent outline-none w-full text-[12px] text-slate-700 placeholder-slate-400 font-semibold"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Location Input */}
-              <div className="flex items-center gap-3.5 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-                <MapPin size={18} className="text-white/40" />
-                <input
-                  type="text"
-                  placeholder="Add location..."
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  className="bg-transparent outline-none flex-1 text-[13px] text-white placeholder-white/30 font-semibold"
+            </div>
+          )}
+
+          {/* Story Content Area */}
+          {activeTab === 'story' && (
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-5 shadow-sm">
+              
+              <div className="flex items-center gap-3">
+                <Avatar initials={currentUser?.initials || 'U'} size="sm" imageUrl={currentUser?.avatar} color="bg-indigo-600 text-white" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800">{currentUser?.name || 'Community Member'}</h3>
+                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Designing interactive story</p>
+                </div>
+              </div>
+
+              {/* Story Overlay Text Box */}
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Story Overlay Text</label>
+                <textarea
+                  placeholder="Type overlay text to show on your story..."
+                  value={storyText}
+                  onChange={(e) => setStoryText(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[14px] text-slate-800 placeholder-slate-400 outline-none h-24 resize-none leading-relaxed transition-all focus:border-indigo-500/50 focus:bg-white"
                 />
               </div>
-            </div>
 
-            {/* Gallery Selector Header */}
-            <div className="px-4 py-3 border-t border-white/10 bg-black flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 text-[14px] font-bold text-white">
-                <span>Recent Photos</span>
-                <Folder size={15} className="text-white/60" />
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  type="button"
-                  onClick={() => fileInputRef.current.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white/10 text-white/80 hover:bg-white/15 active:scale-95 transition-all"
-                >
-                  <ImagePlus size={12} />
-                  <span>Upload</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setIsMultiSelect(!isMultiSelect);
-                    setSelectedImages([previewImage]);
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors active:scale-95 ${
-                    isMultiSelect ? 'bg-[#0095F6] text-white' : 'bg-white/10 text-white/80 hover:bg-white/15'
-                  }`}
-                >
-                  <Layers size={12} />
-                  <span>Select Multiple</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Photo Grid selector */}
-            <div className="grid grid-cols-3 gap-0.5 bg-white/5 pb-20">
-              {galleryItems.map((url, idx) => {
-                const isSelected = selectedImages.includes(url);
-                const selectIndex = selectedImages.indexOf(url);
-                return (
-                  <div 
-                    key={idx} 
-                    onClick={() => handlePhotoSelect(url)}
-                    className="relative aspect-square cursor-pointer active:opacity-80 transition-opacity overflow-hidden bg-zinc-900"
-                  >
-                    <img src={url} alt="Gallery" className="w-full h-full object-cover" />
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
-                        <div className="absolute top-2 right-2 w-5 h-5 bg-[#0095F6] text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-md">
-                          {isMultiSelect ? selectIndex + 1 : '✓'}
-                        </div>
-                      </div>
-                    )}
+              {/* Background presets (only active if no media uploaded) */}
+              {attachments.length === 0 && (
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Choose Color Background</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {BG_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedBg(preset)}
+                        className={`h-12 rounded-xl transition-all relative overflow-hidden flex items-center justify-center border ${
+                          selectedBg.name === preset.name ? 'border-indigo-500 ring-2 ring-indigo-500/20 scale-105' : 'border-slate-200'
+                        }`}
+                        style={{ background: preset.value }}
+                      >
+                        {selectedBg.name === preset.name && <Check size={14} className="text-slate-900 bg-white rounded-full p-0.5" />}
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* STORY MODE */}
-        {creatorTab === 'story' && (
-          <div className="flex flex-col flex-1">
-            {/* Story Background Preview */}
-            <div className="relative aspect-[9/16] w-full max-h-[60vh] bg-slate-900 shrink-0 overflow-hidden">
-              <img src={storyBg} alt="Story Background" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
-              
-              {/* Text Overlay Preview */}
-              <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-10">
-                <span className="text-white text-[19px] font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/40 px-6 py-4 rounded-3xl backdrop-blur-xs leading-relaxed max-w-[85%]">
-                  {text.trim() || 'Tap text box to write overlay...'}
-                </span>
-              </div>
-            </div>
-
-            {/* Story Text Overlay Input */}
-            <div className="p-4 border-y border-white/10 bg-black flex gap-3.5 shrink-0">
-              <textarea
-                placeholder="Write text overlay for story..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="bg-transparent text-[14px] text-white placeholder-white/40 outline-none flex-1 h-14 resize-none font-medium leading-relaxed"
-              />
-            </div>
-
-            {/* Gallery Background Selector Header */}
-            <div className="px-4 py-3 bg-black flex items-center justify-between shrink-0">
-              <span className="text-[13px] font-bold text-white/60">Choose Story Background</span>
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white/10 text-white/80 hover:bg-white/15 active:scale-95 transition-all"
-              >
-                <ImagePlus size={12} />
-                <span>Upload</span>
-              </button>
-            </div>
-
-            {/* Story Background Grid Selector */}
-            <div className="grid grid-cols-3 gap-0.5 bg-white/5 pb-20">
-              {galleryItems.map((url, idx) => {
-                const isSelected = storyBg === url;
-                return (
-                  <div 
-                    key={idx} 
-                    onClick={() => setStoryBg(url)}
-                    className="relative aspect-square cursor-pointer active:opacity-80 transition-opacity overflow-hidden bg-zinc-900"
-                  >
-                    <img src={url} alt="Story Background Gallery" className="w-full h-full object-cover" />
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-black/30 border-4 border-[#0095F6]" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* VOICE BROADCAST MODE */}
-        {creatorTab === 'voice' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-black min-h-[50vh]">
-            <div className="mb-8 text-center px-4">
-              <h3 className="text-[18px] font-bold text-white mb-2">Voice Broadcast</h3>
-              <p className="text-[13px] text-white/50 max-w-[240px] mx-auto leading-relaxed">
-                Hold the microphone button to record an announcement. It will be posted directly to your target feed.
-              </p>
-            </div>
-
-            {/* Target Feed for Voice broadcast */}
-            <div className="w-full max-w-[320px] mb-8">
-              <span className="text-[11.5px] font-bold text-white/50 uppercase tracking-wider block mb-2.5 px-0.5 text-center">Broadcast Feed</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFeedTypeSelection('city')}
-                  className={`flex-1 py-2.5 rounded-xl border text-[11px] font-bold transition-all ${
-                    feedTypeSelection === 'city' ? 'bg-white text-black border-transparent' : 'bg-black text-white/70 border-white/10'
-                  }`}
-                >
-                  City Feed
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedTypeSelection('community')}
-                  className={`flex-1 py-2.5 rounded-xl border text-[11px] font-bold transition-all ${
-                    feedTypeSelection === 'community' ? 'bg-white text-black border-transparent' : 'bg-black text-white/70 border-white/10'
-                  }`}
-                >
-                  Community Feed
-                </button>
-              </div>
-            </div>
-
-            {/* Recording Animation */}
-            {isRecording ? (
-              <div className="flex flex-col items-center animate-fade-in mb-8">
-                <div className="w-24 h-24 bg-rose-500 rounded-full flex items-center justify-center mb-4 animate-pulse shadow-lg shadow-rose-500/20 border-4 border-rose-400/30">
-                  <Mic size={40} className="text-white" />
                 </div>
-                <span className="text-[20px] font-bold font-mono text-rose-500">{formatDuration(recordingDuration)}</span>
-                <span className="text-[12px] text-white/40 mt-1">Recording active</span>
+              )}
+
+            </div>
+          )}
+
+          {/* MEDIA UPLOAD AREA */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-5 shadow-sm">
+            <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block px-1">Attach Media & Content Links</label>
+
+            {/* Drag Drop Zone */}
+            <div 
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={triggerFileSelect}
+              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2.5 ${
+                isDragging 
+                  ? 'border-indigo-500 bg-indigo-50/20' 
+                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50'
+              }`}
+            >
+              <div className="p-3 bg-slate-100 rounded-xl text-slate-500 border border-slate-200">
+                <UploadCloud size={24} className="text-indigo-500 animate-bounce" />
               </div>
-            ) : (
-              <div className="flex flex-col items-center mb-8">
-                <div className="w-24 h-24 bg-zinc-800 rounded-full flex items-center justify-center mb-4 border border-white/10">
-                  <Mic size={40} className="text-white/40" />
+              <div>
+                <p className="text-[12px] font-bold text-slate-800">Upload image, video, or GIF</p>
+                <p className="text-[10px] text-slate-400 mt-1">Drag & drop files or click to browse</p>
+              </div>
+              <div className="flex gap-4 text-[9px] font-extrabold text-slate-400 uppercase tracking-wider border-t border-slate-100 pt-2.5 mt-1.5 w-full justify-center">
+                <span>PNG, JPG, WEBP</span>
+                <span>•</span>
+                <span>MP4, WEBM (Max 15MB)</span>
+              </div>
+            </div>
+
+            {/* Upload Progress Bar Emulation */}
+            {isUploading && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                  <span>Uploading files...</span>
+                  <span>{uploadProgress}%</span>
                 </div>
-                <span className="text-[20px] font-bold text-white/30 font-mono">00:00</span>
-                <span className="text-[12px] text-white/40 mt-1">Ready to record</span>
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+                  <div className="bg-gradient-to-r from-violet-500 to-indigo-600 h-full rounded-full transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+                </div>
               </div>
             )}
 
-            {/* Hold-to-record trigger button */}
-            <button
-              type="button"
-              onMouseDown={startRecording}
-              onMouseUp={stopRecording}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
-              className={`w-48 py-4 rounded-full font-bold text-[13.5px] shadow-lg transition-all select-none press-scale ${
-                isRecording 
-                  ? 'bg-rose-600 text-white shadow-rose-600/25 scale-105'
-                  : 'bg-[#0095F6] text-white shadow-[#0095F6]/25'
-              }`}
-            >
-              {isRecording ? 'Release to Send' : 'Hold to Record'}
-            </button>
+            {/* URL Paste Media Input */}
+            <div className="space-y-2">
+              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block px-1">Paste Media or Social URL</label>
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                  <Link size={14} className="text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Paste YouTube links, Instagram links, or direct MP4/JPG URLs..."
+                    value={mediaLink}
+                    onChange={(e) => setMediaLink(e.target.value)}
+                    className="bg-transparent outline-none w-full text-[12px] text-slate-700 placeholder-slate-400 font-semibold"
+                  />
+                </div>
+              </div>
+              <p className="text-[9px] text-slate-400 leading-normal px-1">
+                Supported formats: YouTube (embed player), Instagram posts/reels (link preview), direct image URLs, and MP4 direct videos.
+              </p>
+            </div>
+
+            {/* List of attachments */}
+            {attachments.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Attachments ({attachments.length})</span>
+                  {activeTab === 'story' && <span className="text-[9px] text-amber-600 font-semibold">Story mode: Max 1 media</span>}
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-2.5 flex items-center justify-between gap-3 group">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-550 relative">
+                          {att.type === 'image' && <img src={att.url} className="w-full h-full object-cover" alt="Thumbnail" />}
+                          {att.type === 'video' && <div className="absolute inset-0 flex items-center justify-center bg-slate-100"><Play size={14} className="text-indigo-500" /></div>}
+                          {att.type === 'youtube' && <Youtube size={16} className="text-rose-500" />}
+                          {att.type === 'instagram' && <Instagram size={16} className="text-pink-500" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-bold text-slate-800 truncate capitalize">{att.type} Source</p>
+                          <p className="text-[9px] text-slate-400 truncate mt-0.5">{att.url}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(idx)}
+                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 active:scale-90 transition-all shrink-0"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
-        )}
 
-      </div>
-
-      {/* ─── BOTTOM INSTAGRAM SELECTOR TAB BAR ─── */}
-      <div className="h-16 border-t border-white/10 bg-black flex items-center justify-center relative shrink-0 z-30 pb-safe">
-        <div className="flex gap-8 px-6 text-[12px] font-bold uppercase tracking-wider">
-          <button 
-            onClick={() => {
-              setCreatorTab('post');
-              setText('');
-            }}
-            className={`transition-colors py-2 ${creatorTab === 'post' ? 'text-[#0095F6]' : 'text-white/40 hover:text-white/70'}`}
-          >
-            Post
-          </button>
-          <button 
-            onClick={() => {
-              setCreatorTab('story');
-              setText('');
-            }}
-            className={`transition-colors py-2 ${creatorTab === 'story' ? 'text-[#0095F6]' : 'text-white/40 hover:text-white/70'}`}
-          >
-            Story
-          </button>
-          <button 
-            onClick={() => {
-              setCreatorTab('voice');
-              setText('');
-            }}
-            className={`transition-colors py-2 ${creatorTab === 'voice' ? 'text-[#0095F6]' : 'text-white/40 hover:text-white/70'}`}
-          >
-            Voice
-          </button>
         </div>
-      </div>
+
+      </main>
 
     </div>
   );

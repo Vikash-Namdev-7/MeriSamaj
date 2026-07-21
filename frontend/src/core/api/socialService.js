@@ -1,0 +1,124 @@
+import { axiosPrivate } from './axiosPrivate';
+
+const API_URL = '/member/social';
+
+const getPosts = async (feedType, category, limit = 10, cursor = '') => {
+  const params = { feed: feedType, limit };
+  if (category) params.category = category;
+  if (cursor) params.cursor = cursor;
+  
+  const response = await axiosPrivate.get(`${API_URL}/posts`, { params });
+  return response.data;
+};
+
+const getPostById = async (id) => {
+  const response = await axiosPrivate.get(`${API_URL}/posts/${id}`);
+  return response.data;
+};
+
+const createPost = async (postData) => {
+  const response = await axiosPrivate.post(`${API_URL}/posts`, postData);
+  return response.data;
+};
+
+const toggleLike = async (id) => {
+  const response = await axiosPrivate.post(`${API_URL}/posts/${id}/like`);
+  return response.data;
+};
+
+const getComments = async (id, parentCommentId = '') => {
+  const params = {};
+  if (parentCommentId) params.parentCommentId = parentCommentId;
+  const response = await axiosPrivate.get(`${API_URL}/posts/${id}/comments`, { params });
+  return response.data;
+};
+
+const addComment = async (id, commentData) => {
+  const response = await axiosPrivate.post(`${API_URL}/posts/${id}/comments`, commentData);
+  return response.data;
+};
+
+const toggleSave = async (id) => {
+  const response = await axiosPrivate.post(`${API_URL}/posts/${id}/save`);
+  return response.data;
+};
+
+const recordView = async (id, duration = 0) => {
+  const response = await axiosPrivate.post(`${API_URL}/posts/${id}/view`, { duration });
+  return response.data;
+};
+
+const recordShare = async (id, platform = 'copy_link') => {
+  const response = await axiosPrivate.post(`${API_URL}/posts/${id}/share`, { platform });
+  return response.data;
+};
+
+const searchSocial = async (query) => {
+  const response = await axiosPrivate.get(`${API_URL}/search`, { params: { query } });
+  return response.data;
+};
+
+// Stories APIs
+const getStories = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/stories`);
+  return response.data;
+};
+
+const createStory = async (storyData) => {
+  const response = await axiosPrivate.post(`${API_URL}/stories`, storyData);
+  return response.data;
+};
+
+const deleteStory = async (id) => {
+  const response = await axiosPrivate.delete(`${API_URL}/stories/${id}`);
+  return response.data;
+};
+
+const viewStory = async (id) => {
+  const response = await axiosPrivate.post(`${API_URL}/stories/${id}/view`);
+  return response.data;
+};
+
+const likeStory = async (id) => {
+  const response = await axiosPrivate.post(`${API_URL}/stories/${id}/like`);
+  return response.data;
+};
+
+// Follower APIs
+const toggleFollow = async (userId) => {
+  const response = await axiosPrivate.post(`${API_URL}/follow/${userId}`);
+  return response.data;
+};
+
+const getFollowers = async (userId) => {
+  const response = await axiosPrivate.get(`${API_URL}/users/${userId}/followers`);
+  return response.data;
+};
+
+const getFollowing = async (userId) => {
+  const response = await axiosPrivate.get(`${API_URL}/users/${userId}/following`);
+  return response.data;
+};
+
+const socialService = {
+  getPosts,
+  getPostById,
+  createPost,
+  toggleLike,
+  getComments,
+  addComment,
+  toggleSave,
+  recordView,
+  recordShare,
+  searchSocial,
+  getStories,
+  createStory,
+  deleteStory,
+  viewStory,
+  likeStory,
+  toggleFollow,
+  getFollowers,
+  getFollowing
+};
+
+export default socialService;

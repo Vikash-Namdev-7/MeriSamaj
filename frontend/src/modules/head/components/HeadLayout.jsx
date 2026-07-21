@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Wallet, Vote, Send, Settings, LogOut, Menu, X, Award, ShieldCheck, Users, Calendar, Briefcase, Heart, Search, BarChart3, HeartHandshake, User, ChevronDown, ChevronUp, Mail, LayoutTemplate, Home
+  LayoutDashboard, Wallet, Vote, Send, Settings, LogOut, Menu, X, Award, ShieldCheck, Users, Calendar, Briefcase, Heart, Search, BarChart3, HeartHandshake, User, ChevronDown, ChevronUp, Mail, LayoutTemplate, Home, Share2
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { useHeadAuth } from '../auth/useHeadAuth';
@@ -35,6 +35,14 @@ export const HeadLayout = () => {
     {
       category: 'COMMUNITY LEDGERS',
       items: [
+        {
+          name: 'Social',
+          icon: Share2,
+          children: [
+            { name: 'City Feed', path: '/head/social/city-feed' },
+            { name: 'Community Feed', path: '/head/social/community-feed' }
+          ]
+        },
         {
           name: 'Members',
           icon: Users,

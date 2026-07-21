@@ -13,29 +13,38 @@ cloudinary.config({
 // Configure Multer Storage for Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'merisamaj_uploads', // Optional: You can change the folder name where images will be stored in Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    // transformation: [{ width: 500, height: 500, crop: 'limit' }] // Optional transformations
+  params: async (req, file) => {
+    const isVideo = file.mimetype.startsWith('video/');
+    return {
+      folder: 'merisamaj_uploads',
+      resource_type: isVideo ? 'video' : 'auto',
+      allowed_formats: isVideo 
+        ? ['mp4', 'webm', 'mov', 'ogg'] 
+        : ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf']
+    };
   },
 });
 
-// File Filter (Optional: Restrict to specific types if Cloudinary allowed_formats is not enough)
+// File Filter to allow images, PDFs, and video formats
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const allowedMimeTypes = [
+    'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif',
+    'application/pdf',
+    'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'
+  ];
   
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, JPG, and PDF are allowed.'), false);
+    cb(new Error('Invalid file type. Only images, PDFs, and MP4/WebM/OGG/MOV videos are allowed.'), false);
   }
 };
 
-// Initialize Multer
+// Initialize Multer (Up limit to 15 MB for video support)
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5 MB limit
+    fileSize: 15 * 1024 * 1024 // 15 MB limit
   },
   fileFilter: fileFilter
 });

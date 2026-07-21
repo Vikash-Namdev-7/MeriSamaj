@@ -23,6 +23,9 @@ import HeadProtectedRoute from '../components/HeadProtectedRoute';
 import HeadProfileSettings from '../pages/profile/HeadProfileSettings';
 import HeadLoginPage from '../pages/login/HeadLoginPage';
 
+import SocialCityFeed from '../pages/social/SocialCityFeed';
+import SocialCommunityFeed from '../pages/social/SocialCommunityFeed';
+
 export const HeadRoutes = () => {
   return (
     <Routes>
@@ -37,6 +40,12 @@ export const HeadRoutes = () => {
 
           {/* Head Dashboard */}
           <Route path="dashboard" element={<HeadDashboard />} />
+
+          {/* Social Feed Moderation Desk */}
+          <Route path="social">
+            <Route path="city-feed" element={<SocialCityFeed />} />
+            <Route path="community-feed" element={<SocialCommunityFeed />} />
+          </Route>
 
           {/* Member Management Desk */}
           <Route path="members" element={<MemberManagement />} />

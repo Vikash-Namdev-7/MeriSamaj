@@ -25,6 +25,10 @@ import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementC
 import CommunitiesPage from '../pages/communities/CommunitiesPage';
 import AdminLogin from '../pages/login/AdminLogin';
 
+import CityFeedManagement from '../pages/social/CityFeedManagement';
+import CommunityFeedManagement from '../pages/social/CommunityFeedManagement';
+import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
+
 export const AdminRoutes = () => {
   return (
     <Routes>
@@ -65,6 +69,13 @@ export const AdminRoutes = () => {
         <Route path="donations" element={<GlobalDonationManagement />} />
         <Route path="funds" element={<GlobalFundManagement />} />
         <Route path="announcements" element={<GlobalAnnouncementCenter />} />
+
+        {/* 📱 Social Module Management */}
+        <Route path="social">
+          <Route path="city-feed" element={<CityFeedManagement />} />
+          <Route path="community-feed" element={<CommunityFeedManagement />} />
+          <Route path="post/:id" element={<AdminPostDetailsPage />} />
+        </Route>
 
         {/* 🏛️ Multi-Community Management — Master Admin Core Feature */}
         <Route path="communities" element={<CommunitiesPage />} />

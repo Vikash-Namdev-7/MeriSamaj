@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X, Bookmark } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
@@ -23,9 +23,7 @@ const getCategoryLabel = (category, lang) => {
   return labels[lang]?.[category] || category;
 };
 
-const MultiImageGrid = ({ images }) => {
-  if (!images || images.length === 0) return null;
-
+const RenderMedia = ({ url }) => {
   const placeholders = {
     women_workshop_1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800',
     women_workshop_2: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600',
@@ -34,13 +32,62 @@ const MultiImageGrid = ({ images }) => {
     youth_chess: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=600'
   };
 
-  const getUrl = (img) => placeholders[img] || img;
+  let cleanUrl = placeholders[url] || url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600';
+  if (cleanUrl.startsWith('blob:')) {
+    cleanUrl = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600';
+  }
+  const lowercase = cleanUrl.toLowerCase();
+
+  const isVideo = lowercase.endsWith('.mp4') || lowercase.endsWith('.webm') || lowercase.endsWith('.ogg') || lowercase.endsWith('.mov') || lowercase.includes('video');
+  const isYoutube = lowercase.includes('youtube.com') || lowercase.includes('youtu.be');
+  const isInstagram = lowercase.includes('instagram.com');
+
+  if (isYoutube) {
+    let videoId = '';
+    if (cleanUrl.includes('youtube.com/watch')) {
+      const params = new URLSearchParams(cleanUrl.split('?')[1]);
+      videoId = params.get('v');
+    } else if (cleanUrl.includes('youtu.be/')) {
+      videoId = cleanUrl.split('youtu.be/')[1]?.split('?')[0];
+    } else if (cleanUrl.includes('youtube.com/embed/')) {
+      videoId = cleanUrl.split('youtube.com/embed/')[1]?.split('?')[0];
+    }
+    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    return embedUrl ? (
+      <iframe src={embedUrl} className="w-full h-full border-0 aspect-video bg-black" allowFullScreen title="YouTube Video" />
+    ) : (
+      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-400">Invalid YouTube Link</div>
+    );
+  }
+
+  if (isInstagram) {
+    return (
+      <div className="w-full h-full bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800">
+        <span className="text-[12px] font-bold text-pink-500">Instagram Embed</span>
+        <span className="text-[9px] text-slate-500 truncate max-w-full mt-1">{cleanUrl}</span>
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <video src={cleanUrl} controls muted loop className="w-full h-full object-cover rounded-2xl bg-black animate-fade-in" />
+    );
+  }
+
+  return (
+    <img src={cleanUrl} alt="Post Attachment" className="w-full h-full object-cover rounded-2xl animate-fade-in" />
+  );
+};
+
+const MultiImageGrid = ({ images }) => {
+  if (!images || images.length === 0) return null;
 
   return (
     <div className="space-y-2 mb-3">
       {images.map((url, idx) => (
         <div key={idx} className="w-full rounded-2xl overflow-hidden border border-slate-100 shadow-[0_2px_6px_rgba(0,0,0,0.01)]">
-          <img src={getUrl(url)} alt={`Attachment ${idx + 1}`} className="w-full h-auto max-h-96 object-cover" />
+          <RenderMedia url={url} />
         </div>
       ))}
     </div>
@@ -50,12 +97,23 @@ const MultiImageGrid = ({ images }) => {
 const PostDetailPage = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { posts, togglePostLike, togglePostSave, addPostComment, addCommentReply, toggleCommentLike, currentUser, language, members, admins } = useData();
+  const { posts, togglePostLike, togglePostSave, addPostComment, fetchPostComments, recordPostView, addCommentReply, toggleCommentLike, currentUser, language, members, admins } = useData();
   const [commentText, setCommentText] = useState('');
   const [activeSort, setActiveSort] = useState('newest'); // newest | oldest
   const [toastMessage, setToastMessage] = useState('');
   const [replyingToComment, setReplyingToComment] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  useEffect(() => {
+    if (postId) {
+      if (fetchPostComments) {
+        fetchPostComments(postId);
+      }
+      if (recordPostView) {
+        recordPostView(postId);
+      }
+    }
+  }, [postId]);
 
   const post = posts.find((p) => p.id === postId);
   const lang = 'en'; // Force English for Feed Section as requested
@@ -102,10 +160,26 @@ const PostDetailPage = () => {
     setCommentText('');
   };
 
+  const getCommentAuthor = (c) => {
+    if (c.author) return c.author;
+    if (c.userId && typeof c.userId === 'object') {
+      const name = c.userId.name || 'Member';
+      return {
+        name,
+        avatar: c.userId.avatar,
+        initials: name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+        isVerified: true
+      };
+    }
+    return { name: 'Member', avatar: null, initials: 'M', isVerified: true };
+  };
+
   const rawComments = post.commentsList || [];
   const sortedComments = [...rawComments].sort((a, b) => {
-    if (activeSort === 'newest') return b.id.localeCompare(a.id);
-    return a.id.localeCompare(b.id);
+    const idA = String(a._id || a.id || '');
+    const idB = String(b._id || b.id || '');
+    if (activeSort === 'newest') return idB.localeCompare(idA);
+    return idA.localeCompare(idB);
   });
 
   const catColor = categoryColors[post.category] || 'text-gray-700 bg-gray-500 border-gray-300';
@@ -298,59 +372,67 @@ const PostDetailPage = () => {
           </div>
 
           <div className="space-y-4">
-            {sortedComments.map((comment, i) => (
-              <div key={comment.id} className="flex gap-3 items-start animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                <Avatar initials={comment.author.initials} size="sm" color="bg-indigo-50 text-indigo-700" />
-                <div className="flex-1">
-                  <div className="bg-white rounded-2xl rounded-tl-xs px-4 py-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <h5 className="text-[13px] font-black text-slate-800 leading-tight">{comment.author.name}</h5>
-                      {comment.author.isVerified && (
-                        <span className="w-3.5 h-3.5 rounded-full bg-brand-primary text-white flex items-center justify-center scale-70">
-                          <Check size={9} strokeWidth={4} />
-                        </span>
-                      )}
+            {sortedComments.map((comment, i) => {
+              const author = getCommentAuthor(comment);
+              const commentKey = comment._id || comment.id || `c_${i}`;
+              return (
+                <div key={commentKey} className="flex gap-3 items-start animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+                  <Avatar initials={author.initials} src={author.avatar} size="sm" color="bg-indigo-50 text-indigo-700" />
+                  <div className="flex-1">
+                    <div className="bg-white rounded-2xl rounded-tl-xs px-4 py-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <h5 className="text-[13px] font-black text-slate-800 leading-tight">{author.name}</h5>
+                        {author.isVerified && (
+                          <span className="w-3.5 h-3.5 rounded-full bg-brand-primary text-white flex items-center justify-center scale-70">
+                            <Check size={9} strokeWidth={4} />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[13px] text-slate-655 font-medium leading-relaxed">{comment.text}</p>
                     </div>
-                    <p className="text-[13px] text-slate-655 font-medium leading-relaxed">{comment.text}</p>
-                  </div>
-                  
-                  {/* Like / Reply Action buttons under comment */}
-                  <div className="flex items-center gap-4.5 mt-1.5 px-1.5 text-[11px] font-extrabold text-slate-400">
-                    <span>{comment.time}</span>
-                    <button 
-                      onClick={() => toggleCommentLike(post.id, comment.id)}
-                      className="text-red-500 font-extrabold transition-colors flex items-center gap-1"
-                    >
-                      <ThumbsUp size={11} className="fill-red-500 text-red-500" />
-                      <span>{comment.likes || 0} Likes</span>
-                    </button>
-                    <button onClick={() => setReplyingToComment(comment)} className="hover:text-slate-600 transition-colors">Reply</button>
-                  </div>
+                    
+                    {/* Like / Reply Action buttons under comment */}
+                    <div className="flex items-center gap-4.5 mt-1.5 px-1.5 text-[11px] font-extrabold text-slate-400">
+                      <span>{comment.time || 'Just now'}</span>
+                      <button 
+                        onClick={() => toggleCommentLike(post.id, commentKey)}
+                        className="text-red-500 font-extrabold transition-colors flex items-center gap-1"
+                      >
+                        <ThumbsUp size={11} className="fill-red-500 text-red-500" />
+                        <span>{comment.likes || 0} Likes</span>
+                      </button>
+                      <button onClick={() => setReplyingToComment(comment)} className="hover:text-slate-600 transition-colors">Reply</button>
+                    </div>
 
-                  {/* Comment Thread Replies (mock nested mapping) */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="mt-3.5 pl-6 border-l-2 border-slate-100 space-y-3.5">
-                      {comment.replies.map(reply => (
-                        <div key={reply.id} className="flex gap-2.5 items-start">
-                          <Avatar initials={reply.author.initials} size="sm" color="bg-indigo-50 text-indigo-700" />
-                          <div className="flex-1 bg-slate-50/60 rounded-2xl rounded-tl-xs px-3.5 py-2.5 border border-slate-100/40">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <h6 className="text-[12.5px] font-black text-slate-800 leading-tight">{reply.author.name}</h6>
-                              {reply.author.isVerified && (
-                                <span className="w-3.5 h-3.5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center scale-70 shrink-0">
-                                  <Check size={9} strokeWidth={4} />
-                                </span>
-                              )}
+                    {/* Comment Thread Replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-3.5 pl-6 border-l-2 border-slate-100 space-y-3.5">
+                        {comment.replies.map((reply, ri) => {
+                          const replyAuthor = getCommentAuthor(reply);
+                          const replyKey = reply._id || reply.id || `r_${ri}`;
+                          return (
+                            <div key={replyKey} className="flex gap-2.5 items-start">
+                              <Avatar initials={replyAuthor.initials} src={replyAuthor.avatar} size="sm" color="bg-indigo-50 text-indigo-700" />
+                              <div className="flex-1 bg-slate-50/60 rounded-2xl rounded-tl-xs px-3.5 py-2.5 border border-slate-100/40">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <h6 className="text-[12.5px] font-black text-slate-800 leading-tight">{replyAuthor.name}</h6>
+                                  {replyAuthor.isVerified && (
+                                    <span className="w-3.5 h-3.5 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center scale-70 shrink-0">
+                                      <Check size={9} strokeWidth={4} />
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[12px] text-slate-655 font-medium leading-relaxed">{reply.text}</p>
+                              </div>
                             </div>
-                            <p className="text-[12px] text-slate-655 font-medium leading-relaxed">{reply.text}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1,91 +1,134 @@
 const mongoose = require('mongoose');
 
-/**
- * Post Model — Community Social Feed
- *
- * All posts are community-scoped. communityId is the primary isolation key.
- * Members can only see posts belonging to their own community.
- */
-
-const commentSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    text: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: true }
-);
-
 const postSchema = new mongoose.Schema(
   {
     // Author
-    authorId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
-    },
-
-    /**
-     * Community Isolation Key
-     * MANDATORY on all community data documents.
-     * Server always sets this from req.user.communityId — client cannot override.
-     */
-    communityId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Community',
-      required: true,
       index: true,
     },
 
-    // Content
+    authorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+
+    // Community Scope Reference
+    communityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Community',
+      required: false,
+      index: true,
+    },
+
+    // Optional images array for backwards compatibility
+    images: [String],
+
+    // City Scope Reference
+    cityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'City',
+      index: true,
+    },
+
+    // Content Text
     content: {
       type: String,
       required: true,
       trim: true,
     },
-    images: [
-      {
-        type: String, // Cloudinary URLs
-      },
-    ],
 
-    // Engagement
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
-    comments: [commentSchema],
-
-    // Moderation
-    status: {
+    // Category Scope
+    category: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
-      default: 'Approved',
+      index: true,
+      default: 'Notice'
     },
 
-    // Optional: allow pinning announcements
+    // Feed Visibility: city or community
+    feedType: {
+      type: String,
+      enum: ['city', 'community'],
+      default: 'city',
+      index: true,
+    },
+
+    // Generic Media Attachments Schema
+    media: [
+      {
+        type: {
+          type: String,
+          enum: ['image', 'video', 'gif', 'youtube', 'instagram'],
+          required: true,
+        },
+        url: {
+          type: String,
+          required: true,
+        },
+        thumbnail: String,
+        duration: Number,
+        width: Number,
+        height: Number,
+        provider: {
+          type: String,
+          enum: ['upload', 'youtube', 'instagram', 'external'],
+          required: true,
+        }
+      }
+    ],
+
+    // Cached engagement counters for O(1) read operations
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
+    commentsCount: {
+      type: Number,
+      default: 0,
+    },
+    sharesCount: {
+      type: Number,
+      default: 0,
+    },
+    viewsCount: {
+      type: Number,
+      default: 0,
+    },
+
+    // Status & Flag Fields
+    status: {
+      type: String,
+      enum: ['draft', 'published', 'archived', 'reported'],
+      default: 'published',
+      index: true,
+    },
     isPinned: {
       type: Boolean,
       default: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // Post Audit & Scheduling
+    scheduledAt: Date,
+    editedAt: Date,
+    deletedAt: Date,
   },
   {
     timestamps: true,
   }
 );
+
+// High-speed index configuration for feed query performance
+postSchema.index({ communityId: 1, cityId: 1, createdAt: -1 });
+postSchema.index({ feedType: 1, isDeleted: 1, createdAt: -1 });
+postSchema.index({ cityId: 1, feedType: 1, createdAt: -1 });
+postSchema.index({ communityId: 1, feedType: 1, createdAt: -1 });
 
 const Post = mongoose.model('Post', postSchema);
 

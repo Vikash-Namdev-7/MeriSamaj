@@ -123,6 +123,19 @@ export const AdminLayout = () => {
       ]
     },
     {
+      category: 'SOCIAL MANAGEMENT',
+      items: [
+        {
+          name: 'Social',
+          icon: Globe,
+          children: [
+            { name: 'City Feed', path: '/admin/social/city-feed' },
+            { name: 'Community Feed', path: '/admin/social/community-feed' }
+          ]
+        }
+      ]
+    },
+    {
       category: 'COMMUNICATION',
       items: [
         { 

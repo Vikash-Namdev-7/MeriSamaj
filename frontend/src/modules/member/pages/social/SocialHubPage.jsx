@@ -113,9 +113,40 @@ const DiscoverIcon = ({ size = 26, isActive }) => (
 const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, setMobileMenuOpen, getUnreadCountForModule } = useData();
+  const { currentUser, setMobileMenuOpen, getUnreadCountForModule, fetchFeedPosts, cityPosts = [], communityPosts = [] } = useData();
   const [activeTab, setActiveTab] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState({ 'city-feed': true, 'community-feed': true });
+
+  useEffect(() => {
+    if (activeTab === 0) {
+      fetchFeedPosts('city');
+    } else if (activeTab === 1) {
+      fetchFeedPosts('community');
+    }
+  }, [activeTab]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const getHeaderTitle = () => {
+    const userCity = currentUser?.city || 'Indore';
+    const userCommunity = (currentUser?.community || 'Namdev').replace(/samaj/gi, '').replace(/\s+/g, ' ').trim();
+    
+    switch (activeTab) {
+      case 0: // City Feed
+        return `${userCity} ${userCommunity} Community`;
+      case 1: // Community Feed
+        return `Entire ${userCommunity} Community`;
+      case 2: // Groups
+        return 'Groups';
+      case 3: // Chat
+        return 'Chats';
+      case 4: // Discover
+        return 'Discover';
+      default:
+        return 'Social Hub';
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -183,6 +214,25 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const handleTabScroll = (e) => {
     const tabId = e.currentTarget.dataset.tabId;
     const currentScrollY = e.currentTarget.scrollTop;
+    const scrollHeight = e.currentTarget.scrollHeight;
+    const clientHeight = e.currentTarget.clientHeight;
+
+    // Trigger cursor pagination fetch when user scrolls close to the bottom
+    if (scrollHeight - currentScrollY - clientHeight < 120 && !loadingMore && hasMore[tabId]) {
+      const feedType = tabId === 'city-feed' ? 'city' : 'community';
+      const feedPosts = feedType === 'city' ? cityPosts : communityPosts;
+      if (feedPosts && feedPosts.length > 0) {
+        setLoadingMore(true);
+        const lastPost = feedPosts[feedPosts.length - 1];
+        const cursor = lastPost.createdAt;
+        fetchFeedPosts(feedType, '', cursor).then((res) => {
+          setLoadingMore(false);
+          if (res && !res.hasMore) {
+            setHasMore(prev => ({ ...prev, [tabId]: false }));
+          }
+        });
+      }
+    }
     
     // Only apply the hide-on-scroll behavior to the City Feed and Community Feed tabs
     if (tabId !== 'city-feed' && tabId !== 'community-feed') {
@@ -371,7 +421,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
                 <button className="text-text-primary" onClick={() => setMobileMenuOpen(true)}>
                   <Menu size={24} />
                 </button>
-                <h1 className="text-[19px] font-bold text-text-primary tracking-tight">Social Hub</h1>
+                <h1 className={`font-bold text-text-primary tracking-tight whitespace-nowrap overflow-hidden text-ellipsis ${activeTab < 2 ? 'text-[14px] sm:text-[16px]' : 'text-[19px]'}`}>{getHeaderTitle()}</h1>
               </div>
               <div className="flex items-center gap-4">
                 <button className="text-text-primary" onClick={() => setIsSearchOpen(true)}>

@@ -50,4 +50,8 @@ router.use('/fund', fundRoutes);
 const professionalRoutes = require('./professionalRoutes');
 router.use('/professional', professionalRoutes);
 
+// Scalable Dynamic Social Integration
+const socialRoutes = require('./socialRoutes');
+router.use('/social', socialRoutes);
+
 module.exports = router;
