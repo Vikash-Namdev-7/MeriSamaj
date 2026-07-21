@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { useMatrimonial } from './MatrimonialContext';
+import { matrimonialChatService } from '../../../../core/api/matrimonialService';
 
 const membershipRanks = {
   'Normal': 1,
@@ -52,6 +53,16 @@ const MatrimonialHomePage = () => {
   const [searchText, setSearchText] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  const openChatWithProfile = async (profileId) => {
+    try {
+      const res = await matrimonialChatService.openConversation(profileId);
+      navigate(`/member/matrimonial/chat/${res.data.data.conversation._id}`);
+    } catch (err) {
+      showToast('Cannot open chat. Make sure interest is accepted.');
+    }
+  };
+
   const [myPhotosCount, setMyPhotosCount] = useState(3);
   const [myMatrimonialBio, setMyMatrimonialBio] = useState(currentUser?.matrimonialBio || "Hi, I am Rajesh Agrawal. I work as a Senior software developer in Indore. Looking for a progressive, family-oriented partner who shares similar values and interest in traveling.");
   const [myGotra, setMyGotra] = useState(currentUser?.gotra || "Garg");
@@ -661,7 +672,7 @@ const MatrimonialHomePage = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isConnected) {
-                                navigate(`/member/matrimonial/chat/${profile.id}`);
+                                openChatWithProfile(profile._id);
                               } else {
                                 showToast("Connection pending. You can message once they accept your interest!");
                               }
@@ -794,34 +805,48 @@ const MatrimonialHomePage = () => {
                     const isConnected = item.status === 'accepted';
                     const isPhotoVisible = true; // In interest lists, always show avatar
                     
+                    // The other profile is either senderProfile (if we received it) or receiverProfile (if we sent it)
+                    // This works for all tabs (Received, Sent, Accepted) since only one will be populated per interest record
+                    const otherProfile = item.senderProfile || item.receiverProfile;
+                    
+                    const profileData = otherProfile || item;
+                    const profileId = otherProfile?._id || item._id || item.id;
+                    const avatar = profileData.photos?.[0] || profileData.avatar || 'https://via.placeholder.com/150';
+                    const name = profileData.personal?.fullName || profileData.name || 'Member';
+                    const age = profileData.age || '';
+                    const height = profileData.height || '';
+                    const gotra = profileData.gotra || '';
+                    const city = profileData.location?.city || profileData.city || '';
+                    const profession = profileData.profession || '';
+
                     return (
                       <div 
                         key={item._id || item.id}
-                        onClick={() => navigate(`/member/matrimonial/${item._id || item.id}`)}
+                        onClick={() => navigate(`/member/matrimonial/${profileId}`)}
                         className="bg-white rounded-2.5xl border border-slate-200/55 p-3.5 flex gap-3.5 items-center cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
                       >
                         {/* Avatar Column */}
                         <div className="relative shrink-0">
                           <img 
-                            src={item.avatar} 
-                            alt={item.name} 
+                            src={avatar} 
+                            alt={name} 
                             className={`w-13 h-16 rounded-xl object-cover border border-slate-100/80 shadow-xs transition-all duration-300 ${
                               !isPhotoVisible ? 'blur-md brightness-90' : ''
                             }`} 
                           />
-                          {item.online && (
+                          {profileData.online && (
                             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                           )}
                         </div>
 
                         {/* Text Parameters Column */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-[13.5px] font-black text-indigo-950 truncate">{item.name}, {item.age}</h4>
+                          <h4 className="text-[13.5px] font-black text-indigo-950 truncate">{name}, {age}</h4>
                           <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5">
-                            {item.height} · {item.gotra} · {item.city}
+                            {height} · {gotra} · {city}
                           </p>
                           <p className="text-[10px] text-slate-400 font-bold truncate mt-0.5">
-                            {item.profession}
+                            {profession}
                           </p>
                         </div>
 
@@ -850,7 +875,7 @@ const MatrimonialHomePage = () => {
 
                           {activityInterestTab === 'Accepted' && (
                             <button 
-                              onClick={() => navigate(`/member/matrimonial/chat/${item.id}`)}
+                              onClick={() => openChatWithProfile(profileId)}
                               className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10.5px] font-extrabold px-4 py-1.5 rounded-lg active:scale-95 transition-transform flex items-center gap-1 shadow-sm"
                             >
                               <MessageCircle size={13} /> Chat
@@ -1054,7 +1079,7 @@ const MatrimonialHomePage = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!visitor.requiresUpgrade) {
-                              navigate(`/member/matrimonial/chat/${visitor.id}`);
+                              openChatWithProfile(visitor._id);
                             } else {
                               showToast('Upgrade to chat with this profile!');
                             }
@@ -1127,7 +1152,7 @@ const MatrimonialHomePage = () => {
                         <div className="relative z-10 py-4 px-4 flex justify-around items-center select-none bg-transparent">
                           {/* Chat */}
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/member/matrimonial/chat/${visited.id}`); }}
+                            onClick={(e) => { e.stopPropagation(); openChatWithProfile(visited._id); }}
                             className="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-transform"
                           >
                             <div className="w-12 h-12 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xs text-white hover:bg-black/50 transition-all">
@@ -1384,7 +1409,7 @@ const MatrimonialHomePage = () => {
                 ].map((user, idx) => (
                   <div 
                     key={idx} 
-                    onClick={() => navigate(`/member/matrimonial/chat/${user.id}`)}
+                    onClick={() => openChatWithProfile(user._id || user.id)}
                     className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 transition-transform"
                   >
                     <div className="w-13 h-13 rounded-full bg-slate-200 border-2 border-slate-100 flex items-center justify-center text-slate-500 relative shadow-sm">

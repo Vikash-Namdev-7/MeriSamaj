@@ -145,7 +145,7 @@ export const MemberRoutes = () => {
               <Route path="shortlist" element={<AnimatedPage><MatrimonialShortlistPage /></AnimatedPage>} />
               <Route path="stories" element={<AnimatedPage><MatrimonialSuccessStories /></AnimatedPage>} />
               <Route path=":profileId" element={<AnimatedPage><MatrimonialProfilePage /></AnimatedPage>} />
-              <Route path="chat/:profileId" element={<AnimatedPage><MatrimonialChatPage /></AnimatedPage>} />
+              <Route path="chat/:conversationId" element={<AnimatedPage><MatrimonialChatPage /></AnimatedPage>} />
               <Route path="subscription" element={<AnimatedPage><MatrimonialSubscriptionPage /></AnimatedPage>} />
             </Route>
             <Route path="directory" element={<AnimatedPage><DirectoryPage /></AnimatedPage>} />

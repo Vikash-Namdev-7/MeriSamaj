@@ -18,15 +18,21 @@ export const axiosPrivate = axios.create({
 // auth context fully re-initializes.
 axiosPrivate.interceptors.request.use(
   (config) => {
-    if (!config.headers['Authorization']) {
+    // Safely check for Authorization header
+    const hasAuth = config.headers.has ? config.headers.has('Authorization') : !!config.headers['Authorization'];
+    
+    if (!hasAuth) {
       const isHeadPanel = typeof window !== 'undefined' && window.location.pathname.startsWith('/head');
       const headToken = localStorage.getItem('head_auth_token');
       const memberToken = localStorage.getItem('merisamaj_token');
 
-      if (isHeadPanel && headToken) {
-        config.headers['Authorization'] = `Bearer ${headToken}`;
-      } else if (memberToken) {
-        config.headers['Authorization'] = `Bearer ${memberToken}`;
+      const token = isHeadPanel ? headToken : memberToken;
+      if (token) {
+        if (config.headers.set) {
+          config.headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
       }
     }
     return config;

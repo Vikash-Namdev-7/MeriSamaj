@@ -98,8 +98,43 @@ const rawUpload = multer({
 const uploadSinglePhoto    = handleUploadError(uploadSingle);
 const uploadMultiplePhotos = handleUploadError(uploadMultiple);
 
+// ─── Chat Image Upload ────────────────────────────────────────────────────────
+// A dedicated Cloudinary storage for chat message images (separate folder)
+let chatStorage = storage; // default to whatever storage was configured above
+
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  try {
+    const cloudinary = require('cloudinary').v2;
+    const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+    chatStorage = new CloudinaryStorage({
+      cloudinary,
+      params: async (req, file) => ({
+        folder: `merisamaj/chat_messages/${req.params.conversationId || 'general'}`,
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [
+          { quality: 'auto', fetch_format: 'auto' }
+        ],
+        public_id: `chat_${Date.now()}_${Math.round(Math.random() * 1e9)}`
+      })
+    });
+  } catch (err) {
+    console.warn('[Upload] Chat Cloudinary storage fallback to memory:', err.message);
+  }
+}
+
+const uploadChatImageFn = multer({
+  storage: chatStorage,
+  fileFilter: imageFilter,
+  limits: { fileSize: MAX_FILE_SIZE }
+}).single('photo');
+
+const uploadChatImage = handleUploadError(uploadChatImageFn);
+
 // Make module callable as upload.single('field') for backward compat (authRoutes etc.)
 module.exports = Object.assign(rawUpload, {
   uploadSinglePhoto,
-  uploadMultiplePhotos
+  uploadMultiplePhotos,
+  uploadChatImage,
+  handleUploadError
 });

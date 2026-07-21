@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Send, Image as ImageIcon, Smile, Loader2,
   Check, CheckCheck, Clock, MoreVertical, Phone, Video,
-  Trash2, Reply, X, Info
+  Trash2, Reply, X, Info, Copy, MoreHorizontal
 } from 'lucide-react';
 import { useMatrimonialChat } from '../../../../hooks/useMatrimonialChat';
 import { matrimonialChatService } from '../../../../core/api/matrimonialService';
@@ -25,17 +25,49 @@ const MsgStatus = ({ msg, currentUserId }) => {
   return <Check size={12} className="text-slate-400" />;
 };
 
+// ─── Lightweight Toast ───────────────────────────────────────────────────────
+const Toast = ({ message, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full text-[13px] font-semibold shadow-lg z-50 animate-fade-in-up">
+      {message}
+    </div>
+  );
+};
+
+// ─── Image Modal ──────────────────────────────────────────────────────────────
+const ImageModal = ({ url, onClose }) => {
+  useEffect(() => {
+    const handleEsc = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+        <X size={20} />
+      </button>
+      <img src={url} alt="Full view" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
+    </div>
+  );
+};
+
 // ─── Message Bubble ───────────────────────────────────────────────────────────
-const MessageBubble = ({ msg, currentUserId, onReply, onDelete }) => {
+const MessageBubble = ({ msg, currentUserId, onReply, onDelete, onCopy, onImageClick }) => {
   const isMine = msg.senderId?._id === currentUserId || msg.senderId === currentUserId;
   const time   = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
-  const isDeleted = msg.deletedFor?.includes(currentUserId);
+  const isDeleted = msg.deletedFor?.includes(currentUserId) || msg.isDeleted || msg.type === 'deleted';
 
   if (isDeleted) {
     return (
       <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-1`}>
-        <div className="px-3 py-2 rounded-2xl bg-slate-100 text-slate-400 text-[11px] italic font-semibold max-w-[75%]">
-          This message was deleted
+        <div className="px-3 py-2 rounded-2xl bg-slate-100 text-slate-400 text-[12px] italic font-semibold max-w-[75%] border border-slate-200">
+          🗑️ This message was deleted
         </div>
       </div>
     );
@@ -59,8 +91,13 @@ const MessageBubble = ({ msg, currentUserId, onReply, onDelete }) => {
           }`}
         >
           {/* Image message */}
-          {msg.messageType === 'image' && msg.media?.url ? (
-            <img src={msg.media.url} alt="sent" className="max-w-full rounded-xl max-h-48 object-cover" />
+          {msg.type === 'image' && msg.mediaUrl ? (
+            <img 
+              src={msg.mediaUrl} 
+              alt="sent" 
+              className="max-w-full rounded-xl max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity" 
+              onClick={() => onImageClick(msg.mediaUrl)} 
+            />
           ) : (
             <p>{msg.message}</p>
           )}
@@ -73,13 +110,19 @@ const MessageBubble = ({ msg, currentUserId, onReply, onDelete }) => {
 
         {/* Hover actions */}
         <div className={`absolute top-0 ${isMine ? 'right-full mr-1' : 'left-full ml-1'} hidden group-hover:flex items-center gap-1`}>
-          <button onClick={() => onReply(msg)}
+          {msg.type !== 'image' && (
+            <button onClick={() => onCopy(msg.message)} title="Copy"
+              className="w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-700 active:scale-90">
+              <Copy size={13} />
+            </button>
+          )}
+          <button onClick={() => onReply(msg)} title="Reply"
             className="w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 active:scale-90">
             <Reply size={13} />
           </button>
           {isMine && (
-            <button onClick={() => onDelete(msg._id)}
-              className="w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90">
+            <button onClick={() => onDelete(msg)} title="Delete"
+              className="w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-red-500 active:scale-90">
               <Trash2 size={13} />
             </button>
           )}
@@ -120,7 +163,12 @@ const MatrimonialChatPage = () => {
   const [replyTo, setReplyTo]           = useState(null);
   const [imgFile, setImgFile]           = useState(null);
   const [imgPreview, setImgPreview]     = useState(null);
-  const [isDeleting, setIsDeleting]     = useState(null);
+  const [imgError, setImgError]         = useState('');
+  
+  const [toastMsg, setToastMsg]                 = useState('');
+  const [viewImage, setViewImage]               = useState(null);
+  const [messageToDelete, setMessageToDelete]   = useState(null);
+  const [isDeleting, setIsDeleting]             = useState(false);
 
   const msgEndRef   = useRef(null);
   const inputRef    = useRef(null);
@@ -165,10 +213,25 @@ const MatrimonialChatPage = () => {
     typingTimer.current = setTimeout(() => stopTyping(conversationId), 1500);
   };
 
-  // Image select
+  // Image select & Validate
   const handleImageSelect = (e) => {
+    setImgError('');
     const file = e.target.files[0];
     if (!file) return;
+
+    // Validate type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setImgError('Only JPG, JPEG, PNG and WEBP images are allowed.');
+      return;
+    }
+
+    // Validate size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setImgError('Maximum image size is 5 MB.');
+      return;
+    }
+
     setImgFile(file);
     setImgPreview(URL.createObjectURL(file));
   };
@@ -186,15 +249,21 @@ const MatrimonialChatPage = () => {
       replyToId:   replyTo?._id
     };
 
+    let res;
     if (imgFile) {
       const formData = new FormData();
       formData.append('photo', imgFile);
       formData.append('message', msgText || '');
       formData.append('messageType', 'image');
       if (replyTo) formData.append('replyToId', replyTo._id);
-      await sendMessage(conversationId, formData);
+      res = await sendMessage(conversationId, formData);
     } else {
-      await sendMessage(conversationId, payload);
+      res = await sendMessage(conversationId, payload);
+    }
+
+    if (res && !res.success) {
+      setToastMsg(res.error || 'Failed to send message.');
+      return;
     }
 
     setText('');
@@ -204,10 +273,23 @@ const MatrimonialChatPage = () => {
     inputRef.current?.focus();
   };
 
-  const handleDelete = async (msgId) => {
-    setIsDeleting(msgId);
-    await deleteMessage(msgId, 'me');
-    setIsDeleting(null);
+  const handleCopy = async (msgText) => {
+    try {
+      await navigator.clipboard.writeText(msgText);
+      setToastMsg('Message copied.');
+    } catch {
+      setToastMsg('Unable to copy message.');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!messageToDelete) return;
+    setIsDeleting(true);
+    // Hard delete for everyone as per new requirements
+    const res = await deleteMessage(messageToDelete._id, 'everyone');
+    setIsDeleting(false);
+    setMessageToDelete(null);
+    if (!res.success) setToastMsg('Unable to delete message. Please try again.');
   };
 
   const handleKeyDown = (e) => {
@@ -224,7 +306,39 @@ const MatrimonialChatPage = () => {
   const isTyping = typingUsers[conversationId];
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-slate-50 relative">
+      {/* Toast Notification */}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+
+      {/* Image Modal */}
+      {viewImage && <ImageModal url={viewImage} onClose={() => setViewImage(null)} />}
+
+      {/* Delete Confirmation Modal */}
+      {messageToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl text-center animate-fade-in-up">
+            <h3 className="text-[16px] font-black text-slate-800 mb-2">Delete Message</h3>
+            <p className="text-[14px] text-slate-500 font-semibold mb-6">Delete this message?</p>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setMessageToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 flex justify-center"
+              >
+                {isDeleting ? <Loader2 size={18} className="animate-spin" /> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center gap-3 sticky top-0 z-30 shadow-sm shrink-0">
         <button onClick={() => navigate(-1)} className="p-1 active:opacity-60">
@@ -276,7 +390,9 @@ const MatrimonialChatPage = () => {
                 msg={msg}
                 currentUserId={currentUserId}
                 onReply={setReplyTo}
-                onDelete={handleDelete}
+                onDelete={setMessageToDelete}
+                onCopy={handleCopy}
+                onImageClick={setViewImage}
               />
             ))}
             {isTyping && <TypingIndicator />}
@@ -285,12 +401,20 @@ const MatrimonialChatPage = () => {
         )}
       </div>
 
+      {/* Error preview */}
+      {imgError && (
+        <div className="px-4 py-2 bg-red-50 border-t border-red-100 flex items-center justify-between">
+          <p className="text-[12px] text-red-600 font-semibold">{imgError}</p>
+          <button onClick={() => setImgError('')} className="text-red-400 active:scale-90"><X size={14} /></button>
+        </div>
+      )}
+
       {/* Image preview */}
       {imgPreview && (
         <div className="px-4 py-2 bg-white border-t border-slate-100">
           <div className="relative w-20 h-20">
             <img src={imgPreview} alt="preview" className="w-full h-full rounded-xl object-cover border border-slate-200" />
-            <button onClick={() => { setImgFile(null); setImgPreview(null); }}
+            <button onClick={() => { setImgFile(null); setImgPreview(null); setImgError(''); }}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
               <X size={11} />
             </button>
@@ -312,12 +436,24 @@ const MatrimonialChatPage = () => {
       {/* Input Bar */}
       <div className="bg-white border-t border-slate-100 px-3 py-2.5 shrink-0"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}>
+        
+        {/* Upload Progress Banner */}
+        {sending && imgFile && (
+          <div className="absolute bottom-full left-0 right-0 bg-slate-800 text-white text-[12px] font-bold px-4 py-2 flex items-center justify-between z-10 animate-fade-in-up">
+            <span className="flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" />
+              Uploading image...
+            </span>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <button onClick={() => fileInputRef.current?.click()}
-            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 shrink-0">
+            disabled={sending}
+            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 shrink-0 disabled:opacity-40 disabled:active:scale-100">
             <ImageIcon size={18} />
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          <input ref={fileInputRef} type="file" accept="image/jpeg, image/jpg, image/png, image/webp" className="hidden" onChange={handleImageSelect} disabled={sending} />
 
           <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 flex items-end gap-2 min-h-[44px]">
             <textarea
@@ -325,9 +461,10 @@ const MatrimonialChatPage = () => {
               value={text}
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+              disabled={sending && imgFile}
+              placeholder={sending && imgFile ? "Uploading..." : "Type a message..."}
               rows={1}
-              className="flex-1 bg-transparent text-[13.5px] font-semibold text-slate-800 resize-none outline-none max-h-24 placeholder-slate-400 leading-relaxed"
+              className="flex-1 bg-transparent text-[13.5px] font-semibold text-slate-800 resize-none outline-none max-h-24 placeholder-slate-400 leading-relaxed disabled:opacity-50"
               style={{ minHeight: '20px' }}
             />
           </div>
@@ -337,7 +474,7 @@ const MatrimonialChatPage = () => {
             disabled={(!text.trim() && !imgFile) || sending}
             className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-200 active:scale-90 transition-all disabled:opacity-40 shrink-0"
           >
-            {sending ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
+            {sending && !imgFile ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
           </button>
         </div>
       </div>
