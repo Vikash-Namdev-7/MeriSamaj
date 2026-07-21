@@ -24,4 +24,8 @@ router.use('/funds', headFundRoutes);
 const headProfessionalRoutes = require('./headProfessionalRoutes');
 router.use('/professional', headProfessionalRoutes);
 
+// Matrimonial Community Routes
+const headMatrimonialRoutes = require('./headMatrimonialRoutes');
+router.use('/matrimonial', headMatrimonialRoutes);
+
 module.exports = router;

@@ -14,6 +14,7 @@ import invitationService from '../../../core/api/invitationService';
 import obituaryService from '../../../core/api/obituaryService';
 import { eventService } from '../services/eventService';
 import { headEventService } from '../../../core/api/headEventService';
+import { matrimonialProfileService } from '../../../core/api/matrimonialService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -88,6 +89,81 @@ const mapObituariesFromBackend = (data, currentUserId) => {
       comments
     };
   });
+};
+
+const mapBackendProfileToFrontend = (p) => {
+  const dob = new Date(p.personal?.dateOfBirth);
+  const age = isNaN(dob) ? 25 : new Date().getFullYear() - dob.getFullYear();
+
+  return {
+    id: p._id || p.id,
+    userId: p.userId,
+    name: p.personal?.fullName || 'Anonymous',
+    initials: (p.personal?.fullName || 'A').substring(0, 2).toUpperCase(),
+    gender: p.personal?.gender || 'Female',
+    age: age,
+    height: p.personal?.height ? `${Math.floor(p.personal.height/12)}'${p.personal.height%12}"` : "5'5\"",
+    weight: p.personal?.weight ? `${p.personal.weight} kg` : '60 kg',
+    bodyType: p.personal?.bodyType || 'Average',
+    complexion: p.personal?.complexion || 'Fair',
+    bloodGroup: p.personal?.bloodGroup || 'O+',
+    maritalStatus: p.personal?.maritalStatus || 'Never Married',
+    motherTongue: p.personal?.motherTongue || 'Hindi',
+    education: p.education?.highestQualification || 'Graduate',
+    college: p.education?.college || '',
+    profession: p.education?.profession || 'Professional',
+    company: p.education?.company || '',
+    annualIncome: p.education?.annualIncome || '5-10 LPA',
+    city: p.location?.city || '',
+    state: p.location?.state || '',
+    community: p.personal?.community || 'Agrawal',
+    gotra: p.personal?.gotra || '',
+    manglik: p.horoscope?.manglik || 'No',
+    star: p.horoscope?.star || '',
+    rashi: p.horoscope?.rashi || '',
+    diet: p.lifestyle?.diet || 'Vegetarian',
+    smoking: p.lifestyle?.smoking || 'No',
+    drinking: p.lifestyle?.drinking || 'No',
+    hobbies: p.lifestyle?.hobbies || [],
+    about: p.about?.biography || '',
+    avatar: (p.photos && p.photos.length > 0) ? p.photos.find(img => img.isPrimary)?.url || p.photos[0].url : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
+    photos: (p.photos || []).map(img => img.url),
+    photoCount: (p.photos || []).length,
+    isNew: true,
+    premiumStatus: p.premiumStatus || false,
+    photoVisibility: p.visibility || 'all',
+    compatibilityTag: 'New Match',
+    matchScore: p.matchPercentage || 80,
+    lastActive: p.lastActiveAt ? new Date(p.lastActiveAt).toLocaleDateString() : 'Active Today',
+    online: p.status === 'online',
+    verifiedStatus: p.verificationStatus === 'verified',
+    verifiedBadge: p.verificationStatus === 'verified' ? 'id' : null,
+    familyType: p.family?.familyType || 'Nuclear',
+    familyValues: p.family?.familyValues || 'Moderate',
+    familyAffluence: p.family?.familyAffluence || 'Middle Class',
+    fatherOccupation: p.family?.fatherOccupation || 'Retired',
+    motherOccupation: p.family?.motherOccupation || 'Homemaker',
+    brothers: `${p.family?.brothers || 0}`,
+    sisters: `${p.family?.sisters || 0}`,
+    partnerPreferences: {
+      ageRange: p.preferences?.ageMin ? `${p.preferences.ageMin} - ${p.preferences.ageMax}` : '20-30',
+      heightRange: "5'2\" - 6'0\"",
+      education: p.preferences?.education || 'Any',
+      profession: p.preferences?.occupation || 'Any',
+      location: p.preferences?.city || 'Any',
+      diet: 'Any',
+      manglik: 'Any',
+    },
+    interests: {
+      sent: p.interests?.sent || false,
+      received: p.interests?.received || false,
+      accepted: p.interests?.accepted || false,
+      declined: false
+    },
+    shortlisted: p.shortlisted || false,
+    blocked: p.blocked || false,
+    joinedDate: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently'
+  };
 };
 
 const initialGroups = [
@@ -806,9 +882,25 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const loadMatrimonialProfiles = async () => {
+    try {
+      const res = await matrimonialProfileService.searchProfiles({});
+      if (res?.data?.data?.profiles) {
+        const formatted = res.data.data.profiles.map(mapBackendProfileToFrontend);
+        setMatrimonialProfiles(formatted);
+      }
+    } catch (error) {
+      console.error('Failed to load matrimonial profiles from backend', error);
+      // Fallback is whatever is in localStorage
+    }
+  };
+
   useEffect(() => {
     if (auth.isAuthenticated || headAuth?.isAuthenticated) {
       loadObituaries();
+    }
+    if (auth.isAuthenticated) {
+      loadMatrimonialProfiles();
     }
   }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
 

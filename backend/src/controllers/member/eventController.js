@@ -4,10 +4,10 @@ const EventActivityLog = require('../../models/EventActivityLog');
 
 // Helper to format an event for the frontend member app
 const formatEvent = (event, userId) => {
-  const isRegistered = event.attendees ? event.attendees.some(id => id.toString() === userId.toString()) : false;
-  const isInterested = event.interested ? event.interested.some(id => id.toString() === userId.toString()) : false;
-  const isBookmarked = event.bookmarks ? event.bookmarks.some(id => id.toString() === userId.toString()) : false;
-  const isReminderSet = event.reminders ? event.reminders.some(id => id.toString() === userId.toString()) : false;
+  const isRegistered = event.attendees ? event.attendees.some(id => id && id.toString() === userId.toString()) : false;
+  const isInterested = event.interested ? event.interested.some(id => id && id.toString() === userId.toString()) : false;
+  const isBookmarked = event.bookmarks ? event.bookmarks.some(id => id && id.toString() === userId.toString()) : false;
+  const isReminderSet = event.reminders ? event.reminders.some(id => id && id.toString() === userId.toString()) : false;
 
   return {
     id: event._id,

@@ -1,4 +1,6 @@
 const express = require('express');
+const http    = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const config = require('./config/config');
@@ -6,6 +8,7 @@ const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const rootRouter = require('./routes/index');
 const cookieParser = require('cookie-parser');
+const matrimonialSocket = require('./services/matrimonialSocket');
 
 // Load optional security middlewares with try-catch fallbacks to prevent crashes
 let helmet;
@@ -78,4 +81,21 @@ app.use('*', (req, res) => {
 // Global Error Handling Middleware
 app.use(errorHandler);
 
-module.exports = app;
+// ─── Socket.io Setup ─────────────────────────────────────────────────────────
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL
+      ? process.env.CLIENT_URL.split(',')
+      : true,
+    credentials: true
+  }
+});
+
+// Register socket handlers
+matrimonialSocket(io);
+
+// Attach io to app for access in controllers if needed
+app.set('io', io);
+
+module.exports = { app, httpServer };

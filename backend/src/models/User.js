@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
   plainPassword: { type: String }, // Stored purely for Admin visibility in Head Panel
   
   // Basic Profile Fields
-  name: { type: String },
+  name: { type: String, required: true, trim: true },
   avatar: { type: String }, // URL from cloudinary or base64
   gender: { type: String },
   dob: { type: Date },

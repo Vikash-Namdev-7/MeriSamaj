@@ -1,0 +1,259 @@
+/**
+ * matrimonialInterestController.js
+ * Manages the full interest request lifecycle.
+ */
+const InterestRequest = require('../../models/InterestRequest');
+const MatrimonialProfile = require('../../models/MatrimonialProfile');
+const Conversation = require('../../models/Conversation');
+const UserBlock = require('../../models/UserBlock');
+const UserSubscription = require('../../models/UserSubscription');
+const {
+  notifyInterestReceived,
+  notifyInterestAccepted,
+  notifyInterestRejected
+} = require('../../services/notificationService');
+
+// ─── Send Interest ────────────────────────────────────────────────────────────
+exports.sendInterest = async (req, res) => {
+  try {
+    const { receiverProfileId, message } = req.body;
+    const senderId = req.user._id;
+
+    // Fetch receiver's profile to get their userId
+    const receiverProfile = await MatrimonialProfile.findOne({
+      _id: receiverProfileId,
+      status: 'active',
+      isDeleted: false
+    });
+    if (!receiverProfile) {
+      return res.status(404).json({ status: 'error', message: 'Profile not found or not available.' });
+    }
+
+    const receiverId = receiverProfile.userId;
+
+    // ─── Self-send check ─────────────────────────────────────────────────────
+    if (senderId.equals(receiverId)) {
+      return res.status(400).json({ status: 'error', message: 'You cannot send interest to yourself.' });
+    }
+
+    // ─── Block check ─────────────────────────────────────────────────────────
+    const isBlocked = await UserBlock.findOne({
+      $or: [
+        { userId: senderId, blockedUserId: receiverId },
+        { userId: receiverId, blockedUserId: senderId }
+      ]
+    });
+    if (isBlocked) {
+      return res.status(403).json({ status: 'error', message: 'You cannot send interest to this user.' });
+    }
+
+    // ─── Duplicate check: block if already pending or accepted ────────────────
+    const existing = await InterestRequest.findOne({
+      senderId,
+      receiverId,
+      status: { $in: ['pending', 'accepted'] }
+    });
+    if (existing) {
+      return res.status(400).json({
+        status: 'error',
+        message: existing.status === 'accepted' ? 'You are already connected with this person.' : 'Interest request already sent and is pending.',
+        currentStatus: existing.status
+      });
+    }
+
+    // ─── Plan limit check ─────────────────────────────────────────────────────
+    const { userSubscription } = req;
+    if (userSubscription && req.userFeatures?.interestLimit !== -1) {
+      const used = userSubscription.usage?.interestsSentThisMonth ?? 0;
+      const limit = req.userFeatures.interestLimit;
+      if (used >= limit) {
+        return res.status(403).json({ status: 'error', code: 'INTEREST_LIMIT_REACHED', message: `Monthly limit of ${limit} interests reached. Upgrade to Premium.` });
+      }
+      await UserSubscription.findByIdAndUpdate(userSubscription._id, {
+        $inc: { 'usage.interestsSentThisMonth': 1 }
+      });
+    }
+
+    // ─── Reuse stale record OR create new ────────────────────────────────────
+    // If a rejected/cancelled/withdrawn record exists — reuse it to avoid index conflict
+    let interest;
+    const staleInterest = await InterestRequest.findOne({
+      senderId,
+      receiverId,
+      status: { $in: ['rejected', 'cancelled', 'withdrawn'] }
+    });
+
+    if (staleInterest) {
+      staleInterest.status      = 'pending';
+      staleInterest.message     = message || '';
+      staleInterest.rejectedAt  = undefined;
+      staleInterest.cancelledAt = undefined;
+      staleInterest.withdrawnAt = undefined;
+      staleInterest.conversationId = undefined;
+      await staleInterest.save();
+      interest = staleInterest;
+    } else {
+      interest = await InterestRequest.create({ senderId, receiverId, message });
+    }
+
+    // Update sender's lastActiveAt
+    await MatrimonialProfile.findOneAndUpdate({ userId: senderId }, { lastActiveAt: new Date() });
+
+    // Notify receiver
+    notifyInterestReceived(receiverId, req.user.name, interest._id);
+
+    res.status(201).json({ status: 'success', message: 'Interest sent successfully.', data: { interest } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Accept Interest ──────────────────────────────────────────────────────────
+exports.acceptInterest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const receiverId = req.user._id;
+
+    const interest = await InterestRequest.findOne({ _id: id, receiverId, status: 'pending' });
+    if (!interest) {
+      return res.status(404).json({ status: 'error', message: 'Interest request not found or already processed.' });
+    }
+
+    // ─── Idempotent Conversation creation ────────────────────────────────────
+    let conversation = await Conversation.findOne({
+      type: 'matrimonial',
+      referenceId: interest._id
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [interest.senderId, receiverId],
+        type: 'matrimonial',
+        referenceId: interest._id,
+        createdBy: receiverId,
+        isActive: true
+      });
+    }
+
+    interest.status         = 'accepted';
+    interest.acceptedAt     = new Date();
+    interest.conversationId = conversation._id;
+    await interest.save();
+
+    // ─── Mark both profiles as Connected ─────────────────────────────────────
+    await MatrimonialProfile.updateMany(
+      { userId: { $in: [interest.senderId, receiverId] }, isDeleted: false },
+      { $set: { maritalLifecycle: 'connected', lastActiveAt: new Date() } }
+    );
+
+    // Notify sender
+    notifyInterestAccepted(interest.senderId, req.user.name, interest._id);
+
+    res.json({
+      status: 'success',
+      message: 'Interest accepted! You can now chat.',
+      data: { interest, conversationId: conversation._id }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Reject Interest ──────────────────────────────────────────────────────────
+exports.rejectInterest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const receiverId = req.user._id;
+
+    const interest = await InterestRequest.findOne({ _id: id, receiverId, status: 'pending' });
+    if (!interest) {
+      return res.status(404).json({ status: 'error', message: 'Interest request not found or already processed.' });
+    }
+
+    interest.status = 'rejected';
+    interest.rejectedAt = new Date();
+    await interest.save();
+
+    notifyInterestRejected(interest.senderId, interest._id);
+
+    res.json({ status: 'success', message: 'Interest rejected.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Cancel / Withdraw Interest ───────────────────────────────────────────────
+exports.cancelInterest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const senderId = req.user._id;
+
+    const interest = await InterestRequest.findOne({ _id: id, senderId, status: 'pending' });
+    if (!interest) {
+      return res.status(404).json({ status: 'error', message: 'Interest request not found or cannot be cancelled.' });
+    }
+
+    interest.status = 'cancelled';
+    interest.cancelledAt = new Date();
+    await interest.save();
+
+    res.json({ status: 'success', message: 'Interest cancelled.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── List Sent Interests ────────────────────────────────────────────────────────────────
+const { buildRestrictedProfile } = require('../../middleware/matrimonialPrivacy');
+
+exports.getSentInterests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const query = { senderId: req.user._id };
+    if (status) query.status = status;
+
+    const total = await InterestRequest.countDocuments(query);
+    const interests = await InterestRequest.find(query)
+      .populate('receiverId', 'name avatar')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
+
+    // Enrich with receiver's matrimonial profile
+    const enriched = await Promise.all(interests.map(async (interest) => {
+      const profile = await MatrimonialProfile.findOne({
+        userId: interest.receiverId?._id || interest.receiverId,
+        isDeleted: false
+      }).lean({ virtuals: true });
+      return {
+        ...interest,
+        receiverProfile: profile ? buildRestrictedProfile(profile) : null
+      };
+    }));
+
+    res.json({ status: 'success', data: { interests: enriched, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── List Received Interests ──────────────────────────────────────────────────
+exports.getReceivedInterests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const query = { receiverId: req.user._id };
+    if (status) query.status = status;
+
+    const total = await InterestRequest.countDocuments(query);
+    const interests = await InterestRequest.find(query)
+      .populate('senderId', 'name')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
+
+    res.json({ status: 'success', data: { interests, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};

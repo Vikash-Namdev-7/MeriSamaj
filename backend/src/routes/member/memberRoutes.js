@@ -50,4 +50,21 @@ router.use('/fund', fundRoutes);
 const professionalRoutes = require('./professionalRoutes');
 router.use('/professional', professionalRoutes);
 
+// ─── Matrimonial Module ───────────────────────────────────────────────────────
+const matrimonialProfileRoutes      = require('./matrimonial/matrimonialProfileRoutes');
+const matrimonialSubscriptionRoutes = require('./matrimonial/matrimonialSubscriptionRoutes');
+const matrimonialInterestRoutes     = require('./matrimonial/matrimonialInterestRoutes');
+const matrimonialChatRoutes         = require('./matrimonial/matrimonialChatRoutes');
+const matrimonialAuxRoutes          = require('./matrimonial/matrimonialAuxRoutes');
+
+router.use('/matrimonial/profile',       matrimonialProfileRoutes);
+router.use('/matrimonial/subscription',  matrimonialSubscriptionRoutes);
+router.use('/matrimonial/interests',     matrimonialInterestRoutes);
+router.use('/matrimonial/chat',          matrimonialChatRoutes);
+router.use('/matrimonial',               matrimonialAuxRoutes); // dashboard, shortlist, visitors, block, report
+
+// ─── Notifications (centralized for all modules) ─────────────────────────────
+const notificationRoutes = require('./notificationRoutes');
+router.use('/notifications', notificationRoutes);
+
 module.exports = router;

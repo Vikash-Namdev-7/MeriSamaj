@@ -312,7 +312,9 @@ const membershipRanks = {
 const MatrimonialHomePage = () => {
   const navigate = useNavigate();
   const { currentUser, matrimonialProfiles, toggleMatrimonialInterest, handleMatrimonialInterestResponse, updateProfile, getUnreadCountForModule } = useData();
-  const { shortlistedProfiles, toggleShortlist, isShortlisted, searchFilters, setSearchFilters, recentlyViewedProfiles } = useMatrimonial();
+  const { toggleShortlist, isShortlisted, searchFilters, setSearchFilters } = useMatrimonial();
+  const recentlyViewedProfiles = mockProfilesIVisited;
+  const shortlistedProfiles = []; // Not currently provided by context
 
   const receivedCount = matrimonialProfiles.filter(p => p.interests?.received && !p.interests?.accepted && p.id !== 'mt1').length;
   const acceptedCount = matrimonialProfiles.filter(p => p.interests?.accepted).length;
@@ -671,7 +673,10 @@ const MatrimonialHomePage = () => {
                         </button>
                       )}
                     </div>
-                    <p className="text-[11px] font-bold text-slate-400 mt-0.5 flex items-center gap-1">
+                    <p 
+                      className="text-[11px] font-bold text-slate-400 mt-0.5 flex items-center gap-1 cursor-pointer hover:text-rose-500 transition-colors"
+                      onClick={() => navigate('/member/matrimonial/setup')}
+                    >
                       as per <span className="text-rose-500 font-extrabold">partner preferences</span>
                       <Pencil size={10} className="text-slate-400 stroke-[2.5]" />
                     </p>

@@ -11,6 +11,7 @@ import {
 import { Avatar } from '../common/Avatar';
 
 const hiddenPaths = ['/member/events', '/member/groups', '/member/notifications', '/member/splash', '/member/login', '/member/setup-profile', '/member/select-community', '/member/verify-otp', '/member/chat/room', '/member/chat/call', '/member/matrimonial'];
+const sideNavHiddenPaths = ['/member/events', '/member/groups', '/member/notifications', '/member/splash', '/member/login', '/member/setup-profile', '/member/select-community', '/member/verify-otp'];
 
 export const MemberLayout = () => {
   const location = useLocation();
@@ -45,6 +46,7 @@ export const MemberLayout = () => {
   }, [location.pathname]);
 
   const shouldHideBottomNav = hiddenPaths.some(p => location.pathname.startsWith(p)) || location.pathname.split('/').filter(Boolean).length > 2;
+  const shouldHideSideNav = sideNavHiddenPaths.some(p => location.pathname.startsWith(p)) || location.pathname.split('/').filter(Boolean).length > 2;
   const isFullHeightRoute = location.pathname.startsWith('/member/social') || location.pathname === '/member/chat';
 
   const handleMenuLinkClick = (path) => {
@@ -74,7 +76,7 @@ export const MemberLayout = () => {
       <SideNav />
       <div 
         ref={scrollContainerRef}
-        className={`flex-1 w-full min-w-0 h-full overflow-y-auto ${shouldHideBottomNav || isFullHeightRoute ? 'pb-0' : 'pb-20'} md:pb-0 md:ml-[260px]`}
+        className={`flex-1 w-full min-w-0 h-full overflow-y-auto ${shouldHideBottomNav || isFullHeightRoute ? 'pb-0' : 'pb-20'} md:pb-0 ${shouldHideSideNav ? '' : 'md:ml-[260px]'}`}
       >
         {/* pb-20 accounts for floating bottom nav with margin */}
         <Outlet />
@@ -208,7 +210,7 @@ export const MemberLayout = () => {
                 onClick={async () => {
                   setMobileMenuOpen(false);
                   await logout();
-                  navigate('/member/login');
+                  navigate('/member/login', { state: { skipLanguage: true } });
                 }}
                 className="w-full flex items-center justify-center gap-2.5 py-3 rounded-[14px] text-[12px] font-bold uppercase tracking-wider transition-all active:scale-95"
                 style={{

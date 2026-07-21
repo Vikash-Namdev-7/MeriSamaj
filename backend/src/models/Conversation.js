@@ -1,0 +1,56 @@
+const mongoose = require('mongoose');
+
+/**
+ * Conversation — Shared Chat Module
+ * Supports multiple chat types: matrimonial, member, community, group, support.
+ * This avoids creating separate ChatRoom models per module.
+ */
+const conversationSchema = new mongoose.Schema(
+  {
+    participants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      }
+    ],
+
+    // ─── Context ─────────────────────────────────────────────────────────────
+    type: {
+      type: String,
+      enum: ['matrimonial', 'member', 'community', 'group', 'support'],
+      default: 'member',
+      index: true
+    },
+    referenceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null
+      // For matrimonial: interestId; for group: groupId; etc.
+    },
+
+    // ─── Last Message Cache (avoids querying Message collection on list) ──────
+    lastMessageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
+      default: null
+    },
+    lastMessageAt: { type: Date, default: null, index: true },
+    lastMessagePreview: { type: String, default: '' }, // Plain text preview
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    isActive: { type: Boolean, default: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    // ─── Soft Delete ─────────────────────────────────────────────────────────
+    isDeleted:  { type: Boolean, default: false },
+    deletedAt:  { type: Date }
+  },
+  { timestamps: true }
+);
+
+// ─── Indexes ─────────────────────────────────────────────────────────────────
+conversationSchema.index({ participants: 1 });
+conversationSchema.index({ type: 1, referenceId: 1 });
+conversationSchema.index({ lastMessageAt: -1, isDeleted: 1 });
+
+module.exports = mongoose.model('Conversation', conversationSchema);
