@@ -13,27 +13,54 @@ const { createNotification } = require('../../services/notificationService');
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 exports.getStats = async (req, res) => {
   try {
+    const now   = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo  = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1);
+
     const [
-      totalProfiles, activeProfiles, pendingPhotos,
-      pendingReports, totalSubscriptions, activeSubscriptions
+      totalProfiles, pendingProfiles, activeProfiles, hiddenProfiles,
+      pendingPhotos, pendingReports,
+      totalSubscriptions, activeSubscriptions,
+      connectedMembers,
+      dailyRegistrations, weeklyRegistrations, monthlyRegistrations,
+      totalInterests, acceptedInterests
     ] = await Promise.all([
       MatrimonialProfile.countDocuments({ isDeleted: false }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, status: 'pending' }),
       MatrimonialProfile.countDocuments({ isDeleted: false, status: 'active' }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, status: 'hidden' }),
       MatrimonialProfile.countDocuments({ 'photos.status': 'pending', isDeleted: false }),
       ProfileReport.countDocuments({ status: 'pending' }),
       UserSubscription.countDocuments(),
-      UserSubscription.countDocuments({ status: 'active' })
+      UserSubscription.countDocuments({ status: 'active' }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, maritalLifecycle: 'connected' }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, createdAt: { $gte: today } }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, createdAt: { $gte: weekAgo } }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, createdAt: { $gte: monthAgo } }),
+      InterestRequest.countDocuments(),
+      InterestRequest.countDocuments({ status: 'accepted' })
     ]);
 
     res.json({
       status: 'success',
       data: {
         totalProfiles,
+        pendingProfiles,
         activeProfiles,
+        hiddenProfiles,
         pendingPhotos,
         pendingReports,
         totalSubscriptions,
-        activeSubscriptions
+        activeSubscriptions,
+        connectedMembers,
+        dailyRegistrations,
+        weeklyRegistrations,
+        monthlyRegistrations,
+        totalInterests,
+        acceptedInterests,
+        interestAcceptanceRate: totalInterests > 0
+          ? Math.round((acceptedInterests / totalInterests) * 100) : 0
       }
     });
   } catch (err) {
@@ -80,7 +107,13 @@ exports.verifyProfile = async (req, res) => {
     if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
 
     profile.verificationStatus = status;
-    if (status === 'verified') profile.status = 'active';
+    // ─── Critical: when verified → set status to 'active' so it appears in search
+    //          when rejected → keep hidden (not deleted) so user can fix and resubmit
+    if (status === 'verified') {
+      profile.status = 'active';
+    } else if (status === 'rejected') {
+      profile.status = 'hidden'; // Hidden but not deleted — user can update and resubmit
+    }
     profile.verifiedBy = req.user._id;
     profile.verifiedAt = new Date();
     await profile.save();
@@ -92,7 +125,7 @@ exports.verifyProfile = async (req, res) => {
       type:     `matrimonial_profile_${status}`,
       title:    status === 'verified' ? 'Profile Verified! ✅' : 'Profile Verification Rejected',
       message:  status === 'verified'
-        ? 'Your matrimonial profile has been verified. A verified badge is now visible on your profile.'
+        ? 'Your matrimonial profile has been verified and is now visible in search results.'
         : `Your profile verification was rejected. Reason: ${adminNote || 'Contact admin for details.'}`,
       icon:     status === 'verified' ? '✅' : '❌',
       priority: 'high',

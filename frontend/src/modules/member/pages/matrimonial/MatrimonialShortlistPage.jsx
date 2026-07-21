@@ -26,7 +26,8 @@ const MatrimonialShortlistPage = () => {
     setLoading(true);
     try {
       const res = await matrimonialShortlistService.getShortlist();
-      setShortlist(res.data.data.shortlist || []);
+      // Backend returns data.items (not data.shortlist)
+      setShortlist(res.data.data?.items || res.data.data?.shortlist || []);
     } catch (err) {
       console.error('Shortlist fetch failed:', err.response?.data?.message);
     } finally {
@@ -168,7 +169,7 @@ const MatrimonialShortlistPage = () => {
                         </div>
                       )}
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        Saved on {new Date(item.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      Saved on {new Date(item.addedAt || item.createdAt || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </p>
                     </div>
 

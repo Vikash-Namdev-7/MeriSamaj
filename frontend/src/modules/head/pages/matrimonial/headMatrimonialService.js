@@ -4,7 +4,7 @@
  */
 import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 
-const BASE = '/api/v1/head/matrimonial';
+const BASE = '/head/matrimonial';
 
 export const headMatrimonialService = {
   // Community profiles

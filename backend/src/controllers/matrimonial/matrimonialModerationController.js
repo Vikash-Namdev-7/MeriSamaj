@@ -57,15 +57,33 @@ exports.getMyVisitors = async (req, res) => {
     const myProfile = await MatrimonialProfile.findOne({ userId: req.user._id, isDeleted: false });
     if (!myProfile) return res.status(404).json({ status: 'error', message: 'No matrimonial profile found.' });
 
+    // Populate visitorId as 'visitorProfile' — matches MatrimonialContext normalizer:
+    // v.visitorProfile?.personal?.fullName, v.visitorProfile?.photos, etc.
     const { page = 1, limit = 20 } = req.query;
     const total = await ProfileVisitor.countDocuments({ profileId: myProfile._id });
     const visitors = await ProfileVisitor.find({ profileId: myProfile._id })
       .sort({ lastVisited: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
-      .populate('visitorId', 'name');
+      .populate({
+        path: 'visitorId',
+        select: 'name avatar',
+      })
+      .lean();
 
-    res.json({ status: 'success', data: { visitors, total, page: Number(page) } });
+    // Enrich each visitor with their matrimonial profile data
+    const enriched = await Promise.all(visitors.map(async v => {
+      const visitorMatrimonialProfile = await MatrimonialProfile.findOne({
+        userId: v.visitorId?._id || v.visitorId,
+        isDeleted: false
+      }).select('personal location education photos age').lean();
+      return {
+        ...v,
+        visitorProfile: visitorMatrimonialProfile || null,
+      };
+    }));
+
+    res.json({ status: 'success', data: { visitors: enriched, total, page: Number(page) } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -101,8 +119,10 @@ exports.unblockUser = async (req, res) => {
 
 exports.getBlockedUsers = async (req, res) => {
   try {
-    const blocked = await UserBlock.find({ userId: req.user._id }).populate('blockedUserId', 'name avatar');
-    res.json({ status: 'success', data: { blocked } });
+    const blockedUsers = await UserBlock.find({ userId: req.user._id })
+      .populate('blockedUserId', 'name avatar');
+    // Response key is 'blockedUsers' to match frontend MatrimonialContext contract
+    res.json({ status: 'success', data: { blockedUsers } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }

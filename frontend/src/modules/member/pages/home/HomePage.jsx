@@ -11,7 +11,12 @@ import { t } from '../../utils/translations';
 import { StoryViewer } from '../../components/common/StoryViewer';
 import { CityLandscape } from '../../components/common/CityLandscape';
 import { mockAdmins as mockAdminsRaw } from '../../data/mockUsers';
-import { mockSuccessStories } from '../../data/mockMatrimonial';
+// Static success stories for home page — matrimonial module shows community matches
+const mockSuccessStories = [
+  { id: 'ss1', groomName: 'Rajesh & Priya Agrawal', location: 'Indore', marriageDate: 'Feb 2026', avatar: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80', quote: 'Found our match on MeriSamaj within 3 months!' },
+  { id: 'ss2', groomName: 'Vikram & Sunita Sharma', location: 'Bhopal', marriageDate: 'Apr 2026', avatar: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80', quote: 'Community filter made finding the right match easy.' },
+  { id: 'ss3', groomName: 'Amit & Kavita Gupta', location: 'Delhi', marriageDate: 'Jun 2026', avatar: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80', quote: 'Our families connected through MeriSamaj. Grateful!' },
+];
 import ReferAndEarnBanner from './ReferAndEarnBanner';
 import { useDonation } from '../donation/DonationContext';
 

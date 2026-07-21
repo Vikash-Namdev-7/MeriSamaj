@@ -247,12 +247,25 @@ exports.getReceivedInterests = async (req, res) => {
 
     const total = await InterestRequest.countDocuments(query);
     const interests = await InterestRequest.find(query)
-      .populate('senderId', 'name')
+      .populate('senderId', 'name avatar')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
 
-    res.json({ status: 'success', data: { interests, total, page: Number(page) } });
+    // Enrich with sender's matrimonial profile
+    const enriched = await Promise.all(interests.map(async (interest) => {
+      const profile = await MatrimonialProfile.findOne({
+        userId: interest.senderId?._id || interest.senderId,
+        isDeleted: false
+      }).lean({ virtuals: true });
+      return {
+        ...interest,
+        senderProfile: profile ? buildRestrictedProfile(profile) : null
+      };
+    }));
+
+    res.json({ status: 'success', data: { interests: enriched, total, page: Number(page) } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }

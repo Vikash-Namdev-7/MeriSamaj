@@ -1,35 +1,70 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
-import { matrimonialDashboardService, matrimonialShortlistService, matrimonialModerationService } from '../../../../core/api/matrimonialService';
+import {
+  matrimonialDashboardService,
+  matrimonialShortlistService,
+  matrimonialModerationService,
+  matrimonialProfileService,
+  matrimonialInterestService,
+  matrimonialVisitorService
+} from '../../../../core/api/matrimonialService';
 
 const MatrimonialContext = createContext(null);
 
 /**
  * MatrimonialProvider — Root context for the Matrimonial module.
- * Now backed by real API calls. Wraps child routes via <Outlet />.
+ * Single source of truth for all matrimonial data.
+ * All pages read from here, not from DataProvider or mock data.
  */
 export const MatrimonialProvider = () => {
+  // ─── My Own Profile ──────────────────────────────────────────────────────
+  const [myProfile, setMyProfile]           = useState(null);
+  const [myProfileLoading, setMyProfileLoading] = useState(false);
+
   // ─── Dashboard Data ───────────────────────────────────────────────────────
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard]           = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
+  // ─── Interests (from dashboard) ───────────────────────────────────────────
+  const [receivedInterests, setReceivedInterests] = useState([]);
+  const [sentInterests, setSentInterests]         = useState([]);
+  const [acceptedInterests, setAcceptedInterests] = useState([]);
+  const [interestsLoading, setInterestsLoading]   = useState(false);
+
+  // ─── Visitors ─────────────────────────────────────────────────────────────
+  const [visitors, setVisitors]             = useState([]);
+  const [visitorsLoading, setVisitorsLoading] = useState(false);
+
   // ─── UI State ─────────────────────────────────────────────────────────────
-  const [viewMode, setViewMode]                 = useState(() => {
+  const [viewMode, setViewMode] = useState(() => {
     try { return JSON.parse(localStorage.getItem('merisamaj_matri_viewMode')) || 'grid'; } catch { return 'grid'; }
   });
   const [activeDiscoveryTab, setActiveDiscoveryTab] = useState('recommended');
   const [searchFilters, setSearchFilters]           = useState(null);
 
-  // ─── Shortlist local state (synced from API) ──────────────────────────────
+  // ─── Shortlist (synced from API) ──────────────────────────────────────────
   const [shortlistedIds, setShortlistedIds] = useState([]);
 
-  // ─── Blocked (local, backed by API calls) ────────────────────────────────
-  const [blockedIds, setBlockedIds] = useState([]);
+  // ─── Blocked (local, backed by API) ──────────────────────────────────────
+  const [blockedIds, setBlockedIds]         = useState([]);
 
-  // Persist view mode preference
+  // Persist view mode
   useEffect(() => {
     localStorage.setItem('merisamaj_matri_viewMode', JSON.stringify(viewMode));
   }, [viewMode]);
+
+  // ─── Fetch My Profile ─────────────────────────────────────────────────────
+  const fetchMyProfile = useCallback(async () => {
+    setMyProfileLoading(true);
+    try {
+      const res = await matrimonialProfileService.getMyProfile();
+      setMyProfile(res.data.data.profile || null);
+    } catch (err) {
+      console.error('[MatrimonialContext] My profile fetch failed:', err.response?.data?.message);
+    } finally {
+      setMyProfileLoading(false);
+    }
+  }, []);
 
   // ─── Fetch Dashboard ──────────────────────────────────────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -41,6 +76,118 @@ export const MatrimonialProvider = () => {
       console.error('[MatrimonialContext] Dashboard fetch failed:', err.response?.data?.message);
     } finally {
       setDashboardLoading(false);
+    }
+  }, []);
+
+  // ─── Fetch Interest Lists ─────────────────────────────────────────────────
+  const fetchInterests = useCallback(async () => {
+    setInterestsLoading(true);
+    try {
+      const [receivedRes, sentRes] = await Promise.all([
+        matrimonialInterestService.getReceivedInterests({ limit: 50 }),
+        matrimonialInterestService.getSentInterests({ limit: 50 })
+      ]);
+
+      const received = receivedRes.data.data.interests || [];
+      const sent     = sentRes.data.data.interests || [];
+
+      setReceivedInterests(received.filter(i => i.status === 'pending'));
+      setSentInterests(sent.filter(i => i.status === 'pending'));
+      setAcceptedInterests([
+        ...received.filter(i => i.status === 'accepted'),
+        ...sent.filter(i => i.status === 'accepted')
+      ]);
+    } catch (err) {
+      console.error('[MatrimonialContext] Interests fetch failed:', err.response?.data?.message);
+    } finally {
+      setInterestsLoading(false);
+    }
+  }, []);
+
+  // ─── Fetch Visitors ───────────────────────────────────────────────────────
+  const fetchVisitors = useCallback(async () => {
+    setVisitorsLoading(true);
+    try {
+      const res = await matrimonialVisitorService.getMyVisitors({ limit: 20 });
+      setVisitors(res.data.data?.visitors || []);
+    } catch (err) {
+      console.error('[MatrimonialContext] Visitors fetch failed:', err.response?.data?.message);
+    } finally {
+      setVisitorsLoading(false);
+    }
+  }, []);
+
+  // ─── Fetch Shortlisted IDs on mount ──────────────────────────────────────
+  const fetchShortlistIds = useCallback(async () => {
+    try {
+      const res = await matrimonialShortlistService.getShortlist({ limit: 200 });
+      const ids = (res.data.data?.items || []).map(i => i.profileId?._id || i.profileId);
+      setShortlistedIds(ids.filter(Boolean));
+    } catch (err) {
+      // Silently ignore — user may not have any shortlisted profiles
+    }
+  }, []);
+
+  // ─── Fetch Blocked IDs on mount ───────────────────────────────────────────
+  const fetchBlockedIds = useCallback(async () => {
+    try {
+      const res = await matrimonialModerationService.getBlockedUsers();
+      const ids = (res.data.data?.blockedUsers || []).map(b => b.blockedUserId?._id || b.blockedUserId);
+      setBlockedIds(ids.filter(Boolean));
+    } catch (err) {
+      // Silently ignore
+    }
+  }, []);
+
+  // ─── Bootstrap on mount ───────────────────────────────────────────────────
+  useEffect(() => {
+    fetchMyProfile();
+    fetchDashboard();
+    fetchInterests();
+    fetchVisitors();
+    fetchShortlistIds();
+    fetchBlockedIds();
+  }, [fetchMyProfile, fetchDashboard, fetchInterests, fetchVisitors, fetchShortlistIds, fetchBlockedIds]);
+
+  // ─── Interest Actions (real API) ──────────────────────────────────────────
+  const sendInterest = useCallback(async (receiverProfileId, message = '') => {
+    try {
+      const res = await matrimonialInterestService.sendInterest({ receiverProfileId, message });
+      await fetchInterests(); // Refresh interest counts
+      return { success: true, data: res.data.data };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Failed to send interest' };
+    }
+  }, [fetchInterests]);
+
+  const acceptInterest = useCallback(async (interestId) => {
+    try {
+      const res = await matrimonialInterestService.acceptInterest(interestId);
+      await fetchInterests();
+      await fetchMyProfile(); // Refresh maritalLifecycle
+      return { success: true, data: res.data.data };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Failed to accept interest' };
+    }
+  }, [fetchInterests, fetchMyProfile]);
+
+  const rejectInterest = useCallback(async (interestId) => {
+    try {
+      await matrimonialInterestService.rejectInterest(interestId);
+      setReceivedInterests(prev => prev.filter(i => i._id !== interestId));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Failed to reject interest' };
+    }
+  }, []);
+
+  const cancelInterest = useCallback(async (interestId) => {
+    try {
+      await matrimonialInterestService.cancelInterest(interestId);
+      setSentInterests(prev => prev.filter(i => i._id !== interestId));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Failed to cancel interest' };
     }
   }, []);
 
@@ -66,9 +213,7 @@ export const MatrimonialProvider = () => {
   }, []);
 
   const toggleShortlist = useCallback(async (profileId, notes = '') => {
-    if (shortlistedIds.includes(profileId)) {
-      return removeFromShortlist(profileId);
-    }
+    if (shortlistedIds.includes(profileId)) return removeFromShortlist(profileId);
     return addToShortlist(profileId, notes);
   }, [shortlistedIds, addToShortlist, removeFromShortlist]);
 
@@ -102,10 +247,31 @@ export const MatrimonialProvider = () => {
   }, []);
 
   const value = {
+    // My profile
+    myProfile,
+    myProfileLoading,
+    fetchMyProfile,
+
     // Dashboard
     dashboard,
     dashboardLoading,
     fetchDashboard,
+
+    // Interests
+    receivedInterests,
+    sentInterests,
+    acceptedInterests,
+    interestsLoading,
+    fetchInterests,
+    sendInterest,
+    acceptInterest,
+    rejectInterest,
+    cancelInterest,
+
+    // Visitors
+    visitors,
+    visitorsLoading,
+    fetchVisitors,
 
     // UI
     viewMode,

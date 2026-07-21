@@ -6,7 +6,7 @@ import { useHeadAuth } from '../../head/auth/useHeadAuth';
 import { currentUser as initialUser, mockMembers as initialMembers, mockAdmins as initialAdmins } from '../data/mockUsers';
 import { mockPosts as initialPosts } from '../data/mockPosts';
 import { mockEvents as initialEvents } from '../data/mockEvents';
-import { mockMatrimonialProfiles as initialMatrimonial } from '../data/mockMatrimonial';
+import { mockMatrimonialProfiles as initialMatrimonial } from '../data/mockMatrimonial'; // DEPRECATED: matrimonial module now uses MatrimonialContext, not DataProvider
 import { mockObituaries as initialObituaries } from '../data/mockObituaries';
 import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
@@ -756,44 +756,12 @@ export const DataProvider = ({ children }) => {
       };
     });
   });
-  const [matrimonialProfiles, setMatrimonialProfiles] = useState(() => {
-    const saved = loadState('matrimonialProfiles', initialMatrimonial);
-    return saved.map((p, index) => {
-      let communityId = 'c2';
-      // mt1, mt2, and mt_khyati belong to the Community Head's community ('c1')
-      if (p.id === 'mt1' || p.id === 'mt2' || p.id === 'mt_khyati') {
-        communityId = 'c1';
-      } else if (p.id === 'mt3') communityId = 'c2';
-      else if (p.id === 'mt4') communityId = 'c3';
-      else if (p.id === 'mt5') communityId = 'c4';
-      else if (p.id === 'mt6') communityId = 'c5';
-      else if (p.id === 'mt7') communityId = 'c6';
-      else if (p.id === 'mt8') communityId = 'c7';
-      else if (p.id === 'mt9') communityId = 'c8';
-      else if (p.id === 'mt10') communityId = 'c9';
-
-      return {
-        ...p,
-        communityId,
-        status: p.status || 'Published', // Draft, Submitted, Under Review, Approved, Published, Matched, Archived, Rejected, Correction Requested
-        verificationStatus: p.verificationStatus || 'Verified', // Pending, Under Review, Verified, Rejected
-        verificationBadge: p.verificationBadge || (p.verifiedStatus ? 'Gold' : 'None'),
-        familyBackground: p.familyBackground || `${p.familyAffluence || 'Middle Class'} / ${p.familyValues || 'Traditional'} Values`,
-        documents: p.documents || [
-          { id: 'doc1', type: 'Community Certificate', status: 'Verified', fileName: 'Community_Cert.pdf', fileUrl: '#' },
-          { id: 'doc2', type: 'Identity Proof', status: 'Verified', fileName: 'Aadhaar_Card.pdf', fileUrl: '#' },
-          { id: 'doc3', type: 'Address Proof', status: 'Verified', fileName: 'Utility_Bill.pdf', fileUrl: '#' }
-        ],
-        complaints: p.complaints || [
-          { id: 'comp1', type: 'Fake Information', reportedBy: 'Sunil Agrawal', evidence: 'Age is incorrect', priority: 'Medium', status: 'Pending', assignedDate: '2026-06-25T10:00:00Z', notes: '' }
-        ],
-        auditLogs: p.auditLogs || [
-          { id: 'log1', action: 'Profile Created', oldStatus: null, newStatus: 'Draft', performedBy: p.name, timestamp: '2026-04-10T12:00:00Z', reason: 'Initial registration' },
-          { id: 'log2', action: 'Profile Verification', oldStatus: 'Submitted', newStatus: 'Published', performedBy: 'Shri Mohan Lal Agrawal', timestamp: '2026-04-15T15:00:00Z', reason: 'Verified certificates' }
-        ]
-      };
-    });
-  });
+  // ─── Matrimonial Profiles ─────────────────────────────────────────────────
+  // NOTE: The Matrimonial module now uses MatrimonialContext exclusively for data.
+  // This state is kept as an empty placeholder for admin panel functions that
+  // mutate profile objects passed in by reference (updateMatrimonialProfileStatus, etc.)
+  // Do NOT initialise from mockMatrimonial — that data is served by the backend.
+  const [matrimonialProfiles, setMatrimonialProfiles] = useState([]);
   const [language, setLanguage] = useState(() => loadState('language', 'en'));
   const [groups, setGroups] = useState(() => {
     const saved = loadState('groups', initialGroups);
@@ -899,9 +867,7 @@ export const DataProvider = ({ children }) => {
     if (auth.isAuthenticated || headAuth?.isAuthenticated) {
       loadObituaries();
     }
-    if (auth.isAuthenticated) {
-      loadMatrimonialProfiles();
-    }
+    // NOTE: Matrimonial profiles are loaded by MatrimonialContext, not DataProvider
   }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
 
   // Sync to localStorage when state changes
@@ -912,7 +878,7 @@ export const DataProvider = ({ children }) => {
   useEffect(() => saveState('followedAnnouncements', followedAnnouncements), [followedAnnouncements]);
   useEffect(() => saveState('events', events), [events]);
   // useEffect(() => saveState('obituaries', obituaries), [obituaries]); // Managed dynamically via backend now
-  useEffect(() => saveState('matrimonialProfiles', matrimonialProfiles), [matrimonialProfiles]);
+  // NOTE: matrimonialProfiles localStorage sync removed — managed by MatrimonialContext
   useEffect(() => saveState('language', language), [language]);
   useEffect(() => saveState('professionals', professionals), [professionals]);
   useEffect(() => saveState('groups', groups), [groups]);
@@ -1416,69 +1382,9 @@ export const DataProvider = ({ children }) => {
     setMatrimonialProfiles(prev => [newProfile, ...prev]);
   };
 
-  const toggleMatrimonialInterest = (profileId) => {
-    setMatrimonialProfiles(prev => {
-      const updated = prev.map(p => {
-        if (p.id === profileId) {
-          const newSent = !p.interests.sent;
-          return {
-            ...p,
-            interests: {
-              ...p.interests,
-              sent: newSent,
-              // If withdrawing, reset accepted status
-              accepted: newSent ? p.interests.accepted : false
-            }
-          };
-        }
-        return p;
-      });
-
-      // Find if we just sent a request
-      const target = updated.find(p => p.id === profileId);
-      if (target && target.interests?.sent && !target.interests?.accepted) {
-        // Trigger auto acceptance after 5 seconds to simulate target response
-        setTimeout(() => {
-          setMatrimonialProfiles(current => current.map(item => {
-            if (item.id === profileId) {
-              return {
-                ...item,
-                interests: {
-                  ...item.interests,
-                  accepted: true
-                }
-              };
-            }
-            return item;
-          }));
-
-          // Trigger a global custom event so active pages can show a toast
-          const event = new CustomEvent('matrimonialInterestAccepted', {
-            detail: { profileId, name: target.name }
-          });
-          window.dispatchEvent(event);
-        }, 5000);
-      }
-
-      return updated;
-    });
-  };
-
-  const handleMatrimonialInterestResponse = (profileId, status) => {
-    setMatrimonialProfiles(prev => prev.map(p => {
-      if (p.id === profileId) {
-        return {
-          ...p,
-          interests: {
-            ...p.interests,
-            received: false,
-            accepted: status === 'accept'
-          }
-        };
-      }
-      return p;
-    }));
-  };
+  // NOTE: toggleMatrimonialInterest and handleMatrimonialInterestResponse have been removed.
+  // All interest operations now go through matrimonialInterestService (real API).
+  // Use the interest actions in MatrimonialContext or call matrimonialInterestService directly.
 
   const updateMatrimonialBio = (newBio) => {
     setCurrentUser(prev => ({
@@ -1921,7 +1827,7 @@ export const DataProvider = ({ children }) => {
     setAdmins(initialAdmins);
     setPosts(initialPosts);
     setEvents(initialEvents);
-    setMatrimonialProfiles(initialMatrimonial);
+    setMatrimonialProfiles([]); // Matrimonial data is served by backend via MatrimonialContext
     setGroups(initialGroups);
     setGroupMessages(initialGroupMessages);
     setNotifications(initialNotifications);
@@ -2118,7 +2024,7 @@ export const DataProvider = ({ children }) => {
   const adaptedAdminsList = adaptAdmins(admins, activeCommunity);
   const adaptedPostsList = adaptPosts(posts, activeCommunity);
   const adaptedStoriesList = adaptStories(stories, activeCommunity);
-  const adaptedMatrimonialList = adaptMatrimonial(matrimonialProfiles, currentUser);
+  const adaptedMatrimonialList = matrimonialProfiles; // Admin functions operate on injected data; no adapt needed
   const adaptedGroupsList = adaptGroups(groups, activeCommunity);
   const adaptedGroupMessagesMap = adaptGroupMessages(groupMessages, activeCommunity);
   const adaptedNotificationsList = adaptNotifications(notifications, activeCommunity);
@@ -2691,6 +2597,12 @@ export const DataProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    loginUser,
+    logoutUser,
+    updateProfile,
+    addFamilyMember,
+    updateFamilyMember,
+    deleteFamilyMember,
     members: adaptedMembersList,
     admins: adaptedAdminsList,
     posts: adaptedPostsList,
@@ -2751,9 +2663,8 @@ export const DataProvider = ({ children }) => {
     toggleCommentLike,
     followedAnnouncements,
     toggleFollowedAnnouncement,
-    addMatrimonialProfile,
-    toggleMatrimonialInterest,
-    handleMatrimonialInterestResponse,
+    // NOTE: addMatrimonialProfile, toggleMatrimonialInterest, handleMatrimonialInterestResponse REMOVED.
+    // Use matrimonialInterestService and matrimonialProfileService (real API) directly.
     updateMatrimonialBio,
     chats,
     chatMessages,

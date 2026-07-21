@@ -1,7 +1,34 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Quote, Star, Sparkles } from 'lucide-react';
-import { mockSuccessStories } from '../../data/mockMatrimonial';
+
+// Static success stories — will be replaced by API when endpoint is available
+const successStories = [
+  {
+    id: 'ss1',
+    groomName: 'Rajesh & Priya Agrawal',
+    location: 'Indore',
+    marriageDate: 'Feb 2026',
+    avatar: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
+    quote: 'MeriSamaj connected us in ways we never imagined. Within 3 months of creating our profiles, we found each other and knew it was meant to be.'
+  },
+  {
+    id: 'ss2',
+    groomName: 'Vikram & Sunita Sharma',
+    location: 'Bhopal',
+    marriageDate: 'Apr 2026',
+    avatar: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80',
+    quote: 'The community filter was perfect — finding someone from the same gotra and values was easy. Thank you MeriSamaj!'
+  },
+  {
+    id: 'ss3',
+    groomName: 'Amit & Kavita Gupta',
+    location: 'Delhi',
+    marriageDate: 'Jun 2026',
+    avatar: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80',
+    quote: 'Our families connected through MeriSamaj, and the entire courtship was smooth and respectful. We are grateful to this platform.'
+  },
+];
 
 const MatrimonialSuccessStories = () => {
   const navigate = useNavigate();
@@ -37,7 +64,7 @@ const MatrimonialSuccessStories = () => {
 
         {/* Stories List */}
         <div className="space-y-4">
-          {mockSuccessStories.map(story => (
+          {successStories.map(story => (
             <div key={story.id} className="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden flex flex-col">
               {/* Image Banner */}
               <div className="relative h-48 bg-slate-900 overflow-hidden">

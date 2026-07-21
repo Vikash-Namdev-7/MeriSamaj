@@ -4,7 +4,7 @@
  */
 import { axiosPrivate } from '../../../../../core/api/axiosPrivate';
 
-const BASE = '/api/v1/admin/matrimonial';
+const BASE = '/admin/matrimonial';
 
 export const matrimonialService = {
   // Dashboard

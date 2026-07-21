@@ -6,335 +6,46 @@ import {
   Briefcase, GraduationCap, Clock, Check, Bookmark, BookmarkCheck,
   Play, Pencil, User, Image, Lock, ShieldAlert, Award, EyeOff, ArrowLeft, Plus,
   Phone, MailCheck, ShieldCheck as VerifiedIcon, Sparkles as SpotlightIcon,
-  PhoneCall, Users
+  PhoneCall, Users, SwitchCamera
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { useMatrimonial } from './MatrimonialContext';
 
-// ─── 6 HIGH-QUALITY DUMMY PROFILES WITH MEMBERSHIP TIERS ───
-// ─── 6 HIGH-QUALITY DUMMY PROFILES WITH MEMBERSHIP TIERS ───
-const dummyMatrimonialFeed = [
-  {
-    id: 'mt5',
-    name: 'Ritu Dodiya',
-    age: 29,
-    gender: 'Female',
-    height: "5' 2\"",
-    city: 'Indore',
-    community: 'Mali',
-    gotra: 'Dodiya',
-    profession: 'Software Professional',
-    income: '₹5-7.5 Lacs p.a',
-    education: 'MCA',
-    managedBy: 'Self',
-    activeStatus: 'Active Today',
-    photoCount: 2,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro Supreme',
-    about: 'I am an independent Software Professional currently working in Indore. I hold an MCA degree and value family, honesty, and continuous learning. Looking for a progressive life partner.',
-    familyType: 'Nuclear',
-    familyValues: 'Moderate',
-    fatherOccupation: 'Retired Engineer',
-    motherOccupation: 'Homemaker',
-    brothers: '1 (Unmarried)',
-    sisters: 'None',
-    diet: 'Vegetarian',
-    manglik: 'No',
-    star: 'Chitra',
-    rashi: 'Kanya',
-    partnerPrefs: 'Looking for a well-educated software professional with a positive outlook on life.'
-  },
-  {
-    id: 'mt6',
-    name: 'Ruchi Saini',
-    age: 26,
-    gender: 'Female',
-    height: "5' 2\"",
-    city: 'Indore',
-    community: 'Mali',
-    gotra: 'Saini',
-    profession: 'Customer Service',
-    income: '₹2-3 Lacs p.a',
-    education: 'MBA/PGDM',
-    managedBy: 'Self',
-    activeStatus: 'Active Today',
-    photoCount: 5,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro',
-    about: 'I am a customer service professional, currently working in Indore. I hold an MBA degree and enjoy listening to music, traveling, and spending time with my family.',
-    familyType: 'Nuclear',
-    familyValues: 'Moderate',
-    fatherOccupation: 'Retired Government Employee',
-    motherOccupation: 'Homemaker',
-    brothers: '1 (Married)',
-    sisters: 'None',
-    diet: 'Vegetarian',
-    manglik: 'No',
-    star: 'Rohini',
-    rashi: 'Vrishabha',
-    partnerPrefs: 'Looking for a matching, well-educated professional from a respectable family.'
-  },
-  {
-    id: 'mt_khyati',
-    name: 'Khyati Sharma',
-    age: 24,
-    gender: 'Female',
-    height: "5' 6\"",
-    city: 'Delhi',
-    community: 'Agrawal',
-    gotra: 'Jatav',
-    profession: 'Software Developer',
-    income: '₹8-10 Lacs p.a',
-    education: 'B.Tech / MCA',
-    managedBy: 'Parents',
-    activeStatus: 'Online Now',
-    photoCount: 4,
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro Max',
-    about: 'I run a fashion design studio in Delhi. I spend my time designing outfits and exploring new style trends. Seeking a life partner who shares creative ideas.',
-    familyType: 'Joint',
-    familyValues: 'Traditional',
-    fatherOccupation: 'Business Owner',
-    motherOccupation: 'Homemaker',
-    brothers: 'None',
-    sisters: '1 (Unmarried)',
-    diet: 'Vegetarian',
-    manglik: 'No',
-    star: 'Hasta',
-    rashi: 'Kanya',
-    partnerPrefs: 'Looking for a partner with similar values in Delhi/NCR.'
-  },
-  {
-    id: 'mt1',
-    name: 'Priya Agrawal',
-    age: 26,
-    gender: 'Female',
-    height: "5' 4\"",
-    city: 'Indore',
-    community: 'Agrawal',
-    gotra: 'Garg',
-    profession: 'Management Consultant',
-    income: '₹15-20 Lacs p.a',
-    education: 'MBA, IIM Indore',
-    managedBy: 'Self',
-    activeStatus: 'Active Yesterday',
-    photoCount: 3,
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro',
-    photoVisibility: 'connections', // Lock photo by default
-    about: 'Working at a top consultancy in Indore. Family-oriented, loves reading and traveling. Looking for a well-educated partner with shared dreams.',
-    familyType: 'Nuclear',
-    familyValues: 'Moderate',
-    fatherOccupation: 'Retired Officer',
-    motherOccupation: 'Teacher',
-    brothers: '1 (Unmarried)',
-    sisters: '1 (Married)',
-    diet: 'Vegetarian',
-    manglik: 'No',
-    star: 'Ashwini',
-    rashi: 'Mesha',
-    partnerPrefs: 'Looking for an ambitious, supportive professional.'
-  },
-  {
-    id: 'mt2',
-    name: 'Sneha Gupta',
-    age: 25,
-    gender: 'Female',
-    height: "5' 3\"",
-    city: 'Bangalore',
-    community: 'Agrawal',
-    gotra: 'Mittal',
-    profession: 'Doctor',
-    income: '₹12-15 Lacs p.a',
-    education: 'MBBS, AIIMS Delhi',
-    managedBy: 'Brother',
-    activeStatus: 'Online Now',
-    photoCount: 4,
-    avatar: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Normal',
-    about: 'Dedicated doctor with a passion for community service. Enjoys music and cooking in my free time. Looking for a partner who respects professional ambitions.',
-    familyType: 'Joint',
-    familyValues: 'Traditional',
-    fatherOccupation: 'Senior Doctor',
-    motherOccupation: 'Homemaker',
-    brothers: '1 (Unmarried)',
-    sisters: 'None',
-    diet: 'Vegetarian',
-    manglik: 'Yes',
-    star: 'Pushya',
-    rashi: 'Karka',
-    partnerPrefs: 'Looking for a doctor/engineer based in Bangalore or Delhi.'
-  },
-  {
-    id: 'mt4',
-    name: 'Ananya Verma',
-    age: 27,
-    gender: 'Female',
-    height: "5' 4\"",
-    city: 'Delhi',
-    community: 'Mali',
-    gotra: 'Garg',
-    profession: 'Clinical Psychologist',
-    income: '₹8-12 Lacs p.a',
-    education: 'M.Sc Psychology',
-    managedBy: 'Self',
-    activeStatus: 'Active Today',
-    photoCount: 3,
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro Max',
-    about: 'A compassionate therapist who believes in mutual support and empathy. Outside of work, I enjoy painting and writing.',
-    familyType: 'Nuclear',
-    familyValues: 'Moderate',
-    fatherOccupation: 'Professor',
-    motherOccupation: 'Advocate',
-    brothers: '1 (Married)',
-    sisters: 'None',
-    diet: 'Vegetarian',
-    manglik: 'No',
-    star: 'Chitra',
-    rashi: 'Tula',
-    partnerPrefs: 'Looking for a mature, respectful life companion.'
-  }
-];
-
-const mockProfileVisitors = [
-  {
-    id: 'vis_1',
-    name: 'Kajal Patel',
-    age: 25,
-    gender: 'Female',
-    height: "5' 4\"",
-    city: 'Ahmedabad',
-    community: 'Patel',
-    gotra: 'Charan',
-    profession: 'Digital Marketer',
-    income: '₹6-8 Lacs p.a',
-    education: 'MBA Marketing',
-    managedBy: 'Self',
-    activeStatus: 'Active Today',
-    photoCount: 4,
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Normal',
-    visitedDate: 'Today, 10:15 AM',
-    requiresUpgrade: true
-  },
-  {
-    id: 'vis_2',
-    name: 'Shreya Sharma',
-    age: 26,
-    gender: 'Female',
-    height: "5' 3\"",
-    city: 'Bhopal',
-    community: 'Sharma',
-    gotra: 'Bhardwaj',
-    profession: 'HR Manager',
-    income: '₹5-7 Lacs p.a',
-    education: 'MBA HR',
-    managedBy: 'Brother',
-    activeStatus: 'Active Yesterday',
-    photoCount: 3,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro',
-    visitedDate: 'Yesterday, 4:30 PM',
-    requiresUpgrade: false
-  },
-  {
-    id: 'vis_3',
-    name: 'Tanya Sen',
-    age: 24,
-    gender: 'Female',
-    height: "5' 5\"",
-    city: 'Jabalpur',
-    community: 'Verma',
-    gotra: 'Sen',
-    profession: 'UI/UX Designer',
-    income: '₹8 Lacs p.a',
-    education: 'B.Des, NID',
-    managedBy: 'Parents',
-    activeStatus: 'Online Now',
-    photoCount: 2,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro Max',
-    visitedDate: '26 Jun 2026',
-    requiresUpgrade: true
-  }
-];
-
-const mockProfilesIVisited = [
-  {
-    id: 'vis_4',
-    name: 'Priyel Bhatnagar',
-    age: 27,
-    gender: 'Female',
-    height: "5' 2\"",
-    city: 'Kota',
-    community: 'Sharma',
-    gotra: 'Bhatnagar',
-    profession: 'Finance Professional',
-    income: '₹10 Lacs p.a',
-    education: 'MBA Finance',
-    managedBy: 'Sibling',
-    activeStatus: 'Active Today',
-    photoCount: 1,
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Normal',
-    visitedDate: '26 Jun 2026'
-  },
-  {
-    id: 'vis_5',
-    name: 'Nehal Gupta',
-    age: 25,
-    gender: 'Female',
-    height: "5' 3\"",
-    city: 'Indore',
-    community: 'Gupta',
-    gotra: 'Garg',
-    profession: 'Software Engineer',
-    income: '₹12 Lacs p.a',
-    education: 'B.Tech',
-    managedBy: 'Self',
-    activeStatus: 'Online Now',
-    photoCount: 5,
-    avatar: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80',
-    membershipTier: 'Pro Supreme',
-    visitedDate: '25 Jun 2026'
-  }
-];
-
-// Membership rank calculation helper
 const membershipRanks = {
-  'Normal': 0,
-  'Pro': 1,
-  'Pro Max': 2,
-  'Pro Supreme': 3
+  'Normal': 1,
+  'Pro Plan': 2,
+  'Pro Max Plan': 3,
+  'Pro Supreme Plan': 4,
+  'Combo Plan': 5
 };
-
 const MatrimonialHomePage = () => {
   const navigate = useNavigate();
-  const { currentUser, matrimonialProfiles, toggleMatrimonialInterest, handleMatrimonialInterestResponse, updateProfile, getUnreadCountForModule } = useData();
-  const { toggleShortlist, isShortlisted, searchFilters, setSearchFilters } = useMatrimonial();
-  const recentlyViewedProfiles = mockProfilesIVisited;
-  const shortlistedProfiles = []; // Not currently provided by context
+  const { currentUser, updateProfile, getUnreadCountForModule } = useData();
+  const {
+    dashboard, dashboardLoading, fetchDashboard,
+    myProfile,
+    receivedInterests, sentInterests, acceptedInterests, interestsLoading,
+    fetchInterests,
+    sendInterest, acceptInterest: acceptInterestAPI, rejectInterest: rejectInterestAPI,
+    cancelInterest: cancelInterestAPI,
+    visitors,
+    toggleShortlist, isShortlisted, searchFilters, setSearchFilters
+  } = useMatrimonial();
 
-  const receivedCount = matrimonialProfiles.filter(p => p.interests?.received && !p.interests?.accepted && p.id !== 'mt1').length;
-  const acceptedCount = matrimonialProfiles.filter(p => p.interests?.accepted).length;
-  const sentCount = matrimonialProfiles.filter(p => p.interests?.sent && !p.interests?.accepted).length;
+  // ─── Interest Counts from real API ───────────────────────────────────────
+  const receivedCount = dashboard?.interests?.received ?? receivedInterests.length;
+  const acceptedCount = dashboard?.interests?.accepted ?? acceptedInterests.length;
+  const sentCount     = dashboard?.interests?.sent     ?? sentInterests.length;
 
-  // ─── STATE MANAGEMENT ───
+  // ─── Activity Tab Data from real API ────────────────────────────────────
   const [activityInterestTab, setActivityInterestTab] = useState('Received');
 
   const activeList = useMemo(() => {
-    if (activityInterestTab === 'Received') {
-      return matrimonialProfiles.filter(p => p.interests?.received && !p.interests?.accepted && p.id !== 'mt1');
-    }
-    if (activityInterestTab === 'Accepted') {
-      return matrimonialProfiles.filter(p => p.interests?.accepted);
-    }
-    if (activityInterestTab === 'Sent') {
-      return matrimonialProfiles.filter(p => p.interests?.sent && !p.interests?.accepted);
-    }
+    if (activityInterestTab === 'Received') return receivedInterests;
+    if (activityInterestTab === 'Accepted') return acceptedInterests;
+    if (activityInterestTab === 'Sent')     return sentInterests;
     return [];
-  }, [activityInterestTab, matrimonialProfiles]);
+  }, [activityInterestTab, receivedInterests, sentInterests, acceptedInterests]);
   const [ignoredIds, setIgnoredIds] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [activeFilterPill, setActiveFilterPill] = useState('all'); // 'all' | 'verified' | 'joined' | 'nearby'
@@ -515,9 +226,27 @@ const MatrimonialHomePage = () => {
     }
   }, [searchFilters, setSearchFilters]);
 
-  const handleInterest = (profileId) => {
-    toggleMatrimonialInterest(profileId);
-    showToast('Interest Request Sent Successfully! 💕');
+  const handleInterest = async (profileId) => {
+    const result = await sendInterest(profileId);
+    if (result.success) {
+      showToast('Interest Request Sent Successfully! 💕');
+    } else {
+      showToast(result.error || 'Failed to send interest');
+    }
+  };
+
+  const handleInterestResponse = async (interestId, action) => {
+    if (action === 'accept') {
+      const result = await acceptInterestAPI(interestId);
+      if (result.success) {
+        showToast('Interest Accepted! You can now chat 💬');
+      }
+    } else {
+      const result = await rejectInterestAPI(interestId);
+      if (result.success) {
+        showToast('Interest Declined');
+      }
+    }
   };
 
   const handleShortlist = (profileId) => {
@@ -530,72 +259,81 @@ const MatrimonialHomePage = () => {
     showToast('Profile Hidden/Ignored');
   };
 
-  // Filter logic on dynamic matrimonial feed
-  const filteredFeed = useMemo(() => {
-    return matrimonialProfiles.map(profile => {
-      // Normalize fields to ensure full compatibility with render layouts
-      return {
-        ...profile,
-        income: profile.annualIncome || profile.income || 'Not specified',
-        activeStatus: profile.online ? 'Online Now' : (profile.lastActive || profile.activeStatus || 'Active Today'),
-        membershipTier: profile.membershipTier || (profile.premiumStatus ? 'Pro Max' : 'Normal')
-      };
-    }).filter(profile => {
-      // 1. Exclude ignored profiles
-      if (ignoredIds.includes(profile.id)) return false;
+  // ─── Feed from Dashboard API ──────────────────────────────────────────────
+  // Uses dashboard.recommendations.newMembers as the primary feed.
+  // Falls back to empty array while dashboard is loading.
+  const feedProfiles = useMemo(() => {
+    const base = dashboard?.recommendations?.newMembers || [];
+    return base.map(profile => ({
+      ...profile,
+      id: profile._id || profile.id,
+      name: profile.personal?.fullName || profile.name || 'Unknown',
+      age: profile.age ?? null,
+      gender: profile.personal?.gender || '',
+      city: profile.location?.city || '',
+      community: profile.personal?.community || '',
+      gotra: profile.personal?.gotra || '',
+      profession: profile.education?.profession || profile.education?.occupation || '',
+      income: profile.education?.annualIncome || '',
+      education: profile.education?.highestQualification || '',
+      diet: profile.lifestyle?.diet || '',
+      avatar: (profile.photos || []).find(p => p.isPrimary)?.url || null,
+      photoCount: (profile.photos || []).length,
+      activeStatus: profile.lastActiveAt
+        ? new Date(profile.lastActiveAt) > new Date(Date.now() - 3600000)
+          ? 'Online Now'
+          : 'Active Recently'
+        : 'Active Today',
+      membershipTier: 'Normal',
+      verifiedStatus: profile.verificationStatus === 'verified',
+      isNew: new Date(profile.createdAt) > new Date(Date.now() - 7 * 24 * 3600000),
+      isRestricted: profile.isRestricted ?? true,
+    }));
+  }, [dashboard]);
 
-      // 2. Search Text filter
+  // ─── filteredFeed — same filter logic, now on live data ──────────────────
+  const filteredFeed = useMemo(() => {
+    return feedProfiles.filter(profile => {
+      if (ignoredIds.includes(profile.id)) return false;
       if (searchText.trim()) {
         const query = searchText.toLowerCase();
-        const matchesName = profile.name.toLowerCase().includes(query);
-        const matchesCity = profile.city.toLowerCase().includes(query);
-        const matchesProfession = profile.profession?.toLowerCase().includes(query);
-        const matchesGotra = profile.gotra?.toLowerCase().includes(query);
+        const matchesName      = (profile.name || '').toLowerCase().includes(query);
+        const matchesCity      = (profile.city || '').toLowerCase().includes(query);
+        const matchesProfession= (profile.profession || '').toLowerCase().includes(query);
+        const matchesGotra     = (profile.gotra || '').toLowerCase().includes(query);
         if (!matchesName && !matchesCity && !matchesProfession && !matchesGotra) return false;
       }
-
-      // 3. Quick Pills filter
       if (activeFilterPill === 'verified' && !profile.verifiedStatus) return false;
-      if (activeFilterPill === 'joined' && !profile.isNew) return false;
-      
-      const userCity = currentUser?.city || 'Indore';
-      if (activeFilterPill === 'nearby' && profile.city !== userCity) return false;
-
-      // 4. Advanced Filters
-      if (profile.age < ageRange.min || profile.age > ageRange.max) return false;
+      if (activeFilterPill === 'joined'   && !profile.isNew)          return false;
+      const userCity = currentUser?.city || '';
+      if (activeFilterPill === 'nearby' && userCity && profile.city !== userCity) return false;
+      if (profile.age !== null && profile.age !== undefined) {
+        if (profile.age < ageRange.min || profile.age > ageRange.max) return false;
+      }
       if (selectedGotra !== 'All' && profile.gotra !== selectedGotra) return false;
-      if (selectedDiet !== 'All' && profile.diet !== selectedDiet) return false;
-
+      if (selectedDiet  !== 'All' && profile.diet  !== selectedDiet)  return false;
       return true;
     });
-  }, [matrimonialProfiles, ignoredIds, activeFilterPill, searchText, ageRange, selectedGotra, selectedDiet, currentUser]);
+  }, [feedProfiles, ignoredIds, activeFilterPill, searchText, ageRange, selectedGotra, selectedDiet, currentUser]);
 
+  // ─── dynamicVisitors — from real visitors API ─────────────────────────────
   const dynamicVisitors = useMemo(() => {
-    return matrimonialProfiles.filter(p => p.id !== 'mt1').slice(0, 3).map((p, idx) => {
-      return {
-        ...p,
-        income: p.annualIncome || p.income || '₹8-10 Lacs p.a',
-        activeStatus: p.online ? 'Online Now' : (p.lastActive || 'Active Today'),
-        membershipTier: p.membershipTier || (p.premiumStatus ? 'Pro Max' : 'Normal'),
-        visitedDate: `${idx + 1} day${idx > 0 ? 's' : ''} ago`,
-        requiresUpgrade: idx % 2 === 0,
-        managedBy: ['Self', 'Parents', 'Sibling'][idx % 3]
-      };
-    });
-  }, [matrimonialProfiles]);
+    return visitors.map((v, idx) => ({
+      id: v._id || v.id || `vis_${idx}`,
+      name: v.visitorProfile?.personal?.fullName || 'Unknown Visitor',
+      age: v.visitorProfile?.age ?? null,
+      city: v.visitorProfile?.location?.city || '',
+      community: v.visitorProfile?.personal?.community || '',
+      profession: v.visitorProfile?.education?.profession || '',
+      avatar: (v.visitorProfile?.photos || []).find(p => p.isPrimary)?.url || null,
+      membershipTier: 'Normal',
+      visitedDate: v.lastVisited ? new Date(v.lastVisited).toLocaleDateString('en-IN') : 'Recently',
+      requiresUpgrade: idx > 1, // First 2 visible, rest locked for non-premium
+    }));
+  }, [visitors]);
 
-  const dynamicVisited = useMemo(() => {
-    return recentlyViewedProfiles.map((p, idx) => {
-      return {
-        ...p,
-        income: p.annualIncome || p.income || '₹8-10 Lacs p.a',
-        activeStatus: p.online ? 'Online Now' : (p.lastActive || 'Active Today'),
-        membershipTier: p.membershipTier || (p.premiumStatus ? 'Pro Max' : 'Normal'),
-        visitedDate: `${idx + 1} day${idx > 0 ? 's' : ''} ago`,
-        managedBy: ['Self', 'Parents', 'Sibling'][idx % 3]
-      };
-    });
-  }, [recentlyViewedProfiles]);
+  // ─── dynamicVisited — placeholder (visited-by-me API not yet implemented) ─
+  const dynamicVisited = useMemo(() => [], []);
 
   // Active bottom tab
   const [activeBottomTab, setActiveBottomTab] = useState('matches'); // 'matches' | 'activity' | 'messenger' | 'premium'
@@ -690,7 +428,7 @@ const MatrimonialHomePage = () => {
                   >
                     <Heart size={22} fill="currentColor" className="drop-shadow-[0_1px_4px_rgba(244,63,94,0.5)] hover:scale-110 transition-transform" />
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
-                      3
+                      {receivedCount > 0 ? (receivedCount > 9 ? '9+' : receivedCount) : ''}
                     </span>
                   </button>
                   <button className="text-slate-700 active:scale-95 transition-transform" onClick={() => setIsSearchOpen(true)}>
@@ -755,16 +493,15 @@ const MatrimonialHomePage = () => {
               )}
               {filteredFeed.length > 0 ? (
                 filteredFeed.map(profile => {
-                  const interestSent = matrimonialProfiles.find(p => p.id === profile.id || p.id === `mp_${profile.id}`)?.interests?.sent;
-                  const isShort = isShortlisted(profile.id);
+                  const interestSent = profile.hasSentInterest || false;
+                  const isShort = isShortlisted(profile._id || profile.id);
 
                   const userRank = membershipRanks[userMembership] || 0;
                   const targetRank = membershipRanks[profile.membershipTier] || 0;
                   const hasMembershipAccess = userRank >= targetRank;
 
-                  // Dynamic check from real context connection status
-                  const realProfile = matrimonialProfiles.find(p => p.id === profile.id || p.id === `mp_${profile.id}`) || profile;
-                  const isConnected = realProfile?.interests?.accepted;
+                  // Connection status comes from the API-enriched profile
+                  const isConnected = profile.isConnected || false;
                   const isPhotoVisible = profile.photoVisibility !== 'connections' || isConnected;
 
                   const hasAccess = hasMembershipAccess && isPhotoVisible;
@@ -1003,7 +740,7 @@ const MatrimonialHomePage = () => {
                 onClick={() => setCurrentSubView('shortlisted')}
                 className="flex-1 bg-white rounded-2xl p-3.5 border border-slate-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.03)] text-center cursor-pointer active:scale-95 transition-all"
               >
-                <span className="text-[26px] font-black text-amber-500 block leading-none">{shortlistedProfiles.length}</span>
+                <span className="text-[26px] font-black text-amber-500 block leading-none">{dashboard?.shortlist ?? 0}</span>
                 <span className="text-[11.5px] font-bold text-slate-650 mt-1.5 block leading-tight">Shortlisted<br/>Profiles</span>
               </div>
 
@@ -1054,14 +791,13 @@ const MatrimonialHomePage = () => {
               {activeList.length > 0 ? (
                 <div className="space-y-3">
                   {activeList.map(item => {
-                    const realProfile = matrimonialProfiles.find(p => p.id === item.id) || item;
-                    const isConnected = realProfile?.interests?.accepted;
-                    const isPhotoVisible = item.photoVisibility !== 'connections' || isConnected;
+                    const isConnected = item.status === 'accepted';
+                    const isPhotoVisible = true; // In interest lists, always show avatar
                     
                     return (
                       <div 
-                        key={item.id} 
-                        onClick={() => navigate(`/member/matrimonial/${item.id}`)}
+                        key={item._id || item.id}
+                        onClick={() => navigate(`/member/matrimonial/${item._id || item.id}`)}
                         className="bg-white rounded-2.5xl border border-slate-200/55 p-3.5 flex gap-3.5 items-center cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
                       >
                         {/* Avatar Column */}
@@ -1095,8 +831,7 @@ const MatrimonialHomePage = () => {
                             <div className="flex items-center gap-1.5">
                               <button 
                                 onClick={() => {
-                                  handleMatrimonialInterestResponse(item.id, 'accept');
-                                  showToast(`You accepted ${item.name}'s interest! 💕`);
+                                  handleInterestResponse(item._id || item.id, 'accept');
                                 }}
                                 className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black px-3.5 py-1.5 rounded-lg active:scale-95 transition-transform shadow-xs uppercase tracking-wider"
                               >
@@ -1104,8 +839,7 @@ const MatrimonialHomePage = () => {
                               </button>
                               <button 
                                 onClick={() => {
-                                  handleMatrimonialInterestResponse(item.id, 'decline');
-                                  showToast('Request declined.');
+                                  handleInterestResponse(item._id || item.id, 'decline');
                                 }}
                                 className="bg-slate-100 hover:bg-slate-200 text-slate-550 text-[10px] font-black px-3 py-1.5 rounded-lg active:scale-95 transition-transform uppercase tracking-wider"
                               >
@@ -1125,9 +859,10 @@ const MatrimonialHomePage = () => {
 
                           {activityInterestTab === 'Sent' && (
                             <button 
-                              onClick={() => {
-                                toggleMatrimonialInterest(item.id);
-                                showToast('Interest request cancelled.');
+                              onClick={async () => {
+                                const result = await cancelInterestAPI(item._id || item.id);
+                                if (result.success) showToast('Interest request cancelled.');
+                                else showToast(result.error || 'Could not cancel interest.');
                               }}
                               className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
                             >
@@ -1575,22 +1310,11 @@ const MatrimonialHomePage = () => {
             ) : (
               /* Dynamic list of shortlisted profiles from Context */
               <div className="space-y-3">
-                {shortlistedProfiles.length > 0 ? (
-                  shortlistedProfiles.map(p => (
-                    <div key={p.id} className="bg-slate-50 rounded-2xl border border-slate-100 p-3.5 flex gap-3.5 items-center">
-                      <img src={p.avatar} alt={p.name} className="w-14 h-16 rounded-xl object-cover" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-[13.5px] font-extrabold text-slate-800 truncate">{p.name}, {p.age}</h4>
-                        <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{p.height} · {p.city}</p>
-                      </div>
-                      <button
-                        onClick={() => toggleShortlist(p.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 active:scale-90"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  ))
+                {shortlistedIds.length > 0 ? (
+                  <p className="text-slate-500 text-center py-6 font-semibold text-[13px]">
+                    You have {shortlistedIds.length} shortlisted profile{shortlistedIds.length > 1 ? 's' : ''}.{' '}
+                    <button onClick={() => navigate('/member/matrimonial/shortlist')} className="text-rose-500 underline">View all</button>
+                  </p>
                 ) : (
                   <p className="text-slate-400 text-center py-10 font-semibold text-[13px]">You haven't shortlisted any matches yet.</p>
                 )}

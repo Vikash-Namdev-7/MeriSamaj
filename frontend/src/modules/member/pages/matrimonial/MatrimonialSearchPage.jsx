@@ -149,8 +149,9 @@ const MatrimonialSearchPage = () => {
       const res = await matrimonialProfileService.searchProfiles(params);
       const data = res.data.data;
       const newProfiles = data.profiles || [];
-      const totalCount  = data.total || 0;
-      const totalPages  = data.pages || 1;
+      // Backend wraps pagination fields inside data.pagination object
+      const totalCount  = data.pagination?.total || data.total || 0;
+      const totalPages  = data.pagination?.pages || data.pages || 1;
 
       if (resetPage) {
         setProfiles(newProfiles);

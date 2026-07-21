@@ -8,20 +8,31 @@ const InterestRequest    = require('../../models/InterestRequest');
 const UserSubscription   = require('../../models/UserSubscription');
 const { createNotification } = require('../../services/notificationService');
 
-// ─── Community Dashboard ──────────────────────────────────────────────────────
+// ─── Community Dashboard (─────────────────────────────────────────────────────────
 exports.getCommunityStats = async (req, res) => {
   try {
     const communityId = req.communityId;
     if (!communityId) return res.status(400).json({ status: 'error', message: 'Community ID required.' });
 
-    // Get all user IDs in this community
+    const now      = new Date();
+    const weekAgo  = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
+
     const User = require('../../models/User');
     const communityUserIds = await User.find({ communityId }).distinct('_id');
 
-    const [totalProfiles, activeProfiles, pendingVerification, recentInterests] = await Promise.all([
+    const [
+      total, active, pending, hidden, connected, verified,
+      weekly, monthly, recentInterests
+    ] = await Promise.all([
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'active' }),
-      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, verificationStatus: 'pending', status: 'active' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'pending' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'hidden' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, maritalLifecycle: 'connected' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, verificationStatus: 'verified' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, createdAt: { $gte: weekAgo } }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, createdAt: { $gte: monthAgo } }),
       InterestRequest.countDocuments({
         createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         $or: [
@@ -31,14 +42,39 @@ exports.getCommunityStats = async (req, res) => {
       })
     ]);
 
+    res.json({
+      status: 'success',
+      data: {
+        total, active, pending, hidden, connected, verified,
+        weeklyRegistrations: weekly,
+        monthlyRegistrations: monthly,
+        recentInterests
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
 
-    res.json({ status: 'success', data: { totalProfiles, activeProfiles, pendingVerification, recentInterests } });
+// ─── Get Single Profile by ID ─────────────────────────────────────────────────
+exports.getProfileById = async (req, res) => {
+  try {
+    const communityId = req.communityId;
+    const profile = await MatrimonialProfile.findOne({
+      _id: req.params.id,
+      communityId,
+      isDeleted: false
+    }).populate('userId', 'name phone email').lean({ virtuals: true });
+
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found in your community.' });
+    res.json({ status: 'success', data: { profile } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
 // ─── List Community Profiles ──────────────────────────────────────────────────
+
 exports.listCommunityProfiles = async (req, res) => {
   try {
     const { page = 1, limit = 20, verificationStatus, status } = req.query;
@@ -60,7 +96,7 @@ exports.listCommunityProfiles = async (req, res) => {
   }
 };
 
-// ─── Verify Profile (Community-scoped) ───────────────────────────────────────
+// ─── Verify Profile (Community-scoped) ───────────────────────────────────────────────────
 exports.verifyProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -74,7 +110,12 @@ exports.verifyProfile = async (req, res) => {
     if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found in your community.' });
 
     profile.verificationStatus = status;
-    if (status === 'verified') profile.status = 'active';
+    // verified → active (searchable), rejected → hidden (not deleted, user can fix)
+    if (status === 'verified') {
+      profile.status = 'active';
+    } else {
+      profile.status = 'hidden';
+    }
     profile.verifiedBy = req.user._id;
     profile.verifiedAt = new Date();
     await profile.save();
@@ -85,14 +126,54 @@ exports.verifyProfile = async (req, res) => {
       type:     `matrimonial_profile_${status}`,
       title:    status === 'verified' ? 'Profile Verified! ✅' : 'Verification Rejected',
       message:  status === 'verified'
-        ? 'Your matrimonial profile has been verified by your community head.'
-        : `Your profile verification was rejected. ${adminNote || ''}`,
+        ? 'Your matrimonial profile has been verified by your community head and is now visible in search results.'
+        : `Your profile verification was rejected. ${adminNote || 'Please update your profile and resubmit.'}`,
       icon:     status === 'verified' ? '✅' : '❌',
       priority: 'high',
       actionUrl:'/member/matrimonial/profile'
     });
 
     res.json({ status: 'success', message: `Profile ${status}.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Connected Members ────────────────────────────────────────────────────────────
+exports.getConnectedMembers = async (req, res) => {
+  try {
+    const communityId = req.communityId;
+    const { page = 1, limit = 20 } = req.query;
+
+    const total    = await MatrimonialProfile.countDocuments({ communityId, isDeleted: false, maritalLifecycle: 'connected' });
+    const profiles = await MatrimonialProfile.find({ communityId, isDeleted: false, maritalLifecycle: 'connected' })
+      .populate('userId', 'name phone')
+      .sort({ updatedAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean({ virtuals: true });
+
+    res.json({ status: 'success', data: { profiles, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Pending Profiles ─────────────────────────────────────────────────────────────
+exports.getPendingProfiles = async (req, res) => {
+  try {
+    const communityId = req.communityId;
+    const { page = 1, limit = 20 } = req.query;
+
+    const total    = await MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'pending' });
+    const profiles = await MatrimonialProfile.find({ communityId, isDeleted: false, status: 'pending' })
+      .populate('userId', 'name phone email')
+      .sort({ createdAt: 1 }) // Oldest first (FIFO verification queue)
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean({ virtuals: true });
+
+    res.json({ status: 'success', data: { profiles, total, page: Number(page) } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }

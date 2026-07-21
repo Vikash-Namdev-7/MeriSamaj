@@ -2,21 +2,22 @@
  * matrimonialDashboardController.js
  * Returns all dashboard stats in a single API call + recommendation engine.
  */
-const MatrimonialProfile = require('../../models/MatrimonialProfile');
-const InterestRequest    = require('../../models/InterestRequest');
-const Shortlist          = require('../../models/Shortlist');
-const ProfileVisitor     = require('../../models/ProfileVisitor');
-const Conversation       = require('../../models/Conversation');
-const MatrimonialSettings= require('../../models/MatrimonialSettings');
-const UserSubscription   = require('../../models/UserSubscription');
-const { calculateMatchPercentage } = require('../../services/matchService');
+const MatrimonialProfile  = require('../../models/MatrimonialProfile');
+const InterestRequest     = require('../../models/InterestRequest');
+const Shortlist           = require('../../models/Shortlist');
+const ProfileVisitor      = require('../../models/ProfileVisitor');
+const Conversation        = require('../../models/Conversation');
+const MatrimonialSettings = require('../../models/MatrimonialSettings');
+const UserSubscription    = require('../../models/UserSubscription');
+const UserBlock           = require('../../models/UserBlock');
+const { calculateMatchPercentage }          = require('../../services/matchService');
 const { buildRestrictedProfile, buildFullProfile } = require('../../middleware/matrimonialPrivacy');
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 exports.getDashboard = async (req, res) => {
   try {
-    const userId  = req.user._id;
-    const now     = new Date();
+    const userId = req.user._id;
+    const now    = new Date();
 
     // Run all in parallel for performance
     const [
@@ -52,6 +53,8 @@ exports.getDashboard = async (req, res) => {
     // ─── Build Response ────────────────────────────────────────────────────────
     const dashboard = {
       profileCompletion: myProfile?.profileCompletion || { percentage: 0, completedSections: [] },
+      profileStatus:     myProfile?.status || null,
+      maritalLifecycle:  myProfile?.maritalLifecycle || 'single',
       subscription: {
         isPremium:  !!subscription,
         plan:       subscription?.planName || 'Free',
@@ -88,12 +91,26 @@ exports.getDashboard = async (req, res) => {
 // ─── Recommendation Engine ────────────────────────────────────────────────────
 const getRecommendations = async (userId, myProfile, subscription) => {
   const settings = await MatrimonialSettings.findOne().lean();
-  const limit = settings?.maxRecommendationsPerCategory || 10;
+  const limit    = settings?.maxRecommendationsPerCategory || 10;
+
+  // ─── Completion threshold (env-driven) ───────────────────────────────────
+  const completionRequired = parseInt(process.env.MATRIMONIAL_MIN_COMPLETION) ||
+    (settings?.profileCompletionRequired ?? 50);
+
+  // ─── Block filter ─────────────────────────────────────────────────────────
+  const blockedByMe  = await UserBlock.find({ userId }).distinct('blockedUserId');
+  const whoBlockedMe = await UserBlock.find({ blockedUserId: userId }).distinct('userId');
+  const excludeUsers = [...blockedByMe, ...whoBlockedMe];
+
+  const userExclusion = excludeUsers.length > 0
+    ? { $ne: userId, $nin: excludeUsers }
+    : { $ne: userId };
 
   const baseQuery = {
-    userId:   { $ne: userId },
+    userId:   userExclusion,
     status:   'active',
-    isDeleted: false
+    isDeleted: false,
+    'profileCompletion.percentage': { $gte: completionRequired }
   };
 
   // Apply opposite gender filter if available
@@ -115,8 +132,9 @@ const getRecommendations = async (userId, myProfile, subscription) => {
     // Recently Active
     MatrimonialProfile.find(baseQuery).sort({ lastActiveAt: -1 }).limit(limit).lean({ virtuals: true }),
 
-    // Premium Members (if feature exists — check highlight flag)
-    MatrimonialProfile.find({ ...baseQuery, verificationStatus: 'verified' }).sort({ createdAt: -1 }).limit(limit).lean({ virtuals: true }),
+    // Verified Members first
+    MatrimonialProfile.find({ ...baseQuery, verificationStatus: 'verified' })
+      .sort({ createdAt: -1 }).limit(limit).lean({ virtuals: true }),
 
     // Near You (same city or state)
     MatrimonialProfile.find({
@@ -128,7 +146,7 @@ const getRecommendations = async (userId, myProfile, subscription) => {
     }).limit(limit).lean({ virtuals: true })
   ]);
 
-  // Enrich with match % for recommended matches
+  // Enrich recommended matches with match %
   const enriched = await Promise.all(
     recommendedMatches.map(async (profile) => {
       const result = myProfile
