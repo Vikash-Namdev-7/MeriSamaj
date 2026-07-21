@@ -112,7 +112,9 @@ exports.getCityFeed = async (req, res) => {
     // Scope to Head's assigned community or city (if not master admin)
     if (req.user.role !== 'admin') {
       const scopeConditions = [];
-      if (communityId) {
+      if (communityIds && communityIds.length > 0) {
+        scopeConditions.push({ communityId: { $in: communityIds } });
+      } else if (communityId) {
         scopeConditions.push({ communityId });
       }
       if (cityIds.length > 0) {

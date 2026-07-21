@@ -28,6 +28,11 @@ const getUserResponsePayload = (user) => {
     email: user.email,
     role: user.role,
     avatar: user.avatar,
+    cover: user.cover,
+    bio: user.bio || '',
+    facebook: user.facebook || '',
+    twitter: user.twitter || '',
+    linkedin: user.linkedin || '',
     gender: user.gender,
     dob: user.dob,
     bloodGroup: user.bloodGroup,
@@ -160,8 +165,14 @@ const loginUser = async (req, res) => {
     } else {
       // Assume phone, remove spaces and non-digits
       const normalizedPhone = identifier.replace(/\D/g, '');
-      // Fallback to searching loginId if not standard digits
-      searchQuery = { $or: [{ phone: normalizedPhone || identifier }, { loginId: identifier }] };
+      searchQuery = { 
+        $or: [
+          { phone: normalizedPhone || identifier }, 
+          { phone: identifier }, 
+          { email: identifier.toLowerCase() }, 
+          { loginId: identifier }
+        ] 
+      };
     }
 
     // Find by resolved query
@@ -392,18 +403,27 @@ const updateProfile = async (req, res) => {
 
     if (user) {
       // Basic Fields
-      user.name = req.body.name || user.name;
+      user.name = req.body.name !== undefined ? req.body.name : user.name;
+      user.bio = req.body.bio !== undefined ? req.body.bio : user.bio;
       user.gender = req.body.gender || user.gender;
       user.dob = req.body.dob || user.dob;
       user.bloodGroup = req.body.bloodGroup || user.bloodGroup;
       user.maritalStatus = req.body.maritalStatus || user.maritalStatus;
       user.gotra = req.body.gotra || user.gotra;
       
-      // Avatar upload handling
+      // Social Links
+      user.facebook = req.body.facebook !== undefined ? req.body.facebook : user.facebook;
+      user.twitter = req.body.twitter !== undefined ? req.body.twitter : user.twitter;
+      user.linkedin = req.body.linkedin !== undefined ? req.body.linkedin : user.linkedin;
+
+      // Avatar & Cover upload handling
       if (req.file) {
         user.avatar = req.file.path;
       } else if (req.body.avatar) {
         user.avatar = req.body.avatar;
+      }
+      if (req.body.cover) {
+        user.cover = req.body.cover;
       }
       
       // Community

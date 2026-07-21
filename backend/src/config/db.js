@@ -370,6 +370,10 @@ const connectDB = async () => {
       console.log('Default Business Categories seeded successfully.');
     }
 
+    // Auto-run data migration to backfill existing users & posts
+    const runMigration = require('../scripts/migratePostsAndUsers');
+    await runMigration();
+
   } catch (error) {
     console.error(`MongoDB Connection Error: ${error.message}`);
     if (process.env.NODE_ENV === 'production') {

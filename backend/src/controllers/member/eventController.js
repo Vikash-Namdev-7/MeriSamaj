@@ -3,10 +3,14 @@ const User = require('../../models/User');
 const EventActivityLog = require('../../models/EventActivityLog');
 
 const formatEvent = (event, userId) => {
-  const isRegistered = event.attendees ? event.attendees.some(id => id && id.toString() === userId.toString()) : false;
-  const isInterested = event.interested ? event.interested.some(id => id && id.toString() === userId.toString()) : false;
-  const isBookmarked = event.bookmarks ? event.bookmarks.some(id => id && id.toString() === userId.toString()) : false;
-  const isReminderSet = event.reminders ? event.reminders.some(id => id && id.toString() === userId.toString()) : false;
+  const uIdStr = userId ? userId.toString() : null;
+  const isRegistered = (Array.isArray(event.attendees) && uIdStr) ? event.attendees.some(id => id && id.toString() === uIdStr) : false;
+  const isInterested = (Array.isArray(event.interested) && uIdStr) ? event.interested.some(id => id && id.toString() === uIdStr) : false;
+  const isBookmarked = (Array.isArray(event.bookmarks) && uIdStr) ? event.bookmarks.some(id => id && id.toString() === uIdStr) : false;
+  const isReminderSet = (Array.isArray(event.reminders) && uIdStr) ? event.reminders.some(id => id && id.toString() === uIdStr) : false;
+
+  const attendeesCount = Array.isArray(event.attendees) ? event.attendees.length : (typeof event.attendees === 'number' ? event.attendees : 0);
+  const interestedCount = Array.isArray(event.interested) ? event.interested.length : (typeof event.interested === 'number' ? event.interested : 0);
 
   return {
     id: event._id,
@@ -36,8 +40,8 @@ const formatEvent = (event, userId) => {
     audienceEn: event.audienceEn,
     importantInfoEn: event.importantInfoEn,
     tagsEn: event.tagsEn || [],
-    attendees: Array.isArray(event.attendees) ? event.attendees.length : 0,
-    interested: Array.isArray(event.interested) ? event.interested.length : 0,
+    attendees: attendeesCount,
+    interested: interestedCount,
     isRegistered,
     isInterested,
     isBookmarked,

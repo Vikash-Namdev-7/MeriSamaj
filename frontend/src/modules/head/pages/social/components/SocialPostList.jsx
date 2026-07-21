@@ -256,7 +256,15 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
                       <td className="py-3.5 px-4 text-center">
                         {firstMedia ? (
                           <div className="relative w-10 h-10 mx-auto rounded-lg overflow-hidden border border-slate-200 bg-slate-900 group">
-                            <img src={firstMedia} alt="Media thumbnail" className="w-full h-full object-cover" />
+                            <img 
+                              src={firstMedia} 
+                              alt="Media thumbnail" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=100';
+                              }}
+                            />
                             {mediaCount > 1 && (
                               <span className="absolute inset-0 bg-black/60 text-white font-bold text-[10px] flex items-center justify-center">
                                 +{mediaCount - 1}

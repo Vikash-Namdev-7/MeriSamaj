@@ -15,6 +15,7 @@ import obituaryService from '../../../core/api/obituaryService';
 import { eventService } from '../services/eventService';
 import { headEventService } from '../../../core/api/headEventService';
 import { matrimonialProfileService } from '../../../core/api/matrimonialService';
+import socialService from '../../../core/api/socialService';
 
 const getCommunitySurname = (community) => {
   if (!community) return 'Agrawal';
@@ -1162,24 +1163,26 @@ export const DataProvider = ({ children }) => {
         feedType: options.feedType || 'city'
       });
       
+      const postData = (res && res.data) ? res.data : res;
+
       const formatted = {
-        ...res.data,
-        id: res.data._id,
+        ...postData,
+        id: postData._id,
         city: options.city || currentUser?.city || 'Indore',
         community: currentUser?.community || 'Agrawal Samaj',
         feedType: options.feedType || 'city',
         author: {
-          id: res.data.userId?._id || res.data.userId?.id || currentUser?.id,
-          name: res.data.userId?.name || currentUser?.name || 'Member',
-          avatar: res.data.userId?.avatar || currentUser?.avatar,
-          initials: res.data.userId?.name 
-            ? res.data.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+          id: postData.userId?._id || postData.userId?.id || currentUser?.id,
+          name: postData.userId?.name || currentUser?.name || 'Member',
+          avatar: postData.userId?.avatar || currentUser?.avatar,
+          initials: postData.userId?.name 
+            ? postData.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
             : (currentUser?.initials || 'U')
         },
-        images: res.data.media?.map(m => m.url) || [],
-        likes: res.data.likesCount || 0,
-        comments: res.data.commentsCount || 0,
-        views: res.data.viewsCount || 0
+        images: postData.media?.map(m => m.url) || images || [],
+        likes: postData.likesCount || 0,
+        comments: postData.commentsCount || 0,
+        views: postData.viewsCount || 0
       };
 
       if (formatted.feedType === 'city') {
@@ -1188,11 +1191,13 @@ export const DataProvider = ({ children }) => {
         setCommunityPosts(prev => [formatted, ...prev]);
       }
       setPosts(prev => [formatted, ...prev]);
+      return { success: true, data: formatted };
     } catch (error) {
       console.error('Failed to create post:', error);
+      const msg = error.response?.data?.message || error.message || 'Failed to publish post';
+      throw new Error(msg);
     }
   };
-
   const togglePostLike = async (postId) => {
     try {
       const res = await socialService.toggleLike(postId);

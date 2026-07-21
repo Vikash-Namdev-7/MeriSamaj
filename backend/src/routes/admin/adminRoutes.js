@@ -39,5 +39,9 @@ router.use('/professional', adminProfessionalRoutes);
 const adminMatrimonialRoutes = require('./adminMatrimonialRoutes');
 router.use('/matrimonial', adminMatrimonialRoutes);
 
+// Social / Feed Management Routes
+const adminSocialRoutes = require('./adminSocialRoutes');
+router.use('/social', adminSocialRoutes);
+
 module.exports = router;
 

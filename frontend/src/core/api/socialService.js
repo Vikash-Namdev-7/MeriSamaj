@@ -100,6 +100,49 @@ const getFollowing = async (userId) => {
   return response.data;
 };
 
+// Profile Stats & Tab APIs
+const getProfileStats = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/profile-stats`);
+  return response.data;
+};
+
+const getSavedPosts = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/posts/saved`);
+  return response.data;
+};
+
+const getLikedPosts = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/posts/liked`);
+  return response.data;
+};
+
+// Highlights APIs
+const getUserHighlights = async (userId = '') => {
+  const params = userId ? { userId } : {};
+  const response = await axiosPrivate.get(`${API_URL}/highlights`, { params });
+  return response.data;
+};
+
+const getPastStories = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/highlights/past-stories`);
+  return response.data;
+};
+
+const createHighlight = async (highlightData) => {
+  const response = await axiosPrivate.post(`${API_URL}/highlights`, highlightData);
+  return response.data;
+};
+
+const deleteHighlight = async (id) => {
+  const response = await axiosPrivate.delete(`${API_URL}/highlights/${id}`);
+  return response.data;
+};
+
+const updateUserProfile = async (payload) => {
+  const response = await axiosPrivate.put(`/auth/update-profile`, payload);
+  return response.data;
+};
+
 const socialService = {
   getPosts,
   getPostById,
@@ -118,7 +161,15 @@ const socialService = {
   likeStory,
   toggleFollow,
   getFollowers,
-  getFollowing
+  getFollowing,
+  getProfileStats,
+  getSavedPosts,
+  getLikedPosts,
+  getUserHighlights,
+  getPastStories,
+  createHighlight,
+  deleteHighlight,
+  updateUserProfile
 };
 
 export default socialService;

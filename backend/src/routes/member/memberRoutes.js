@@ -31,7 +31,9 @@ router.use('/obituaries', obituaryRoutes);
 // Dharmashala routes
 router.use('/dharmashala', dharmashalaRoutes);
 
-// Community Social Feed (Posts)
+// Community Social Feed (Posts & Stories)
+const socialRoutes = require('./socialRoutes');
+router.use('/social', socialRoutes);
 router.use('/posts', postRoutes);
 
 // Community Member Listing

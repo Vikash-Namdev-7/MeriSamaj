@@ -195,8 +195,12 @@ const CreatePostPage = () => {
         feedType,
       };
 
-      await createPost(caption.trim() || "Shared media", mediaUrls, payloadOptions);
-      navigate(-1);
+      try {
+        await createPost(caption.trim() || "Shared media", mediaUrls, payloadOptions);
+        navigate(-1);
+      } catch (err) {
+        alert(`Post creation failed: ${err.message}`);
+      }
     } else if (activeTab === 'story') {
       // storyBg is either the media attachment URL, or the color code/gradient string
       const storyBg = attachments.length > 0 ? attachments[0].url : selectedBg.value;

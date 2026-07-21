@@ -23,6 +23,7 @@ exports.getCityFeedPosts = async (req, res) => {
       .populate('authorId', 'name avatar city community communityId')
       .populate('userId', 'name avatar city community communityId')
       .populate('communityId', 'name slug city')
+      .populate('cityId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -33,7 +34,7 @@ exports.getCityFeedPosts = async (req, res) => {
     // Resolve author city / community city safely
     posts = posts.map((p) => {
       const authorDoc = p.authorId || p.userId;
-      const resolvedCity = authorDoc?.city || p.communityId?.city || 'Unknown';
+      const resolvedCity = p.cityId?.name || authorDoc?.city || p.communityId?.city || 'Unknown';
       return {
         ...p,
         authorId: authorDoc,
@@ -89,6 +90,7 @@ exports.getCommunityFeedPosts = async (req, res) => {
       .populate('authorId', 'name avatar city community communityId')
       .populate('userId', 'name avatar city community communityId')
       .populate('communityId', 'name slug city')
+      .populate('cityId', 'name')
       .sort({ isPinned: -1, createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -96,7 +98,7 @@ exports.getCommunityFeedPosts = async (req, res) => {
 
     const mappedPosts = posts.map((p) => {
       const authorDoc = p.authorId || p.userId;
-      const resolvedCity = authorDoc?.city || p.communityId?.city || 'Unknown';
+      const resolvedCity = p.cityId?.name || authorDoc?.city || p.communityId?.city || 'Unknown';
       return {
         ...p,
         authorId: authorDoc,

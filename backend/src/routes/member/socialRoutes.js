@@ -3,10 +3,16 @@ const router = express.Router();
 const socialController = require('../../controllers/member/socialController');
 const storyController = require('../../controllers/member/storyController');
 const followerController = require('../../controllers/member/followerController');
+const highlightController = require('../../controllers/member/highlightController');
 const authMiddleware = require('../../middleware/authMiddleware');
 
 // Secure all endpoints under member authentication middleware
 router.use(authMiddleware.protect);
+
+// Profile Statistics & Tab Endpoints
+router.get('/profile-stats', socialController.getProfileStats);
+router.get('/posts/saved', socialController.getMySavedPosts);
+router.get('/posts/liked', socialController.getMyLikedPosts);
 
 // ─────────────────────────────────────────────
 // POSTS & FEEDS ROUTES
@@ -30,7 +36,7 @@ router.route('/posts/:id/comments')
 router.get('/search', socialController.searchSocial);
 
 // ─────────────────────────────────────────────
-// STORIES ROUTES
+// STORIES & HIGHLIGHTS ROUTES
 // ─────────────────────────────────────────────
 router.route('/stories')
   .get(storyController.getStories)
@@ -40,6 +46,14 @@ router.delete('/stories/:id', storyController.deleteStory);
 router.post('/stories/:id/view', storyController.viewStory);
 router.post('/stories/:id/like', storyController.likeStory);
 router.get('/stories/:id/viewers', storyController.getStoryViewers);
+
+// Highlights
+router.route('/highlights')
+  .get(highlightController.getUserHighlights)
+  .post(highlightController.createHighlight);
+
+router.get('/highlights/past-stories', highlightController.getPastStoriesForHighlight);
+router.delete('/highlights/:id', highlightController.deleteHighlight);
 
 // ─────────────────────────────────────────────
 // FOLLOWER RELATIONSHIP ROUTES

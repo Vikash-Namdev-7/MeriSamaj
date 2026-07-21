@@ -6,6 +6,7 @@ import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
 import { AnimatePresence, motion } from 'framer-motion';
+import socialService from '../../../../core/api/socialService';
 
 const MyProfilePage = () => {
   const navigate = useNavigate();
@@ -34,7 +35,6 @@ const MyProfilePage = () => {
   } = useData();
 
   const [activeTab, setActiveTab] = useState('posts');
-  const [showSettingsPage, setShowSettingsPage] = useState(false);
 
   // Social Links Modal State
   const [showSocialModal, setShowSocialModal] = useState(false);
@@ -72,16 +72,106 @@ const MyProfilePage = () => {
   // Activity Dashboard State
   const [showActivityDashboard, setShowActivityDashboard] = useState(false);
   
-  // Highlights State
-  const [highlights, setHighlights] = useState([
-    { id: 1, title: 'indore ✨', cover: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=150&q=80' },
-    { id: 2, title: '💥', cover: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=150&q=80' },
-    { id: 3, title: '🤍', cover: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=150&q=80' },
-  ]);
+  // Highlights & Dynamic Tab States
+  const [highlights, setHighlights] = useState([]);
+  const [profileStats, setProfileStats] = useState({ postsCount: 0, followersCount: 0, followingCount: 0, savedCount: 0 });
+  const [savedPostsList, setSavedPostsList] = useState([]);
+  const [likedPostsList, setLikedPostsList] = useState([]);
+  const [pastStories, setPastStories] = useState([]);
+  const [loadingPastStories, setLoadingPastStories] = useState(false);
+
   const [showHighlightSelectionModal, setShowHighlightSelectionModal] = useState(false);
   const [showHighlightCreationModal, setShowHighlightCreationModal] = useState(false);
   const [selectedHighlightItems, setSelectedHighlightItems] = useState([]);
   const [newHighlightTitle, setNewHighlightTitle] = useState('Highlights');
+  const [activeHighlightView, setActiveHighlightView] = useState(null);
+
+  // Fetch real profile stats and highlights from backend
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const [statsRes, highlightsRes] = await Promise.all([
+          socialService.getProfileStats(),
+          socialService.getUserHighlights()
+        ]);
+        if (statsRes.success) setProfileStats(statsRes.data);
+        if (highlightsRes.success) setHighlights(highlightsRes.data);
+      } catch (err) {
+        console.error('Failed to load profile stats or highlights:', err);
+      }
+    };
+    if (currentUser?._id || currentUser?.id) {
+      fetchProfileData();
+    }
+  }, [currentUser]);
+
+  // Fetch Saved and Liked posts dynamically on tab switch
+  useEffect(() => {
+    const loadTabContent = async () => {
+      if (activeTab === 'saved') {
+        try {
+          const res = await socialService.getSavedPosts();
+          if (res.success) setSavedPostsList(res.data);
+        } catch (err) {
+          console.error('Failed to fetch saved posts:', err);
+        }
+      } else if (activeTab === 'liked') {
+        try {
+          const res = await socialService.getLikedPosts();
+          if (res.success) setLikedPostsList(res.data);
+        } catch (err) {
+          console.error('Failed to fetch liked posts:', err);
+        }
+      }
+    };
+  }, [activeTab]);
+
+  const handleOpenHighlightSelection = async () => {
+    setShowHighlightSelectionModal(true);
+    setLoadingPastStories(true);
+    try {
+      const res = await socialService.getPastStories();
+      if (res.success) {
+        setPastStories(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch past stories for highlights:', err);
+    } finally {
+      setLoadingPastStories(false);
+    }
+  };
+
+  const handleCreateHighlightDone = async () => {
+    if (selectedHighlightItems.length === 0) return;
+    try {
+      const storyIds = selectedHighlightItems.map(item => item._id || item.id).filter(Boolean);
+      const coverImage = selectedHighlightItems[0]?.media || selectedHighlightItems[0];
+      const res = await socialService.createHighlight({
+        title: newHighlightTitle || 'Highlights',
+        coverImage,
+        storyIds
+      });
+      if (res.success) {
+        setHighlights(prev => [res.data, ...prev]);
+      }
+    } catch (err) {
+      console.error('Failed to create highlight:', err);
+    } finally {
+      setShowHighlightCreationModal(false);
+      setSelectedHighlightItems([]);
+      setNewHighlightTitle('Highlights');
+    }
+  };
+
+  const handleDeleteHighlight = async (highlightId) => {
+    try {
+      await socialService.deleteHighlight(highlightId);
+      setHighlights(prev => prev.filter(h => (h._id || h.id) !== highlightId));
+      setActiveHighlightView(null);
+    } catch (err) {
+      console.error('Failed to delete highlight:', err);
+    }
+  };
 
   
   const myId = currentUser?.id || currentUser?._id || 'u1';
@@ -154,341 +244,9 @@ const MyProfilePage = () => {
   const likedPosts = posts?.filter(p => p.isLiked) || [];
   const savedPosts = posts?.filter(p => p.isSaved) || [];
 
-  const renderSettingsPage = () => {
-    return (
-      <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden animate-slide-up">
-        {/* Header Bar — settings view */}
-        <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowSettingsPage(false)} className="p-1 -ml-1 press-scale">
-              <ArrowLeft size={22} className="text-text-primary" />
-            </button>
-            <h1 className="text-base font-bold text-text-primary tracking-tight">Settings</h1>
-          </div>
-        </div>
-
-        <div className="max-w-md mx-auto px-3.5 py-6 space-y-6">
-          {/* Premium Upgrade Promotion Banner */}
-          <div>
-            {!currentUser.isPremium ? (
-              <div 
-                onClick={() => navigate('/member/profile/upgrade')}
-                className="p-4.5 rounded-[24px] bg-gradient-to-r from-rose-500 via-pink-500 to-[#e62e52] text-white shadow-lg shadow-rose-500/15 flex items-center justify-between cursor-pointer press-scale border border-rose-400/20"
-              >
-                <div className="space-y-1 text-left">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles size={16} className="text-amber-300 fill-amber-300 animate-pulse" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">Upgrade Membership</h3>
-                  </div>
-                  <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
-                    Access direct contacts, send 50+ super interests & get a Gold Badge!
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
-              </div>
-            ) : (
-              <div 
-                onClick={() => navigate('/member/profile/upgrade')}
-                className="p-4.5 rounded-[24px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-lg shadow-amber-550/15 flex items-center justify-between cursor-pointer press-scale border border-yellow-400/20"
-              >
-                <div className="space-y-1 text-left">
-                  <div className="flex items-center gap-1.5">
-                    <ShieldCheck size={16} className="text-white fill-white/10" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">{currentUser.membershipPlan || 'Pro Max'} Active</h3>
-                  </div>
-                  <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
-                    Valid plan until: {currentUser.membershipExpiry || 'Till Marriage'} · Enjoy premium matchmaking!
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
-              </div>
-            )}
-          </div>
-
-          {/* Follow Requests Manager */}
-          {pendingRequests.length > 0 && (
-            <div className="bg-amber-50/70 border border-amber-200/50 rounded-3xl p-4 shadow-sm">
-              <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <span>👋</span> Follow Requests ({pendingRequests.length})
-              </h3>
-              <div className="space-y-2.5">
-                {pendingRequests.map(reqUser => (
-                  <div key={reqUser.id} className="flex items-center justify-between bg-white rounded-2xl p-3 border border-amber-100 shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar initials={reqUser.initials} size="sm" color="bg-purple-50 text-brand-primary" />
-                      <div>
-                        <h4 className="text-[12.5px] font-bold text-text-primary leading-none">{reqUser.name}</h4>
-                        <p className="text-[10px] text-text-secondary mt-1">{reqUser.city}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button 
-                        onClick={() => acceptFollowRequest(reqUser.id)}
-                        className="px-3.5 py-1.5 bg-brand-primary text-white rounded-xl text-[11px] font-bold shadow-sm hover:bg-brand-dark press-scale transition-colors"
-                      >
-                        Accept
-                      </button>
-                      <button 
-                        onClick={() => rejectFollowRequest(reqUser.id)}
-                        className="px-3.5 py-1.5 bg-gray-100 text-text-secondary rounded-xl text-[11px] font-bold hover:bg-gray-200 press-scale transition-colors"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Profile Menu Actions List */}
-          <div className="space-y-4">
-            
-            {/* Group 1: Account Info */}
-            <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-              <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-                <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Account Information</span>
-              </div>
-              
-              {/* Action 1: Personal Info */}
-              <button 
-                onClick={() => navigate('/member/profile/edit')}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <User size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Personal Info</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add and update your information</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action 1.5: Family Details */}
-              <button 
-                onClick={() => navigate('/member/profile/family')}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Users size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Family Details</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage family tree & details</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action 2: Professional Info */}
-              <button 
-                onClick={() => navigate('/member/professional/apply')}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Briefcase size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Professional Info</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add business and services</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action 3: Services / Products */}
-              <button 
-                onClick={() => navigate('/member/professional')}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Package size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Services / Products</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Your products and business services</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action 4: Social Media Links */}
-              <button 
-                onClick={() => setShowSocialModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Globe size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Social Media Links</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add social media profile links</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-            </div>
-
-            {/* Group 2: Connections & Privacy */}
-            <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-              <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-                <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Security & Sharing</span>
-              </div>
-              
-              {/* Action: Refer & Earn */}
-              <button 
-                onClick={() => navigate('/member/referral')}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Gift size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Refer & Earn</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Invite friends and get rewards</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action 5: Privacy Settings */}
-              <button 
-                onClick={() => setShowPrivacyModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <Lock size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Privacy Settings</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage profile privacy</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action: Blocked Users */}
-              <button 
-                onClick={() => setShowBlockedModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">🚫</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Blocked Users</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">List of blocked members</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action: Notifications */}
-              <button 
-                onClick={() => setShowNotificationsModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">🔔</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Notifications</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage announcement alerts</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-            </div>
-
-            {/* Group 2.5: Support & About */}
-            <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-              <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-                <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Support & Info</span>
-              </div>
-
-              {/* Action: Help & Support */}
-              <button 
-                onClick={() => setShowHelpModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">🛡️</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">Help & Support</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Contact community admin</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-
-              {/* Action: About */}
-              <button 
-                onClick={() => setShowAboutModal(true)}
-                className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                    <span className="text-base">ℹ️</span>
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-text-primary block">About MeriSamaj</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Version info & details</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-purple-300" />
-              </button>
-            </div>
-
-            {/* Group 3: Session Management */}
-            <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-              {/* Action 6: Logout */}
-              <button 
-                onClick={() => {
-                  logoutUser();
-                  navigate('/member/login', { state: { skipLanguage: true } });
-                }}
-                className="w-full flex items-center justify-between p-4 hover:bg-red-50/30 transition-colors text-left group"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 group-hover:bg-red-100/60 text-red-500 flex items-center justify-center shrink-0 border border-red-100/40 shadow-sm">
-                    <LogOut size={18} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-bold text-red-500 block">Logout</span>
-                    <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Logout from the application</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-gray-300 group-hover:text-red-400" />
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
-      {showSettingsPage ? (
-        renderSettingsPage()
-      ) : (
-        <>
-          {/* Header Bar — Glass morphism */}
+      {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/member/social')} className="p-1 -ml-1 press-scale">
@@ -498,7 +256,7 @@ const MyProfilePage = () => {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setShowSettingsPage(true)}
+            onClick={() => navigate('/member/settings')}
             className="p-2 rounded-full transition-all duration-300 press-scale text-text-primary hover:bg-slate-100/60"
           >
             <SettingsIcon size={20} />
@@ -588,11 +346,11 @@ const MyProfilePage = () => {
               {/* Follow count statistics bar */}
               <div className="flex-1 flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
                 <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
+                  <span className="font-extrabold text-slate-800">{profileStats.followersCount || myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
                 </button>
                 <span className="text-slate-300">•</span>
                 <button onClick={() => setMembersListModalType('following')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{myFollowing.length}</span> <span className="text-slate-400 font-medium">following</span>
+                  <span className="font-extrabold text-slate-800">{profileStats.followingCount || myFollowing.length}</span> <span className="text-slate-400 font-medium">following</span>
                 </button>
               </div>
             </div>
@@ -615,6 +373,12 @@ const MyProfilePage = () => {
                   </span>
                 )}
               </div>
+
+              {currentUser.bio && (
+                <p className="text-[12.5px] font-medium text-slate-600 italic mt-1 leading-snug">
+                  "{currentUser.bio}"
+                </p>
+              )}
 
               {/* Bio metadata columns */}
               <div className="text-[12px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
@@ -658,8 +422,6 @@ const MyProfilePage = () => {
                 </a>
               )}
 
-
-
             </div>
 
           </div>
@@ -680,7 +442,7 @@ const MyProfilePage = () => {
             <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100/40 shadow-sm mb-2 text-brand-primary">
               <Grid size={17} />
             </div>
-            <span className="text-[17px] font-black text-slate-850 leading-none">{myPosts.length}</span>
+            <span className="text-[17px] font-black text-slate-850 leading-none">{profileStats.postsCount || myPosts.length}</span>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Posts</span>
           </motion.div>
 
@@ -697,7 +459,7 @@ const MyProfilePage = () => {
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100/40 shadow-sm mb-2 text-blue-500">
               <Users size={17} />
             </div>
-            <span className="text-[17px] font-black text-slate-850 leading-none">{myFollowers.length}</span>
+            <span className="text-[17px] font-black text-slate-850 leading-none">{profileStats.followersCount || myFollowers.length}</span>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Friends</span>
           </motion.div>
 
@@ -726,7 +488,7 @@ const MyProfilePage = () => {
         <div className="bg-white rounded-3xl p-4 border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
           <div className="flex gap-4 overflow-x-auto scrollbar-hide py-1">
             {/* New Highlight Button */}
-            <div className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group" onClick={() => setShowHighlightSelectionModal(true)}>
+            <div className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group" onClick={() => handleOpenHighlightSelection()}>
                <div className="w-14 h-14 rounded-full border border-dashed border-slate-350 flex items-center justify-center bg-white group-hover:bg-slate-50 transition-colors">
                   <Plus size={20} className="text-slate-800" />
                </div>
@@ -734,11 +496,11 @@ const MyProfilePage = () => {
             </div>
             {/* Existing Highlights */}
             {highlights.map(h => (
-               <div key={h.id} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer">
-                  <div className="w-14 h-14 rounded-full border-2 border-brand-primary/10 p-[1.5px] bg-white">
-                     <img src={h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
+               <div key={h._id || h.id} onClick={() => setActiveHighlightView(h)} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+                  <div className="w-14 h-14 rounded-full border-2 border-brand-primary/20 p-[1.5px] bg-white group-hover:scale-105 transition-transform">
+                     <img src={h.coverImage || h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-700">{h.title}</span>
+                  <span className="text-[11px] font-semibold text-slate-700 max-w-[64px] truncate text-center">{h.title}</span>
                </div>
             ))}
           </div>
@@ -863,8 +625,6 @@ const MyProfilePage = () => {
           </div>
         )}
       </div>
-      </>
-      )}
 
       {/* Social Links Modal */}
       {showSocialModal && createPortal(
@@ -895,7 +655,7 @@ const MyProfilePage = () => {
                 <input 
                   type="text" 
                   value={linkedin}
-                  onChange={(e) => setlinkedin(e.target.value)}
+                  onChange={(e) => setLinkedin(e.target.value)}
                   className="w-full mt-1 bg-surface border border-purple-100/30 rounded-xl px-4 py-2.5 text-xs font-semibold text-text-primary outline-none focus:border-brand-primary/40 focus:ring-2 focus:ring-brand-primary/10 transition-all shadow-sm"
                 />
               </div>
@@ -1165,7 +925,7 @@ const MyProfilePage = () => {
       {showHighlightSelectionModal && createPortal(
         <div className="fixed inset-0 z-[9999] bg-[#0c0c0c] flex flex-col animate-slide-up h-full w-full max-w-md mx-auto" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between px-4 h-14 shrink-0">
+          <div className="flex items-center justify-between px-4 h-14 shrink-0 border-b border-white/10">
             <div className="flex items-center gap-6">
               <button onClick={() => setShowHighlightSelectionModal(false)} className="text-white p-1 -ml-1 active:scale-95 transition-transform">
                 <ArrowLeft size={24} />
@@ -1183,50 +943,56 @@ const MyProfilePage = () => {
               Next
             </button>
           </div>
-          {/* Grid of user's posts */}
+          {/* Grid of user's stories & past posts */}
           <div className="flex-1 overflow-y-auto bg-[#0c0c0c] p-[1px]" style={{ touchAction: 'auto' }}>
-            <div className="grid grid-cols-3 gap-[2px]">
-              {(() => {
-                const userImages = posts.filter(p => p.author.id === currentUser.id && p.images && p.images.length > 0).flatMap(p => p.images);
-                const displayImages = userImages.length > 0 ? userImages : [
-                  'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=500&q=80',
-                  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=500&q=80',
-                  'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=500&q=80',
-                  'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=500&q=80',
-                  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=500&q=80',
-                  'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=500&q=80'
-                ];
-                
-                return displayImages.map((imgUrl, idx) => {
-                  const isSelected = selectedHighlightItems.includes(imgUrl);
-                  return (
-                    <div 
-                      key={idx} 
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedHighlightItems(prev => prev.filter(url => url !== imgUrl));
-                        } else {
-                          setSelectedHighlightItems(prev => [...prev, imgUrl]);
-                        }
-                      }}
-                      className="aspect-[9/16] bg-gray-900 relative cursor-pointer overflow-hidden group"
-                    >
-                      <img src={imgUrl} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/10 group-active:bg-black/30 transition-colors" />
-                      <div className="absolute top-2 right-2">
-                        <div className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-all ${
-                          isSelected 
-                            ? 'bg-[#0095f6] border-[#0095f6] scale-100 opacity-100' 
-                            : 'border-white/80 bg-black/20 backdrop-blur-sm opacity-80'
-                        }`}>
-                          {isSelected && <Check size={14} strokeWidth={3} className="text-white" />}
+            {loadingPastStories ? (
+              <div className="flex items-center justify-center py-20 text-white/50 text-xs">
+                Loading your stories...
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-[2px]">
+                {(() => {
+                  const displayItems = pastStories.length > 0 ? pastStories : posts.filter(p => p.images && p.images.length > 0).map(p => ({ _id: p.id, media: p.images[0] }));
+                  if (displayItems.length === 0) {
+                    return (
+                      <div className="col-span-3 py-20 text-center text-white/40 text-xs">
+                        No stories available to create highlight. Post a story first!
+                      </div>
+                    );
+                  }
+                  
+                  return displayItems.map((storyItem, idx) => {
+                    const itemMedia = storyItem.media || storyItem.image || storyItem;
+                    const isSelected = selectedHighlightItems.some(s => (s._id || s) === (storyItem._id || storyItem));
+                    return (
+                      <div 
+                        key={storyItem._id || idx} 
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedHighlightItems(prev => prev.filter(s => (s._id || s) !== (storyItem._id || storyItem)));
+                          } else {
+                            setSelectedHighlightItems(prev => [...prev, storyItem]);
+                          }
+                        }}
+                        className="aspect-[9/16] bg-gray-900 relative cursor-pointer overflow-hidden group"
+                      >
+                        <img src={itemMedia} className="w-full h-full object-cover" alt="Story preview" />
+                        <div className="absolute inset-0 bg-black/10 group-active:bg-black/30 transition-colors" />
+                        <div className="absolute top-2 right-2">
+                          <div className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                            isSelected 
+                              ? 'bg-[#0095f6] border-[#0095f6] scale-100 opacity-100' 
+                              : 'border-white/80 bg-black/20 backdrop-blur-sm opacity-80'
+                          }`}>
+                            {isSelected && <Check size={14} strokeWidth={3} className="text-white" />}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
           </div>
         </div>,
         document.body
@@ -1236,7 +1002,7 @@ const MyProfilePage = () => {
       {showHighlightCreationModal && createPortal(
         <div className="fixed inset-0 z-[9999] bg-[#0c0c0c] flex flex-col animate-slide-up h-full w-full max-w-md mx-auto" style={{ touchAction: 'none' }} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between px-4 h-14 shrink-0">
+          <div className="flex items-center justify-between px-4 h-14 shrink-0 border-b border-white/10">
             <div className="flex items-center gap-6">
               <button onClick={() => {
                 setShowHighlightCreationModal(false);
@@ -1247,16 +1013,7 @@ const MyProfilePage = () => {
               <h2 className="text-white text-[19px] font-semibold tracking-tight">New highlight</h2>
             </div>
             <button 
-              onClick={() => {
-                setHighlights(prev => [{
-                  id: Date.now(),
-                  title: newHighlightTitle || 'Highlights',
-                  cover: selectedHighlightItems[0]
-                }, ...prev]);
-                setShowHighlightCreationModal(false);
-                setSelectedHighlightItems([]);
-                setNewHighlightTitle('Highlights');
-              }}
+              onClick={handleCreateHighlightDone}
               className="text-[#0095f6] text-[15px] font-semibold tracking-wide active:text-white/70 transition-colors"
             >
               Done
@@ -1264,12 +1021,12 @@ const MyProfilePage = () => {
           </div>
           {/* Edit Cover & Title */}
           <div className="flex-1 flex flex-col items-center pt-16 px-6" style={{ touchAction: 'auto' }}>
-            <div className="w-[88px] h-[88px] rounded-full p-[2px] bg-gradient-to-tr from-gray-500 to-gray-300 mb-3 shadow-xl">
+            <div className="w-[88px] h-[88px] rounded-full p-[2px] bg-gradient-to-tr from-purple-500 to-indigo-500 mb-3 shadow-xl">
               <div className="w-full h-full rounded-full overflow-hidden bg-[#0c0c0c] border-[3px] border-[#0c0c0c]">
-                <img src={selectedHighlightItems[0]} className="w-full h-full object-cover" />
+                <img src={selectedHighlightItems[0]?.media || selectedHighlightItems[0]} className="w-full h-full object-cover" alt="Cover" />
               </div>
             </div>
-            <button className="text-[#0095f6] text-[13.5px] font-medium mb-8 active:opacity-70 transition-opacity">Edit cover</button>
+            <button className="text-[#0095f6] text-[13.5px] font-medium mb-8 active:opacity-70 transition-opacity">Highlight Cover</button>
             <div className="w-full max-w-[200px] relative">
               <input 
                 type="text"
@@ -1480,6 +1237,59 @@ const MyProfilePage = () => {
                   <a href="https://merisamaj.com" target="_blank" rel="noopener noreferrer" className="font-bold text-brand-primary hover:underline">merisamaj.com</a>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Active Highlight Viewer Modal */}
+      {activeHighlightView && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#111] w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[85vh] relative">
+            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-brand-primary p-0.5">
+                  <img src={activeHighlightView.coverImage || activeHighlightView.cover} className="w-full h-full object-cover rounded-full" alt="Cover" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white leading-none">{activeHighlightView.title}</h3>
+                  <span className="text-[10px] text-white/50 mt-1 block">Highlight Stories</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => handleDeleteHighlight(activeHighlightView._id || activeHighlightView.id)}
+                  className="px-2.5 py-1 text-[11px] font-bold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+                <button 
+                  onClick={() => setActiveHighlightView(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {activeHighlightView.storyIds && activeHighlightView.storyIds.length > 0 ? (
+                activeHighlightView.storyIds.map((story, idx) => (
+                  <div key={story._id || idx} className="rounded-2xl overflow-hidden border border-white/10 bg-black/50 relative aspect-[9/16]">
+                    <img src={story.media || story} className="w-full h-full object-cover" alt="Highlight item" />
+                    {story.text && (
+                      <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/10 text-white text-xs">
+                        {story.text}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="aspect-[9/16] rounded-2xl overflow-hidden border border-white/10 bg-black/50 relative">
+                  <img src={activeHighlightView.coverImage || activeHighlightView.cover} className="w-full h-full object-cover" alt="Highlight item" />
+                </div>
+              )}
             </div>
           </div>
         </div>,

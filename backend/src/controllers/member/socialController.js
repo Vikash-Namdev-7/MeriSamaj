@@ -8,6 +8,7 @@ const Notification = require('../../models/Notification');
 const City = require('../../models/City');
 const User = require('../../models/User');
 const Community = require('../../models/Community');
+const Follower = require('../../models/Follower');
 
 // Helper to resolve user city string to cityId (find or create)
 const getCityId = async (cityName) => {
@@ -87,23 +88,18 @@ exports.getPosts = async (req, res) => {
 
     // Dynamic feed filter resolving
     if (feed === 'city') {
-      if (req.user?.city) {
-        const cityId = await getCityId(req.user.city);
-        if (cityId) {
-          filter.cityId = cityId;
-        }
-      }
-      // City Feed: visible to members in the same city.
-      // Shows city posts (feedType !== 'community'), plus community posts if user belongs to that community.
-      filter.$or = [
-        { feedType: { $ne: 'community' } },
-        { communityId: userCommIds.length === 1 ? userCommIds[0] : { $in: userCommIds } }
+      const commFilter = userCommIds.length > 0 ? { $in: userCommIds } : null;
+      const cityScope = [
+        { feedType: { $ne: 'community' } }
       ];
+      if (commFilter) {
+        cityScope.push({ communityId: commFilter });
+      }
+      filter.$or = cityScope;
     } else if (feed === 'community') {
       if (userCommIds.length > 0) {
-        const commFilter = userCommIds.length === 1 ? userCommIds[0] : { $in: userCommIds };
         filter.$or = [
-          { communityId: commFilter },
+          { communityId: { $in: userCommIds } },
           { feedType: 'community' }
         ];
       } else {
@@ -111,7 +107,7 @@ exports.getPosts = async (req, res) => {
       }
     } else {
       if (userCommIds.length > 0) {
-        filter.communityId = userCommIds.length === 1 ? userCommIds[0] : { $in: userCommIds };
+        filter.communityId = { $in: userCommIds };
       }
     }
 
@@ -218,59 +214,86 @@ exports.createPost = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Content is required' });
     }
 
-    // Resolve location
-    const locationCity = location || req.user.city || 'Indore';
-    const cityId = await getCityId(locationCity);
-    const communityId = getCommunityId(req);
+    // 1. Guaranteed City Resolution
+    const locationCity = (location && location.trim()) || req.user.city || 'Indore';
+    let cityId = await getCityId(locationCity);
+    if (!cityId) {
+      cityId = await getCityId('Indore');
+    }
 
-    // Format Media structures & upload base64/data URLs to Cloudinary
-    const formattedMedia = await Promise.all(media.map(async (m) => {
-      let type = m.type || 'image';
-      let provider = m.provider || 'external';
-      let url = m.url;
-
-      if (url && (url.startsWith('data:') || url.startsWith('blob:'))) {
-        try {
-          const uploadRes = await cloudinary.uploader.upload(url, {
-            folder: 'merisamaj_social',
-            resource_type: type === 'video' ? 'video' : 'auto'
-          });
-          url = uploadRes.secure_url;
-          provider = 'upload';
-        } catch (err) {
-          console.error('Cloudinary upload error in createPost:', err.message);
-        }
-      }
-
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        type = 'youtube';
-        provider = 'youtube';
-      } else if (url.includes('instagram.com/')) {
-        type = 'instagram';
-        provider = 'instagram';
-      } else if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.includes('video') || (url.includes('res.cloudinary.com') && url.includes('/video/'))) {
-        type = 'video';
-        provider = url.includes('cloudinary') ? 'upload' : 'external';
-      } else if (url.includes('cloudinary')) {
-        provider = 'upload';
-      }
-
-      return {
-        type,
-        url,
-        thumbnail: m.thumbnail,
-        duration: m.duration,
-        width: m.width,
-        height: m.height,
-        provider
-      };
-    }));
-
-    let targetCommunityId = communityId;
+    // 2. Guaranteed Community Resolution
+    let targetCommunityId = getCommunityId(req);
+    if (!targetCommunityId && req.user?.community) {
+      const commDoc = await Community.findOne({ name: new RegExp('^' + req.user.community.trim() + '$', 'i') });
+      if (commDoc) targetCommunityId = commDoc._id;
+    }
     if (!targetCommunityId) {
-      const Community = require('../../models/Community');
       const defaultComm = await Community.findOne({});
       if (defaultComm) targetCommunityId = defaultComm._id;
+    }
+
+    // 3. Format Media structures safely (validate enum types and providers)
+    const validMedia = [];
+    if (Array.isArray(media) && media.length > 0) {
+      for (const m of media) {
+        if (!m || !m.url) continue;
+        let type = m.type || 'image';
+        let provider = m.provider || 'external';
+        let url = m.url;
+
+        // Skip unhandled browser blob URLs if upload failed to avoid broken media links
+        if (url.startsWith('blob:')) {
+          try {
+            const uploadRes = await cloudinary.uploader.upload(url, {
+              folder: 'merisamaj_social',
+              resource_type: type === 'video' ? 'video' : 'auto'
+            });
+            url = uploadRes.secure_url;
+            provider = 'upload';
+          } catch (err) {
+            console.warn('Cloudinary upload skipped for blob URL:', err.message);
+            // Ignore raw un-uploaded blob: URLs to avoid database schema rejection
+            continue;
+          }
+        } else if (url.startsWith('data:')) {
+          try {
+            const uploadRes = await cloudinary.uploader.upload(url, {
+              folder: 'merisamaj_social',
+              resource_type: type === 'video' ? 'video' : 'auto'
+            });
+            url = uploadRes.secure_url;
+            provider = 'upload';
+          } catch (err) {
+            console.warn('Cloudinary upload error for data URI:', err.message);
+          }
+        }
+
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+          type = 'youtube';
+          provider = 'youtube';
+        } else if (url.includes('instagram.com/')) {
+          type = 'instagram';
+          provider = 'instagram';
+        } else if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.includes('video') || (url.includes('res.cloudinary.com') && url.includes('/video/'))) {
+          type = 'video';
+          provider = url.includes('cloudinary') ? 'upload' : 'external';
+        } else if (url.includes('cloudinary')) {
+          provider = 'upload';
+        }
+
+        const validTypes = ['image', 'video', 'gif', 'youtube', 'instagram'];
+        const validProviders = ['upload', 'youtube', 'instagram', 'external'];
+
+        validMedia.push({
+          type: validTypes.includes(type) ? type : 'image',
+          url,
+          thumbnail: m.thumbnail,
+          duration: m.duration,
+          width: m.width,
+          height: m.height,
+          provider: validProviders.includes(provider) ? provider : 'external'
+        });
+      }
     }
 
     const post = await Post.create({
@@ -280,20 +303,22 @@ exports.createPost = async (req, res) => {
       cityId,
       content: content.trim(),
       category: category || 'Notice',
-      media: formattedMedia,
-      images: formattedMedia.map(m => m.url),
+      media: validMedia,
+      images: validMedia.map(m => m.url),
       feedType: req.body.feedType || 'city',
       status: 'published'
     });
 
     const populated = await Post.findById(post._id)
-      .populate('userId', 'name avatar role')
-      .populate('authorId', 'name avatar role');
+      .populate('userId', 'name avatar role city community communityId')
+      .populate('authorId', 'name avatar role city community communityId')
+      .populate('communityId', 'name slug city')
+      .populate('cityId', 'name');
 
     res.status(201).json({ success: true, data: populated });
   } catch (error) {
     console.error('createPost error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: error.message || 'Server error creating post' });
   }
 };
 
@@ -533,5 +558,100 @@ exports.searchSocial = async (req, res) => {
       console.error('searchSocial error:', e);
       res.status(500).json({ success: false, message: 'Server error' });
     }
+  }
+};
+
+// @desc    Get user profile social statistics (posts count, followers, following, saved count)
+// @route   GET /api/v1/member/social/profile-stats
+// @access  Private
+exports.getProfileStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const [postsCount, followersCount, followingCount, savedCount] = await Promise.all([
+      Post.countDocuments({ authorId: userId, isDeleted: false }),
+      Follower.countDocuments({ followingId: userId, status: 'accepted' }),
+      Follower.countDocuments({ followerId: userId, status: 'accepted' }),
+      SavedPost.countDocuments({ userId: userId })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        postsCount,
+        followersCount,
+        followingCount,
+        savedCount
+      }
+    });
+  } catch (error) {
+    console.error('getProfileStats error:', error);
+    res.status(500).json({ success: false, message: 'Server error loading stats' });
+  }
+};
+
+// @desc    Get current user saved posts list
+// @route   GET /api/v1/member/social/posts/saved
+// @access  Private
+exports.getMySavedPosts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const savedRecords = await SavedPost.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'postId',
+        populate: [
+          { path: 'userId', select: 'name avatar role city community' },
+          { path: 'authorId', select: 'name avatar role city community' },
+          { path: 'communityId', select: 'name slug city' },
+          { path: 'cityId', select: 'name' }
+        ]
+      });
+
+    const validPosts = savedRecords
+      .map(r => r.postId)
+      .filter(post => post && !post.isDeleted);
+
+    res.json({
+      success: true,
+      data: validPosts
+    });
+  } catch (error) {
+    console.error('getMySavedPosts error:', error);
+    res.status(500).json({ success: false, message: 'Server error loading saved posts' });
+  }
+};
+
+// @desc    Get current user liked posts list
+// @route   GET /api/v1/member/social/posts/liked
+// @access  Private
+exports.getMyLikedPosts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const likedRecords = await PostLike.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'postId',
+        populate: [
+          { path: 'userId', select: 'name avatar role city community' },
+          { path: 'authorId', select: 'name avatar role city community' },
+          { path: 'communityId', select: 'name slug city' },
+          { path: 'cityId', select: 'name' }
+        ]
+      });
+
+    const validPosts = likedRecords
+      .map(r => r.postId)
+      .filter(post => post && !post.isDeleted);
+
+    res.json({
+      success: true,
+      data: validPosts
+    });
+  } catch (error) {
+    console.error('getMyLikedPosts error:', error);
+    res.status(500).json({ success: false, message: 'Server error loading liked posts' });
   }
 };

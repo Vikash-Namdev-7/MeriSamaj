@@ -1,33 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '../../components/layout/PageHeader';
 import { 
-  ChevronRight, Bell, Lock, User, Shield, Info, LogOut, Globe, Smartphone, 
-  Check, X, Moon, Sun, ShieldAlert, ArrowLeft, Send
+  ArrowLeft, Sparkles, ShieldCheck, ChevronRight, User, Users, Briefcase, 
+  Package, Globe, Lock, Bell, Shield, Info, LogOut, Gift, Check, X, Moon, Sun, Send
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { Avatar } from '../../components/common/Avatar';
 
-const SettingsPage = () => {
+export const SettingsPage = () => {
   const navigate = useNavigate();
+
   const { 
+    currentUser, 
     logoutUser, 
-    language, 
-    setLanguage, 
-    profilePrivacy, 
-    updateProfilePrivacy, 
-    granularPrivacy, 
+    updateProfile,
+    profilePrivacy,
+    followRelations,
+    blockedUsers,
+    members,
+    updateProfilePrivacy,
     updateGranularPrivacy,
+    granularPrivacy,
+    unblockUser,
+    language,
+    setLanguage,
     followedAnnouncements,
     toggleFollowedAnnouncement
   } = useData();
 
-  // Modal State: null | 'privacy' | 'notifications' | 'language' | 'appearance' | 'help' | 'about'
-  const [activeModal, setActiveModal] = useState(null);
+  // Social Links Modal State
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [facebook, setFacebook] = useState(currentUser?.facebook || 'https://facebook.com/user');
+  const [twitter, setTwitter] = useState(currentUser?.twitter || 'https://twitter.com/user');
+  const [linkedin, setLinkedin] = useState(currentUser?.linkedin || 'https://linkedin.com/in/user');
 
-  // Appearance State (Sync with document class)
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'light';
-  });
+  // Blocked Users Modal State
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+
+  // Privacy Settings Modal State
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  
+  // Preferences settings modal states & support form state
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportSubmitted, setSupportSubmitted] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -38,34 +59,49 @@ const SettingsPage = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Privacy states
-  const userGranular = granularPrivacy?.u1 || granularPrivacy || {};
-  const [privacySetting, setPrivacySetting] = useState(profilePrivacy?.u1 || 'public');
-  const [phoneSetting, setPhoneSetting] = useState(userGranular.phone || 'followers');
-  const [emailSetting, setEmailSetting] = useState(userGranular.email || 'followers');
-  const [familySetting, setFamilySetting] = useState(userGranular.familyTree || 'followers');
+  const myId = currentUser?.id || currentUser?._id || 'u1';
+  const userGranular = granularPrivacy?.[myId] || granularPrivacy?.u1 || granularPrivacy || {};
+  const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.[myId] || profilePrivacy?.u1 || 'public');
+  const [myPhoneSetting, setMyPhoneSetting] = useState(userGranular.phone || 'followers');
+  const [myEmailSetting, setMyEmailSetting] = useState(userGranular.email || 'followers');
+  const [myFamilySetting, setMyFamilySetting] = useState(userGranular.familyTree || 'followers');
+
   const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
 
-  // Help form state
-  const [supportMessage, setSupportMessage] = useState('');
-  const [supportSubmitted, setSupportSubmitted] = useState(false);
-
-  // Settings Actions
-  const handleItemClick = (id) => {
-    if (id === 'profile') {
-      navigate('/member/profile/edit');
-    } else {
-      setActiveModal(id);
+  // Sync form state when modal opens
+  useEffect(() => {
+    if (showPrivacyModal) {
+      setMyPrivacySetting(profilePrivacy?.[myId] || profilePrivacy?.u1 || 'public');
+      const latestGranular = granularPrivacy?.[myId] || granularPrivacy?.u1 || granularPrivacy || {};
+      setMyPhoneSetting(latestGranular.phone || 'followers');
+      setMyEmailSetting(latestGranular.email || 'followers');
+      setMyFamilySetting(latestGranular.familyTree || 'followers');
     }
+  }, [showPrivacyModal, profilePrivacy, granularPrivacy, myId]);
+
+  useEffect(() => {
+    if (showSocialModal || showPrivacyModal || showBlockedModal || showNotificationsModal || showLanguageModal || showThemeModal || showHelpModal || showAboutModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showSocialModal, showPrivacyModal, showBlockedModal, showNotificationsModal, showLanguageModal, showThemeModal, showHelpModal, showAboutModal]);
+
+  const handleSaveSocials = () => {
+    updateProfile({ facebook, twitter, linkedin });
+    setShowSocialModal(false);
   };
 
   const handleSavePrivacy = () => {
-    updateProfilePrivacy(privacySetting);
-    updateGranularPrivacy('phone', phoneSetting);
-    updateGranularPrivacy('email', emailSetting);
-    updateGranularPrivacy('familyTree', familySetting);
-    setActiveModal(null);
+    updateProfilePrivacy(myPrivacySetting);
+    updateGranularPrivacy('phone', myPhoneSetting);
+    updateGranularPrivacy('email', myEmailSetting);
+    updateGranularPrivacy('familyTree', myFamilySetting);
+    setShowPrivacyModal(false);
   };
 
   const handleSupportSubmit = (e) => {
@@ -75,111 +111,373 @@ const SettingsPage = () => {
       setTimeout(() => {
         setSupportSubmitted(false);
         setSupportMessage('');
-        setActiveModal(null);
+        setShowHelpModal(false);
       }, 2000);
     }
   };
 
-  const settingsGroups = [
-    {
-      title: 'Account',
-      items: [
-        { id: 'profile', icon: User, label: 'Personal Information', color: 'text-blue-500', bg: 'bg-blue-50' },
-        { id: 'privacy', icon: Lock, label: 'Privacy & Security', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-        { id: 'notifications', icon: Bell, label: 'Notifications', color: 'text-amber-500', bg: 'bg-amber-50' },
-      ]
-    },
-    {
-      title: 'Preferences',
-      items: [
-        { id: 'language', icon: Globe, label: 'Language', color: 'text-indigo-500', bg: 'bg-indigo-50', extra: language === 'en' ? 'English' : 'Hindi' },
-        { id: 'appearance', icon: Smartphone, label: 'App Appearance', color: 'text-purple-500', bg: 'bg-purple-50', extra: theme === 'dark' ? 'Dark' : 'Light' },
-      ]
-    },
-    {
-      title: 'Support & About',
-      items: [
-        { id: 'help', icon: Shield, label: 'Help & Support', color: 'text-rose-500', bg: 'bg-rose-50' },
-        { id: 'about', icon: Info, label: 'About MeriSamaj', color: 'text-slate-500', bg: 'bg-slate-100' },
-      ]
-    }
-  ];
+  // Blocked Members derivation
+  const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === myId).map(b => b.blockedId) || [];
+  const blockedMembersList = members?.filter(m => blockedMembersIds.includes(m.id)) || [];
 
   return (
-    <div className="min-h-screen bg-surface pb-20 relative">
-      <PageHeader title="Settings" />
-
-      <div className="p-4 space-y-6 max-w-md mx-auto w-full">
-        {settingsGroups.map((group, idx) => (
-          <div key={idx} className="animate-stagger-fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
-            <h3 className="text-[10px] font-extrabold text-text-secondary uppercase tracking-widest mb-3 px-2">
-              {group.title}
-            </h3>
-            <div className="bg-white rounded-[24px] border border-purple-100/20 overflow-hidden shadow-[0_4px_16px_rgba(109,40,217,0.02)]">
-              {group.items.map((item, i) => (
-                <div 
-                  key={item.id} 
-                  onClick={() => handleItemClick(item.id)}
-                  className={`flex items-center justify-between p-4 press-scale cursor-pointer transition-all duration-200 hover:bg-purple-50/30 ${i !== group.items.length - 1 ? 'border-b border-purple-100/10' : ''}`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-9 h-9 rounded-xl ${item.bg} flex items-center justify-center border border-purple-150/15 shadow-sm`}>
-                      <item.icon size={17} className={item.color} strokeWidth={2.2} />
-                    </div>
-                    <span className="text-[14px] font-extrabold text-text-primary">{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {item.extra && <span className="text-[11px] font-bold text-text-muted">{item.extra}</span>}
-                    <ChevronRight size={16} className="text-purple-300" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Logout Section */}
-        <div className="mt-8 mb-4 animate-stagger-fade-in" style={{ animationDelay: '180ms' }}>
-          <button 
-            onClick={logoutUser}
-            className="w-full bg-white border border-rose-100/60 shadow-[0_4px_12px_rgba(239,68,68,0.03)] p-4 flex items-center justify-center gap-2 rounded-[20px] press-scale cursor-pointer hover:bg-rose-50/20 transition-all duration-200"
-            style={{ border: '1px solid rgba(239,68,68,0.15)' }}
-          >
-            <LogOut size={16} className="text-rose-600" strokeWidth={2.5} />
-            <span className="text-[14px] font-black text-rose-600 uppercase tracking-wider">Log out</span>
+    <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden animate-slide-up">
+      {/* Header Bar */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/member/profile')} className="p-1 -ml-1 press-scale">
+            <ArrowLeft size={22} className="text-text-primary" />
           </button>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">Settings</h1>
         </div>
-        
-        <div className="text-center mt-6">
-          <p className="text-[9px] font-extrabold text-text-muted uppercase tracking-widest">MeriSamaj App Version 1.2.0</p>
+      </div>
+
+      <div className="max-w-md mx-auto px-3.5 py-6 space-y-6">
+        {/* Premium Upgrade Promotion Banner */}
+        <div>
+          {!currentUser?.isPremium ? (
+            <div 
+              onClick={() => navigate('/member/profile/upgrade')}
+              className="p-4.5 rounded-[24px] bg-gradient-to-r from-rose-500 via-pink-500 to-[#e62e52] text-white shadow-lg shadow-rose-500/15 flex items-center justify-between cursor-pointer press-scale border border-rose-400/20"
+            >
+              <div className="space-y-1 text-left">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={16} className="text-amber-300 fill-amber-300 animate-pulse" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Upgrade Membership</h3>
+                </div>
+                <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
+                  Access direct contacts, send 50+ super interests & get a Gold Badge!
+                </p>
+              </div>
+              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
+            </div>
+          ) : (
+            <div 
+              onClick={() => navigate('/member/profile/upgrade')}
+              className="p-4.5 rounded-[24px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-lg shadow-amber-550/15 flex items-center justify-between cursor-pointer press-scale border border-yellow-400/20"
+            >
+              <div className="space-y-1 text-left">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck size={16} className="text-white fill-white/10" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">{currentUser.membershipPlan || 'Pro Max'} Active</h3>
+                </div>
+                <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
+                  Valid plan until: {currentUser.membershipExpiry || 'Till Marriage'} · Enjoy premium matchmaking!
+                </p>
+              </div>
+              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
+            </div>
+          )}
+        </div>
+
+        {/* Profile Menu Actions List */}
+        <div className="space-y-4">
+          
+          {/* Group 1: Account Info */}
+          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
+            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
+              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Account Information</span>
+            </div>
+            
+            {/* Action 1: Personal Info */}
+            <button 
+              onClick={() => navigate('/member/profile/edit')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <User size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Personal Info</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add and update your information</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 1.5: Family Details */}
+            <button 
+              onClick={() => navigate('/member/profile/family')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Users size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Family Details</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage family tree & details</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 2: Professional Info */}
+            <button 
+              onClick={() => navigate('/member/professional/apply')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Briefcase size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Professional Info</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add business and services</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 3: Services / Products */}
+            <button 
+              onClick={() => navigate('/member/professional')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Package size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Services / Products</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Your products and business services</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 4: Social Media Links */}
+            <button 
+              onClick={() => setShowSocialModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Social Media Links</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add social media profile links</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+          </div>
+
+          {/* Group 2: Connections & Privacy */}
+          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
+            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
+              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Security & Sharing</span>
+            </div>
+            
+            {/* Action: Refer & Earn */}
+            <button 
+              onClick={() => navigate('/member/referral')}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Gift size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Refer & Earn</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Invite friends and get rewards</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action 5: Privacy Settings */}
+            <button 
+              onClick={() => setShowPrivacyModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Privacy Settings</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage profile privacy</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action: Blocked Users */}
+            <button 
+              onClick={() => setShowBlockedModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <span className="text-base">🚫</span>
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Blocked Users</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">List of blocked members</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action: Notifications */}
+            <button 
+              onClick={() => setShowNotificationsModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <span className="text-base">🔔</span>
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Notifications</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage announcement alerts</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+          </div>
+
+          {/* Group 2.5: Support & About */}
+          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
+            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
+              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Support & Info</span>
+            </div>
+
+            {/* Action: Help & Support */}
+            <button 
+              onClick={() => setShowHelpModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <span className="text-base">🛡️</span>
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">Help & Support</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Contact community admin</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+
+            {/* Action: About */}
+            <button 
+              onClick={() => setShowAboutModal(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+                  <span className="text-base">ℹ️</span>
+                </div>
+                <div>
+                  <span className="text-[13px] font-bold text-text-primary block">About MeriSamaj</span>
+                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Version info & details</span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-purple-300" />
+            </button>
+          </div>
+
+          {/* Group 3: Logout Action */}
+          <div className="pt-2">
+            <button 
+              onClick={logoutUser}
+              className="w-full bg-white border border-rose-100/60 shadow-[0_4px_12px_rgba(239,68,68,0.03)] p-4 flex items-center justify-center gap-2 rounded-[20px] press-scale cursor-pointer hover:bg-rose-50/20 transition-all duration-200"
+            >
+              <LogOut size={16} className="text-rose-600" strokeWidth={2.5} />
+              <span className="text-[14px] font-black text-rose-600 uppercase tracking-wider">Log out</span>
+            </button>
+          </div>
+
         </div>
       </div>
 
       {/* ─── MODALS ─── */}
 
-      {/* 1. Privacy & Security Modal */}
-      {activeModal === 'privacy' && (
+      {/* 1. Social Links Modal */}
+      {showSocialModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-scale-in shadow-xl border border-purple-100/30">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                <Globe size={20} className="text-brand-primary" /> Social Media Links
+              </h3>
+              <button onClick={() => setShowSocialModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Facebook Profile</label>
+                <input 
+                  type="text" 
+                  value={facebook}
+                  onChange={(e) => setFacebook(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] font-medium outline-none focus:border-brand-primary"
+                  placeholder="https://facebook.com/yourprofile"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Twitter / X Profile</label>
+                <input 
+                  type="text" 
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] font-medium outline-none focus:border-brand-primary"
+                  placeholder="https://twitter.com/yourprofile"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">LinkedIn Profile</label>
+                <input 
+                  type="text" 
+                  value={linkedin}
+                  onChange={(e) => setLinkedin(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] font-medium outline-none focus:border-brand-primary"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                />
+              </div>
+
+              <button 
+                onClick={handleSaveSocials}
+                className="w-full py-3 bg-brand-primary text-white rounded-xl text-[14px] font-bold hover:bg-brand-dark transition-colors mt-2 shadow-md shadow-brand-primary/10"
+              >
+                Save Links
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Privacy Settings Modal */}
+      {showPrivacyModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <Lock size={20} className="text-brand-primary" /> Privacy Settings
               </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+              <button onClick={() => setShowPrivacyModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-4">
-              {/* Account Type */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Account Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['public', 'private'].map((type) => (
                     <button 
                       key={type}
-                      onClick={() => setPrivacySetting(type)}
-                      className={`py-3 rounded-xl text-[13px] font-bold border transition-all ${privacySetting === type ? 'bg-purple-50 border-brand-primary text-brand-primary' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                      onClick={() => setMyPrivacySetting(type)}
+                      className={`py-3 rounded-xl text-[13px] font-bold border transition-all ${myPrivacySetting === type ? 'bg-purple-50 border-brand-primary text-brand-primary' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
                     >
                       {type === 'public' ? '🔓 Public' : '🔒 Private'}
                     </button>
@@ -187,7 +485,6 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              {/* Phone Visibility */}
               <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number Visibility</label>
                 <button
@@ -198,7 +495,7 @@ const SettingsPage = () => {
                   }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all text-left flex items-center justify-between"
                 >
-                  <span>{phoneSetting === 'everyone' ? 'Everyone' : phoneSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
+                  <span>{myPhoneSetting === 'everyone' ? 'Everyone' : myPhoneSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
                   <ChevronRight size={16} className={`text-slate-400 shrink-0 transition-transform ${showPhoneDropdown ? 'rotate-90' : ''}`} />
                 </button>
                 {showPhoneDropdown && (
@@ -214,13 +511,13 @@ const SettingsPage = () => {
                           key={opt.value}
                           type="button"
                           onClick={() => {
-                            setPhoneSetting(opt.value);
+                            setMyPhoneSetting(opt.value);
                             setShowPhoneDropdown(false);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-purple-50 text-[13px] font-bold text-slate-700 flex items-center justify-between border-b border-slate-50 last:border-0"
                         >
-                          <span className={phoneSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
-                          {phoneSetting === opt.value && <Check size={14} className="text-brand-primary" />}
+                          <span className={myPhoneSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
+                          {myPhoneSetting === opt.value && <Check size={14} className="text-brand-primary" />}
                         </button>
                       ))}
                     </div>
@@ -228,7 +525,6 @@ const SettingsPage = () => {
                 )}
               </div>
 
-              {/* Email Visibility */}
               <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Visibility</label>
                 <button
@@ -239,7 +535,7 @@ const SettingsPage = () => {
                   }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 outline-none focus:border-brand-primary transition-all text-left flex items-center justify-between"
                 >
-                  <span>{emailSetting === 'everyone' ? 'Everyone' : emailSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
+                  <span>{myEmailSetting === 'everyone' ? 'Everyone' : myEmailSetting === 'followers' ? 'Followers Only' : 'Only Me'}</span>
                   <ChevronRight size={16} className={`text-slate-400 shrink-0 transition-transform ${showEmailDropdown ? 'rotate-90' : ''}`} />
                 </button>
                 {showEmailDropdown && (
@@ -255,13 +551,13 @@ const SettingsPage = () => {
                           key={opt.value}
                           type="button"
                           onClick={() => {
-                            setEmailSetting(opt.value);
+                            setMyEmailSetting(opt.value);
                             setShowEmailDropdown(false);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-purple-50 text-[13px] font-bold text-slate-700 flex items-center justify-between border-b border-slate-50 last:border-0"
                         >
-                          <span className={emailSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
-                          {emailSetting === opt.value && <Check size={14} className="text-brand-primary" />}
+                          <span className={myEmailSetting === opt.value ? 'text-brand-primary' : ''}>{opt.label}</span>
+                          {myEmailSetting === opt.value && <Check size={14} className="text-brand-primary" />}
                         </button>
                       ))}
                     </div>
@@ -280,15 +576,57 @@ const SettingsPage = () => {
         </div>
       )}
 
-      {/* 2. Notifications Preferences Modal */}
-      {activeModal === 'notifications' && (
+      {/* 3. Blocked Users Modal */}
+      {showBlockedModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                <span>🚫</span> Blocked Users
+              </h3>
+              <button onClick={() => setShowBlockedModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+                <X size={18} />
+              </button>
+            </div>
+
+            {blockedMembersList.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 font-medium text-xs">
+                No blocked users found.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {blockedMembersList.map(blockedUser => (
+                  <div key={blockedUser.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar initials={blockedUser.initials} size="sm" color="bg-purple-50 text-brand-primary" />
+                      <div>
+                        <h4 className="text-[13px] font-bold text-slate-800 leading-none">{blockedUser.name}</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">{blockedUser.city}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => unblockUser(blockedUser.id)}
+                      className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-xl text-[11px] font-bold hover:bg-slate-300 transition-colors"
+                    >
+                      Unblock
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Notifications Preferences Modal */}
+      {showNotificationsModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <Bell size={20} className="text-brand-primary" /> Notifications
               </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+              <button onClick={() => setShowNotificationsModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
                 <X size={18} />
               </button>
             </div>
@@ -318,91 +656,15 @@ const SettingsPage = () => {
         </div>
       )}
 
-      {/* 3. Language Selection Modal */}
-      {activeModal === 'language' && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
-                <Globe size={20} className="text-brand-primary" /> Select Language
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {[
-                { key: 'en', label: 'English' },
-                { key: 'hi', label: 'हिन्दी (Hindi)' }
-              ].map((langOpt) => {
-                const isSelected = language === langOpt.key;
-                return (
-                  <button 
-                    key={langOpt.key}
-                    onClick={() => {
-                      setLanguage(langOpt.key);
-                      setActiveModal(null);
-                    }}
-                    className={`w-full p-4 rounded-2xl flex items-center justify-between font-bold text-[14px] border transition-all ${isSelected ? 'bg-purple-50 border-brand-primary text-brand-primary' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
-                  >
-                    <span>{langOpt.label}</span>
-                    {isSelected && <Check size={18} className="text-brand-primary animate-scale-in" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. App Appearance Modal */}
-      {activeModal === 'appearance' && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
-                <Smartphone size={20} className="text-brand-primary" /> Theme Settings
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: 'light', label: 'Light Mode', icon: Sun, color: 'text-amber-500' },
-                { key: 'dark', label: 'Dark Mode', icon: Moon, color: 'text-indigo-600' }
-              ].map((mode) => {
-                const isSelected = theme === mode.key;
-                return (
-                  <button 
-                    key={mode.key}
-                    onClick={() => {
-                      setTheme(mode.key);
-                      setActiveModal(null);
-                    }}
-                    className={`p-5 rounded-2xl flex flex-col items-center gap-2.5 border transition-all font-bold text-[13px] ${isSelected ? 'bg-purple-50 border-brand-primary text-brand-primary shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-                  >
-                    <mode.icon size={22} className={mode.color} />
-                    <span>{mode.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 5. Help & Support Modal */}
-      {activeModal === 'help' && (
+      {showHelpModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <Shield size={20} className="text-brand-primary" /> Contact Support
               </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+              <button onClick={() => setShowHelpModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
                 <X size={18} />
               </button>
             </div>
@@ -443,14 +705,14 @@ const SettingsPage = () => {
       )}
 
       {/* 6. About MeriSamaj Modal */}
-      {activeModal === 'about' && (
+      {showAboutModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-xl border border-purple-100/30">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <Info size={20} className="text-brand-primary" /> About MeriSamaj
               </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-full bg-slate-100 text-slate-500">
+              <button onClick={() => setShowAboutModal(false)} className="p-1 rounded-full bg-slate-100 text-slate-500">
                 <X size={18} />
               </button>
             </div>

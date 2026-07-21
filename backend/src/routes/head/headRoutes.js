@@ -20,6 +20,10 @@ router.use('/voting', votingRoutes);
 router.use('/events', eventRoutes);
 router.use('/funds', headFundRoutes);
 
+// Social Moderation Routes
+const headSocialRoutes = require('./headSocialRoutes');
+router.use('/social', headSocialRoutes);
+
 // Professional Directory Approval Routes
 const headProfessionalRoutes = require('./headProfessionalRoutes');
 router.use('/professional', headProfessionalRoutes);
