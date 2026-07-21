@@ -35,9 +35,9 @@ router.use('/funds', adminFundRoutes);
 const adminProfessionalRoutes = require('./adminProfessionalRoutes');
 router.use('/professional', adminProfessionalRoutes);
 
-// Admin Social Moderation Routes
-const adminSocialRoutes = require('./adminSocialRoutes');
-router.use('/social', adminSocialRoutes);
+// Matrimonial Management Routes
+const adminMatrimonialRoutes = require('./adminMatrimonialRoutes');
+router.use('/matrimonial', adminMatrimonialRoutes);
 
 module.exports = router;
 

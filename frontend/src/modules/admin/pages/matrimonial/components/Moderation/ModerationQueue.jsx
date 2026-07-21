@@ -1,80 +1,108 @@
-import React from 'react';
-import { Check, X, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { CheckCircle, XCircle, Loader2, Image, RefreshCw } from 'lucide-react';
+import { matrimonialService } from '../../services/matrimonialService';
 
 export const ModerationQueue = ({ data }) => {
-  const { profiles } = data;
-  const pendingProfiles = profiles.filter(p => p.status === 'pending');
+  const { photos = [], refreshPhotos } = data;
+  const [actionId, setActionId] = useState(null);
+  const [toast, setToast]       = useState('');
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const handleModerate = async (profileId, photoId, action) => {
+    const key = `${profileId}-${photoId}`;
+    setActionId(key);
+    try {
+      await matrimonialService.moderatePhoto(profileId, photoId, action);
+      showToast(`Photo ${action}d ✅`);
+      await refreshPhotos?.();
+    } catch (err) {
+      showToast('Action failed');
+    } finally {
+      setActionId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4">
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg">
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white">Moderation Queue</h2>
-          <p className="text-xs text-gray-400">Review pending matrimonial profiles and KYC verifications</p>
+          <h3 className="text-base font-black text-white">Photo Moderation Queue</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{photos.length} pending approval</p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-          <AlertTriangle size={14} />
-          {pendingProfiles.length} Pending Actions
-        </div>
+        <button onClick={refreshPhotos}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white/5 text-gray-400 rounded-lg text-xs font-bold hover:bg-white/10 transition-colors">
+          <RefreshCw size={12} /> Refresh
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pendingProfiles.map((profile, idx) => (
-          <motion.div
-            key={profile.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="card-neo p-5 relative"
-          >
-            <div className="flex items-start gap-4 mb-4">
-              <img src={profile.photoUrl} alt={profile.name} className="w-16 h-16 rounded-xl object-cover border-2 border-white/10" />
-              <div>
-                <h3 className="text-sm font-bold text-white">{profile.name}</h3>
-                <p className="text-xs text-brand-primary font-mono">{profile.profileId}</p>
-                <p className="text-[10px] text-gray-400 mt-1">{profile.community}</p>
-              </div>
-            </div>
+      {photos.length === 0 ? (
+        <div className="card-neo p-16 text-center">
+          <CheckCircle size={32} className="text-emerald-500 mx-auto mb-3" />
+          <h4 className="text-white font-bold">All Clear!</h4>
+          <p className="text-gray-500 text-sm mt-1">No photos pending moderation.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {photos.map(photo => {
+            const key = `${photo.profileId}-${photo.photoId}`;
+            const isLoading = actionId === key;
 
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Age / Gender</span>
-                <span className="text-gray-300 font-medium">{profile.age}, {profile.gender}</span>
+            return (
+              <div key={key} className="card-neo overflow-hidden group">
+                {/* Photo */}
+                <div className="aspect-[3/4] relative overflow-hidden bg-white/5">
+                  {photo.url ? (
+                    <img src={photo.url} alt="moderation" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Image size={24} className="text-gray-600" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="flex gap-2">
+                      <button onClick={() => handleModerate(photo.profileId, photo.photoId, 'approve')}
+                        disabled={isLoading}
+                        className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white disabled:opacity-40 hover:bg-emerald-400 transition-colors">
+                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                      </button>
+                      <button onClick={() => handleModerate(photo.profileId, photo.photoId, 'reject')}
+                        disabled={isLoading}
+                        className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white disabled:opacity-40 hover:bg-red-400 transition-colors">
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {/* Info */}
+                <div className="p-2.5">
+                  <p className="text-[11px] text-gray-400 font-semibold truncate">{photo.userName}</p>
+                  <p className="text-[9px] text-gray-600 mt-0.5">
+                    {photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleDateString('en-IN') : ''}
+                  </p>
+                </div>
+                {/* Mobile actions */}
+                <div className="flex border-t border-white/5 sm:hidden">
+                  <button onClick={() => handleModerate(photo.profileId, photo.photoId, 'approve')}
+                    className="flex-1 py-2 text-emerald-400 text-xs font-bold flex items-center justify-center gap-1 hover:bg-emerald-500/10">
+                    <CheckCircle size={12} /> Approve
+                  </button>
+                  <button onClick={() => handleModerate(photo.profileId, photo.photoId, 'reject')}
+                    className="flex-1 py-2 text-red-400 text-xs font-bold flex items-center justify-center gap-1 hover:bg-red-500/10 border-l border-white/5">
+                    <XCircle size={12} /> Reject
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Profession</span>
-                <span className="text-gray-300 font-medium">{profile.profession}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Marital Status</span>
-                <span className="text-gray-300 font-medium">{profile.maritalStatus}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Profile Completion</span>
-                <span className="text-emerald-400 font-bold">{profile.completionPct}%</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button className="flex-1 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1">
-                <Check size={14} /> Approve
-              </button>
-              <button className="flex-1 py-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1">
-                <X size={14} /> Reject
-              </button>
-            </div>
-          </motion.div>
-        ))}
-
-        {pendingProfiles.length === 0 && (
-          <div className="col-span-full card-neo p-12 flex flex-col items-center justify-center text-center">
-            <ShieldAlert size={48} className="text-gray-600 mb-4" />
-            <h3 className="text-lg font-bold text-gray-300 mb-2">Queue is Empty</h3>
-            <p className="text-sm text-gray-500 max-w-sm">All pending matrimonial profiles have been reviewed. Excellent work!</p>
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

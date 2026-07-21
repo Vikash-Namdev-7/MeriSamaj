@@ -3,11 +3,10 @@ const User = require('../../models/User');
 const EventActivityLog = require('../../models/EventActivityLog');
 
 const formatEvent = (event, userId) => {
-  const userStr = userId ? userId.toString() : '';
-  const isRegistered = (event.attendees && userStr) ? event.attendees.some(id => id && id.toString() === userStr) : false;
-  const isInterested = (event.interested && userStr) ? event.interested.some(id => id && id.toString() === userStr) : false;
-  const isBookmarked = (event.bookmarks && userStr) ? event.bookmarks.some(id => id && id.toString() === userStr) : false;
-  const isReminderSet = (event.reminders && userStr) ? event.reminders.some(id => id && id.toString() === userStr) : false;
+  const isRegistered = event.attendees ? event.attendees.some(id => id && id.toString() === userId.toString()) : false;
+  const isInterested = event.interested ? event.interested.some(id => id && id.toString() === userId.toString()) : false;
+  const isBookmarked = event.bookmarks ? event.bookmarks.some(id => id && id.toString() === userId.toString()) : false;
+  const isReminderSet = event.reminders ? event.reminders.some(id => id && id.toString() === userId.toString()) : false;
 
   return {
     id: event._id,

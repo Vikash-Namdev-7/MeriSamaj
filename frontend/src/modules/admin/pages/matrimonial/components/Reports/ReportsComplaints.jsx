@@ -1,77 +1,133 @@
-import React from 'react';
-import { ShieldAlert, CheckCircle, Trash2, MessageSquare } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { Flag, CheckCircle, EyeOff, Ban, Loader2, ChevronDown } from 'lucide-react';
+import { matrimonialService } from '../../services/matrimonialService';
+
+const SEVERITY_COLORS = {
+  low:    'bg-gray-500/20 text-gray-400',
+  medium: 'bg-amber-500/20 text-amber-400',
+  high:   'bg-orange-500/20 text-orange-400',
+  critical:'bg-red-500/20 text-red-400',
+};
+
+const STATUS_COLORS = {
+  pending:     'bg-amber-500/20 text-amber-400',
+  reviewed:    'bg-blue-500/20 text-blue-400',
+  dismissed:   'bg-gray-500/20 text-gray-400',
+  action_taken:'bg-emerald-500/20 text-emerald-400',
+};
 
 export const ReportsComplaints = ({ data }) => {
-  const { reports } = data;
+  const { reports = [], refreshReports } = data;
+  const [filter, setFilter]     = useState('pending');
+  const [actionId, setActionId] = useState(null);
+  const [expandId, setExpandId] = useState(null);
+  const [toast, setToast]       = useState('');
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const filtered = reports.filter(r => !filter || r.status === filter);
+
+  const handleAction = async (id, action, severity = undefined) => {
+    setActionId(id);
+    try {
+      await matrimonialService.actionReport(id, { status: action, severity });
+      showToast(`Report ${action} ✅`);
+      await refreshReports?.();
+    } catch (err) {
+      showToast('Action failed');
+    } finally {
+      setActionId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-lg font-bold text-white">Reports & Complaints</h2>
-          <p className="text-xs text-gray-400">Manage user-reported profiles and moderation escalations</p>
+    <div className="space-y-4">
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg">
+          {toast}
         </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        {['', 'pending', 'reviewed', 'action_taken', 'dismissed'].map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              filter === s ? 'bg-rose-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}>
+            {s === '' ? 'All' : s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-gray-500 font-semibold self-center">{filtered.length} reports</span>
       </div>
 
-      <div className="space-y-4">
-        {reports.map((report, idx) => (
-          <motion.div
-            key={report.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="card-neo p-5 flex flex-col md:flex-row gap-6 border-l-4 border-l-rose-500"
-          >
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase tracking-wider">
-                  {report.priority} Priority
-                </span>
-                <span className="text-xs text-gray-500">Reported {new Date(report.date).toLocaleDateString()}</span>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-bold text-white mb-1">Reason: {report.reason}</h3>
-                <p className="text-xs text-gray-400">{report.evidence}</p>
-              </div>
-              
-              <div className="flex items-center gap-4 text-xs">
-                <div className="text-gray-500">
-                  Profile: <span className="text-gray-300 font-bold">{report.profileName}</span> ({report.profileId})
-                </div>
-                <div className="w-px h-3 bg-white/10"></div>
-                <div className="text-gray-500">
-                  Reporter: <span className="text-gray-300">{report.reporterName}</span>
-                </div>
-                <div className="w-px h-3 bg-white/10"></div>
-                <div className="text-gray-500">
-                  Community: <span className="text-brand-primary font-medium">{report.community}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-row md:flex-col gap-2 min-w-[140px] shrink-0 justify-center">
-              <button className="flex-1 md:flex-none btn-secondary py-2 text-xs flex items-center justify-center gap-2">
-                <MessageSquare size={14} /> Contact
-              </button>
-              <button className="flex-1 md:flex-none py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1">
-                <CheckCircle size={14} /> Resolve
-              </button>
-              <button className="flex-1 md:flex-none py-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1">
-                <Trash2 size={14} /> Suspend
-              </button>
-            </div>
-          </motion.div>
-        ))}
-
-        {reports.length === 0 && (
-          <div className="card-neo p-12 flex flex-col items-center justify-center text-center">
-            <ShieldAlert size={48} className="text-gray-600 mb-4" />
-            <h3 className="text-lg font-bold text-gray-300 mb-2">No Active Reports</h3>
-            <p className="text-sm text-gray-500 max-w-sm">There are currently no user-reported profiles in the moderation queue.</p>
+      {/* Report List */}
+      <div className="space-y-3">
+        {filtered.length === 0 ? (
+          <div className="card-neo p-12 text-center">
+            <Flag size={28} className="text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 font-semibold">No reports in this category.</p>
           </div>
-        )}
+        ) : filtered.map(report => {
+          const isLoading = actionId === report._id;
+          const isExpanded = expandId === report._id;
+
+          return (
+            <div key={report._id} className="card-neo overflow-hidden">
+              <button className="w-full p-4 flex items-start gap-4 text-left hover:bg-white/3 transition-colors"
+                onClick={() => setExpandId(isExpanded ? null : report._id)}>
+                {/* Reporter */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${SEVERITY_COLORS[report.severity] || SEVERITY_COLORS.medium}`}>
+                      {report.severity || 'medium'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${STATUS_COLORS[report.status] || STATUS_COLORS.pending}`}>
+                      {report.status}
+                    </span>
+                  </div>
+                  <p className="font-bold text-white mt-1.5 text-sm truncate">{report.reason}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Reported by: <span className="text-gray-400">{report.reporterName || '—'}</span> ·
+                    Reported: <span className="text-gray-400">{report.reportedProfileName || '—'}</span>
+                  </p>
+                  <p className="text-[10px] text-gray-600 mt-0.5">
+                    {new Date(report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <ChevronDown size={16} className={`text-gray-500 transition-transform shrink-0 mt-1 ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-white/5 p-4 space-y-3">
+                  {report.description && (
+                    <div className="bg-white/3 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Description</p>
+                      <p className="text-sm text-gray-300 font-semibold">{report.description}</p>
+                    </div>
+                  )}
+                  {report.status === 'pending' && (
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => handleAction(report._id, 'action_taken')} disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-500/20 disabled:opacity-40 transition-colors">
+                        {isLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                        Take Action
+                      </button>
+                      <button onClick={() => handleAction(report._id, 'reviewed')} disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 text-blue-400 rounded-xl text-xs font-bold hover:bg-blue-500/20 disabled:opacity-40 transition-colors">
+                        Mark Reviewed
+                      </button>
+                      <button onClick={() => handleAction(report._id, 'dismissed')} disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-gray-500/10 text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-500/20 disabled:opacity-40 transition-colors">
+                        <EyeOff size={12} /> Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,598 +1,509 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Check, HelpCircle, Info, CreditCard, ShieldCheck, 
-  CheckCircle2, QrCode, Landmark, Sparkles, X, Heart, SwitchCamera,
-  Download, RefreshCw, Star, ShieldAlert, Award, FileText
+import {
+  ArrowLeft, Check, CreditCard, ShieldCheck, CheckCircle2,
+  QrCode, Landmark, Sparkles, X, Heart, RefreshCw,
+  Star, ShieldAlert, FileText, Loader2, Crown, Download,
+  ChevronRight, Info
 } from 'lucide-react';
-import { useData } from '../../context/DataProvider';
+import { matrimonialSubscriptionService } from '../../../../core/api/matrimonialService';
 
+// ─── Feature List ─────────────────────────────────────────────────────────────
+const FeatureItem = ({ text }) => (
+  <div className="flex items-start gap-2.5">
+    <div className="w-4 h-4 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 border border-rose-100 mt-0.5">
+      <Check size={10} strokeWidth={3} />
+    </div>
+    <p className="text-[12px] text-slate-700 font-semibold leading-normal">{text}</p>
+  </div>
+);
+
+// ─── Duration Pill ────────────────────────────────────────────────────────────
+const DurationPill = ({ plan, selected, onClick }) => {
+  const discount = Math.round(((plan.originalPrice - plan.price) / plan.originalPrice) * 100);
+  return (
+    <div onClick={onClick}
+      className={`border rounded-2xl p-3 flex flex-col items-center cursor-pointer transition-all select-none ${
+        selected ? 'bg-rose-50 border-rose-500 shadow-[0_0_0_1px_rgba(244,63,94,0.4)]' : 'bg-slate-50 border-slate-200'
+      }`}>
+      <span className={`text-[9px] font-black uppercase tracking-wider ${selected ? 'text-rose-500' : 'text-slate-400'}`}>
+        {plan.durationInDays <= 30 ? '1 Month' : plan.durationInDays <= 90 ? '3 Months' : 'Till Marriage'}
+      </span>
+      <span className="text-[15px] font-black text-slate-800 mt-1 leading-none">₹{plan.price}</span>
+      {plan.originalPrice > plan.price && (
+        <span className="text-[8px] text-slate-400 font-bold line-through mt-0.5">₹{plan.originalPrice}</span>
+      )}
+      {discount >= 20 && (
+        <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full mt-1">{discount}% OFF</span>
+      )}
+    </div>
+  );
+};
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const MatrimonialSubscriptionPage = () => {
   const navigate = useNavigate();
-  const { currentUser, updateProfile } = useData();
 
-  // Active Tab for pricing plan views
-  const [activePlanCategory, setActivePlanCategory] = useState('Groom'); // 'Groom' | 'Bride' | 'Combo'
-  const [selectedDuration, setSelectedDuration] = useState('3 months'); // '1 month' | '3 months' | 'Till Marriage'
-  
-  // Checkout flow state
+  const [plans, setPlans]               = useState([]);
+  const [mySubscription, setMySubscription] = useState(null);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState('select-method'); // 'select-method' | 'processing' | 'success'
-  const [paymentMethod, setPaymentMethod] = useState(''); // 'upi' | 'card' | 'netbanking'
+  const [checkoutStep, setCheckoutStep] = useState('select-method');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [upiId, setUpiId]               = useState('');
   const [selectedUpiApp, setSelectedUpiApp] = useState('GPay');
-  const [upiId, setUpiId] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
+  const [cardName, setCardName]         = useState('');
+  const [cardNumber, setCardNumber]     = useState('');
+  const [cardExpiry, setCardExpiry]     = useState('');
+  const [cardCvv, setCardCvv]           = useState('');
   const [selectedBank, setSelectedBank] = useState('SBI');
-  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
-
-  // Administration simulator modal states
+  const [processing, setProcessing]     = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showInvoiceHistory, setShowInvoiceHistory] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [invoices, setInvoices]         = useState([]);
+  const [showInvoices, setShowInvoices] = useState(false);
+  const [toast, setToast]               = useState('');
 
-  // pricing configuration structure
-  const pricingData = {
-    'Groom': {
-      '1 month': { final: 599, original: 1999 },
-      '3 months': { final: 1499, original: 4999 },
-      'Till Marriage': { final: 3999, original: 9999 }
-    },
-    'Bride': {
-      '1 month': { final: 599, original: 1999 },
-      '3 months': { final: 1499, original: 4999 },
-      'Till Marriage': { final: 3999, original: 9999 }
-    },
-    'Combo': {
-      '1 month': { final: 999, original: 2999 },
-      '3 months': { final: 2499, original: 7999 },
-      'Till Marriage': { final: 5999, original: 14999 }
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  // ─── Load plans & subscription ───────────────────────────────────────────────
+  const loadData = useCallback(async () => {
+    setLoadingPlans(true);
+    try {
+      const [plansRes, subRes] = await Promise.allSettled([
+        matrimonialSubscriptionService.listPlans(),
+        matrimonialSubscriptionService.getMySubscription()
+      ]);
+      if (plansRes.status === 'fulfilled') {
+        const planList = plansRes.value.data.data.plans || [];
+        setPlans(planList);
+        if (planList.length > 0 && !selectedPlan) setSelectedPlan(planList[0]);
+      }
+      if (subRes.status === 'fulfilled') {
+        setMySubscription(subRes.value.data.data.subscription || null);
+      }
+    } catch (err) {
+      console.error('Failed to load subscription data:', err);
+    } finally {
+      setLoadingPlans(false);
     }
-  };
+  }, []);
 
-  const featureLists = {
-    'Groom': [
-      'Unlock Bride (Female) Directory searching',
-      'View contact details of up to 30 matching profiles',
-      'Send up to 50 matrimonial interests per month',
-      'Spotlight profile placement for 15 days',
-      'Gotra and compatibility matchmaking score calculator',
-      'Standard online customer support'
-    ],
-    'Bride': [
-      'Unlock Groom (Male) Directory searching',
-      'View contact details of up to 30 matching profiles',
-      'Send up to 50 matrimonial interests per month',
-      'Spotlight profile placement for 15 days',
-      'Gotra and compatibility matchmaking score calculator',
-      'Standard online customer support'
-    ],
-    'Combo': [
-      'Manage both 1 Groom (Son) and 1 Bride (Daughter) profile simultaneously',
-      'Seamlessly switch active search view to filter match listings',
-      'Unlock contact details of up to 100 matching profiles',
-      'Send unlimited matrimonial interests',
-      'Dual spotlights (15 days for groom, 15 days for bride)',
-      'Gotra, Gana & Kundali matchmaking calculations',
-      'Dedicated relationship customer manager support'
-    ]
-  };
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await matrimonialSubscriptionService.getHistory();
+      setInvoices(res.data.data.history || []);
+    } catch {}
+  }, []);
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Scroll lock effect for overlays
   useEffect(() => {
-    const isOverlayOpen = showCheckout || showCancelModal || showInvoiceHistory;
-    if (isOverlayOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    };
-  }, [showCheckout, showCancelModal, showInvoiceHistory]);
+    document.body.style.overflow = showCheckout || showCancelModal ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showCheckout, showCancelModal]);
 
-  const sub = currentUser?.matrimonySubscription;
-  const isCurrentlySubscribed = sub && sub.status === 'active';
-
-  const currentPriceObj = pricingData[activePlanCategory][selectedDuration];
-
-  const handleConfirmPayment = () => {
+  // ─── Payment flow ─────────────────────────────────────────────────────────
+  const handleConfirmPayment = async () => {
+    if (!selectedPlan) return;
+    setProcessing(true);
     setCheckoutStep('processing');
-    setTimeout(() => {
-      // Setup the subscription object in currentUser
-      updateProfile({
-        matrimonySubscription: {
-          plan: activePlanCategory,
-          status: 'active',
-          expiry: selectedDuration,
-          startDate: new Date().toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-          }),
-          activeProfileType: activePlanCategory === 'Combo' ? 'groom' : (activePlanCategory === 'Groom' ? 'groom' : 'bride')
-        }
+
+    try {
+      // Step 1: Initiate purchase (get order/transaction ID from backend)
+      const initiateRes = await matrimonialSubscriptionService.initiatePurchase({
+        planId: selectedPlan._id
+      });
+      const order = initiateRes.data.data;
+
+      // Step 2: If Razorpay is configured, open the payment widget
+      if (window.Razorpay && order.razorpayOrderId) {
+        const options = {
+          key: order.razorpayKeyId,
+          amount: order.amount,
+          currency: order.currency || 'INR',
+          name: 'Meri Samaj Matrimonial',
+          description: selectedPlan.name,
+          order_id: order.razorpayOrderId,
+          handler: async (response) => {
+            // Verify and activate
+            await matrimonialSubscriptionService.verifyAndActivate({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              planId: selectedPlan._id
+            });
+            setCheckoutStep('success');
+            loadData();
+          },
+          prefill: {},
+          theme: { color: '#f43f5e' }
+        };
+        new window.Razorpay(options).open();
+        setProcessing(false);
+        return;
+      }
+
+      // Fallback: simulate success (for testing without Razorpay)
+      await new Promise(r => setTimeout(r, 1800));
+      await matrimonialSubscriptionService.verifyAndActivate({
+        planId: selectedPlan._id,
+        simulatedPayment: true,
+        paymentMethod,
+        upiId: paymentMethod === 'upi' ? upiId : undefined
       });
       setCheckoutStep('success');
-      showToast(`Subscribed to ${activePlanCategory} Plan Successfully! 💖`);
-    }, 2000);
+      loadData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Payment failed. Please try again.');
+      setCheckoutStep('select-method');
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const handleCancelSubscription = () => {
-    updateProfile({
-      matrimonySubscription: {
-        ...sub,
-        status: 'inactive'
-      }
-    });
-    setShowCancelModal(false);
-    showToast('Matrimonial Subscription Cancelled.');
+  const handleCancelSubscription = async () => {
+    try {
+      await matrimonialSubscriptionService.cancelSubscription({ reason: 'User requested cancellation' });
+      setShowCancelModal(false);
+      setMySubscription(null);
+      showToast('Subscription cancelled.');
+      loadData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to cancel.');
+    }
   };
 
-  const handleToggleComboActiveProfile = () => {
-    if (!isCurrentlySubscribed || sub.plan !== 'Combo') return;
-    const nextActive = sub.activeProfileType === 'groom' ? 'bride' : 'groom';
-    updateProfile({
-      matrimonySubscription: {
-        ...sub,
-        activeProfileType: nextActive
-      }
-    });
-    showToast(`Switched active view to ${nextActive === 'groom' ? "Son's Profile (Groom)" : "Daughter's Profile (Bride)"} 🔄`);
-  };
+  const isActive = mySubscription?.status === 'active';
 
-  const mockInvoices = [
-    { id: 'INV-2026-001', date: sub?.startDate || 'Today', amount: pricingData[sub?.plan || 'Groom'][sub?.expiry || '3 months'].final, status: 'Paid' }
-  ];
+  if (loadingPlans) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FFF5F5] via-[#FFF9F9] to-white pb-24 text-slate-800 animate-fade-in font-sans">
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-55 bg-slate-900 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
-          <Sparkles size={14} className="text-yellow-400" />
-          <span>{toastMessage}</span>
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-white pb-24 font-sans">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white font-extrabold text-[12px] px-5 py-3 rounded-full shadow-xl flex items-center gap-2">
+          <Sparkles size={13} className="text-amber-400" />{toast}
         </div>
       )}
 
-      {/* Header Bar — Rose Theme */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-rose-100 flex items-center gap-3 px-4 h-15 sticky top-0 z-30 shadow-[0_2px_12px_rgba(244,63,94,0.03)]">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="w-9 h-9 rounded-xl bg-rose-50/50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-colors press-scale"
-        >
+      {/* Header */}
+      <div className="bg-white/90 backdrop-blur-xl border-b border-rose-100 flex items-center gap-3 px-4 h-14 sticky top-0 z-30 shadow-sm">
+        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center active:scale-90">
           <ArrowLeft size={18} strokeWidth={2.5} />
         </button>
         <div>
-          <h1 className="text-base font-black text-rose-600 tracking-tight leading-none">Matrimonial Premium Plans</h1>
-          <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">विवाह प्रीमियम सदस्यता</p>
+          <h1 className="text-[15px] font-black text-rose-600 leading-none">Matrimonial Premium</h1>
+          <p className="text-[9.5px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">विवाह प्रीमियम सदस्यता</p>
         </div>
       </div>
 
-      <div className="px-5 pt-6 max-w-md mx-auto space-y-6">
+      <div className="px-4 pt-5 max-w-md mx-auto space-y-5">
 
-        {/* ─── CASE A: USER IS ALREADY SUBSCRIBED (Active Dashboard) ─── */}
-        {isCurrentlySubscribed ? (
-          <div className="space-y-5 animate-fade-in">
-            {/* Active Subscription Status Card */}
-            <div className="bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-3xl p-6 shadow-lg shadow-rose-500/20 relative overflow-hidden border border-rose-400/25">
-              <div className="absolute -right-4 -bottom-4 opacity-15">
-                <Heart size={140} fill="white" />
-              </div>
-              <span className="bg-white/20 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full tracking-widest border border-white/10">
-                Active Member
+        {/* ─── ACTIVE SUBSCRIPTION VIEW ─── */}
+        {isActive ? (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-3xl p-6 shadow-lg shadow-rose-500/20 relative overflow-hidden">
+              <div className="absolute -right-5 -bottom-5 opacity-10"><Heart size={130} fill="white" /></div>
+              <span className="bg-white/20 text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest border border-white/15">
+                ✨ Active Member
               </span>
-              <h2 className="text-[26px] font-black mt-3.5 tracking-tight leading-none">
-                {sub.plan} Membership
-              </h2>
-              <p className="text-rose-100 text-[12px] font-semibold mt-1">
-                Duration: {sub.expiry} (Started: {sub.startDate})
+              <h2 className="text-[24px] font-black mt-4 leading-none tracking-tight">{mySubscription.planName}</h2>
+              <p className="text-rose-100 text-[11.5px] font-semibold mt-1.5">
+                Active until {mySubscription.endDate ? new Date(mySubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
               </p>
-              
-              <div className="mt-6 flex gap-3.5 border-t border-white/15 pt-5 text-[11px] font-bold text-rose-50/90">
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider text-rose-200">Gotra Match</p>
-                  <p className="mt-0.5 text-white font-extrabold text-[12px]">Unlimited</p>
-                </div>
-                <div className="w-[1px] bg-white/10" />
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider text-rose-200">Support</p>
-                  <p className="mt-0.5 text-white font-extrabold text-[12px]">
-                    {sub.plan === 'Combo' ? 'VIP Manager' : 'Standard'}
-                  </p>
-                </div>
+
+              <div className="mt-5 pt-4 border-t border-white/15 grid grid-cols-3 gap-4 text-center">
+                {[
+                  { label: 'Interests', value: mySubscription.featuresSnapshot?.interestsPerDay === -1 ? '∞' : mySubscription.featuresSnapshot?.interestsPerDay || '–' },
+                  { label: 'Photos', value: mySubscription.featuresSnapshot?.photoUploadLimit || '–' },
+                  { label: 'Contacts', value: mySubscription.featuresSnapshot?.contactsPerMonth === -1 ? '∞' : mySubscription.featuresSnapshot?.contactsPerMonth || '–' },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-[9px] text-rose-200 uppercase tracking-wider font-bold">{label}</p>
+                    <p className="text-[18px] font-black text-white mt-0.5">{value}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* COMBO DUAL SEARCH UTILITIES */}
-            {sub.plan === 'Combo' && (
-              <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100">
-                    <SwitchCamera size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black text-indigo-950 uppercase tracking-wider leading-none">Combo Dual Account Selector</h3>
-                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">Toggle matches matching either son or daughter</p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-2xl p-2.5 flex items-center justify-between border border-slate-200/60">
-                  <button
-                    onClick={handleToggleComboActiveProfile}
-                    className={`flex-1 text-center py-2.5 rounded-xl font-black text-[11.5px] transition-all border ${
-                      sub.activeProfileType === 'groom'
-                        ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
-                        : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100'
-                    }`}
-                  >
-                    Son's Search (Groom)
-                  </button>
-                  <button
-                    onClick={handleToggleComboActiveProfile}
-                    className={`flex-1 text-center py-2.5 rounded-xl font-black text-[11.5px] transition-all border ${
-                      sub.activeProfileType === 'bride'
-                        ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
-                        : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100'
-                    }`}
-                  >
-                    Daughter's Search (Bride)
-                  </button>
-                </div>
-
-                <div className="p-3.5 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl flex items-start gap-2.5">
-                  <Info size={14} className="text-indigo-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-indigo-900 leading-normal font-semibold">
-                    You are currently active as <strong>{sub.activeProfileType === 'groom' ? "Son's Search (Groom)" : "Daughter's Search (Bride)"}</strong>. Matrimony homepage results are automatically filtered to show profiles of the opposite gender.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Account Administration Controls */}
-            <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-3.5">
-              <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-wider mb-2.5">Subscription Controls</h4>
-              
-              <button
-                onClick={() => {
-                  setActivePlanCategory(sub.plan);
-                  setSelectedDuration(sub.expiry);
-                  setShowCheckout(true);
-                  setCheckoutStep('select-method');
-                }}
-                className="w-full py-3 bg-slate-50 hover:bg-rose-50/30 hover:text-rose-600 border border-slate-200/70 text-slate-700 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98"
-              >
-                <RefreshCw size={14} /> Change / Renew Plan
+            {/* Controls */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2.5">
+              <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Subscription Controls</h4>
+              <button onClick={() => { setShowCheckout(true); setCheckoutStep('select-method'); }}
+                className="w-full py-3 bg-slate-50 text-slate-700 text-[12.5px] font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-2 active:scale-95">
+                <RefreshCw size={14} /> Upgrade / Renew Plan
               </button>
-
-              <button
-                onClick={() => setShowInvoiceHistory(!showInvoiceHistory)}
-                className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-700 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98"
-              >
-                <FileText size={14} /> View Billing Invoices
+              <button onClick={async () => { await loadHistory(); setShowInvoices(!showInvoices); }}
+                className="w-full py-3 bg-slate-50 text-slate-700 text-[12.5px] font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-2 active:scale-95">
+                <FileText size={14} /> Billing History
               </button>
-
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="w-full py-3 bg-red-50 hover:bg-red-100/50 text-red-600 border border-red-100 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98"
-              >
-                Cancel Matrimonial Membership
+              <button onClick={() => setShowCancelModal(true)}
+                className="w-full py-3 bg-red-50 text-red-500 text-[12.5px] font-bold rounded-xl border border-red-100 flex items-center justify-center gap-2 active:scale-95">
+                Cancel Membership
               </button>
-
-              {/* Invoice History details toggle */}
-              {showInvoiceHistory && (
-                <div className="pt-4 border-t border-slate-100 space-y-2.5 animate-fade-in">
-                  <p className="text-[10px] text-slate-450 font-black uppercase tracking-wider font-sans">Invoice History</p>
-                  {mockInvoices.map((inv) => (
-                    <div key={inv.id} className="flex justify-between items-center p-3 bg-slate-50/70 border border-slate-200/50 rounded-2xl">
-                      <div>
-                        <p className="text-xs font-black text-slate-750">{inv.id}</p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">{inv.date} · {inv.status}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-slate-700">₹{inv.amount}</span>
-                        <button 
-                          onClick={() => showToast('Receipt downloaded successfully! 📄')}
-                          className="p-1.5 bg-white border border-slate-200 hover:bg-rose-50 rounded-lg text-slate-450 hover:text-rose-500 active:scale-90 transition-all"
-                        >
-                          <Download size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+              {showInvoices && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  {invoices.length === 0
+                    ? <p className="text-[11px] text-slate-400 text-center font-semibold py-2">No billing records yet.</p>
+                    : invoices.map(inv => (
+                        <div key={inv._id} className="flex justify-between items-center px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <div>
+                            <p className="text-[12px] font-bold text-slate-800">{inv.planName}</p>
+                            <p className="text-[10px] text-slate-400 font-semibold">{new Date(inv.startDate).toLocaleDateString('en-IN')} · {inv.paymentStatus}</p>
+                          </div>
+                          <span className="text-[13px] font-black text-slate-800">₹{inv.pricePaid}</span>
+                        </div>
+                      ))
+                  }
                 </div>
               )}
             </div>
-
-            {/* Cancel Modal */}
-            {showCancelModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-5 animate-fade-in">
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setShowCancelModal(false)} />
-                <div className="bg-white rounded-3xl p-6 z-10 shadow-2xl max-w-sm w-full text-center space-y-4 font-sans border border-slate-100">
-                  <div className="w-12 h-12 bg-red-50 text-red-550 rounded-full flex items-center justify-center mx-auto border border-red-100">
-                    <ShieldAlert size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-800">Cancel Membership?</h3>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-bold">
-                      Are you sure you want to cancel your matrimonial premium membership? You will instantly lose access to premium profiles, matching gotras, and unlocked contact details.
-                    </p>
-                  </div>
-                  <div className="flex gap-2.5 pt-2">
-                    <button
-                      onClick={() => setShowCancelModal(false)}
-                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-150 text-slate-500 text-xs font-black rounded-xl"
-                    >
-                      Keep Plan
-                    </button>
-                    <button
-                      onClick={handleCancelSubscription}
-                      className="flex-1 py-3 bg-red-500 hover:bg-red-650 text-white text-xs font-black rounded-xl shadow-md"
-                    >
-                      Yes, Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ) : (
-
-          /* ─── CASE B: USER IS NOT SUBSCRIBED (Plans Presentation & Picker) ─── */
-          <div className="space-y-6 animate-fade-in">
-            {/* Introductory Promo Header */}
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex items-center gap-1.5 bg-rose-50 px-3.5 py-1.5 rounded-full border border-rose-100">
-                <Heart size={12} className="text-rose-500" fill="currentColor" />
-                <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Premium Matrimonial Search</span>
+          /* ─── PLAN SELECTION ─── */
+          <div className="space-y-5">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center gap-1.5 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100">
+                <Heart size={11} className="text-rose-500" fill="currentColor" />
+                <span className="text-[9.5px] font-black text-rose-600 uppercase tracking-widest">Premium Matrimonial Search</span>
               </div>
-              <h2 className="text-[20px] font-black text-indigo-950 tracking-tight leading-tight">Find Your Ideal Life Partner</h2>
-              <p className="text-[12px] text-slate-450 font-bold leading-normal px-2">
-                Upgrade to our specialized plans tailored for grooms, brides, or families searching for both.
-              </p>
+              <h2 className="text-[19px] font-black text-slate-900 tracking-tight leading-tight">Find Your Ideal Life Partner</h2>
+              <p className="text-[11.5px] text-slate-400 font-semibold px-4">Upgrade to unlock premium profiles, contacts & matching tools.</p>
             </div>
 
-            {/* Custom Category Switch Tabs */}
-            <div className="bg-rose-50/70 border border-rose-100/50 rounded-2xl p-1.5 flex items-center justify-between shadow-xs">
-              {['Groom', 'Bride', 'Combo'].map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActivePlanCategory(category)}
-                  className={`flex-1 text-center py-2.5 rounded-xl font-black text-[11.5px] transition-all ${
-                    activePlanCategory === category
-                      ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10'
-                      : 'text-slate-500 hover:bg-rose-100/20'
+            {plans.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <p className="font-semibold">No plans available. Please try again later.</p>
+              </div>
+            ) : (
+              plans.map(plan => (
+                <div key={plan._id}
+                  className={`bg-white rounded-3xl border shadow-sm p-5 space-y-4 relative overflow-hidden cursor-pointer transition-all ${
+                    selectedPlan?._id === plan._id ? 'border-rose-400 shadow-rose-100' : 'border-slate-100'
                   }`}
+                  onClick={() => setSelectedPlan(plan)}
                 >
-                  {category === 'Combo' ? 'Combo Plan' : `${category} Plan`}
-                </button>
-              ))}
-            </div>
-
-            {/* Selected Plan Details Card */}
-            <div className="bg-white rounded-3xl border border-rose-100 shadow-[0_4px_24px_rgba(244,63,94,0.04)] p-6 space-y-6 relative overflow-hidden">
-              {activePlanCategory === 'Combo' && (
-                <div className="absolute top-0 right-0 bg-rose-500 text-white text-[8px] font-black px-3.5 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm flex items-center gap-1">
-                  <Sparkles size={8} className="text-yellow-400" /> Best Value For Parents
-                </div>
-              )}
-
-              {/* Pricing selector */}
-              <div>
-                <h3 className="text-[17px] font-black text-indigo-950 uppercase tracking-wider">
-                  {activePlanCategory === 'Combo' ? 'Combo Membership' : `${activePlanCategory} Membership`}
-                </h3>
-                <p className="text-[10.5px] text-slate-450 font-semibold mt-0.5">
-                  {activePlanCategory === 'Combo' 
-                    ? 'Dual search plan for both a son and a daughter simultaneously' 
-                    : `Premium features tailored specifically for searching ${activePlanCategory === 'Groom' ? 'brides' : 'grooms'}`}
-                </p>
-
-                {/* Duration selector radio pills */}
-                <div className="grid grid-cols-3 gap-2 mt-4.5">
-                  {['1 month', '3 months', 'Till Marriage'].map((duration) => {
-                    const priceObj = pricingData[activePlanCategory][duration];
-                    const selected = selectedDuration === duration;
-                    return (
-                      <div
-                        key={duration}
-                        onClick={() => setSelectedDuration(duration)}
-                        className={`border rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer transition-all ${
-                          selected 
-                            ? 'bg-rose-50/70 border-rose-500 shadow-[0_0_0_1px_rgba(244,63,94,0.5)]' 
-                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${selected ? 'text-rose-500' : 'text-slate-400'}`}>
-                          {duration === 'Till Marriage' ? 'Till Marriage' : duration.split(' ')[0] + ' Mo'}
-                        </span>
-                        <span className="text-[15px] font-black text-slate-800 mt-1 leading-none">
-                          ₹{priceObj.final}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-bold line-through mt-0.5">
-                          ₹{priceObj.original}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Plan Benefits features checklist */}
-              <div className="space-y-3.5 border-t border-slate-100 pt-5">
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Plan Benefits:</p>
-                <div className="space-y-2.5">
-                  {featureLists[activePlanCategory].map((feature, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <div className="w-4 h-4 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 border border-rose-100 mt-0.5">
-                        <Check size={10} strokeWidth={3} />
-                      </div>
-                      <p className="text-[12px] text-slate-650 font-bold leading-normal">{feature}</p>
+                  {plan.isMostPopular && (
+                    <div className="absolute top-0 right-0 bg-rose-500 text-white text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles size={7} className="text-amber-300" /> Most Popular
                     </div>
-                  ))}
-                </div>
-              </div>
+                  )}
 
-              {/* Action Button */}
-              <button
-                onClick={() => setShowCheckout(true)}
-                className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-650 text-white rounded-2xl text-[14px] font-black shadow-md shadow-rose-500/20 active:scale-95 transition-transform uppercase tracking-wider flex justify-center items-center gap-1.5"
-              >
-                Subscribe Now · ₹{currentPriceObj.final}
-              </button>
-            </div>
-
-            {/* Premium Guarantee Badges */}
-            <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex gap-3 items-center">
-              <ShieldCheck size={26} className="text-emerald-500 shrink-0" />
-              <div>
-                <h4 className="text-[11.5px] font-black text-slate-800 leading-none uppercase tracking-wider">100% Secure & Trust Verified</h4>
-                <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-1">
-                  All profiles undergo strict verification. Your details are shared securely and only with consent.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── checkout MODAL SHEET ─── */}
-        {showCheckout && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center animate-fade-in" data-swipe-block="true">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setShowCheckout(false)} />
-            <div className="bg-white text-slate-800 w-full rounded-t-[32px] p-5 pb-safe z-10 shadow-2xl max-w-md animate-slide-up flex flex-col font-sans max-h-[85vh] overflow-y-auto">
-              <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 shrink-0" />
-              
-              {/* Checkout Steps */}
-              {checkoutStep === 'select-method' && (
-                <div className="space-y-5 flex-1 flex flex-col">
-                  <div className="text-center">
-                    <h3 className="text-base font-black text-slate-800 uppercase tracking-wider">Secure Checkout</h3>
-                    <p className="text-[10.5px] text-slate-450 font-bold mt-0.5">Pay safely via UPI, Cards or Net Banking</p>
-                  </div>
-
-                  {/* Summary Box */}
-                  <div className="bg-rose-50/50 border border-rose-100/60 rounded-2xl p-4 flex justify-between items-center shrink-0">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-black text-rose-900 leading-none">{activePlanCategory} Plan ({selectedDuration})</p>
-                      <p className="text-[9.5px] text-rose-500 font-bold mt-1.5 uppercase tracking-wide font-sans">Refundable under terms</p>
+                      <h3 className="text-[16px] font-black text-slate-900">{plan.name}</h3>
+                      <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{plan.description}</p>
                     </div>
-                    <span className="text-[18px] font-black text-rose-600">₹{currentPriceObj.final}</span>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      selectedPlan?._id === plan._id ? 'border-rose-500 bg-rose-500' : 'border-slate-300'
+                    }`}>
+                      {selectedPlan?._id === plan._id && <Check size={11} className="text-white" strokeWidth={3} />}
+                    </div>
                   </div>
 
-                  {/* Options List */}
-                  <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
-                    <label className={`flex items-center gap-3.5 p-3.5 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'upi' ? 'bg-rose-50/30 border-rose-450' : 'bg-white border-slate-200'}`}>
-                      <input type="radio" name="paymethod" value="upi" checked={paymentMethod === 'upi'} onChange={() => setPaymentMethod('upi')} className="accent-rose-500" />
-                      <QrCode size={18} className="text-slate-400" />
-                      <span className="text-xs font-black text-slate-750">UPI / QR Code (GPay, PhonePe, BHIM)</span>
-                    </label>
-
-                    <label className={`flex items-center gap-3.5 p-3.5 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'card' ? 'bg-rose-50/30 border-rose-450' : 'bg-white border-slate-200'}`}>
-                      <input type="radio" name="paymethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="accent-rose-500" />
-                      <CreditCard size={18} className="text-slate-400" />
-                      <span className="text-xs font-black text-slate-750">Debit / Credit Card (Visa, RuPay, Master)</span>
-                    </label>
-
-                    <label className={`flex items-center gap-3.5 p-3.5 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'netbanking' ? 'bg-rose-50/30 border-rose-450' : 'bg-white border-slate-200'}`}>
-                      <input type="radio" name="paymethod" value="netbanking" checked={paymentMethod === 'netbanking'} onChange={() => setPaymentMethod('netbanking')} className="accent-rose-500" />
-                      <Landmark size={18} className="text-slate-400" />
-                      <span className="text-xs font-black text-slate-750">Net Banking</span>
-                    </label>
+                  {/* Pricing */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[24px] font-black text-rose-600">₹{plan.price}</span>
+                    {plan.originalPrice > plan.price && (
+                      <span className="text-[13px] text-slate-400 font-bold line-through">₹{plan.originalPrice}</span>
+                    )}
+                    <span className="text-[10px] text-slate-400 font-semibold">/ {plan.durationInDays} days</span>
                   </div>
 
-                  {/* Fields rendering relative to selected method */}
-                  {paymentMethod === 'upi' && (
-                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3.5 animate-fade-in shrink-0">
-                      <p className="text-[10px] text-slate-450 font-black uppercase tracking-wider">UPI Address Details</p>
-                      <div className="flex gap-2">
-                        {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (
-                          <button key={app} onClick={() => setSelectedUpiApp(app)} className={`flex-1 py-2 text-[10px] font-black rounded-lg border ${selectedUpiApp === app ? 'bg-rose-500 border-rose-500 text-white shadow-xs' : 'bg-white border-slate-200 text-slate-500'}`}>{app}</button>
-                        ))}
-                      </div>
-                      <input required type="text" placeholder="Enter UPI ID (e.g., username@okaxis)" value={upiId} onChange={e => setUpiId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-400" />
-                    </div>
+                  {/* Features */}
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    {(plan.features?.highlightedFeatures || [
+                      `${plan.features?.interestsPerDay === -1 ? 'Unlimited' : plan.features?.interestsPerDay} interests/day`,
+                      `${plan.features?.photoUploadLimit} profile photos`,
+                      `${plan.features?.contactsPerMonth === -1 ? 'Unlimited' : plan.features?.contactsPerMonth} contacts/month`,
+                      plan.features?.canChat ? 'Chat with matches' : null,
+                      plan.features?.profileBoost ? 'Profile boost' : null,
+                    ].filter(Boolean)).map((f, i) => <FeatureItem key={i} text={f} />)}
+                  </div>
+
+                  {selectedPlan?._id === plan._id && (
+                    <button onClick={(e) => { e.stopPropagation(); setShowCheckout(true); setCheckoutStep('select-method'); }}
+                      className="w-full py-3.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl text-[13.5px] font-extrabold shadow-md shadow-rose-200 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                      Subscribe Now · ₹{plan.price}
+                    </button>
                   )}
-
-                  {paymentMethod === 'card' && (
-                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3 animate-fade-in shrink-0">
-                      <p className="text-[10px] text-slate-450 font-black uppercase tracking-wider font-sans font-sans">Card Details</p>
-                      <input required type="text" placeholder="Cardholder's Name" value={cardName} onChange={e => setCardName(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-400" />
-                      <input required type="text" placeholder="Card Number (XXXX XXXX XXXX XXXX)" value={cardNumber} onChange={e => setCardNumber(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-400" />
-                      <div className="grid grid-cols-2 gap-3.5">
-                        <input required type="text" placeholder="Expiry Date (MM/YY)" value={cardExpiry} onChange={e => setCardExpiry(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-400" />
-                        <input required type="password" placeholder="CVV" value={cardCvv} onChange={e => setCardCvv(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-400" />
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'netbanking' && (
-                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3 animate-fade-in shrink-0 relative">
-                      <p className="text-[10px] text-slate-450 font-black uppercase tracking-wider">Select Bank</p>
-                      <button onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)} className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-black text-left flex justify-between items-center">{selectedBank} <span>▼</span></button>
-                      {isBankDropdownOpen && (
-                        <div className="absolute left-4 right-4 top-20 z-20 bg-white border border-slate-200 shadow-xl rounded-xl divide-y divide-slate-100 max-h-36 overflow-y-auto">
-                          {['SBI', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Bank'].map(bank => (
-                            <button key={bank} onClick={() => { setSelectedBank(bank); setIsBankDropdownOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 font-bold">{bank}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2.5 pt-3 pb-4 mt-auto shrink-0 font-sans">
-                    <button onClick={() => setShowCheckout(false)} className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-150 text-slate-500 rounded-xl text-xs font-black">Cancel</button>
-                    <button onClick={handleConfirmPayment} disabled={!paymentMethod} className={`flex-1 py-3.5 text-white rounded-xl text-xs font-black shadow-md ${paymentMethod ? 'bg-rose-500 hover:bg-rose-600' : 'bg-slate-350 cursor-not-allowed'}`}>Confirm & Pay</button>
-                  </div>
                 </div>
-              )}
+              ))
+            )}
 
-              {checkoutStep === 'processing' && (
-                <div className="py-12 flex flex-col items-center justify-center space-y-4 flex-1">
-                  <div className="w-12 h-12 rounded-full border-4 border-rose-500 border-t-transparent animate-spin" />
-                  <div className="text-center font-sans">
-                    <h3 className="text-sm font-black text-slate-800 font-sans">Processing Payment</h3>
-                    <p className="text-[10.5px] text-slate-400 mt-1 font-semibold">Please do not close or hit back button...</p>
-                  </div>
-                </div>
-              )}
-
-              {checkoutStep === 'success' && (
-                <div className="py-8 flex flex-col items-center justify-center space-y-5 text-center flex-1">
-                  <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-100 animate-scale-up">
-                    <CheckCircle2 size={36} strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <h3 className="text-[17px] font-black text-indigo-950 font-sans">Subscription Activated!</h3>
-                    <p className="text-xs text-slate-450 mt-1 leading-relaxed px-4 font-bold font-sans">
-                      Your Matrimonial Premium Plan is now active. You can now unlock contact details, search matching gotras, and find your partner!
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowCheckout(false);
-                      navigate('/member/matrimonial');
-                    }}
-                    className="w-full max-w-[200px] py-3 bg-rose-500 text-white rounded-xl text-xs font-black shadow-md uppercase tracking-wider font-sans"
-                  >
-                    Go to Matrimony Home
-                  </button>
-                </div>
-              )}
+            {/* Trust badge */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 items-center">
+              <ShieldCheck size={24} className="text-emerald-500 shrink-0" />
+              <div>
+                <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wide">100% Secure & Verified</h4>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed">
+                  All profiles are verified. Your data is encrypted and shared only with your consent.
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* ─── CHECKOUT MODAL ─── */}
+      {showCheckout && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !processing && setShowCheckout(false)} />
+          <div className="bg-white w-full rounded-t-[28px] p-5 z-50 relative shadow-2xl max-w-md max-h-[88vh] overflow-y-auto">
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+
+            {checkoutStep === 'select-method' && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-[15px] font-black text-slate-800">Secure Checkout</h3>
+                  <p className="text-[10.5px] text-slate-400 font-bold mt-0.5">Pay via UPI, Cards or Net Banking</p>
+                </div>
+
+                {/* Order summary */}
+                <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex justify-between items-center">
+                  <div>
+                    <p className="text-[12px] font-black text-rose-900">{selectedPlan?.name}</p>
+                    <p className="text-[10px] text-rose-500 font-bold mt-0.5">{selectedPlan?.durationInDays} days access</p>
+                  </div>
+                  <span className="text-[18px] font-black text-rose-600">₹{selectedPlan?.price}</span>
+                </div>
+
+                {/* Payment methods */}
+                <div className="space-y-2">
+                  {[
+                    { id: 'upi',        label: 'UPI / QR Code (GPay, PhonePe)',  Icon: QrCode },
+                    { id: 'card',       label: 'Debit / Credit Card',              Icon: CreditCard },
+                    { id: 'netbanking', label: 'Net Banking',                      Icon: Landmark },
+                  ].map(({ id, label, Icon }) => (
+                    <label key={id} className={`flex items-center gap-3.5 p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === id ? 'bg-rose-50 border-rose-400' : 'bg-white border-slate-200'}`}>
+                      <input type="radio" name="paymethod" value={id} checked={paymentMethod === id} onChange={() => setPaymentMethod(id)} className="accent-rose-500" />
+                      <Icon size={18} className="text-slate-400" />
+                      <span className="text-[12.5px] font-bold text-slate-700">{label}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* UPI fields */}
+                {paymentMethod === 'upi' && (
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">UPI App</p>
+                    <div className="flex gap-2">
+                      {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (
+                        <button key={app} type="button" onClick={() => setSelectedUpiApp(app)}
+                          className={`flex-1 py-2 text-[10px] font-black rounded-lg border ${selectedUpiApp === app ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                          {app}
+                        </button>
+                      ))}
+                    </div>
+                    <input type="text" placeholder="Your UPI ID (e.g. name@okaxis)" value={upiId}
+                      onChange={e => setUpiId(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[12.5px] font-bold focus:outline-none focus:border-rose-400" />
+                  </div>
+                )}
+
+                {/* Card fields */}
+                {paymentMethod === 'card' && (
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Card Details</p>
+                    <input type="text" placeholder="Cardholder Name" value={cardName} onChange={e => setCardName(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[12.5px] font-bold focus:outline-none focus:border-rose-400" />
+                    <input type="text" placeholder="Card Number" value={cardNumber} onChange={e => setCardNumber(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[12.5px] font-bold focus:outline-none focus:border-rose-400" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input type="text" placeholder="MM/YY" value={cardExpiry} onChange={e => setCardExpiry(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[12.5px] font-bold focus:outline-none focus:border-rose-400" />
+                      <input type="password" placeholder="CVV" value={cardCvv} onChange={e => setCardCvv(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-[12.5px] font-bold focus:outline-none focus:border-rose-400" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Netbanking */}
+                {paymentMethod === 'netbanking' && (
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Select Bank</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['SBI', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Bank'].map(bank => (
+                        <button key={bank} onClick={() => setSelectedBank(bank)}
+                          className={`py-2.5 rounded-xl text-[11px] font-bold border transition-all ${selectedBank === bank ? 'bg-rose-500 text-white border-rose-500' : 'bg-white border-slate-200 text-slate-700'}`}>
+                          {bank}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2.5 pb-4">
+                  <button onClick={() => setShowCheckout(false)}
+                    className="flex-1 py-3.5 bg-slate-100 text-slate-500 rounded-xl text-[12.5px] font-black">Cancel</button>
+                  <button onClick={handleConfirmPayment} disabled={!paymentMethod || processing}
+                    className={`flex-1 py-3.5 text-white rounded-xl text-[12.5px] font-black shadow-sm flex items-center justify-center gap-2 ${paymentMethod ? 'bg-rose-500' : 'bg-slate-300 cursor-not-allowed'}`}>
+                    {processing && <Loader2 size={14} className="animate-spin" />}
+                    Confirm & Pay
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {checkoutStep === 'processing' && (
+              <div className="py-16 flex flex-col items-center justify-center gap-5">
+                <div className="w-14 h-14 rounded-full border-4 border-rose-500 border-t-transparent animate-spin" />
+                <div className="text-center">
+                  <h3 className="text-[15px] font-black text-slate-800">Processing Payment</h3>
+                  <p className="text-[11px] text-slate-400 mt-1 font-semibold">Please do not close this window...</p>
+                </div>
+              </div>
+            )}
+
+            {checkoutStep === 'success' && (
+              <div className="py-10 flex flex-col items-center gap-5 text-center">
+                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
+                  <CheckCircle2 size={34} className="text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="text-[17px] font-black text-slate-900">Subscription Activated! 🎉</h3>
+                  <p className="text-[12px] text-slate-400 mt-1.5 font-semibold px-4 leading-relaxed">
+                    Your Premium Matrimonial plan is now active. You can browse, match, and connect!
+                  </p>
+                </div>
+                <button onClick={() => { setShowCheckout(false); navigate('/member/matrimonial'); }}
+                  className="px-8 py-3 bg-rose-500 text-white rounded-xl text-[13px] font-black shadow-sm active:scale-95">
+                  Start Matching →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── CANCEL MODAL ─── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowCancelModal(false)} />
+          <div className="bg-white rounded-3xl p-6 z-10 shadow-2xl max-w-sm w-full text-center space-y-4 border border-slate-100">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto border border-red-100">
+              <ShieldAlert size={22} className="text-red-500" />
+            </div>
+            <h3 className="text-[15px] font-black text-slate-800">Cancel Membership?</h3>
+            <p className="text-[12px] text-slate-400 font-semibold leading-relaxed">
+              You'll immediately lose access to premium profiles, match recommendations, and unlocked contacts.
+            </p>
+            <div className="flex gap-2.5 pt-1">
+              <button onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-[12.5px] font-black">Keep Plan</button>
+              <button onClick={handleCancelSubscription}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl text-[12.5px] font-black shadow-sm">Yes, Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

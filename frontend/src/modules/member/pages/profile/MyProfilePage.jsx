@@ -459,7 +459,7 @@ const MyProfilePage = () => {
               <button 
                 onClick={() => {
                   logoutUser();
-                  navigate('/member/login');
+                  navigate('/member/login', { state: { skipLanguage: true } });
                 }}
                 className="w-full flex items-center justify-between p-4 hover:bg-red-50/30 transition-colors text-left group"
               >

@@ -23,7 +23,7 @@ const generateTokens = (user) => {
 const getUserResponsePayload = (user) => {
   return {
     id: user._id,
-    name: user.name || 'Member',
+    name: user.name || 'Profile Incomplete',
     phone: user.phone,
     email: user.email,
     role: user.role,
@@ -67,12 +67,17 @@ const getUserResponsePayload = (user) => {
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
-  const { phone, email, password, referralCode } = req.body;
+  let { name, phone, email, password, referralCode } = req.body;
 
   try {
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Full Name is required' });
+    }
     if (!phone || !password) {
       return res.status(400).json({ message: 'Phone and password are required' });
     }
+
+    phone = phone.replace(/\D/g, ''); // Normalize phone
 
     const userExists = await User.findOne({ phone });
     if (userExists) {
@@ -80,6 +85,7 @@ const registerUser = async (req, res) => {
     }
 
     const userData = {
+      name: name.trim(),
       phone,
       password,
       referralCode,
@@ -90,7 +96,19 @@ const registerUser = async (req, res) => {
     };
 
     if (email && email.trim() !== '') {
-      userData.email = email.trim().toLowerCase();
+      email = email.trim().toLowerCase();
+      // Basic email regex validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Invalid email format' });
+      }
+      
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      
+      userData.email = email;
     }
 
     const user = await User.create(userData);
@@ -126,22 +144,33 @@ const registerUser = async (req, res) => {
 // @access  Public
 // const loginUser
 const loginUser = async (req, res) => {
-  const { identifier, password } = req.body;
+  let { identifier, password } = req.body;
 
   try {
     if (!identifier || !password) {
       return res.status(400).json({ message: 'Phone/Email and password are required' });
     }
 
-    // Find by email, phone, or loginId, and populate communityId and assignedCommunityIds so it's included in the login payload
-    const user = await User.findOne({
-      $or: [{ email: identifier.trim().toLowerCase() }, { phone: identifier.trim() }, { loginId: identifier.trim() }]
-    })
+    identifier = identifier.trim();
+    
+    // Auto-detect email or phone
+    let searchQuery = {};
+    if (identifier.includes('@')) {
+      searchQuery = { email: identifier.toLowerCase() };
+    } else {
+      // Assume phone, remove spaces and non-digits
+      const normalizedPhone = identifier.replace(/\D/g, '');
+      // Fallback to searching loginId if not standard digits
+      searchQuery = { $or: [{ phone: normalizedPhone || identifier }, { loginId: identifier }] };
+    }
+
+    // Find by resolved query
+    const user = await User.findOne(searchQuery)
     .populate('communityId', 'name slug isActive settings logoUrl description city')
     .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(404).json({ message: 'User not found with this identifier' });
     }
 
     // Check account status
@@ -156,6 +185,10 @@ const loginUser = async (req, res) => {
     }
 
     const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
     if (isMatch) {
       const { accessToken, refreshToken } = generateTokens(user);
       
@@ -459,7 +492,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Simulated OTP sending (returns default OTP '1234' for development)
+// @desc    Simulated OTP sending (returns default OTP '123456' for development)
 // @route   POST /api/auth/send-otp
 // @access  Public
 const sendOtp = async (req, res) => {
@@ -467,10 +500,18 @@ const sendOtp = async (req, res) => {
   if (!phone) {
     return res.status(400).json({ message: 'Phone number is required' });
   }
-  res.json({ message: 'OTP sent successfully (simulated)', otp: '1234' });
+  
+  let otp = null;
+  // TODO: Integrate Production SMS Provider here (Twilio/Fast2SMS)
+  if (process.env.NODE_ENV !== "production") {
+      otp = "123456";
+  }
+  
+  // In production, we would actually trigger the SMS sending here instead of returning it
+  res.json({ message: 'OTP sent successfully (simulated)', otp });
 };
 
-// @desc    Simulated OTP verification (accepts '1234')
+// @desc    Simulated OTP verification (accepts '123456')
 // @route   POST /api/auth/verify-otp
 // @access  Public
 const verifyOtp = async (req, res) => {
@@ -479,14 +520,20 @@ const verifyOtp = async (req, res) => {
     return res.status(400).json({ message: 'Phone and OTP are required' });
   }
 
-  if (otp === '1234') {
-    res.json({ message: 'OTP verified successfully (simulated)' });
+  let expectedOtp = null;
+  if (process.env.NODE_ENV !== "production") {
+      expectedOtp = "123456";
+  }
+  // TODO: Production verification logic would check against a DB record or SMS provider API
+  
+  if (expectedOtp && otp === expectedOtp) {
+    res.json({ message: 'OTP verified successfully' });
   } else {
-    res.status(400).json({ message: 'Invalid OTP code' });
+    res.status(400).json({ message: 'Invalid OTP' });
   }
 };
 
-// @desc    Reset password (accepts default OTP '1234')
+// @desc    Reset password
 // @route   POST /api/auth/reset-password
 // @access  Public
 const resetPassword = async (req, res) => {
@@ -503,7 +550,12 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found with this mobile number' });
     }
 
-    if (otp !== '1234') {
+    let expectedOtp = null;
+    if (process.env.NODE_ENV !== "production") {
+      expectedOtp = "123456";
+    }
+    
+    if (expectedOtp && otp !== expectedOtp) {
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 

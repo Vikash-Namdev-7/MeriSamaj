@@ -1,12 +1,15 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useScrollDirection } from '../../hooks/useScrollDirection';
 import { motion } from 'framer-motion';
+import { NotificationBell } from './NotificationBell';
 
-export const PageHeader = ({ title, subtitle = null, showBack = true, rightContent = null, autoHide = false }) => {
+export const PageHeader = ({ title, subtitle = null, showBack = true, rightContent = null, autoHide = false, showBell = true }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const scrollDirection = useScrollDirection();
+  const isNotifPage = location.pathname.includes('/notifications');
   
   const isHidden = autoHide && scrollDirection === 'down';
 
@@ -55,11 +58,10 @@ export const PageHeader = ({ title, subtitle = null, showBack = true, rightConte
               )}
             </div>
           </div>
-          {rightContent && (
-            <div className="flex items-center gap-2 shrink-0 ml-3">
-              {rightContent}
-            </div>
-          )}
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            {showBell && !isNotifPage && <NotificationBell />}
+            {rightContent && <div className="flex items-center gap-2">{rightContent}</div>}
+          </div>
         </div>
 
         {/* Gradient bottom accent line */}

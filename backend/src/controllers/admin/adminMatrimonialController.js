@@ -1,0 +1,380 @@
+/**
+ * adminMatrimonialController.js
+ * Admin panel management of matrimonial module.
+ */
+const MatrimonialProfile  = require('../../models/MatrimonialProfile');
+const SubscriptionPlan    = require('../../models/SubscriptionPlan');
+const UserSubscription    = require('../../models/UserSubscription');
+const ProfileReport       = require('../../models/ProfileReport');
+const MatrimonialSettings = require('../../models/MatrimonialSettings');
+const InterestRequest     = require('../../models/InterestRequest');
+const { createNotification } = require('../../services/notificationService');
+
+// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+exports.getStats = async (req, res) => {
+  try {
+    const [
+      totalProfiles, activeProfiles, pendingPhotos,
+      pendingReports, totalSubscriptions, activeSubscriptions
+    ] = await Promise.all([
+      MatrimonialProfile.countDocuments({ isDeleted: false }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, status: 'active' }),
+      MatrimonialProfile.countDocuments({ 'photos.status': 'pending', isDeleted: false }),
+      ProfileReport.countDocuments({ status: 'pending' }),
+      UserSubscription.countDocuments(),
+      UserSubscription.countDocuments({ status: 'active' })
+    ]);
+
+    res.json({
+      status: 'success',
+      data: {
+        totalProfiles,
+        activeProfiles,
+        pendingPhotos,
+        pendingReports,
+        totalSubscriptions,
+        activeSubscriptions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── List All Profiles (with filters) ────────────────────────────────────────
+exports.listProfiles = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, verificationStatus, communityId, search } = req.query;
+    const query = { isDeleted: false };
+    if (status) query.status = status;
+    if (verificationStatus) query.verificationStatus = verificationStatus;
+    if (communityId) query.communityId = communityId;
+    if (search) query['personal.fullName'] = new RegExp(search, 'i');
+
+    const total = await MatrimonialProfile.countDocuments(query);
+    const profiles = await MatrimonialProfile.find(query)
+      .populate('userId', 'name phone email')
+      .populate('communityId', 'name')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean({ virtuals: true });
+
+    res.json({ status: 'success', data: { profiles, total, page: Number(page), pages: Math.ceil(total / Number(limit)) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Verify Profile ───────────────────────────────────────────────────────────
+exports.verifyProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNote } = req.body; // 'verified' or 'rejected'
+
+    if (!['verified', 'rejected'].includes(status)) {
+      return res.status(400).json({ status: 'error', message: 'Status must be verified or rejected.' });
+    }
+
+    const profile = await MatrimonialProfile.findById(id);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    profile.verificationStatus = status;
+    if (status === 'verified') profile.status = 'active';
+    profile.verifiedBy = req.user._id;
+    profile.verifiedAt = new Date();
+    await profile.save();
+
+    // Notify user
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     `matrimonial_profile_${status}`,
+      title:    status === 'verified' ? 'Profile Verified! ✅' : 'Profile Verification Rejected',
+      message:  status === 'verified'
+        ? 'Your matrimonial profile has been verified. A verified badge is now visible on your profile.'
+        : `Your profile verification was rejected. Reason: ${adminNote || 'Contact admin for details.'}`,
+      icon:     status === 'verified' ? '✅' : '❌',
+      priority: 'high',
+      actionUrl:'/member/matrimonial/profile'
+    });
+
+    res.json({ status: 'success', message: `Profile ${status} successfully.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Photo Moderation ─────────────────────────────────────────────────────────
+exports.listPendingPhotos = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const profiles = await MatrimonialProfile.find({
+      'photos.status': 'pending',
+      isDeleted: false
+    }).select('userId photos personal.fullName').populate('userId', 'name');
+
+    // Flatten to individual pending photos
+    const pendingPhotos = [];
+    for (const profile of profiles) {
+      for (const photo of profile.photos) {
+        if (photo.status === 'pending') {
+          pendingPhotos.push({
+            profileId: profile._id,
+            photoId:   photo._id,
+            url:       photo.url,
+            uploadedAt:photo.uploadedAt,
+            userName:  profile.userId?.name || 'Unknown'
+          });
+        }
+      }
+    }
+
+    res.json({ status: 'success', data: { photos: pendingPhotos, total: pendingPhotos.length } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.moderatePhoto = async (req, res) => {
+  try {
+    const { profileId, photoId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ status: 'error', message: 'Action must be approve or reject.' });
+    }
+
+    const profile = await MatrimonialProfile.findById(profileId);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    const photo = profile.photos.id(photoId);
+    if (!photo) return res.status(404).json({ status: 'error', message: 'Photo not found.' });
+
+    photo.status = action === 'approve' ? 'approved' : 'rejected';
+    if (action === 'approve' && !profile.photos.some(p => p.isPrimary && p.status === 'approved')) {
+      photo.isPrimary = true; // Set as primary if no approved primary exists
+    }
+
+    await profile.save();
+
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     'matrimonial_photo_moderated',
+      title:    action === 'approve' ? 'Photo Approved ✅' : 'Photo Rejected',
+      message:  action === 'approve'
+        ? 'Your profile photo has been approved and is now visible.'
+        : 'One of your profile photos was rejected. Please upload a clear, appropriate photo.',
+      icon:     action === 'approve' ? '✅' : '❌',
+      priority: 'normal',
+      actionUrl:'/member/matrimonial/profile'
+    });
+
+    res.json({ status: 'success', message: `Photo ${action}d successfully.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Reports Management ───────────────────────────────────────────────────────
+exports.listReports = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+    const query = {};
+    if (status) query.status = status;
+
+    const total = await ProfileReport.countDocuments(query);
+    const reports = await ProfileReport.find(query)
+      .populate('reporterId', 'name phone')
+      .populate('reportedUserId', 'name phone')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
+
+    res.json({ status: 'success', data: { reports, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.actionReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, adminNotes } = req.body; // 'actioned' or 'dismissed'
+
+    const report = await ProfileReport.findById(id);
+    if (!report) return res.status(404).json({ status: 'error', message: 'Report not found.' });
+
+    report.status     = action;
+    report.reviewedBy = req.user._id;
+    report.reviewedAt = new Date();
+    report.adminNotes = adminNotes;
+    await report.save();
+
+    // If actioned — optionally deactivate the reported profile
+    if (action === 'actioned' && req.body.deactivateProfile) {
+      await MatrimonialProfile.findOne({ userId: report.reportedUserId }).then(p => {
+        if (p) { p.status = 'hidden'; return p.save(); }
+      });
+    }
+
+    res.json({ status: 'success', message: `Report marked as ${action}.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Subscription Plan CRUD ───────────────────────────────────────────────────
+exports.listPlans = async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.find().sort({ displayOrder: 1 });
+    res.json({ status: 'success', data: { plans } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.createPlan = async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.create({ ...req.body, createdBy: req.user._id });
+    res.status(201).json({ status: 'success', data: { plan } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.updatePlan = async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedBy: req.user._id },
+      { new: true, runValidators: true }
+    );
+    if (!plan) return res.status(404).json({ status: 'error', message: 'Plan not found.' });
+    res.json({ status: 'success', data: { plan } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.deletePlan = async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.findById(req.params.id);
+    if (!plan) return res.status(404).json({ status: 'error', message: 'Plan not found.' });
+    plan.isActive = false;
+    await plan.save();
+    res.json({ status: 'success', message: 'Plan deactivated.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Matrimonial Settings ─────────────────────────────────────────────────────
+exports.getSettings = async (req, res) => {
+  try {
+    let settings = await MatrimonialSettings.findOne();
+    if (!settings) settings = await MatrimonialSettings.create({});
+    res.json({ status: 'success', data: { settings } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+exports.updateSettings = async (req, res) => {
+  try {
+    let settings = await MatrimonialSettings.findOne();
+    if (!settings) {
+      settings = await MatrimonialSettings.create({ ...req.body, updatedBy: req.user._id });
+    } else {
+      Object.assign(settings, req.body);
+      settings.updatedBy = req.user._id;
+      await settings.save();
+    }
+    res.json({ status: 'success', data: { settings }, message: 'Settings updated.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+exports.getAnalytics = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const since = new Date();
+    since.setDate(since.getDate() - Number(days));
+
+    const [
+      newProfiles, newSubscriptions, newInterests,
+      acceptedInterests, revenue
+    ] = await Promise.all([
+      MatrimonialProfile.countDocuments({ createdAt: { $gte: since }, isDeleted: false }),
+      UserSubscription.countDocuments({ createdAt: { $gte: since } }),
+      InterestRequest.countDocuments({ createdAt: { $gte: since } }),
+      InterestRequest.countDocuments({ createdAt: { $gte: since }, status: 'accepted' }),
+      UserSubscription.aggregate([
+        { $match: { createdAt: { $gte: since }, paymentStatus: 'success' } },
+        { $group: { _id: null, total: { $sum: '$pricePaid' } } }
+      ])
+    ]);
+
+    res.json({
+      status: 'success',
+      data: {
+        period: `Last ${days} days`,
+        newProfiles,
+        newSubscriptions,
+        newInterests,
+        acceptedInterests,
+        interestAcceptanceRate: newInterests > 0 ? Math.round((acceptedInterests / newInterests) * 100) : 0,
+        revenue: revenue[0]?.total || 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Grant Manual Subscription ────────────────────────────────────────────────
+exports.grantSubscription = async (req, res) => {
+  try {
+    const { userId, planId, durationOverrideDays } = req.body;
+    const plan = await SubscriptionPlan.findById(planId);
+    if (!plan) return res.status(404).json({ status: 'error', message: 'Plan not found.' });
+
+    const startDate = new Date();
+    const endDate   = new Date();
+    endDate.setDate(endDate.getDate() + (durationOverrideDays || plan.durationInDays));
+
+    const sub = await UserSubscription.create({
+      userId,
+      planId:           plan._id,
+      planName:         plan.name,
+      pricePaid:        0,
+      durationInDays:   durationOverrideDays || plan.durationInDays,
+      featuresSnapshot: plan.features.toObject ? plan.features.toObject() : plan.features,
+      paymentId:        `ADMIN_GRANT_${Date.now()}`,
+      paymentGateway:   'manual',
+      paymentStatus:    'success',
+      startDate,
+      endDate,
+      status:           'active',
+      createdBy:        req.user._id
+    });
+
+    await createNotification({
+      userId,
+      module:   'matrimonial',
+      type:     'matrimonial_subscription_activated',
+      title:    'Premium Activated! ✨',
+      message:  `Admin has granted you a ${plan.name} subscription until ${endDate.toLocaleDateString()}.`,
+      icon:     '✨',
+      priority: 'high',
+      actionUrl:'/member/matrimonial'
+    });
+
+    res.status(201).json({ status: 'success', message: 'Subscription granted.', data: { subscription: sub } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};

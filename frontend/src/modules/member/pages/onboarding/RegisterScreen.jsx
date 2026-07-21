@@ -23,23 +23,7 @@ const SlideIn = ({ children, dir = 'right' }) => {
   );
 };
 
-// ─── OTP NOTIFICATION BANNER ──────────────────────────────────────────────────
-const OtpBanner = ({ code, onDismiss }) => (
-  <div className="fixed top-4 left-4 right-4 z-50 bg-[#1e1145]/95 text-white rounded-2xl p-4 shadow-[0_8px_32px_rgba(124,58,237,0.25)] border border-purple-500/20 backdrop-blur-xl animate-slide-in flex items-start gap-3">
-    <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 shrink-0 mt-0.5 animate-pulse-glow">
-      <Bell size={18} className="animate-wiggle" />
-    </div>
-    <div className="flex-1">
-      <p className="text-xs font-bold text-purple-300 tracking-wide uppercase">Security Verification</p>
-      <p className="text-sm font-medium mt-1 text-purple-50">
-        Your verification code is{' '}
-        <strong className="text-teal-400 text-base font-black tracking-widest bg-white/10 px-2 py-0.5 rounded ml-1 border border-white/10 shadow-inner">{code}</strong>
-      </p>
-      <p className="text-[10px] text-purple-300/60 mt-1">Do not share this code with anyone.</p>
-    </div>
-    <button onClick={onDismiss} className="text-xs font-bold text-purple-200 hover:text-white px-3 py-1.5 bg-white/10 hover:bg-white/15 rounded-xl press-scale border border-white/5 transition-all">Dismiss</button>
-  </div>
-);
+// Removed OtpBanner as per production refactor. SMS will be delivered directly to mobile.
 
 const RegisterScreen = () => {
   const navigate = useNavigate();
@@ -49,6 +33,7 @@ const RegisterScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // States
+  const [registerName, setRegisterName] = useState('');
   const [registerPhone, setRegisterPhone] = useState('');
   const [registerOtp, setRegisterOtp] = useState(['', '', '', '', '', '']);
   const [isRegMobileVerified, setIsRegMobileVerified] = useState(false);
@@ -57,9 +42,8 @@ const RegisterScreen = () => {
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   const [showRegPass, setShowRegPass] = useState(false);
   const [showRegConfirmPass, setShowRegConfirmPass] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [showOtpBanner, setShowOtpBanner] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
@@ -69,36 +53,20 @@ const RegisterScreen = () => {
   const [referralStatus, setReferralStatus] = useState(null); // null, 'loading', 'success', 'error'
   const [referralMessage, setReferralMessage] = useState('');
 
-  const isRegOtpComplete = registerOtp.every(d => d !== '') || registerOtp.slice(0, 4).join('') === '1234';
-
-  const triggerOtpBanner = () => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(code);
-    setShowOtpBanner(true);
-    setOtpError('');
-    return code;
-  };
-
-  const handleVerifyOtp = (enteredOtp, onSuccess) => {
-    const isDefaultOtp = enteredOtp === '1234' || enteredOtp.startsWith('1234');
-    if (isDefaultOtp || enteredOtp === generatedOtp) {
-      setShowOtpBanner(false);
-      setOtpError('');
-      onSuccess();
-    } else {
-      setOtpError('Invalid OTP. Please check the code shown in the notification banner or use default 1234.');
-    }
-  };
+  const isRegOtpComplete = registerOtp.every(d => d !== '');
 
   const handleRegisterSendOtp = async () => {
     if (!registerPhone || registerPhone.length !== 10) return;
     setIsLoading(true);
+    setOtpError('');
     try {
+      // TODO: Integrate Production SMS Provider here (Twilio/Fast2SMS)
       await authService.sendOtp({ phone: registerPhone, type: 'register' });
-      triggerOtpBanner(); // Still showing banner for demo purposes during transition
+      setOtpSent(true);
+      setToastMessage('OTP sent successfully');
+      setTimeout(() => setToastMessage(''), 3000);
     } catch (error) {
-      setToastMessage(error?.response?.data?.message || 'Failed to send OTP. Simulated fallback used.');
-      triggerOtpBanner();
+      setToastMessage(error?.response?.data?.message || 'Failed to send OTP.');
     } finally {
       setIsLoading(false);
     }
@@ -107,27 +75,26 @@ const RegisterScreen = () => {
   const handleRegisterVerifyOtp = async () => {
     const entered = registerOtp.join('');
     setIsLoading(true);
+    setOtpError('');
     try {
-      // Connect to authService
       await authService.verifyOtp({ phone: registerPhone, otp: entered, type: 'register' });
-      handleVerifyOtp(entered, () => {
-        setIsRegMobileVerified(true);
-        setToastMessage('Mobile number verified successfully!');
-        setTimeout(() => setToastMessage(''), 3000);
-      });
+      setIsRegMobileVerified(true);
+      setToastMessage('Mobile number verified successfully!');
+      setTimeout(() => setToastMessage(''), 3000);
     } catch (error) {
-      // Fallback for demo
-      handleVerifyOtp(entered, () => {
-        setIsRegMobileVerified(true);
-        setToastMessage('Mobile number verified (Simulated)!');
-        setTimeout(() => setToastMessage(''), 3000);
-      });
+      setOtpError(error?.response?.data?.message || 'Invalid OTP');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRegisterNext = async () => {
+    if (!registerName || !registerName.trim()) {
+      setToastMessage('Full Name is required');
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+
     if (registerPassword !== registerConfirmPassword) {
       setToastMessage('Passwords do not match');
       setTimeout(() => setToastMessage(''), 3000);
@@ -136,7 +103,8 @@ const RegisterScreen = () => {
     
     setIsLoading(true);
     try {
-      const response = await register({
+      await register({
+        name: registerName,
         phone: registerPhone,
         email: registerEmail,
         password: registerPassword,
@@ -148,18 +116,11 @@ const RegisterScreen = () => {
       
       setToastMessage('Registration successful! Launching profile setup.');
       setTimeout(() => {
-        // Fallback backward compat
-        loginUser({ name: 'New User', mobile: registerPhone, email: registerEmail, isVerified: true });
+        loginUser({ name: registerName, mobile: registerPhone, email: registerEmail, isVerified: true });
         navigate('/member/onboarding');
       }, 1000);
     } catch (error) {
-      setToastMessage(error?.response?.data?.message || 'Registration error. Simulated success used.');
-      localStorage.setItem('merisamaj_register_phone', registerPhone);
-      localStorage.setItem('merisamaj_register_email', registerEmail);
-      setTimeout(() => {
-        loginUser({ name: 'New User', mobile: registerPhone, email: registerEmail, isVerified: true });
-        navigate('/member/onboarding');
-      }, 1000);
+      setToastMessage(error?.response?.data?.message || 'Registration error');
     } finally {
       setIsLoading(false);
     }
@@ -188,13 +149,12 @@ const RegisterScreen = () => {
   return (
     <div className="h-screen bg-surface flex flex-col overflow-hidden relative">
       <div className="absolute inset-0 aura-bg z-0 animate-aura-pulse" />
-      {showOtpBanner && <OtpBanner code={generatedOtp} onDismiss={() => setShowOtpBanner(false)} />}
       {renderToast()}
 
       {/* Back navigation header */}
       <div className="p-4 shrink-0 z-10 flex items-center justify-between">
         <button 
-          onClick={() => navigate('/member/login')} 
+          onClick={() => navigate('/member/login', { state: { skipLanguage: true } })} 
           className="w-9 h-9 rounded-xl bg-white/80 border border-purple-100/30 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale"
         >
           <ArrowRight size={18} strokeWidth={2.5} className="rotate-180" />
@@ -206,7 +166,7 @@ const RegisterScreen = () => {
         {/* Tab Switcher */}
         <div className="flex bg-purple-100/40 border border-purple-200/30 p-1.5 rounded-2xl mt-2 mb-6 shadow-inner">
           <button 
-            onClick={() => navigate('/member/login')} 
+            onClick={() => navigate('/member/login', { state: { skipLanguage: true } })} 
             className="flex-1 py-2.5 text-xs font-black rounded-xl text-text-secondary hover:text-text-primary hover:bg-white/20 transition-all"
           >
             Login
@@ -250,7 +210,7 @@ const RegisterScreen = () => {
               </div>
             </div>
 
-            {!isRegMobileVerified && showOtpBanner && (
+            {!isRegMobileVerified && otpSent && (
               <div className="animate-fade-in space-y-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase">Enter OTP</label>
                 <div className="flex gap-1.5 justify-center">
@@ -297,7 +257,18 @@ const RegisterScreen = () => {
             <p className="text-[10px] text-brand-primary font-black uppercase tracking-wider">Registration Step 2: Account Credentials</p>
             
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Email Address</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase">Full Name</label>
+              <input 
+                type="text" 
+                placeholder="Enter full name" 
+                value={registerName} 
+                onChange={(e) => setRegisterName(e.target.value)} 
+                className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none" 
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-400 uppercase">Email Address <span className="normal-case text-slate-300">(Optional)</span></label>
               <input 
                 type="email" 
                 placeholder="Enter email address" 
@@ -388,9 +359,9 @@ const RegisterScreen = () => {
 
           <button 
             onClick={handleRegisterNext}
-            disabled={isLoading || !isRegMobileVerified || !registerEmail || !registerPassword || !registerConfirmPassword}
+            disabled={isLoading || !isRegMobileVerified || !registerName || !registerPassword || !registerConfirmPassword}
             className={`w-full py-3.5 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 press-scale shadow-md transition-all ${
-              (isRegMobileVerified && registerEmail && registerPassword && registerConfirmPassword) && !isLoading
+              (isRegMobileVerified && registerName && registerPassword && registerConfirmPassword) && !isLoading
                 ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white cursor-pointer shadow-purple-500/20' 
                 : 'bg-purple-200/40 text-purple-400/60 cursor-not-allowed shadow-none'
             }`}

@@ -1,103 +1,133 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useData } from '../../context/DataProvider';
+import { matrimonialDashboardService, matrimonialShortlistService, matrimonialModerationService } from '../../../../core/api/matrimonialService';
 
 const MatrimonialContext = createContext(null);
 
 /**
- * MatrimonialProvider — Dedicated context for the Matrimonial module.
- * Manages shortlisting, recently viewed, search history, view mode,
- * and wraps child routes via <Outlet />.
+ * MatrimonialProvider — Root context for the Matrimonial module.
+ * Now backed by real API calls. Wraps child routes via <Outlet />.
  */
 export const MatrimonialProvider = () => {
-  // Pull shared data from the main DataProvider
-  const { matrimonialProfiles } = useData();
+  // ─── Dashboard Data ───────────────────────────────────────────────────────
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
-  // ─── LOCAL STATE ───
-  const loadState = (key, fallback) => {
+  // ─── UI State ─────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode]                 = useState(() => {
+    try { return JSON.parse(localStorage.getItem('merisamaj_matri_viewMode')) || 'grid'; } catch { return 'grid'; }
+  });
+  const [activeDiscoveryTab, setActiveDiscoveryTab] = useState('recommended');
+  const [searchFilters, setSearchFilters]           = useState(null);
+
+  // ─── Shortlist local state (synced from API) ──────────────────────────────
+  const [shortlistedIds, setShortlistedIds] = useState([]);
+
+  // ─── Blocked (local, backed by API calls) ────────────────────────────────
+  const [blockedIds, setBlockedIds] = useState([]);
+
+  // Persist view mode preference
+  useEffect(() => {
+    localStorage.setItem('merisamaj_matri_viewMode', JSON.stringify(viewMode));
+  }, [viewMode]);
+
+  // ─── Fetch Dashboard ──────────────────────────────────────────────────────
+  const fetchDashboard = useCallback(async () => {
+    setDashboardLoading(true);
     try {
-      const raw = localStorage.getItem(`merisamaj_matri_${key}`);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch { return fallback; }
-  };
-
-  const [shortlistedIds, setShortlistedIds] = useState(() => loadState('shortlisted', []));
-  const [recentlyViewedIds, setRecentlyViewedIds] = useState(() => loadState('recentlyViewed', []));
-  const [blockedIds, setBlockedIds] = useState(() => loadState('blocked', []));
-  const [viewMode, setViewMode] = useState(() => loadState('viewMode', 'grid')); // 'grid' | 'list'
-  const [activeDiscoveryTab, setActiveDiscoveryTab] = useState('daily');
-  const [searchFilters, setSearchFilters] = useState(null);
-
-  // Persist to localStorage
-  useEffect(() => { localStorage.setItem('merisamaj_matri_shortlisted', JSON.stringify(shortlistedIds)); }, [shortlistedIds]);
-  useEffect(() => { localStorage.setItem('merisamaj_matri_recentlyViewed', JSON.stringify(recentlyViewedIds)); }, [recentlyViewedIds]);
-  useEffect(() => { localStorage.setItem('merisamaj_matri_blocked', JSON.stringify(blockedIds)); }, [blockedIds]);
-  useEffect(() => { localStorage.setItem('merisamaj_matri_viewMode', JSON.stringify(viewMode)); }, [viewMode]);
-
-  // ─── ACTIONS ───
-  const toggleShortlist = useCallback((profileId) => {
-    setShortlistedIds(prev =>
-      prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
-    );
+      const res = await matrimonialDashboardService.getDashboard();
+      setDashboard(res.data.data.dashboard);
+    } catch (err) {
+      console.error('[MatrimonialContext] Dashboard fetch failed:', err.response?.data?.message);
+    } finally {
+      setDashboardLoading(false);
+    }
   }, []);
 
-  const isShortlisted = useCallback((profileId) => {
-    return shortlistedIds.includes(profileId);
-  }, [shortlistedIds]);
-
-  const addToRecentlyViewed = useCallback((profileId) => {
-    setRecentlyViewedIds(prev => {
-      const filtered = prev.filter(id => id !== profileId);
-      return [profileId, ...filtered].slice(0, 30); // Keep last 30
-    });
+  // ─── Shortlist Actions (API-backed) ──────────────────────────────────────
+  const addToShortlist = useCallback(async (profileId, notes = '') => {
+    try {
+      await matrimonialShortlistService.addToShortlist({ profileId, notes });
+      setShortlistedIds(prev => [...new Set([...prev, profileId])]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message };
+    }
   }, []);
 
-  const toggleBlock = useCallback((profileId) => {
-    setBlockedIds(prev =>
-      prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
-    );
+  const removeFromShortlist = useCallback(async (profileId) => {
+    try {
+      await matrimonialShortlistService.removeFromShortlist(profileId);
+      setShortlistedIds(prev => prev.filter(id => id !== profileId));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message };
+    }
   }, []);
 
-  const isBlocked = useCallback((profileId) => {
-    return blockedIds.includes(profileId);
-  }, [blockedIds]);
+  const toggleShortlist = useCallback(async (profileId, notes = '') => {
+    if (shortlistedIds.includes(profileId)) {
+      return removeFromShortlist(profileId);
+    }
+    return addToShortlist(profileId, notes);
+  }, [shortlistedIds, addToShortlist, removeFromShortlist]);
+
+  const isShortlisted = useCallback((profileId) => shortlistedIds.includes(profileId), [shortlistedIds]);
+
+  // ─── Block Actions (API-backed) ───────────────────────────────────────────
+  const blockUser = useCallback(async (userId, reason = '') => {
+    try {
+      await matrimonialModerationService.blockUser({ userId, reason });
+      setBlockedIds(prev => [...new Set([...prev, userId])]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message };
+    }
+  }, []);
+
+  const unblockUser = useCallback(async (userId) => {
+    try {
+      await matrimonialModerationService.unblockUser(userId);
+      setBlockedIds(prev => prev.filter(id => id !== userId));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message };
+    }
+  }, []);
+
+  const isBlocked = useCallback((userId) => blockedIds.includes(userId), [blockedIds]);
 
   const toggleViewMode = useCallback(() => {
     setViewMode(prev => prev === 'grid' ? 'list' : 'grid');
   }, []);
 
-  // ─── DERIVED DATA ───
-  const shortlistedProfiles = matrimonialProfiles.filter(p => shortlistedIds.includes(p.id));
-  const recentlyViewedProfiles = recentlyViewedIds
-    .map(id => matrimonialProfiles.find(p => p.id === id))
-    .filter(Boolean);
-
-  // Exclude blocked profiles from general views
-  const visibleProfiles = matrimonialProfiles.filter(p => !blockedIds.includes(p.id));
-
   const value = {
-    // State
-    shortlistedIds,
-    recentlyViewedIds,
-    blockedIds,
+    // Dashboard
+    dashboard,
+    dashboardLoading,
+    fetchDashboard,
+
+    // UI
     viewMode,
     activeDiscoveryTab,
-
-    // Derived
-    shortlistedProfiles,
-    recentlyViewedProfiles,
-    visibleProfiles,
-
-    // Actions
-    toggleShortlist,
-    isShortlisted,
-    addToRecentlyViewed,
-    toggleBlock,
-    isBlocked,
-    toggleViewMode,
     setActiveDiscoveryTab,
     searchFilters,
     setSearchFilters,
+    toggleViewMode,
+
+    // Shortlist
+    shortlistedIds,
+    setShortlistedIds,
+    toggleShortlist,
+    addToShortlist,
+    removeFromShortlist,
+    isShortlisted,
+
+    // Block
+    blockedIds,
+    blockUser,
+    unblockUser,
+    isBlocked,
   };
 
   return (

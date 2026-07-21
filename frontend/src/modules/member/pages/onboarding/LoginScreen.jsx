@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Phone, ArrowRight, ArrowLeft, Bell, Lock, Eye, EyeOff, AlertCircle, Globe, Check, Loader2
 } from 'lucide-react';
@@ -32,8 +32,9 @@ const LoginScreen = () => {
   const inputRefs = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const location = useLocation();
   // Step flow: 'initial-language' -> 'auth'
-  const [step, setStep] = useState('initial-language');
+  const [step, setStep] = useState(location.state?.skipLanguage ? 'auth' : 'initial-language');
 
   // Auth details
   const [loginIdentifier, setLoginIdentifier] = useState('');

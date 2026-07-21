@@ -1,172 +1,234 @@
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Megaphone, Heart, Calendar, Users, Check, Vote, Mail, HeartHandshake, Flame } from 'lucide-react';
-import { PageHeader } from '../../components/layout/PageHeader';
-import { useData, getNotificationModule } from '../../context/DataProvider';
-import { mockNotifications } from '../../data/mockEvents';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Megaphone, Heart, Calendar, Users, Check, Vote, Mail, HeartHandshake,
+  Flame, Loader2, RefreshCw, Trash2, BellOff, CheckCheck, Bell, ArrowLeft,
+  ShieldCheck, Crown, Eye
+} from 'lucide-react';
+import { notificationService } from '../../../../core/api/matrimonialService';
 
-const typeConfig = {
-  announcement: { icon: Megaphone, color: 'bg-brand-primary/10 text-brand-primary' },
-  matrimonial: { icon: Heart, color: 'bg-matrimonial-module/10 text-matrimonial-module' },
-  event: { icon: Calendar, color: 'bg-social-module/10 text-social-module' },
-  community: { icon: Users, color: 'bg-emerald-100 text-emerald-600' },
-  group: { icon: Users, color: 'bg-indigo-100 text-indigo-600' },
-  voting: { icon: Vote, color: 'bg-purple-100 text-purple-650' },
-  donation: { icon: HeartHandshake, color: 'bg-rose-100 text-rose-600' },
-  nimantran: { icon: Mail, color: 'bg-indigo-100 text-indigo-650' },
-  shradhanjali: { icon: Flame, color: 'bg-amber-100 text-amber-700' }
+const TYPE_CONFIG = {
+  // Matrimonial types (must match exactly what backend sends)
+  matrimonial_interest_received:     { icon: Heart,         color: 'bg-rose-100 text-rose-500',    label: 'Interest' },
+  matrimonial_interest_accepted:     { icon: Heart,         color: 'bg-emerald-100 text-emerald-600', label: 'Match' },
+  matrimonial_interest_rejected:     { icon: Heart,         color: 'bg-slate-100 text-slate-400',  label: 'Matrimonial' },
+  matrimonial_profile_verified:      { icon: ShieldCheck,   color: 'bg-emerald-100 text-emerald-600', label: 'Verified' },
+  matrimonial_profile_rejected:      { icon: ShieldCheck,   color: 'bg-red-100 text-red-500',     label: 'Rejected' },
+  matrimonial_photo_moderated:       { icon: CheckCheck,    color: 'bg-blue-100 text-blue-500',   label: 'Photo' },
+  matrimonial_subscription_activated:{ icon: Crown,         color: 'bg-amber-100 text-amber-600', label: 'Premium' },
+  matrimonial_subscription_expired:  { icon: Bell,          color: 'bg-orange-100 text-orange-600',label: 'Expired' },
+  matrimonial_profile_viewed:        { icon: Eye,           color: 'bg-purple-100 text-purple-600',label: 'Viewed' },
+  chat_new_message:                  { icon: Mail,          color: 'bg-blue-100 text-blue-500',   label: 'Chat' },
+  // Legacy/other types
+  matrimonial_interest:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Matrimonial' },
+  matrimonial_accepted:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Match' },
+  matrimonial_rejected:              { icon: Heart,         color: 'bg-slate-100 text-slate-400', label: 'Matrimonial' },
+  matrimonial_chat:                  { icon: Mail,          color: 'bg-blue-100 text-blue-500',   label: 'Chat' },
+  announcement:                      { icon: Megaphone,     color: 'bg-purple-100 text-purple-600',label: 'Announcement' },
+  event:                             { icon: Calendar,      color: 'bg-indigo-100 text-indigo-600',label: 'Event' },
+  voting:                            { icon: Vote,          color: 'bg-amber-100 text-amber-600', label: 'Voting' },
+  donation:                          { icon: HeartHandshake,color: 'bg-rose-100 text-rose-600',   label: 'Donation' },
+  community:                         { icon: Users,         color: 'bg-emerald-100 text-emerald-600',label:'Community' },
+  general:                           { icon: Bell,          color: 'bg-slate-100 text-slate-500', label: 'General' },
 };
 
-const moduleTitles = {
-  home: 'General Notifications',
-  matrimonial: 'Matrimonial Alerts',
-  nimantran: 'Invitation Alerts',
-  chat: 'Chat Notifications',
-  donation: 'Donation Updates',
-  voting: 'Voting Updates',
-  shradhanjali: 'Shradhanjali Alerts',
-  community: 'Community Updates'
+const getConfig = (type) => TYPE_CONFIG[type] || TYPE_CONFIG.general;
+
+const TABS = ['all', 'matrimonial', 'announcement', 'event', 'community'];
+
+const timeAgo = (date) => {
+  if (!date) return '';
+  const diff = Date.now() - new Date(date).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins < 1)    return 'Just now';
+  if (mins < 60)   return `${mins}m ago`;
+  if (hours < 24)  return `${hours}h ago`;
+  if (days < 7)    return `${days}d ago`;
+  return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
 const NotificationsPage = () => {
-  const { followedAnnouncements, toggleFollowedAnnouncement, notifications, markAllNotificationsRead, groups } = useData();
-  const [showSettings, setShowSettings] = useState(false);
+  const navigate     = useNavigate();
   const [searchParams] = useSearchParams();
-  const activeModule = searchParams.get('module') || 'home';
+  const moduleFilter   = searchParams.get('module') || 'all';
 
-  const markAllRead = () => {
-    markAllNotificationsRead(activeModule);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount,   setUnreadCount]   = useState(0);
+  const [loading,       setLoading]       = useState(true);
+  const [activeTab,     setActiveTab]     = useState(moduleFilter !== 'all' ? moduleFilter : 'all');
+
+  const loadNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [allRes, unreadRes] = await Promise.allSettled([
+        notificationService.getAll({ limit: 100 }),
+        notificationService.getUnread(),
+      ]);
+      if (allRes.status    === 'fulfilled') setNotifications(allRes.value.data.data.notifications || []);
+      if (unreadRes.status === 'fulfilled') setUnreadCount(unreadRes.value.data.data.count || 0);
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+
+  const handleMarkRead = async (id) => {
+    try {
+      await notificationService.markRead(id);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(c => Math.max(0, c - 1));
+    } catch {}
   };
 
-  // Filter notifications based on preferences and active module
-  const filteredNotifications = notifications.filter(n => {
-    const nModule = getNotificationModule(n.type);
-    if (nModule !== activeModule) return false;
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllRead({ module: activeTab !== 'all' ? activeTab : undefined });
+      setNotifications(prev => prev.map(n =>
+        (activeTab === 'all' || n.module === activeTab || n.type?.startsWith(activeTab)) ? { ...n, isRead: true } : n
+      ));
+      setUnreadCount(0);
+    } catch {}
+  };
 
-    if (n.type === 'announcement') return followedAnnouncements?.announcements;
-    if (n.type === 'matrimonial') return followedAnnouncements?.matrimonial;
-    if (n.type === 'event') return followedAnnouncements?.events;
-    if (n.type === 'voting') return followedAnnouncements?.voting !== false;
-    if (n.type === 'group') {
-      const g = groups.find(group => group.id === n.groupId);
-      return followedAnnouncements?.groups && (!g || !g.isMuted);
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await notificationService.deleteOne(id);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch {}
+  };
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif.isRead) await handleMarkRead(notif._id);
+
+    // Use actionUrl from notification if available (most specific)
+    if (notif.actionUrl) {
+      navigate(notif.actionUrl);
+      return;
     }
-    if (n.type === 'nimantran' || n.type === 'invitation') return followedAnnouncements?.nimantran !== false;
-    if (n.type === 'donation') return followedAnnouncements?.donation !== false;
-    if (n.type === 'shradhanjali') return followedAnnouncements?.shradhanjali !== false;
-    if (['community', 'member', 'follow_request_sent', 'follow_accept'].includes(n.type)) return followedAnnouncements?.community !== false;
-    return true;
+
+    // Fallback navigation by type
+    if (notif.type?.startsWith('matrimonial_interest')) {
+      navigate('/member/matrimonial/interests');
+    } else if (notif.type === 'chat_new_message') {
+      navigate('/member/matrimonial/interests');
+    } else if (notif.referenceType === 'InterestRequest') {
+      navigate('/member/matrimonial/interests');
+    } else if (notif.module === 'matrimonial') {
+      navigate('/member/matrimonial');
+    } else if (notif.type === 'event') {
+      navigate('/member/events');
+    } else if (notif.type === 'voting') {
+      navigate('/member/voting');
+    }
+  };
+
+  const filtered = notifications.filter(n => {
+    if (activeTab === 'all') return true;
+    return n.module === activeTab || n.type?.startsWith(activeTab);
   });
 
-  const modulePreferences = {
-    home: [
-      { key: 'announcements', label: 'Samaj Announcements' },
-      { key: 'events', label: 'Community Events' }
-    ],
-    matrimonial: [
-      { key: 'matrimonial', label: 'Matrimonial Alerts' }
-    ],
-    chat: [
-      { key: 'groups', label: 'Group & Chat Activity' }
-    ],
-    voting: [
-      { key: 'voting', label: 'Voting & Poll Alerts' }
-    ],
-    nimantran: [
-      { key: 'nimantran', label: 'Invitation Alerts' }
-    ],
-    donation: [
-      { key: 'donation', label: 'Donation Updates' }
-    ],
-    shradhanjali: [
-      { key: 'shradhanjali', label: 'Shradhanjali Alerts' }
-    ],
-    community: [
-      { key: 'community', label: 'Community Updates' }
-    ]
-  };
-
-  const activePreferences = modulePreferences[activeModule] || [];
+  const unreadFiltered = filtered.filter(n => !n.isRead).length;
 
   return (
     <div className="min-h-screen bg-surface pb-28">
-      <PageHeader
-        title={moduleTitles[activeModule] || 'General Notifications'}
-        showBack={true}
-        rightContent={
-          <div className="flex items-center gap-2">
-            {activePreferences.length > 0 && (
-              <button 
-                onClick={() => setShowSettings(!showSettings)} 
-                className={`text-[12px] font-bold px-3 py-1.5 rounded-xl border transition-all press-scale ${
-                  showSettings 
-                    ? 'bg-brand-primary/10 border-brand-primary text-brand-primary' 
-                    : 'bg-gray-50 border-gray-200 text-text-secondary'
-                }`}
-              >
-                Filters
-              </button>
-            )}
-            <button onClick={markAllRead} className="text-[12px] text-brand-primary font-bold press-scale flex items-center gap-1">
-              <Check size={14} /> Read all
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-1 active:opacity-60">
+          <ArrowLeft size={22} className="text-slate-800" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-[17px] font-black text-slate-800 leading-none">Notifications</h1>
+          {unreadCount > 0 && (
+            <p className="text-[10px] font-bold text-rose-500 mt-0.5">{unreadCount} unread</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={loadNotifications} className="p-2 text-slate-400 active:scale-90">
+            <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
+          </button>
+          {unreadFiltered > 0 && (
+            <button onClick={handleMarkAllRead} className="text-[11px] font-bold text-rose-500 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100 active:scale-95">
+              <CheckCheck size={13} /> Mark all read
             </button>
-          </div>
-        }
-      />
+          )}
+        </div>
+      </div>
 
-      <div className="pt-16 max-w-lg mx-auto w-full">
-        {showSettings && activePreferences.length > 0 && (
-          <div className="card-neo mx-5 p-4 mb-4 shadow-sm animate-fade-in-down">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3">Subscription Preferences</h3>
-            <div className="space-y-3">
-              {activePreferences.map(pref => (
-                <div key={pref.key} className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-text-primary">{pref.label}</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={followedAnnouncements?.[pref.key] !== false} 
-                      onChange={() => toggleFollowedAnnouncement(pref.key)} 
-                      className="sr-only peer" 
-                    />
-                    <div className="w-9 h-5 bg-purple-100/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-purple-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary"></div>
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Tab pills */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          {TABS.map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95 shrink-0 capitalize ${
+                activeTab === tab ? 'bg-slate-800 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-100'
+              }`}>
+              {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {filteredNotifications.length === 0 ? (
-          <div className="text-center py-16 px-4">
-            <Megaphone size={36} className="text-purple-200 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-text-secondary">No notifications matching your filters</p>
+      {/* Content */}
+      <div className="max-w-lg mx-auto w-full">
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 size={28} className="text-rose-400 animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 px-6">
+            <BellOff size={32} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-[14px] font-black text-slate-600 mb-1">All caught up!</p>
+            <p className="text-[12px] text-slate-400 font-semibold">No {activeTab === 'all' ? '' : activeTab} notifications yet.</p>
           </div>
         ) : (
-          filteredNotifications.map((n, i) => {
-            const config = typeConfig[n.type] || typeConfig.community || typeConfig.announcement;
-            return (
-              <div
-                key={n.id}
-                className={`flex items-start gap-4 px-5 py-4 border-b border-purple-100/10 animate-stagger-fade-in ${
-                  !n.isRead ? 'bg-purple-50/40' : 'bg-transparent'
-                }`}
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <div className={`w-10 h-10 rounded-xl ${config.color} flex items-center justify-center shrink-0 mt-0.5 border border-purple-100/10`}>
-                  <config.icon size={16} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className={`text-[15px] ${!n.isRead ? 'font-bold' : 'font-semibold'} text-text-primary`}>{n.title}</h4>
-                    {!n.isRead && <div className="w-2.5 h-2.5 bg-brand-primary rounded-full shrink-0 mt-1.5" />}
+          <div>
+            {filtered.map((n, i) => {
+              const cfg = getConfig(n.type);
+              const Icon = cfg.icon;
+              return (
+                <button
+                  key={n._id}
+                  onClick={() => handleNotificationClick(n)}
+                  className={`w-full flex items-start gap-4 px-5 py-4 border-b border-slate-100/50 text-left transition-colors ${
+                    !n.isRead ? 'bg-rose-50/40 hover:bg-rose-50/60' : 'bg-white hover:bg-slate-50'
+                  }`}
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  {/* Icon */}
+                  <div className={`w-10 h-10 rounded-xl ${cfg.color} flex items-center justify-center shrink-0 mt-0.5 border border-slate-100`}>
+                    <Icon size={16} />
                   </div>
-                  <p className="text-[13px] text-text-secondary mt-1 leading-relaxed">{n.message}</p>
-                  <p className="text-[11px] text-text-muted mt-1.5 font-bold">{n.time}</p>
-                </div>
-              </div>
-            );
-          })
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className={`text-[14px] leading-snug ${!n.isRead ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                        {n.title}
+                      </h4>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!n.isRead && <div className="w-2 h-2 bg-rose-500 rounded-full mt-1" />}
+                        <button onClick={(e) => handleDelete(n._id, e)}
+                          className="p-1 text-slate-300 hover:text-red-400 transition-colors active:scale-90 rounded-lg hover:bg-red-50">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[12.5px] text-slate-500 mt-0.5 leading-relaxed font-semibold">{n.message}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${cfg.color}`}>{cfg.label}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">{timeAgo(n.createdAt)}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
