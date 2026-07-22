@@ -149,13 +149,14 @@ const PostDetailPage = () => {
     togglePostSave(post.id);
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!commentText.trim()) return;
     if (replyingToComment) {
-      addCommentReply(post.id, replyingToComment.id, commentText.trim());
+      const commentTargetId = replyingToComment.id || replyingToComment._id;
+      await addCommentReply(post.id, commentTargetId, commentText.trim());
       setReplyingToComment(null);
     } else {
-      addPostComment(post.id, commentText.trim());
+      await addPostComment(post.id, commentText.trim());
     }
     setCommentText('');
   };
@@ -396,12 +397,17 @@ const PostDetailPage = () => {
                       <span>{comment.time || 'Just now'}</span>
                       <button 
                         onClick={() => toggleCommentLike(post.id, commentKey)}
-                        className="text-red-500 font-extrabold transition-colors flex items-center gap-1"
+                        className={`font-extrabold transition-colors flex items-center gap-1 cursor-pointer ${comment.isLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
                       >
-                        <ThumbsUp size={11} className="fill-red-500 text-red-500" />
+                        <ThumbsUp size={11} className={comment.isLiked ? 'fill-red-500 text-red-500' : ''} />
                         <span>{comment.likes || 0} Likes</span>
                       </button>
-                      <button onClick={() => setReplyingToComment(comment)} className="hover:text-slate-600 transition-colors">Reply</button>
+                      <button 
+                        onClick={() => setReplyingToComment(comment)} 
+                        className="hover:text-brand-primary cursor-pointer transition-colors"
+                      >
+                        Reply
+                      </button>
                     </div>
 
                     {/* Comment Thread Replies */}

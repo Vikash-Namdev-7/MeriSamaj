@@ -13,15 +13,14 @@ import HeadDetailsPage from '../pages/community-heads/HeadDetailsPage';
 import HeadActivityMonitor from '../pages/community-heads/HeadActivityMonitor';
 import HeadReports from '../pages/community-heads/HeadReports';
 import SubscriptionManagement from '../pages/subscriptions/SubscriptionManagement';
-import ContentManagementSystem from '../pages/cms/ContentManagementSystem';
 import GlobalFamilyManagement from '../pages/families/GlobalFamilyManagement';
 import GlobalProfessionalOverview from '../pages/professionals/GlobalProfessionalOverview';
 import GlobalProfessionalGrid from '../pages/professionals/GlobalProfessionalGrid';
 import GlobalProfessionalApprovals from '../pages/professionals/GlobalProfessionalApprovals';
 import GlobalProfessionalCategories from '../pages/professionals/GlobalProfessionalCategories';
-import GlobalDonationManagement from '../pages/donations/GlobalDonationManagement';
 import GlobalFundManagement from '../pages/fund/GlobalFundManagement';
 import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementCenter';
+import DonationManagement from '../../../pages/admin/DonationManagement';
 import CommunitiesPage from '../pages/communities/CommunitiesPage';
 import AdminLogin from '../pages/login/AdminLogin';
 
@@ -57,8 +56,7 @@ export const AdminRoutes = () => {
         </Route>
         <Route path="subscriptions" element={<SubscriptionManagement />} />
         <Route path="config" element={<SystemConfig />} />
-        <Route path="cms" element={<ContentManagementSystem />} />
-        <Route path="families" element={<GlobalFamilyManagement />} />
+        <Route path="families" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="professionals">
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<GlobalProfessionalOverview />} />
@@ -66,7 +64,7 @@ export const AdminRoutes = () => {
           <Route path="approvals" element={<GlobalProfessionalApprovals />} />
           <Route path="categories" element={<GlobalProfessionalCategories />} />
         </Route>
-        <Route path="donations" element={<GlobalDonationManagement />} />
+        <Route path="donations" element={<DonationManagement />} />
         <Route path="funds" element={<GlobalFundManagement />} />
         <Route path="announcements" element={<GlobalAnnouncementCenter />} />
 

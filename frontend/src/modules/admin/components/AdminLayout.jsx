@@ -16,6 +16,7 @@ export const AdminLayout = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   // Calculate real-time pending approvals count
   const pendingCount = members.filter(m => !m.isVerified).length;
@@ -54,11 +55,6 @@ export const AdminLayout = () => {
           icon: Users 
         },
         { 
-          name: 'Global Families', 
-          path: '/admin/families', 
-          icon: Network 
-        },
-        { 
           name: 'City Management', 
           path: '/admin/cities', 
           icon: Building2 
@@ -83,15 +79,8 @@ export const AdminLayout = () => {
         },
         { 
           name: 'Event Management', 
-          icon: Calendar,
-          children: [
-            { name: 'Overview', path: '/admin/events', search: '?tab=overview' },
-            { name: 'All Events', path: '/admin/events', search: '?tab=all' },
-            { name: 'Create Event', path: '/admin/events', search: '?tab=create' },
-            { name: 'Event Monitoring', path: '/admin/events', search: '?tab=monitoring' },
-            { name: 'Featured Events', path: '/admin/events', search: '?tab=featured' },
-            { name: 'Event Analytics', path: '/admin/events', search: '?tab=analytics' }
-          ]
+          path: '/admin/events',
+          icon: Calendar
         },
         { 
           name: 'Global Professional Directory', 
@@ -105,15 +94,8 @@ export const AdminLayout = () => {
         },
         { 
           name: 'Global Donations', 
-          icon: HeartHandshake,
-          children: [
-            { name: 'Dashboard Overview', path: '/admin/donations', search: '?tab=overview' },
-            { name: 'Campaign Directory', path: '/admin/donations', search: '?tab=campaigns' },
-            { name: 'Transaction Center', path: '/admin/donations', search: '?tab=transactions' },
-            { name: 'Financial Analytics', path: '/admin/donations', search: '?tab=analytics' },
-            { name: 'Community Comparison', path: '/admin/donations', search: '?tab=comparison' },
-            { name: 'Audit Tracker', path: '/admin/donations', search: '?tab=audit' }
-          ]
+          path: '/admin/donations',
+          icon: HeartHandshake
         },
         {
           name: 'Samaj Funds',
@@ -148,19 +130,6 @@ export const AdminLayout = () => {
     {
       category: 'SYSTEM & CONTENT',
       items: [
-        { 
-          name: 'Content Management', 
-          icon: Globe,
-          children: [
-            { name: 'Overview', path: '/admin/cms', search: '?tab=dashboard' },
-            { name: 'Banners & Sliders', path: '/admin/cms', search: '?tab=banners' },
-            { name: 'Announcements & Notices', path: '/admin/cms', search: '?tab=announcements' },
-            { name: 'Page Builder', path: '/admin/cms', search: '?tab=pages' },
-            { name: 'FAQ Directory', path: '/admin/cms', search: '?tab=faqs' },
-            { name: 'Media Library', path: '/admin/cms', search: '?tab=media' },
-            { name: 'Footer & Contact', path: '/admin/cms', search: '?tab=settings' }
-          ]
-        },
         { 
           name: 'Subscription Mgmt', 
           icon: CreditCard,
@@ -556,26 +525,87 @@ export const AdminLayout = () => {
             </button>
             <h2 className="text-gray-800 font-bold text-sm tracking-wide">Master Administration</h2>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 text-gray-400">
-              <button className="hover:text-brand-primary transition-colors"><Search size={18} /></button>
-              <button className="hover:text-brand-primary transition-colors relative">
-                <Send size={18} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+          <div className="flex items-center gap-5">
+            {/* Notifications Action */}
+            <button 
+              onClick={() => navigate('/admin/announcements')}
+              className="p-2 rounded-xl text-gray-400 hover:text-brand-primary hover:bg-purple-50 transition-all relative"
+              title="Announcements & Notifications"
+            >
+              <Send size={19} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            </button>
+
+            <div className="h-7 w-[1px] bg-gray-200"></div>
+
+            {/* Profile Dropdown Menu */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-3 text-left focus:outline-none p-1.5 rounded-xl hover:bg-gray-50 transition-all cursor-pointer"
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-[12px] font-bold text-gray-800 leading-none">{adminUser?.name || 'System Admin'}</p>
+                  <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">{adminUser?.role || 'Master Admin'}</p>
+                </div>
+                <Avatar 
+                  initials={adminUser?.initials || (adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'SA')} 
+                  size="sm" 
+                  imageUrl={adminUser?.avatar}
+                  color="bg-brand-primary text-white font-bold"
+                />
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
               </button>
-            </div>
-            <div className="h-8 w-[1px] bg-gray-200"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-[12px] font-bold text-gray-800 leading-none">{adminUser?.name || 'Administrator'}</p>
-                <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Master Admin</p>
-              </div>
-              <Avatar 
-                initials={adminUser?.initials || (adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'A')} 
-                size="sm" 
-                imageUrl={adminUser?.avatar}
-                color="bg-brand-primary text-white"
-              />
+
+              {isProfileMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-xs font-bold text-gray-900 truncate">{adminUser?.name || 'System Admin'}</p>
+                      <p className="text-[10px] text-gray-500 font-medium truncate mt-0.5">{adminUser?.email || 'admin@merisamaj.com'}</p>
+                    </div>
+
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          navigate('/admin/dashboard');
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-brand-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <LayoutDashboard size={15} /> Admin Dashboard
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          navigate('/admin/users');
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-brand-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <Users size={15} /> User Management
+                      </button>
+                    </div>
+
+                    <div className="pt-1 border-t border-gray-100">
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors"
+                      >
+                        <LogOut size={15} /> Sign Out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

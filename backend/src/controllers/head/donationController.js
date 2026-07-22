@@ -139,6 +139,7 @@ exports.createCampaign = async (req, res) => {
        */
       communityId: req.communityId || req.user?.communityId?._id || req.user?.communityId,
       community,
+      status: parsedData.status || 'Active',
       createdBy: req.user?._id
     });
     

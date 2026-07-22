@@ -76,27 +76,13 @@ export const HeadLayout = () => {
       items: [
         {
           name: 'Event Management',
-          icon: Calendar,
-          children: [
-            { name: 'Overview', path: '/head/events', search: '?tab=overview' },
-            { name: 'All Events', path: '/head/events', search: '?tab=all' },
-            { name: 'Create Event', path: '/head/events', search: '?tab=create' },
-            { name: 'Event Monitoring', path: '/head/events', search: '?tab=monitoring' },
-            { name: 'Event Analytics', path: '/head/events', search: '?tab=analytics' }
-          ]
+          path: '/head/events',
+          icon: Calendar
         },
         {
           name: 'Invitations',
           path: '/head/invitations',
           icon: Mail
-        },
-        {
-          name: 'Circulars & Alerts',
-          icon: Send,
-          children: [
-            { name: 'Official circulars', path: '/head/announcements' },
-            { name: 'Notification Center', path: '/head/notifications' }
-          ]
         },
         { 
           name: 'Fund Governance', 
@@ -129,24 +115,9 @@ export const HeadLayout = () => {
           icon: Vote 
         },
         {
-          name: 'Reports & Analytics',
-          path: '/head/reports',
-          icon: BarChart3
-        },
-        {
           name: 'Home Content',
           path: '/head/home-content',
           icon: LayoutTemplate
-        },
-        { 
-          name: 'Community Settings', 
-          path: '/head/settings', 
-          icon: Settings 
-        },
-        {
-          name: 'Profile & Account',
-          path: '/head/profile',
-          icon: User
         }
       ]
     }
@@ -500,15 +471,7 @@ export const HeadLayout = () => {
             </button>
             <h2 className="text-slate-800 font-semibold text-sm tracking-wide">Council Workspace</h2>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 text-slate-400">
-              <button className="hover:text-indigo-600 transition-colors cursor-pointer"><Search size={18} /></button>
-              <button className="hover:text-indigo-600 transition-colors relative cursor-pointer">
-                <Send size={18} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
-              </button>
-            </div>
-            <div className="h-8 w-[1px] bg-slate-200"></div>
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-850 leading-none">{headUser?.name || 'Community Head'}</p>

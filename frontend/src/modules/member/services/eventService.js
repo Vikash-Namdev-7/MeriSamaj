@@ -11,6 +11,11 @@ export const eventService = {
     return response.data;
   },
 
+  reactToEvent: async (id, responseType) => {
+    const response = await axiosPrivate.post(`/member/events/${id}/react`, { response: responseType });
+    return response.data;
+  },
+
   toggleInterested: async (id) => {
     const response = await axiosPrivate.post(`/member/events/${id}/interested`);
     return response.data;

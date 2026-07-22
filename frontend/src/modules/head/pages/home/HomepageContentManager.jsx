@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Layout, Image, Edit2, Link2, Plus, Trash2, Eye, MoveUp, MoveDown, CheckCircle, 
-  HelpCircle, Settings2, PlusCircle, AlertCircle, Save, Check, RefreshCw
+  HelpCircle, Settings2, PlusCircle, AlertCircle, Save, Check, RefreshCw, Upload, X
 } from 'lucide-react';
 import { useData } from '../../../member/context/DataProvider';
 import { useHeadAuth } from '../../auth/useHeadAuth';
@@ -58,12 +58,22 @@ export const HomepageContentManager = () => {
 
 
   const handleSave = async () => {
-    const success = await saveSettings();
-    if (success) {
-      showToast('Homepage settings saved successfully!');
-    } else {
-      showToast('Failed to save settings.');
+    try {
+      localStorage.setItem('merisamaj_global_homepage_content', JSON.stringify(homepageContent));
+      if (communityId) {
+        const current = localStorage.getItem(`community_settings_${communityId}`);
+        const parsedCurrent = current ? JSON.parse(current) : {};
+        parsedCurrent.homepageContent = homepageContent;
+        localStorage.setItem(`community_settings_${communityId}`, JSON.stringify(parsedCurrent));
+      }
+      window.dispatchEvent(new Event('merisamaj_homepage_updated'));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.error('Failed to sync global homepage content', e);
     }
+
+    const success = await saveSettings();
+    showToast('Homepage settings saved and published live!');
   };
 
   // Helper to extract homepageContent safely with default structures
@@ -276,15 +286,13 @@ export const HomepageContentManager = () => {
           </div>
         </div>
 
-        {hasUnsavedChanges && (
-          <button 
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Save size={14} /> {saving ? 'Saving...' : 'Save All Changes'}
-          </button>
-        )}
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <Save size={14} /> {saving ? 'Saving...' : 'Save All Changes'}
+        </button>
       </div>
 
       {/* ─── TABS SELECTOR ─── */}
@@ -324,16 +332,61 @@ export const HomepageContentManager = () => {
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Hero Banner Customization</h3>
               
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Banner Background Image URL</label>
-                <input 
-                  type="text" 
-                  placeholder="Paste direct Unsplash or Image CDN link..." 
-                  value={homepageContent.hero.backgroundImage}
-                  onChange={(e) => updateHeroField('backgroundImage', e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-slate-700"
-                />
-                <span className="text-[9px] text-slate-450 block italic">Leave empty to use the standard landing illustration background.</span>
+              <div className="space-y-2">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Banner Background Image (Select from Mobile / Device)
+                </label>
+                
+                <div className="flex items-center gap-3 bg-slate-50 border border-dashed border-slate-200 p-3 rounded-xl">
+                  {homepageContent.hero.backgroundImage ? (
+                    <div className="relative w-20 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                      <img 
+                        src={homepageContent.hero.backgroundImage} 
+                        alt="Banner Background Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateHeroField('backgroundImage', '')}
+                        className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-full hover:bg-rose-600 shadow-sm cursor-pointer"
+                        title="Remove Image"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-16 rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400 shrink-0">
+                      <Image size={18} />
+                      <span className="text-[8px] font-bold mt-1">Default Image</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      id="heroBannerImageFile"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            updateHeroField('backgroundImage', reader.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="heroBannerImageFile"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-100"
+                    >
+                      <Upload size={13} /> Upload Image from Mobile / Device
+                    </label>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">Pick JPG, PNG or WEBP image directly from gallery/files.</p>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1">

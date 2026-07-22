@@ -1,24 +1,23 @@
 const mongoose = require('mongoose');
 
 const donationSchema = new mongoose.Schema({
-  /**
-   * communityId — Community isolation key.
-   * Set server-side from the parent Campaign's communityId.
-   */
-  communityId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Community',
-    required: true,
-    index: true,
-  },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign', required: true },
-  amount: { type: Number, required: true },
-  type: { type: String, enum: ['One-time', 'Monthly', 'Yearly'], default: 'One-time' },
-  txnId: { type: String, required: true, unique: true },
-  paymentMode: { type: String, default: 'Online' },
-  status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Approved' },
-  date: { type: Date, default: Date.now },
+  title: { type: String, required: true, trim: true },
+  description: { type: String, trim: true },
+  targetAmount: { type: Number, required: true, min: 0 },
+  raisedAmount: { type: Number, default: 0, min: 0 },
+  donorCount: { type: Number, default: 0, min: 0 },
+  category: { type: String, default: 'General', trim: true },
+  coverImage: { type: String, trim: true },
+  status: { type: String, enum: ['Active', 'Closed'], default: 'Active' },
+  isDeleted: { type: Boolean, default: false, index: true },
+  recentDonations: [
+    {
+      donorName: { type: String, default: 'Anonymous' },
+      amount: { type: Number, required: true },
+      date: { type: Date, default: Date.now },
+      paymentStatus: { type: String, default: 'success' }
+    }
+  ]
 }, {
   timestamps: true
 });

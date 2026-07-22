@@ -120,20 +120,23 @@ export default function DharmashalaHomePage() {
             dharamshalas.map(d => (
               <div key={d._id} className="card-neo overflow-hidden flex flex-col">
                 <div className="flex p-4 gap-4">
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
-                    <img src={d.image} alt={d.name} className="w-full h-full object-cover" />
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
+                    <img 
+                      src={d.image || (d.galleryImages && d.galleryImages[0]) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500'} 
+                      alt={d.name} 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-slate-800 text-[15px] truncate">{d.name}</h3>
                     <div className="flex items-start gap-1 mt-1 text-slate-500">
-                      <MapPin size={12} className="mt-0.5 shrink-0" />
+                      <MapPin size={12} className="mt-0.5 shrink-0 text-indigo-500" />
                       <span className="text-[11px] leading-tight font-medium">{d.address || d.location}{d.city ? `, ${d.city}` : ''}</span>
                     </div>
                     
                     <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
-                      <div className="flex items-center gap-1"><span>कुल कमरे:</span> <span className="text-slate-800">{d.totalRooms}</span></div>
-                      <div className="flex items-center gap-1"><span>AC कमरे:</span> <span className="text-slate-800">{d.acRooms}</span></div>
-                      <div className="flex items-center gap-1"><span>सामान्य कमरे:</span> <span className="text-slate-800">{d.generalRooms}</span></div>
+                      <div className="flex items-center gap-1"><span>स्वामित्व:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
+                      <div className="flex items-center gap-1"><span>स्थिति:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
                     </div>
                   </div>
                 </div>

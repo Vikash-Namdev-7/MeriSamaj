@@ -43,5 +43,9 @@ router.use('/matrimonial', adminMatrimonialRoutes);
 const adminSocialRoutes = require('./adminSocialRoutes');
 router.use('/social', adminSocialRoutes);
 
+// Donation Management Routes
+const adminDonationRoutes = require('../adminDonationRoutes');
+router.use('/donations', adminDonationRoutes);
+
 module.exports = router;
 

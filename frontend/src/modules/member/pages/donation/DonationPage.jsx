@@ -72,6 +72,13 @@ const DonationPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <button 
+            onClick={() => navigate('/member/home')}
+            className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-text-primary hover:bg-purple-50 transition-colors press-scale"
+            title="Go to Home"
+          >
+            <Home size={20} />
+          </button>
+          <button 
             onClick={() => navigate('/member/donation/my')}
             className="text-xs font-bold text-brand-primary bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100/50 press-scale transition-colors hover:bg-purple-100/50"
           >

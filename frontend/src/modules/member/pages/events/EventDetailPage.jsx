@@ -27,7 +27,7 @@ const mockAttendees = [
 const EventDetailPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { toggleEventReminder, registerForEvent, toggleEventBookmark } = useData();
+  const { toggleEventReminder, registerForEvent, toggleEventBookmark, toggleEventInterest, toggleEventRSVP } = useData();
   const attendeesRef = useDraggableScroll();
   const galleryRef = useDraggableScroll();
 
@@ -84,8 +84,8 @@ const EventDetailPage = () => {
   const handleReminderToggle = async () => {
     if (!event) return;
     try {
-      await toggleEventReminder(event.id);
-      const isNowSet = !event.isReminderSet;
+      const targetId = event.id || event._id;
+      const isNowSet = await toggleEventReminder(targetId);
       setEvent(prev => ({ ...prev, isReminderSet: isNowSet }));
       setReminderToastMsg(isNowSet ? 'Reminder set' : 'Reminder removed');
       setShowReminderToast(true);
@@ -98,7 +98,8 @@ const EventDetailPage = () => {
   const handleBookmarkToggle = async () => {
     if (!event) return;
     try {
-      const isBookmarked = await toggleEventBookmark(event.id);
+      const targetId = event.id || event._id;
+      const isBookmarked = await toggleEventBookmark(targetId);
       setEvent(prev => ({ ...prev, isBookmarked }));
     } catch (err) {
       console.error(err);
@@ -108,12 +109,15 @@ const EventDetailPage = () => {
   const handleInterestToggle = async () => {
     if (!event) return;
     try {
-      const res = await eventService.toggleInterested(event.id);
-      setEvent(prev => ({
-        ...prev,
-        isInterested: res.data.isInterested,
-        interested: res.data.interestedCount
-      }));
+      const targetId = event.id || event._id;
+      const res = await toggleEventInterest(targetId);
+      if (res) {
+        setEvent(prev => ({
+          ...prev,
+          isInterested: res.isInterested,
+          interested: res.interestedCount
+        }));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -140,12 +144,15 @@ const EventDetailPage = () => {
   const handleRSVPToggle = async () => {
     if (!event) return;
     try {
-      const res = await eventService.toggleAttend(event.id);
-      setEvent(prev => ({
-        ...prev,
-        isRegistered: res.data.isRegistered,
-        attendees: res.data.attendeesCount
-      }));
+      const targetId = event.id || event._id;
+      const res = await toggleEventRSVP(targetId);
+      if (res) {
+        setEvent(prev => ({
+          ...prev,
+          isRegistered: res.isRegistered,
+          attendees: res.attendeesCount
+        }));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -325,7 +332,7 @@ const EventDetailPage = () => {
       <div className="px-4 pt-3">
         <div className="grid grid-cols-3 gap-2.5">
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
-            <p className="text-[20px] font-black text-brand-primary leading-none">{event.interested || event.attendees}+</p>
+            <p className="text-[20px] font-black text-brand-primary leading-none">{(event.interested !== undefined ? event.interested : 0)}+</p>
             <p className="text-[10px] text-gray-500 font-bold mt-1.5">Interested</p>
           </div>
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">

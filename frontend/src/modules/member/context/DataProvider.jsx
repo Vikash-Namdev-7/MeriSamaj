@@ -681,12 +681,20 @@ export const DataProvider = ({ children }) => {
     setEventsLoading(true);
     setEventsError(null);
     try {
-      if (headAuth?.isAuthenticated) {
-        const res = await headEventService.getEvents();
-        setEvents(res.data || []);
-      } else if (auth.isAuthenticated) {
+      if (auth.isAuthenticated) {
         const res = await eventService.getEvents();
         setEvents(res.data || []);
+        return;
+      }
+      
+      if (headAuth?.isAuthenticated) {
+        try {
+          const res = await headEventService.getEvents();
+          setEvents(res.data || []);
+          return;
+        } catch (e) {
+          // Fallback if head fetch fails
+        }
       }
     } catch (error) {
       console.error('Failed to load events', error);
@@ -1120,8 +1128,28 @@ export const DataProvider = ({ children }) => {
         }
         return e;
       }));
+      return res.data;
     } catch (error) {
       console.error('Failed to toggle event RSVP:', error);
+    }
+  };
+
+  const toggleEventInterest = async (eventId) => {
+    try {
+      const res = await eventService.toggleInterested(eventId);
+      setEvents(prev => prev.map(e => {
+        if (e.id === eventId || e._id === eventId) {
+          return {
+            ...e,
+            isInterested: res.data.isInterested,
+            interested: res.data.interestedCount
+          };
+        }
+        return e;
+      }));
+      return res.data;
+    } catch (error) {
+      console.error('Failed to toggle event interest:', error);
     }
   };
 
@@ -1254,24 +1282,29 @@ export const DataProvider = ({ children }) => {
     try {
       const res = await socialService.getComments(postId);
       const commentsData = res.data || [];
+      const currentUserId = currentUser?.id || currentUser?._id;
       
-      const allFormatted = commentsData.map(c => ({
-        ...c,
-        id: c._id || c.id,
-        parentCommentId: c.parentCommentId ? String(c.parentCommentId) : null,
-        author: {
-          id: c.userId?._id || c.userId?.id || 'Unknown',
-          name: c.userId?.name || 'Member',
-          avatar: c.userId?.avatar,
-          initials: c.userId?.name ? c.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M',
-          isVerified: true
-        },
-        text: c.text,
-        time: c.createdAt ? new Date(c.createdAt).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
-        likes: 0,
-        isLiked: false,
-        replies: []
-      }));
+      const allFormatted = commentsData.map(c => {
+        const likesArr = c.likes || [];
+        const isLiked = currentUserId ? likesArr.some(id => (id._id || id).toString() === currentUserId.toString()) : false;
+        return {
+          ...c,
+          id: c._id || c.id,
+          parentCommentId: c.parentCommentId ? String(c.parentCommentId) : null,
+          author: {
+            id: c.userId?._id || c.userId?.id || 'Unknown',
+            name: c.userId?.name || 'Member',
+            avatar: c.userId?.avatar,
+            initials: c.userId?.name ? c.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M',
+            isVerified: true
+          },
+          text: c.text,
+          time: c.createdAt ? new Date(c.createdAt).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+          likes: c.likesCount || likesArr.length || 0,
+          isLiked: !!isLiked,
+          replies: []
+        };
+      });
 
       // Separate top-level comments and replies
       const topLevel = allFormatted.filter(c => !c.parentCommentId);
@@ -1373,7 +1406,32 @@ export const DataProvider = ({ children }) => {
   };
 
   const toggleCommentLike = async (postId, commentId) => {
-    // Comment likes can be supported in database commentlikes later
+    try {
+      const res = await socialService.toggleCommentLike(commentId);
+      const isLiked = res.data?.isLiked;
+      const likesCount = res.data?.likesCount;
+
+      const updateFn = p => {
+        if (p._id === postId || p.id === postId) {
+          return {
+            ...p,
+            commentsList: (p.commentsList || []).map(c => {
+              if (c._id === commentId || c.id === commentId) {
+                return { ...c, isLiked, likes: likesCount };
+              }
+              return c;
+            })
+          };
+        }
+        return p;
+      };
+      setPosts(prev => prev.map(updateFn));
+      setCityPosts(prev => prev.map(updateFn));
+      setCommunityPosts(prev => prev.map(updateFn));
+      return res.data;
+    } catch (error) {
+      console.error('Failed to toggle comment like:', error);
+    }
   };
 
   const recordPostView = async (postId) => {
@@ -2683,6 +2741,7 @@ export const DataProvider = ({ children }) => {
     fetchFeedPosts,
     fetchStoriesList,
     toggleEventRSVP,
+    toggleEventInterest,
     togglePostLike,
     togglePostSave,
     addPostComment,

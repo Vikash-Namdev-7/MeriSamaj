@@ -15,29 +15,41 @@ export const MemberManagement = () => {
   // Local state representing the local scope of members for the current Samaj (head's community)
   const headCommunityName = "Agrawal Samaj Indore";
   const communityMembers = useMemo(() => {
-    // Dynamically scoped to matching community or simulated local Samaj subset for the Head
-    return members.map(m => ({
-      ...m,
-      memberId: m.memberId || `AS-${1000 + Number(m.id || 1)}`,
-      email: m.email || `${m.name.toLowerCase().replace(/\s/g, '')}@gmail.com`,
-      gender: m.gender || (Number(m.id) % 2 === 0 ? 'Female' : 'Male'),
-      ageGroup: m.ageGroup || (Number(m.id) % 3 === 0 ? 'Senior (60+)' : Number(m.id) % 3 === 1 ? 'Youth (18-35)' : 'Adult (36-59)'),
-      maritalStatus: m.maritalStatus || (Number(m.id) % 2 === 0 ? 'Unmarried' : 'Married'),
-      bloodGroup: m.bloodGroup || (Number(m.id) % 4 === 0 ? 'B+' : Number(m.id) % 4 === 1 ? 'A+' : 'O+'),
-      familySize: m.familySize || (Number(m.id) % 3 + 2),
-      registrationDate: m.registrationDate || '2026-06-12',
-      lastActive: m.lastActive || '2 Hrs ago',
-      area: m.area || (Number(m.id) % 2 === 0 ? 'Vijay Nagar' : 'Saket'),
-      familyMembers: m.familyMembers || [
-        { name: `${m.name.split(' ')[0]}'s Spouse`, relationship: 'Spouse', occupation: 'Homemaker', age: 34, isVerified: true },
-        { name: `${m.name.split(' ')[0]}'s Child`, relationship: 'Son', occupation: 'Student', age: 12, isVerified: false }
-      ],
-      activities: [
-        { date: '2026-07-06', time: '11:20 AM', action: 'Log In', status: 'Success', device: 'Chrome / Windows', location: 'Indore, India' },
-        { date: '2026-07-05', time: '04:15 PM', action: 'Profile Update', status: 'Success', device: 'Safari / iPhone', location: 'Indore, India' }
-      ]
-    }));
+    return (members || []).map(m => {
+      const cityName = typeof m.city === 'object' && m.city?.name ? m.city.name : (m.city || (Number(m.id || 1) % 2 === 0 ? 'Indore' : 'Bhopal'));
+      return {
+        ...m,
+        city: cityName,
+        memberId: m.memberId || `AS-${1000 + Number(m.id || 1)}`,
+        email: m.email || `${(m.name || 'member').toLowerCase().replace(/\s/g, '')}@gmail.com`,
+        gender: m.gender || (Number(m.id || 1) % 2 === 0 ? 'Female' : 'Male'),
+        ageGroup: m.ageGroup || (Number(m.id || 1) % 3 === 0 ? 'Senior (60+)' : Number(m.id || 1) % 3 === 1 ? 'Youth (18-35)' : 'Adult (36-59)'),
+        maritalStatus: m.maritalStatus || (Number(m.id || 1) % 2 === 0 ? 'Unmarried' : 'Married'),
+        bloodGroup: m.bloodGroup || (Number(m.id || 1) % 4 === 0 ? 'B+' : Number(m.id || 1) % 4 === 1 ? 'A+' : 'O+'),
+        familySize: m.familySize || (Number(m.id || 1) % 3 + 2),
+        registrationDate: m.registrationDate || '2026-06-12',
+        lastActive: m.lastActive || '2 Hrs ago',
+        area: m.area || (Number(m.id || 1) % 2 === 0 ? 'Vijay Nagar' : 'Saket'),
+        familyMembers: m.familyMembers || [
+          { name: `${(m.name || 'Member').split(' ')[0]}'s Spouse`, relationship: 'Spouse', occupation: 'Homemaker', age: 34, isVerified: true },
+          { name: `${(m.name || 'Member').split(' ')[0]}'s Child`, relationship: 'Son', occupation: 'Student', age: 12, isVerified: false }
+        ],
+        activities: [
+          { date: '2026-07-06', time: '11:20 AM', action: 'Log In', status: 'Success', device: 'Chrome / Windows', location: 'Indore, India' },
+          { date: '2026-07-05', time: '04:15 PM', action: 'Profile Update', status: 'Success', device: 'Safari / iPhone', location: 'Indore, India' }
+        ]
+      };
+    });
   }, [members]);
+
+  // Derive unique cities dynamically from community members
+  const uniqueCities = useMemo(() => {
+    const set = new Set();
+    communityMembers.forEach(m => {
+      if (m.city) set.add(m.city.trim());
+    });
+    return Array.from(set).sort();
+  }, [communityMembers]);
 
   // Tab View Mode
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'directory'
@@ -88,6 +100,7 @@ export const MemberManagement = () => {
       city: 'all', area: 'all', gender: 'all', ageGroup: 'all', profession: 'all', maritalStatus: 'all', bloodGroup: 'all', verification: 'all', familySize: 'all'
     });
     setSearchQuery('');
+    setSortBy('newest');
     showToast('Filters reset successfully');
   };
 
@@ -95,36 +108,72 @@ export const MemberManagement = () => {
   const filteredMembers = useMemo(() => {
     let result = communityMembers.filter(m => {
       const matchText = searchQuery.trim().toLowerCase();
-      const matchesSearch = !matchText || 
-                            m.name.toLowerCase().includes(matchText) ||
-                            m.phone.includes(matchText) ||
-                            m.memberId.toLowerCase().includes(matchText) ||
-                            m.email.toLowerCase().includes(matchText);
+      const name = (m.name || '').toLowerCase();
+      const phone = String(m.phone || '');
+      const memberId = (m.memberId || '').toLowerCase();
+      const email = (m.email || '').toLowerCase();
 
-      const matchesCity = filters.city === 'all' || m.city.toLowerCase() === filters.city.toLowerCase();
-      const matchesArea = filters.area === 'all' || m.area.toLowerCase() === filters.area.toLowerCase();
-      const matchesGender = filters.gender === 'all' || m.gender === filters.gender;
+      const matchesSearch = !matchText || 
+                            name.includes(matchText) ||
+                            phone.includes(matchText) ||
+                            memberId.includes(matchText) ||
+                            email.includes(matchText);
+
+      const memberCity = (m.city || '').trim().toLowerCase();
+      const filterCity = (filters.city || 'all').trim().toLowerCase();
+      const matchesCity = filterCity === 'all' || memberCity === filterCity;
+
+      const memberArea = (m.area || '').trim().toLowerCase();
+      const filterArea = (filters.area || 'all').trim().toLowerCase();
+      const matchesArea = filterArea === 'all' || memberArea === filterArea;
+
+      const rawGender = (m.gender || m.sex || '').trim().toLowerCase();
+      const filterGender = (filters.gender || 'all').trim().toLowerCase();
+      let matchesGender = filterGender === 'all';
+      if (!matchesGender) {
+        if (filterGender === 'male') {
+          matchesGender = rawGender === 'male' || rawGender === 'm' || rawGender.startsWith('m');
+        } else if (filterGender === 'female') {
+          matchesGender = rawGender === 'female' || rawGender === 'f' || rawGender.startsWith('f');
+        } else {
+          matchesGender = rawGender === filterGender;
+        }
+      }
+
       const matchesAge = filters.ageGroup === 'all' || m.ageGroup === filters.ageGroup;
       const matchesProfession = filters.profession === 'all' || (m.profession && m.profession.toLowerCase() === filters.profession.toLowerCase());
       const matchesMarital = filters.maritalStatus === 'all' || m.maritalStatus === filters.maritalStatus;
       const matchesBlood = filters.bloodGroup === 'all' || m.bloodGroup === filters.bloodGroup;
+
+      const isVerified = Boolean(m.isVerified || m.status === 'verified');
       const matchesVerification = filters.verification === 'all' || 
-                                 (filters.verification === 'verified' && m.isVerified) || 
-                                 (filters.verification === 'pending' && !m.isVerified);
+                                 (filters.verification === 'verified' && isVerified) || 
+                                 (filters.verification === 'pending' && !isVerified);
 
       return matchesSearch && matchesCity && matchesArea && matchesGender && matchesAge && matchesProfession && matchesMarital && matchesBlood && matchesVerification;
     });
 
-    // Sorting
+    // Safe Sorting
+    const sorted = [...result];
     if (sortBy === 'newest') {
-      result.sort((a, b) => b.id - a.id);
+      sorted.sort((a, b) => {
+        const idA = Number(a.id) || 0;
+        const idB = Number(b.id) || 0;
+        if (idA && idB) return idB - idA;
+        return String(b.registrationDate || '').localeCompare(String(a.registrationDate || ''));
+      });
     } else if (sortBy === 'oldest') {
-      result.sort((a, b) => a.id - b.id);
+      sorted.sort((a, b) => {
+        const idA = Number(a.id) || 0;
+        const idB = Number(b.id) || 0;
+        if (idA && idB) return idA - idB;
+        return String(a.registrationDate || '').localeCompare(String(b.registrationDate || ''));
+      });
     } else if (sortBy === 'alphabetical') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
-    return result;
+    return sorted;
   }, [communityMembers, searchQuery, filters, sortBy]);
 
   // Dynamic statistics
@@ -343,9 +392,9 @@ export const MemberManagement = () => {
               className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
             >
               <option value="all">All Cities</option>
-              <option value="indore">Indore</option>
-              <option value="bhopal">Bhopal</option>
-              <option value="ujjain">Ujjain</option>
+              {uniqueCities.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
 
             {/* Gender */}
@@ -368,17 +417,6 @@ export const MemberManagement = () => {
               <option value="all">Verification Status</option>
               <option value="verified">Verified Only</option>
               <option value="pending">Pending Only</option>
-            </select>
-
-            {/* Sorting */}
-            <select 
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 cursor-pointer"
-            >
-              <option value="newest">Sort: Newest</option>
-              <option value="oldest">Sort: Oldest</option>
-              <option value="alphabetical">Sort: A-Z</option>
             </select>
           </div>
         </div>

@@ -9,14 +9,14 @@ const eventActivityLogSchema = new mongoose.Schema({
   action: { 
     type: String, 
     required: true,
-    enum: ['Create', 'Update', 'Delete', 'Feature', 'Unfeature', 'Status Change', 'RSVP Join', 'RSVP Leave', 'Interest Join', 'Interest Leave']
+    enum: ['Create', 'Update', 'Delete', 'Cancel', 'Feature', 'Unfeature', 'Status Change', 'RSVP Join', 'RSVP Leave', 'Interest Join', 'Interest Leave']
   },
   event: {
     id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
     title: { type: String, required: true }
   },
   community: {
-    id: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: true },
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', required: false },
     name: { type: String }
   },
   description: { type: String, required: true },

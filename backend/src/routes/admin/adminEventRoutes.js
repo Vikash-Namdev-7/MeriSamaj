@@ -14,6 +14,7 @@ router.get('/monitoring', ctrl.getMonitoringLogs);
 router.get('/:eventId', ctrl.getEventById);
 router.put('/:eventId', ctrl.updateEvent);
 router.delete('/:eventId', ctrl.deleteEvent);
+router.patch('/:eventId/cancel', ctrl.cancelEvent);
 router.patch('/:eventId/feature', ctrl.toggleFeatured);
 router.patch('/:eventId/status', ctrl.updateStatus);
 

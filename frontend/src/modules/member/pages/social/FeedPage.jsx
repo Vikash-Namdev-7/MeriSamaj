@@ -345,7 +345,26 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
         {post.title && (
           <h3 className="text-[16px] font-extrabold text-slate-900 mb-1.5 leading-snug tracking-tight">{post.title}</h3>
         )}
-        <p className="text-[13.5px] text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">{post.content}</p>
+        <p className="text-[13.5px] text-slate-600 leading-relaxed font-medium">
+          {post.content && post.content.length > 260 ? (
+            <span>
+              {post.content.slice(0, 260).trim().replace(/[\r\n]+/g, ' ')}
+              <span className="text-slate-400 font-bold ml-1">... </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/member/social/${post.id || post._id}`);
+                }}
+                className="inline text-blue-600 hover:text-blue-700 font-extrabold text-[13px] ml-1 cursor-pointer hover:underline"
+              >
+                See all
+              </button>
+            </span>
+          ) : (
+            <span className="whitespace-pre-wrap">{post.content}</span>
+          )}
+        </p>
       </div>
 
       {/* Event Details Grid (Conditional) */}
