@@ -81,8 +81,9 @@ exports.getConversations = async (req, res) => {
     const myId = req.user._id.toString();
     const enriched = conversations.map(conv => {
       const other = conv.participants.find(p => p._id.toString() !== myId);
+      const baseConv = typeof conv.toObject === 'function' ? conv.toObject() : conv;
       return {
-        ...conv.toObject(),
+        ...baseConv,
         otherUser: other || null
       };
     });

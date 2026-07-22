@@ -18,13 +18,11 @@ let socketInstance = null;
 
 const getSocket = (userId) => {
   if (!socketInstance || !socketInstance.connected) {
-    const backendUrl = import.meta.env.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
-      : 'http://localhost:5001';
+    const apiEnvUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+    const backendUrl = apiEnvUrl ? apiEnvUrl.replace('/api/v1', '') : 'http://localhost:5001';
 
     socketInstance = io(backendUrl, {
       auth: { userId },
-      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5
@@ -71,9 +69,10 @@ export const useChatSocket = ({
   const socketRef        = useRef(null);
 
   useEffect(() => {
-    if (!user?._id) return;
+    const userId = user?.id || user?._id;
+    if (!userId) return;
 
-    const socket = getSocket(user._id);
+    const socket = getSocket(userId);
     socketRef.current = socket;
 
     // ── Connection events ──────────────────────────────────────────────────
@@ -134,7 +133,7 @@ export const useChatSocket = ({
       socket.off('chat:member_demoted',       onMemberDemoted);
       socket.off('chat:online_users');
     };
-  }, [user?._id, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, user?._id, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ────────────────────────────────────────────────────────────────
 

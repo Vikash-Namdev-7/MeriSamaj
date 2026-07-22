@@ -65,14 +65,8 @@ exports.openConversation = async (req, res) => {
 // ─── Get All Conversations for User ──────────────────────────────────────────
 exports.getConversations = async (req, res) => {
   try {
-    const conversations = await Conversation.find({
-      participants: req.user._id,
-      type: 'matrimonial',
-      isDeleted: false
-    })
-      .sort({ lastMessageAt: -1 })
-      .populate('participants', 'name avatar')
-      .populate('lastMessageId', 'message type senderId createdAt');
+    const { getUserConversations } = require('../../services/conversationService');
+    const conversations = await getUserConversations(req.user._id, 'matrimonial', 50);
 
     res.json({ status: 'success', data: { conversations } });
   } catch (err) {

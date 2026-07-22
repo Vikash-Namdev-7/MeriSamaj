@@ -19,6 +19,7 @@ import { MatrimonialSettings } from './components/MatrimonialSettings';
 import { EventSettings } from './components/EventSettings';
 import { ProfessionalSettings } from './components/ProfessionalSettings';
 import { ObituarySettings } from './components/ObituarySettings';
+import { GroupSettings } from './components/GroupSettings';
 import { NotificationSettings } from './components/NotificationSettings';
 import { EmailTemplates } from './components/EmailTemplates';
 import { SmsTemplates } from './components/SmsTemplates';
@@ -48,6 +49,7 @@ const NAV_SECTIONS = [
       { id: 'registration', label: 'Registration Rules', icon: UserPlus, component: RegistrationSettings },
       { id: 'form_builder', label: 'Registration Form', icon: FileSpreadsheet, component: RegistrationFormBuilder },
       { id: 'directory', label: 'Member Directory', icon: Users, component: DirectorySettings },
+      { id: 'groups', label: 'Community Groups', icon: Users, component: GroupSettings },
       { id: 'matrimonial', label: 'Matrimonial', icon: Heart, component: MatrimonialSettings },
       { id: 'events', label: 'Events Settings', icon: Calendar, component: EventSettings },
       { id: 'professional', label: 'Professional Directory', icon: Briefcase, component: ProfessionalSettings },

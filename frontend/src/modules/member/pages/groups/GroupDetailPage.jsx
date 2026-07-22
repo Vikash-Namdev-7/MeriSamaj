@@ -7,6 +7,8 @@ import { useGroupChat } from '../../hooks/useGroupChat';
 import { useGroups } from '../../hooks/useGroups';
 import { groupService } from '../../../../core/api/groupService';
 import { useAuth } from '../../../../core/auth/useAuth';
+import AddMemberSheet from './components/AddMemberSheet';
+import JoinRequestsSheet from './components/JoinRequestsSheet';
 
 const groupColors = {
   General: 'bg-indigo-100 text-indigo-700',
@@ -98,14 +100,11 @@ const GroupDetailPage = () => {
   // Chat dropdown, search and reactions states
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMuteDialog, setShowMuteDialog] = useState(false);
   const [showWallpaperDialog, setShowWallpaperDialog] = useState(false);
   const [wallpaperTheme, setWallpaperTheme] = useState('default');
   const [selectedMessages, setSelectedMessages] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordDuration, setRecordDuration] = useState(0);
   const [replyTarget, setReplyTarget] = useState(null);
 
   const [isSearchingChat, setIsSearchingChat] = useState(false);
@@ -146,19 +145,6 @@ const GroupDetailPage = () => {
     if (selectedMessages.length === 0) return;
     setSelectedMessages(prev => prev.includes(msgId) ? prev.filter(id => id !== msgId) : [...prev, msgId]);
   };
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordDuration(0);
-    recordingIntervalRef.current = setInterval(() => setRecordDuration(p => p + 1), 1000);
-  };
-  const stopRecording = () => {
-    setIsRecording(false);
-    clearInterval(recordingIntervalRef.current);
-    if (recordDuration > 0) {
-      sendGroupMsg({ text: `Voice Note (${formatDuration(recordDuration)})`, type: 'audio' });
-    }
-  };
-  const formatDuration = (sec) => `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
 
   // Edit Group Info Modal state
   const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -175,15 +161,40 @@ const GroupDetailPage = () => {
   const groupAvatarInputRef = useRef(null);
   const [isEditingNameInline, setIsEditingNameInline] = useState(false);
   const [inlineGroupName, setInlineGroupName] = useState('');
+  
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showJoinRequests, setShowJoinRequests] = useState(false);
+  const [activeMemberActionId, setActiveMemberActionId] = useState(null);
 
-  // Members are now tracked by the realMembers from useGroupChat hook, no localStorage needed
-
-  const handleAddMember = async (targetUserId) => {
+  const handleMemberAction = async (action, memberId) => {
+    setActiveMemberActionId(null);
     try {
-      await groupService.addGroupMember(groupId, targetUserId);
+      if (action === 'remove') {
+        await groupService.removeMember(groupId, memberId);
+        showToast('Member removed');
+      } else if (action === 'promote') {
+        await groupService.promoteAdmin(groupId, memberId);
+        showToast('Promoted to Admin');
+      } else if (action === 'demote') {
+        await groupService.demoteAdmin(groupId, memberId);
+        showToast('Demoted to Member');
+      }
       await refreshGroups();
     } catch (err) {
-      showToast('Failed to add member');
+      showToast(err.response?.data?.message || 'Failed to perform action');
+    }
+  };
+
+  const currentUserRole = (realMembers || []).find(m => (m.userId?._id || m.userId)?.toString() === currentUser?._id?.toString())?.role;
+  const iAmAdmin = currentUserRole === 'admin' || currentUserRole === 'head';
+
+  const handleAddMember = async (targetUserIds) => {
+    try {
+      await groupService.addGroupMembers(groupId, targetUserIds);
+      await refreshGroups();
+      showToast('Members added successfully');
+    } catch (err) {
+      showToast('Failed to add members');
     }
   };
 
@@ -298,7 +309,8 @@ const GroupDetailPage = () => {
         setPendingAttachment({
           type: 'image',
           name: file.name,
-          url: event.target.result
+          url: event.target.result,
+          file: file
         });
       };
       reader.readAsDataURL(file);
@@ -321,7 +333,7 @@ const GroupDetailPage = () => {
     try {
       await sendGroupMsg({
         text: newMessage,
-        imageFile: pendingAttachment?.type === 'image' ? pendingAttachment._file : null,
+        imageFile: pendingAttachment?.type === 'image' ? pendingAttachment.file : null,
         replyTo: replyTarget?._id
       });
     } catch {
@@ -400,7 +412,7 @@ const GroupDetailPage = () => {
       
       {/* ─── VIEW 1: CHAT INTERFACE ─── */}
       {viewState === 'chat' && (
-        <div className="flex flex-col h-full relative overflow-hidden flex-1" onClick={() => { setActiveReactionMsgId(null); setShowChatMenu(false); setShowMoreMenu(false); setShowAttachmentMenu(false); setShowEmojiPicker(false); setShowMuteDialog(false); setShowWallpaperDialog(false); }}>
+        <div className="flex flex-col h-full relative overflow-hidden flex-1" onClick={() => { setActiveReactionMsgId(null); setShowChatMenu(false); setShowMoreMenu(false); setShowEmojiPicker(false); setShowMuteDialog(false); setShowWallpaperDialog(false); }}>
           {/* Background with WhatsApp-like pattern effect */}
           <div className={`absolute inset-0 z-0 ${wallpaperTheme === 'dark' ? 'bg-[#0b141a]' : wallpaperTheme === 'solid-blue' ? 'bg-blue-100' : wallpaperTheme === 'solid-pink' ? 'bg-pink-100' : 'bg-[#EFEAE2]'}`} style={{ opacity: wallpaperTheme === 'dark' ? 0.9 : 0.7, backgroundImage: 'radial-gradient(#cfc6b8 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 
@@ -776,53 +788,6 @@ const GroupDetailPage = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* ─── ATTACHMENT MENU ─── */}
-          {showAttachmentMenu && (
-            <>
-              <div className="absolute inset-0 z-40" onClick={() => setShowAttachmentMenu(false)} />
-              <div className="absolute bottom-[72px] left-2 right-2 bg-white rounded-[24px] p-6 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4 duration-200" onClick={e => e.stopPropagation()}>
-                <div className="grid grid-cols-3 gap-y-6 gap-x-2">
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => { fileInputRef.current?.click(); setShowAttachmentMenu(false); }}>
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-indigo-400 to-indigo-600">
-                      <FileText size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Document</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }}>
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-pink-400 to-pink-600">
-                      <Camera size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Camera</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }}>
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-purple-400 to-purple-600">
-                      <ImageIcon size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Gallery</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-orange-400 to-orange-600">
-                      <Headphones size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Audio</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-green-400 to-green-600">
-                      <MapPin size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Location</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
-                    <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-blue-400 to-blue-600">
-                      <UserSquare size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Contact</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
           {/* ─── INPUT AREA ─── */}
           <div className="bg-transparent px-2 pb-4 pt-1 flex flex-col gap-1.5 z-10 shrink-0" onClick={e => e.stopPropagation()}>
             <input type="file" ref={imageInputRef} accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
@@ -867,54 +832,33 @@ const GroupDetailPage = () => {
               </div>
             )}
 
-            {/* Recording bar */}
-            {isRecording ? (
-              <div className="flex items-center gap-3 mx-1">
-                <div className="flex-1 bg-white rounded-3xl px-4 py-3 flex items-center gap-3 shadow-sm border border-rose-200 animate-pulse">
-                  <div className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
-                  <span className="text-rose-600 font-bold text-[15px]">{formatDuration(recordDuration)}</span>
-                  <span className="text-rose-500 text-[11px] font-black uppercase tracking-widest">Recording...</span>
-                </div>
-                <button onTouchEnd={stopRecording} onMouseUp={stopRecording} className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md">
-                  <Square size={16} fill="white" />
+            {/* Input bar */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 bg-white rounded-3xl min-h-[50px] flex items-end py-1 px-2 shadow-sm border border-gray-200">
+                <button onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(p => !p); }} className={`w-10 h-[42px] rounded-full flex items-center justify-center shrink-0 hover:bg-gray-50 transition-colors ${showEmojiPicker ? 'text-brand-primary' : 'text-gray-500'}`}>
+                  <Smile size={24} />
+                </button>
+                <textarea 
+                  value={newMessage} 
+                  onChange={e => setNewMessage(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Message"
+                  rows={1}
+                  className="flex-1 bg-transparent py-2.5 px-1.5 text-[15px] focus:outline-none text-gray-900 placeholder-gray-400 resize-none max-h-24" 
+                />
+                <button onClick={() => imageInputRef.current?.click()} className="w-[38px] h-[42px] rounded-full flex items-center justify-center text-gray-500 shrink-0 hover:bg-gray-50 mr-1">
+                  <Camera size={22} />
                 </button>
               </div>
-            ) : (
-              <div className="flex items-end gap-2">
-                <div className="flex-1 bg-white rounded-3xl min-h-[50px] flex items-end py-1 px-2 shadow-sm border border-gray-200">
-                  <button onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(p => !p); }} className={`w-10 h-[42px] rounded-full flex items-center justify-center shrink-0 hover:bg-gray-50 transition-colors ${showEmojiPicker ? 'text-brand-primary' : 'text-gray-500'}`}>
-                    <Smile size={24} />
-                  </button>
-                  <textarea 
-                    value={newMessage} 
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder="Message"
-                    rows={1}
-                    className="flex-1 bg-transparent py-2.5 px-1.5 text-[15px] focus:outline-none text-gray-900 placeholder-gray-400 resize-none max-h-24" 
-                  />
-                  {!newMessage && (
-                    <button onClick={(e) => { e.stopPropagation(); setShowAttachmentMenu(p => !p); }} className={`w-[38px] h-[42px] rounded-full flex items-center justify-center shrink-0 transition-colors ${showAttachmentMenu ? 'bg-gray-100 text-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}>
-                      <Paperclip size={20} className={showAttachmentMenu ? 'rotate-45 transition-transform' : 'transition-transform'} />
-                    </button>
-                  )}
-                  <button onClick={() => imageInputRef.current?.click()} className="w-[38px] h-[42px] rounded-full flex items-center justify-center text-gray-500 shrink-0 hover:bg-gray-50 mr-1">
-                    <Camera size={22} />
-                  </button>
-                </div>
 
-                {newMessage.trim() || pendingAttachment ? (
-                  <button onClick={handleSend} className="w-[50px] h-[50px] rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform">
-                    <Send size={20} className="ml-1" />
-                  </button>
-                ) : (
-                  <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                    className="w-[50px] h-[50px] rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform">
-                    <Mic size={22} />
-                  </button>
-                )}
-              </div>
-            )}
+              <button 
+                onClick={handleSend} 
+                disabled={!newMessage.trim() && !pendingAttachment} 
+                className={`w-[50px] h-[50px] rounded-full text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-colors ${newMessage.trim() || pendingAttachment ? 'bg-brand-primary' : 'bg-gray-300 cursor-not-allowed'}`}
+              >
+                <Send size={20} className="ml-1" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1159,6 +1103,17 @@ const GroupDetailPage = () => {
                 <ChevronRight size={20} className="text-gray-400" />
               </div>
 
+              {/* Pending Join Requests */}
+              {group.type === 'private' && iAmAdmin && (
+                <div 
+                  onClick={() => setShowJoinRequests(true)}
+                  className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50"
+                >
+                  <p className="text-[15px] font-bold text-gray-900">Pending Join Requests</p>
+                  <ChevronRight size={20} className="text-gray-400" />
+                </div>
+              )}
+
               {/* Group Settings */}
               {isGroupCreator && (
                 <div 
@@ -1221,9 +1176,7 @@ const GroupDetailPage = () => {
                 />
               </div>
               <button 
-                onClick={() => {
-                  showToast('Add member: Coming soon — invite via link or search');
-                }}
+                onClick={() => setShowAddMemberModal(true)}
                 className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center press-scale shrink-0 hover:bg-brand-primary/20 transition-all"
               >
                 <Plus size={20} />
@@ -1266,11 +1219,52 @@ const GroupDetailPage = () => {
                         </div>
                       </div>
 
-                      <span className={`text-[11.5px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                        memberRole === 'admin' || memberRole === 'head' ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-50'
-                      }`}>
-                        {memberRole === 'admin' || memberRole === 'head' ? 'Admin' : 'Member'}
-                      </span>
+                      <div className="flex items-center gap-3 relative">
+                        <span className={`text-[11.5px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                          memberRole === 'admin' || memberRole === 'head' ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-50'
+                        }`}>
+                          {memberRole === 'admin' || memberRole === 'head' ? 'Admin' : 'Member'}
+                        </span>
+                        
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeMemberActionId === memberId) setActiveMemberActionId(null);
+                            else setActiveMemberActionId(memberId);
+                          }}
+                          className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-gray-500"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                        
+                        {activeMemberActionId === memberId && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMemberActionId(null); }} />
+                            <div className="absolute right-0 top-10 w-48 bg-white border border-slate-150 rounded-2xl shadow-xl py-1.5 z-50 animate-scale-up">
+                              <button onClick={(e) => { e.stopPropagation(); navigate(`/member/directory/${memberId}`); }} className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50">
+                                View Profile
+                              </button>
+                              {iAmAdmin && !isMe && (
+                                <>
+                                  {memberRole !== 'admin' && memberRole !== 'head' && (
+                                    <button onClick={(e) => { e.stopPropagation(); handleMemberAction('promote', memberId); }} className="w-full text-left px-4 py-2 text-[13px] font-semibold text-brand-primary hover:bg-slate-50 border-t border-slate-50">
+                                      Promote to Admin
+                                    </button>
+                                  )}
+                                  {memberRole === 'admin' && currentUserRole === 'head' && (
+                                    <button onClick={(e) => { e.stopPropagation(); handleMemberAction('demote', memberId); }} className="w-full text-left px-4 py-2 text-[13px] font-semibold text-orange-600 hover:bg-slate-50 border-t border-slate-50">
+                                      Demote to Member
+                                    </button>
+                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); handleMemberAction('remove', memberId); }} className="w-full text-left px-4 py-2 text-[13px] font-semibold text-red-600 hover:bg-slate-50 border-t border-slate-50">
+                                    Remove Member
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -1844,6 +1838,21 @@ const GroupDetailPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddMemberModal && (
+        <AddMemberSheet 
+          groupId={groupId}
+          onClose={() => setShowAddMemberModal(false)}
+          onAddMembers={handleAddMember}
+        />
+      )}
+
+      {showJoinRequests && (
+        <JoinRequestsSheet
+          groupId={groupId}
+          onClose={() => setShowJoinRequests(false)}
+        />
       )}
 
       <style>{`

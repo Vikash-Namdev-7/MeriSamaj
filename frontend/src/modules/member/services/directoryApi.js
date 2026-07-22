@@ -27,11 +27,3 @@ export const getMemberStats = async () => {
   }
 };
 
-export const getMemberById = async (id) => {
-  try {
-    const response = await axiosPrivate.get(`/member/members/${id}`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Network error occurred' };
-  }
-};

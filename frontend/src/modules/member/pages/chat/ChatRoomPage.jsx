@@ -90,19 +90,16 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
   const [newMessage, setNewMessage]                   = useState('');
   const [showMenu, setShowMenu]                       = useState(false);
   const [showMoreMenu, setShowMoreMenu]               = useState(false);
-  const [showAttachmentMenu, setShowAttachmentMenu]   = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker]         = useState(false);
-  const [showMuteDialog, setShowMuteDialog]           = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMuteDialog, setShowMuteDialog] = useState(false);
   const [showWallpaperDialog, setShowWallpaperDialog] = useState(false);
-  const [wallpaperTheme, setWallpaperTheme]           = useState('default');
+  const [wallpaperTheme, setWallpaperTheme] = useState('default');
   const [isSearchOpen, setIsSearchOpen]               = useState(false);
   const [searchQuery, setSearchQuery]                 = useState('');
   const [selectedMessages, setSelectedMessages]       = useState([]);
   const [reactionTarget, setReactionTarget]           = useState(null);
   const [replyTarget, setReplyTarget]                 = useState(null);
   const [reactionPosition, setReactionPosition]       = useState('top');
-  const [isRecording, setIsRecording]                 = useState(false);
-  const [recordDuration, setRecordDuration]           = useState(0);
   const [pendingAttachment, setPendingAttachment]     = useState(null);
   const [confirmDialog, setConfirmDialog]             = useState(null);
   const [sendError, setSendError]                     = useState(null);
@@ -197,7 +194,6 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
       setNewMessage('');
       setReplyTarget(null);
       setPendingAttachment(null);
-      setShowAttachmentMenu(false);
       inputRef.current?.focus();
     } catch (err) {
       setSendError(err.response?.data?.message || 'Failed to send message.');
@@ -236,7 +232,6 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       setPendingAttachment({ type: 'image', url: ev.target.result, name: file.name, file });
-      setShowAttachmentMenu(false);
     };
     reader.readAsDataURL(file);
   };
@@ -245,35 +240,8 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
     const file = e.target.files[0];
     if (!file) return;
     setPendingAttachment({ type: 'document', name: file.name, size: `${(file.size / 1024).toFixed(0)} KB` });
-    setShowAttachmentMenu(false);
   };
 
-  // ── Recording ────────────────────────────────────────────────────────────
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mediaRecorder.onstop = () => {
-        setPendingAttachment({ type: 'audio', duration: recordDuration, name: 'Voice Note' });
-        stream.getTracks().forEach(t => t.stop());
-      };
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordDuration(0);
-      timerRef.current = setInterval(() => setRecordDuration(p => p + 1), 1000);
-    } catch { alert('Microphone access denied'); }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-    clearInterval(timerRef.current);
-  };
-
-  const formatDuration = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   // ── Press handlers (long press to select) ─────────────────────────────────
   const handlePressStart = (e, msgId) => {
@@ -354,8 +322,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
       className="fixed inset-0 z-50 flex flex-col overflow-hidden"
       onClick={() => {
         setReactionTarget(null); setShowMenu(false); setShowMoreMenu(false);
-        setShowAttachmentMenu(false); setShowEmojiPicker(false);
-        setShowMuteDialog(false); setShowWallpaperDialog(false);
+        setShowEmojiPicker(false); setShowMuteDialog(false); setShowWallpaperDialog(false);
       }}
     >
       {/* Background */}
@@ -561,8 +528,6 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
           const sId     = (sender?._id || sender || '').toString();
           const isMine  = sId === myId;
           const isSelected = selectedMessages.includes(msg._id);
-          const nextMsg = groupedMessages[index + 1];
-          const isLastInGroup = !nextMsg || nextMsg.type === 'date' || (nextMsg.senderId?._id || nextMsg.senderId)?.toString() !== sId;
           const repliedMsg = msg.replyTo ? messages.find(m => m._id === (msg.replyTo?._id || msg.replyTo)) : null;
 
           if (msg.type === 'system') {
@@ -661,35 +626,6 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── ATTACHMENT MENU ── */}
-      {showAttachmentMenu && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowAttachmentMenu(false)} />
-          <div className="absolute bottom-[72px] left-2 right-2 bg-white rounded-[24px] p-6 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
-            <div className="grid grid-cols-3 gap-y-6 gap-x-2">
-              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => docInputRef.current?.click()}>
-                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-indigo-400 to-indigo-600">
-                  <FileText size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                </div>
-                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Document</span>
-              </div>
-              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-pink-400 to-pink-600">
-                  <Camera size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                </div>
-                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Camera</span>
-              </div>
-              <div className="flex flex-col items-center gap-2.5 cursor-pointer active:scale-95 transition-transform" onClick={() => imageInputRef.current?.click()}>
-                <div className="w-[58px] h-[58px] rounded-full flex items-center justify-center shadow-sm bg-gradient-to-br from-purple-400 to-purple-600">
-                  <ImageIcon size={26} fill="rgba(255,255,255,0.2)" color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-                </div>
-                <span className="text-[13px] font-semibold text-slate-600 tracking-wide">Gallery</span>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* ── INPUT AREA ── */}
       <div className="bg-transparent px-2 pb-4 pt-1 flex flex-col gap-1.5 z-10 shrink-0" onClick={e => e.stopPropagation()}>
         <input type="file" ref={imageInputRef} accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
@@ -741,59 +677,35 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
           </div>
         )}
 
-        {/* Recording */}
-        {isRecording ? (
-          <div className="flex items-center gap-3 mx-1">
-            <div className="flex-1 bg-white rounded-3xl px-4 py-3 flex items-center gap-3 shadow-sm border border-rose-200 animate-pulse">
-              <div className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
-              <span className="text-rose-600 font-bold text-[15px]">{formatDuration(recordDuration)}</span>
-              <span className="text-rose-500 text-[11px] font-black uppercase tracking-widest">Recording...</span>
-            </div>
-            <button onTouchEnd={stopRecording} onMouseUp={stopRecording}
-              className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md">
-              <Square size={16} fill="white" />
+        {/* Input */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1 bg-white rounded-3xl min-h-[50px] flex items-end py-1 px-2 shadow-sm border border-gray-200">
+            <button onClick={() => setShowEmojiPicker(p => !p)}
+              className={`w-10 h-[42px] rounded-full flex items-center justify-center shrink-0 hover:bg-gray-50 transition-colors ${showEmojiPicker ? 'text-brand-primary' : 'text-gray-500'}`}>
+              <Smile size={24} />
+            </button>
+            <textarea
+              ref={inputRef}
+              value={newMessage}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Message"
+              rows={1}
+              className="flex-1 bg-transparent py-2.5 px-1.5 text-[15px] focus:outline-none text-gray-900 placeholder-gray-400 resize-none max-h-24"
+            />
+            <button onClick={() => imageInputRef.current?.click()}
+              className="w-[38px] h-[42px] rounded-full flex items-center justify-center text-gray-500 shrink-0 hover:bg-gray-50 mr-1">
+              <Camera size={22} />
             </button>
           </div>
-        ) : (
-          <div className="flex items-end gap-2">
-            <div className="flex-1 bg-white rounded-3xl min-h-[50px] flex items-end py-1 px-2 shadow-sm border border-gray-200">
-              <button onClick={() => setShowEmojiPicker(p => !p)}
-                className={`w-10 h-[42px] rounded-full flex items-center justify-center shrink-0 hover:bg-gray-50 transition-colors ${showEmojiPicker ? 'text-brand-primary' : 'text-gray-500'}`}>
-                <Smile size={24} />
-              </button>
-              <textarea
-                ref={inputRef}
-                value={newMessage}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Message"
-                rows={1}
-                className="flex-1 bg-transparent py-2.5 px-1.5 text-[15px] focus:outline-none text-gray-900 placeholder-gray-400 resize-none max-h-24"
-              />
-              {!newMessage && (
-                <button onClick={() => setShowAttachmentMenu(p => !p)}
-                  className={`w-[38px] h-[42px] rounded-full flex items-center justify-center shrink-0 transition-colors ${showAttachmentMenu ? 'bg-gray-100 text-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}>
-                  <Paperclip size={20} className={showAttachmentMenu ? 'rotate-45 transition-transform' : 'transition-transform'} />
-                </button>
-              )}
-              <button onClick={() => imageInputRef.current?.click()}
-                className="w-[38px] h-[42px] rounded-full flex items-center justify-center text-gray-500 shrink-0 hover:bg-gray-50 mr-1">
-                <Camera size={22} />
-              </button>
-            </div>
-            {newMessage.trim() || pendingAttachment ? (
-              <button onClick={handleSend} disabled={sending}
-                className="w-[50px] h-[50px] rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform disabled:opacity-60">
-                {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="ml-1" />}
-              </button>
-            ) : (
-              <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                className="w-[50px] h-[50px] rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform">
-                <Mic size={22} />
-              </button>
-            )}
-          </div>
-        )}
+          <button 
+            onClick={handleSend} 
+            disabled={(!newMessage.trim() && !pendingAttachment) || sending}
+            className={`w-[50px] h-[50px] rounded-full text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform disabled:opacity-60 ${newMessage.trim() || pendingAttachment ? 'bg-[#00a884]' : 'bg-gray-300 cursor-not-allowed'}`}
+          >
+            {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="ml-1" />}
+          </button>
+        </div>
       </div>
 
       {/* ── MUTE DIALOG ── */}

@@ -102,24 +102,58 @@ const updateLastMessage = async (conversationId, message) => {
   });
 };
 
-// ─── Get Conversations for a User ─────────────────────────────────────────────
-/**
- * @param {string} userId
- * @param {string|string[]} type - conversation type(s)
- * @param {number} limit
- */
 const getUserConversations = async (userId, type, limit = 30) => {
+  const mongoose = require('mongoose');
+  const userObjId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
   const typeQuery = Array.isArray(type) ? { $in: type } : type;
 
-  return Conversation.find({
-    participants: userId,
-    type: typeQuery,
-    isDeleted: false
-  })
-    .sort({ lastMessageAt: -1 })
-    .limit(limit)
-    .populate('participants', 'name avatar communityId verificationStatus')
-    .populate('lastMessageId', 'message type senderId createdAt');
+  const conversations = await Conversation.aggregate([
+    {
+      $match: {
+        participants: userObjId,
+        type: typeQuery,
+        isDeleted: false
+      }
+    },
+    { $sort: { lastMessageAt: -1 } },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: 'messages',
+        let: { convId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$conversationId', '$$convId'] },
+              isDeleted: false,
+              senderId: { $ne: userObjId },
+              'seenBy.userId': { $ne: userObjId }
+            }
+          },
+          { $count: 'unread' }
+        ],
+        as: 'unreadData'
+      }
+    },
+    {
+      $addFields: {
+        unreadCount: { $ifNull: [{ $arrayElemAt: ['$unreadData.unread', 0] }, 0] }
+      }
+    },
+    { $project: { unreadData: 0 } }
+  ]);
+
+  const populated = await Conversation.populate(conversations, [
+    { path: 'lastMessageId', select: 'message type senderId createdAt' }
+  ]);
+
+  if (typeQuery !== 'group' && (!Array.isArray(typeQuery) || !typeQuery.includes('group'))) {
+    return Conversation.populate(populated, [
+      { path: 'participants', select: 'name avatar communityId verificationStatus' }
+    ]);
+  }
+
+  return populated;
 };
 
 module.exports = {

@@ -12,7 +12,6 @@ import {
 
 // Import services
 import { bannerService } from '../../services/bannerService';
-import { announcementService } from '../../services/announcementService';
 import { faqService } from '../../services/faqService';
 import { pageService } from '../../services/pageService';
 import { mediaService } from '../../services/mediaService';
@@ -23,7 +22,6 @@ export const ContentManagementSystem = () => {
   const tabs = [
     { id: 'dashboard', name: 'Overview', icon: Globe },
     { id: 'banners', name: 'Banners & Sliders', icon: Layers },
-    { id: 'announcements', name: 'Announcements & Notices', icon: Megaphone },
     { id: 'pages', name: 'Page Builder', icon: FileText },
     { id: 'faqs', name: 'FAQ Directory', icon: HelpCircle },
     { id: 'media', name: 'Media Library', icon: FolderOpen },
@@ -43,7 +41,6 @@ export const ContentManagementSystem = () => {
   
   // Data States
   const [banners, setBanners] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
   const [pages, setPages] = useState([]);
   const [faqCategories, setFaqCategories] = useState([]);
   const [faqs, setFaqs] = useState([]);
@@ -74,13 +71,6 @@ export const ContentManagementSystem = () => {
     startDate: '', endDate: '', status: 'Draft', priority: 5, targetAudience: 'All'
   });
 
-  const [annModalOpen, setAnnModalOpen] = useState(false);
-  const [selectedAnn, setSelectedAnn] = useState(null);
-  const [annForm, setAnnForm] = useState({
-    type: 'announcement', title: '', content: '', status: 'Draft',
-    startDate: '', endDate: '', isPinned: false, targetType: 'Platform', targetAudience: 'All'
-  });
-
   const [faqModalOpen, setFaqModalOpen] = useState(false);
   const [selectedFaq, setSelectedFaq] = useState(null);
   const [faqForm, setFaqForm] = useState({
@@ -105,7 +95,6 @@ export const ContentManagementSystem = () => {
       setLoading(true);
       const [
         loadedBanners,
-        loadedAnnouncements,
         loadedPages,
         loadedCategories,
         loadedFaqs,
@@ -116,7 +105,6 @@ export const ContentManagementSystem = () => {
         loadedFooter
       ] = await Promise.all([
         bannerService.getAllBanners(),
-        announcementService.getAllAnnouncements(),
         pageService.getAllPages(),
         faqService.getCategories(),
         faqService.getFAQs(),
@@ -128,7 +116,6 @@ export const ContentManagementSystem = () => {
       ]);
 
       setBanners(loadedBanners);
-      setAnnouncements(loadedAnnouncements);
       setPages(loadedPages);
       setFaqCategories(loadedCategories);
       setFaqs(loadedFaqs);
@@ -327,65 +314,6 @@ export const ContentManagementSystem = () => {
     showToast('Banner priority ordering updated');
   };
 
-  // Announcement CRUD
-  const handleOpenAnnModal = (ann = null) => {
-    if (ann) {
-      setSelectedAnn(ann);
-      setAnnForm({ ...ann });
-    } else {
-      setSelectedAnn(null);
-      setAnnForm({
-        type: 'announcement', title: '', content: '', status: 'Draft',
-        startDate: new Date().toISOString().split('T')[0], endDate: '', isPinned: false, targetType: 'Platform', targetAudience: 'All'
-      });
-    }
-    setAnnModalOpen(true);
-  };
-
-  const handleSaveAnn = async (e) => {
-    e.preventDefault();
-    try {
-      if (selectedAnn) {
-        await announcementService.updateAnnouncement(selectedAnn.id, annForm);
-        cmsService.addAuditLog('Updated', 'Announcements', selectedAnn.id, `Updated announcement "${annForm.title}"`);
-        showToast('Announcement updated');
-      } else {
-        const created = await announcementService.createAnnouncement(annForm);
-        cmsService.addAuditLog('Created', 'Announcements', created.id, `Created announcement "${annForm.title}"`);
-        showToast('Announcement posted');
-      }
-      setAnnModalOpen(false);
-      const list = await announcementService.getAllAnnouncements();
-      setAnnouncements(list);
-      const logs = await cmsService.getAuditLogs();
-      setAuditLogs(logs);
-    } catch (err) {
-      showToast('Failed to save announcement', 'error');
-    }
-  };
-
-  const handleDeleteAnn = async (id, title) => {
-    if (window.confirm(`Are you sure you want to delete notice: "${title}"?`)) {
-      await announcementService.deleteAnnouncement(id);
-      cmsService.addAuditLog('Deleted', 'Announcements', id, `Deleted notice "${title}"`);
-      showToast('Announcement removed');
-      const list = await announcementService.getAllAnnouncements();
-      setAnnouncements(list);
-      const logs = await cmsService.getAuditLogs();
-      setAuditLogs(logs);
-    }
-  };
-
-  const handleTogglePinAnn = async (id, title, isPinned) => {
-    await announcementService.togglePin(id);
-    cmsService.addAuditLog('Updated', 'Announcements', id, `${isPinned ? 'Unpinned' : 'Pinned'} notice "${title}"`);
-    showToast(isPinned ? 'Notice unpinned from top feed' : 'Notice pinned to top feed');
-    const list = await announcementService.getAllAnnouncements();
-    setAnnouncements(list);
-    const logs = await cmsService.getAuditLogs();
-    setAuditLogs(logs);
-  };
-
   // FAQ CRUD
   const handleOpenFaqModal = (faq = null) => {
     if (faq) {
@@ -560,7 +488,6 @@ export const ContentManagementSystem = () => {
 
   // Calculate metrics
   const activeBannersCount = banners.filter(b => b.status === 'Published').length;
-  const pinnedAnnouncementsCount = announcements.filter(a => a.isPinned).length;
   const activeFaqsCount = faqs.filter(f => f.status === 'Active').length;
 
   // Filter media items
@@ -719,18 +646,7 @@ export const ContentManagementSystem = () => {
               }
             </div>
 
-            {/* Announcements */}
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Notices & News ({searchResults.announcements.length})</h4>
-              {searchResults.announcements.length === 0 ? <p className="text-[11px] text-gray-400">No matching items</p> : 
-                searchResults.announcements.map(a => (
-                  <div key={a.id} onClick={() => { setActiveTab('announcements'); handleGlobalSearch(''); }} className="p-2.5 bg-emerald-50/50 hover:bg-emerald-100/50 rounded-xl cursor-pointer border border-emerald-100 transition-colors">
-                    <p className="text-xs font-bold text-gray-800 truncate">{a.title}</p>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold uppercase">{a.type}</span>
-                  </div>
-                ))
-              }
-            </div>
+
 
             {/* FAQs */}
             <div className="space-y-2">
@@ -786,14 +702,7 @@ export const ContentManagementSystem = () => {
                 <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl"><Layers size={22} /></div>
               </div>
 
-              <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Pinned Notices</span>
-                  <h3 className="text-2xl font-black text-gray-900 mt-1">{pinnedAnnouncementsCount} / {announcements.length}</h3>
-                  <p className="text-[10px] text-brand-primary font-bold mt-1">Pinned to Mobile Feed</p>
-                </div>
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Megaphone size={22} /></div>
-              </div>
+
 
               <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm flex items-center justify-between">
                 <div>

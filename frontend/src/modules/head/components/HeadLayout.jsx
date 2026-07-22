@@ -92,11 +92,6 @@ export const HeadLayout = () => {
           icon: Mail
         },
         {
-          name: 'Announcement Channels',
-          path: '/head/announcements',
-          icon: Megaphone
-        },
-        {
           name: 'Notification Center',
           path: '/head/notifications',
           icon: Send

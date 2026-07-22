@@ -47,12 +47,18 @@ export const groupService = {
   joinGroup:  (groupId) => axiosPrivate.post(`${BASE}/${groupId}/join`),
   leaveGroup: (groupId) => axiosPrivate.post(`${BASE}/${groupId}/leave`),
 
-  // ─── Member Management ───────────────────────────────────────────────────────
-  addMember:     (groupId, userId)       => axiosPrivate.post(`${BASE}/${groupId}/members`, { userId }),
+  // ─── Member Management & Invitations ─────────────────────────────────────────
+  addMember:     (groupId, userIds)      => axiosPrivate.post(`${BASE}/${groupId}/members`, { userIds }),
   removeMember:  (groupId, userId)       => axiosPrivate.delete(`${BASE}/${groupId}/members/${userId}`),
+  getPendingInvitations: ()              => axiosPrivate.get(`${BASE}/invitations/pending`),
+  acceptInvitation: (invitationId)       => axiosPrivate.patch(`${BASE}/invitations/${invitationId}/accept`),
+  declineInvitation: (invitationId)      => axiosPrivate.patch(`${BASE}/invitations/${invitationId}/decline`),
   promoteAdmin:  (groupId, userId)       => axiosPrivate.patch(`${BASE}/${groupId}/members/${userId}/promote`),
   demoteAdmin:   (groupId, userId)       => axiosPrivate.patch(`${BASE}/${groupId}/members/${userId}/demote`),
-
+  // ─── Join Requests ────────────────────────────────────────────────────────────
+  getJoinRequests: (groupId)             => axiosPrivate.get(`${BASE}/${groupId}/requests`),
+  approveJoinRequest: (groupId, reqId)   => axiosPrivate.patch(`${BASE}/${groupId}/requests/${reqId}/approve`),
+  rejectJoinRequest: (groupId, reqId)    => axiosPrivate.patch(`${BASE}/${groupId}/requests/${reqId}/reject`),
   // ─── Settings ────────────────────────────────────────────────────────────────
   updateGroupSettings: (groupId, chatPermissions) =>
     axiosPrivate.patch(`${BASE}/${groupId}/settings`, { chatPermissions }),
@@ -93,9 +99,9 @@ export const groupService = {
   getGroupMembers: (groupId) =>
     axiosPrivate.get(`${BASE}/${groupId}/members`),
 
-  /** Add member alias (used by GroupDetailPage) */
-  addGroupMember: (groupId, userId) =>
-    axiosPrivate.post(`${BASE}/${groupId}/members`, { userId }),
+  /** Add members (used by GroupDetailPage) */
+  addGroupMembers: (groupId, userIds) =>
+    axiosPrivate.post(`${BASE}/${groupId}/members`, { userIds }),
 
   /** Mute notifications for a group (local-only toggle, no backend endpoint yet) */
   muteGroup: async (_groupId) => { /* optimistic only */ },

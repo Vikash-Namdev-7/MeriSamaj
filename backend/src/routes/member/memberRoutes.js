@@ -14,7 +14,7 @@ const fundRoutes = require('./fundRoutes');
 // ─── Community Chat, Groups & Announcements ────────────────────────────────────
 const memberChatRoutes = require('./memberChatRoutes');
 const groupRoutes      = require('./groupRoutes');
-const announcementRoutes = require('./announcementRoutes');
+
 
 // Test Route
 router.get('/test', (req, res) => {
@@ -60,7 +60,7 @@ router.use('/professional', professionalRoutes);
 // ─── Community Chat ──────────────────────────────────────────────────────────
 router.use('/chat',           memberChatRoutes);
 router.use('/groups',         groupRoutes);
-router.use('/announcements',  announcementRoutes);
+
 
 // ─── Matrimonial Module ───────────────────────────────────────────────────────
 const matrimonialProfileRoutes      = require('./matrimonial/matrimonialProfileRoutes');

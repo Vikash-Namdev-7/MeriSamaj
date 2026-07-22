@@ -1,6 +1,5 @@
 // CMS Master Service
 import { bannerService } from './bannerService';
-import { announcementService } from './announcementService';
 import { faqService } from './faqService';
 import { pageService } from './pageService';
 
@@ -128,12 +127,6 @@ class CMSService {
       p.content.toLowerCase().includes(q)
     );
 
-    const allAnnouncements = await announcementService.getAllAnnouncements();
-    const matchedAnnouncements = allAnnouncements.filter(a => 
-      a.title.toLowerCase().includes(q) || 
-      a.content.toLowerCase().includes(q)
-    );
-
     const allFAQs = await faqService.getFAQs();
     const matchedFAQs = allFAQs.filter(f => 
       f.question.toLowerCase().includes(q) || 
@@ -143,7 +136,7 @@ class CMSService {
     return {
       banners: matchedBanners,
       pages: matchedPages,
-      announcements: matchedAnnouncements,
+      announcements: [],
       faqs: matchedFAQs
     };
   }
@@ -155,7 +148,7 @@ class CMSService {
     if (moduleName === 'Banners') {
       rawData = await bannerService.getAllBanners();
     } else if (moduleName === 'Announcements') {
-      rawData = await announcementService.getAllAnnouncements();
+      rawData = [];
     } else if (moduleName === 'Pages') {
       rawData = await pageService.getAllPages();
     } else if (moduleName === 'FAQs') {
@@ -163,7 +156,7 @@ class CMSService {
     } else {
       rawData = {
         banners: await bannerService.getAllBanners(),
-        announcements: await announcementService.getAllAnnouncements(),
+        announcements: [],
         pages: await pageService.getAllPages(),
         faqs: await faqService.getFAQs(),
         contact: this.contactInfo,

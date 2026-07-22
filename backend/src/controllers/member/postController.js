@@ -1,5 +1,7 @@
 const Post = require('../../models/Post');
 const Community = require('../../models/Community');
+const User = require('../../models/User');
+const { notifyOfficialPost } = require('../../services/notificationService');
 
 // ─────────────────────────────────────────────
 // @desc    Get all posts for user's community
@@ -133,6 +135,21 @@ exports.createPost = async (req, res) => {
       .populate('userId', 'name avatar community city')
       .populate('authorId', 'name avatar community city')
       .populate('communityId', 'name slug city');
+
+    // Trigger notification if Announcement or Emergency
+    if (['Announcement', 'Emergency'].includes(req.body.category)) {
+      // Find all users in this community/city context to notify
+      const usersToNotify = await User.find({ communityId: targetCommunityId }).select('_id');
+      const memberIds = usersToNotify.map(u => u._id).filter(id => id.toString() !== req.user._id.toString());
+      
+      notifyOfficialPost(
+        memberIds,
+        req.body.category,
+        req.user.name,
+        content.trim(),
+        post._id.toString()
+      );
+    }
 
     res.status(201).json({ success: true, data: populated });
   } catch (error) {

@@ -233,27 +233,90 @@ const notifyGroupRemoved = (userId, groupName) =>
     actionUrl:     '/member/groups'
   });
 
+const notifyGroupJoinRejected = (userId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_join_rejected',
+    title:         'Group Request Declined',
+    message:       `Your request to join "${groupName}" was declined.`,
+    icon:          '❌',
+    priority:      'normal',
+    actionUrl:     '/member/groups'
+  });
+
+const notifyGroupPromoted = (userId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_promoted',
+    title:         'Promoted to Admin 🛡️',
+    message:       `You are now an Admin of "${groupName}".`,
+    icon:          '🛡️',
+    priority:      'high',
+    actionUrl:     `/member/groups`,
+  });
+
+const notifyGroupDemoted = (userId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_demoted',
+    title:         'Admin Role Removed',
+    message:       `You are no longer an Admin of "${groupName}".`,
+    icon:          '⚠️',
+    priority:      'normal',
+    actionUrl:     `/member/groups`,
+  });
+
+const notifyGroupInviteAccepted = (inviterId, memberName, groupName) =>
+  createNotification({
+    userId:        inviterId,
+    module:        'chat',
+    type:          'group_invite_accepted',
+    title:         'Invitation Accepted',
+    message:       `${memberName} accepted your invitation to "${groupName}".`,
+    icon:          '✅',
+    priority:      'normal',
+    actionUrl:     `/member/groups`,
+  });
+
+const notifyGroupInviteDeclined = (inviterId, memberName, groupName) =>
+  createNotification({
+    userId:        inviterId,
+    module:        'chat',
+    type:          'group_invite_declined',
+    title:         'Invitation Declined',
+    message:       `${memberName} declined your invitation to "${groupName}".`,
+    icon:          '❌',
+    priority:      'low',
+    actionUrl:     `/member/groups`,
+  });
+
 /**
- * Notify community members about a new announcement.
+ * Notify community members about a new official post (Announcement/Emergency).
  * @param {string[]} memberIds
- * @param {string}   channelName
+ * @param {string}   category       - 'Announcement' or 'Emergency'
+ * @param {string}   authorName
  * @param {string}   messagePreview
- * @param {string}   channelId
+ * @param {string}   postId
  */
-const notifyAnnouncement = (memberIds, channelName, messagePreview, channelId) => {
+const notifyOfficialPost = (memberIds, category, authorName, messagePreview, postId) => {
   const preview = (messagePreview || '').substring(0, 80);
+  const isEmergency = category === 'Emergency';
+  
   const promises = (memberIds || []).map(memberId =>
     createNotification({
       userId:        memberId,
-      module:        'chat',
-      type:          'announcement',
-      title:         `📢 ${channelName}`,
+      module:        'community',
+      type:          isEmergency ? 'emergency' : 'announcement',
+      title:         isEmergency ? `🚨 EMERGENCY UPDATE` : `📢 ${category} from ${authorName}`,
       message:       preview,
-      icon:          '📢',
-      priority:      'high',
-      actionUrl:     `/member/announcements/${channelId}`,
-      referenceId:   channelId,
-      referenceType: 'AnnouncementChannel'
+      icon:          isEmergency ? '🚨' : '📢',
+      priority:      isEmergency ? 'urgent' : 'high',
+      actionUrl:     `/member/social/${postId}`,
+      referenceId:   postId,
+      referenceType: 'Post'
     })
   );
   return Promise.allSettled(promises);
@@ -290,7 +353,12 @@ module.exports = {
   notifyGroupInvite,
   notifyGroupJoinRequest,
   notifyGroupJoinApproved,
+  notifyGroupJoinRejected,
   notifyGroupRemoved,
-  notifyAnnouncement,
+  notifyGroupPromoted,
+  notifyGroupDemoted,
+  notifyGroupInviteAccepted,
+  notifyGroupInviteDeclined,
+  notifyOfficialPost,
   notifyMention
 };

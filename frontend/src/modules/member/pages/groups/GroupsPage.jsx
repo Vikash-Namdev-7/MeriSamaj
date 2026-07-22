@@ -1,12 +1,14 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Plus, Search, Lock, Loader2, RefreshCcw,
-  Shield, X, Camera, ChevronRight, Check, AlertTriangle
+  Shield, X, Camera, ChevronRight, Check, AlertTriangle, CheckCheck
 } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useGroups } from '../../hooks/useGroups';
 import { useAuth } from '../../../../core/auth/useAuth';
+import { groupService } from '../../../../core/api/groupService';
+import { getMembers } from '../../services/directoryApi';
 
 const CATEGORIES = [
   { id: 'all',       label: 'All' },
@@ -29,7 +31,6 @@ const CATEGORY_COLORS = {
   Service:   'bg-emerald-100 text-emerald-700'
 };
 
-// ─── Group Card ───────────────────────────────────────────────────────────────
 const GroupCard = ({ group, onJoin, onLeave, onOpen, joiningId }) => {
   const initials   = (group.name || '').substring(0, 2).toUpperCase();
   const colorClass = CATEGORY_COLORS[group.category] || 'bg-indigo-100 text-indigo-700';
@@ -38,70 +39,65 @@ const GroupCard = ({ group, onJoin, onLeave, onOpen, joiningId }) => {
 
   return (
     <div
-      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer active:scale-[0.99]"
+      className="flex items-center gap-3.5 px-4 py-3 bg-white border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer"
       onClick={() => onOpen(group._id)}
     >
-      {/* Banner */}
-      <div className={`h-12 flex items-center justify-center ${colorClass.split(' ')[0].replace('text', 'bg')}/30`}>
-        {group.avatar
-          ? <img src={group.avatar} alt={group.name} className="w-full h-full object-cover" />
-          : <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${colorClass}`}>{group.category || 'Group'}</span>
-        }
+      {/* Avatar */}
+      <div className="relative shrink-0">
+        {group.avatar ? (
+          <img src={group.avatar} alt={group.name} className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100" />
+        ) : (
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm border border-white ${colorClass.split(' ')[0].replace('text', 'bg')}/20 text-brand-primary`}>
+            <Users size={20} className={colorClass.split(' ')[1]} />
+          </div>
+        )}
+        {group.type !== 'public' && !group.isJoined && (
+          <div className="absolute bottom-0 right-0 w-4 h-4 bg-gray-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+            <Lock size={8} />
+          </div>
+        )}
       </div>
 
-      <div className="px-3.5 pt-2.5 pb-3">
-        <div className="flex items-start justify-between mb-1.5">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 text-[15px] leading-tight truncate">{group.name}</h3>
-            {group.type !== 'public' && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <Lock size={11} className="text-gray-400" />
-                <span className="text-[11px] text-gray-400 font-medium capitalize">{group.type}</span>
-              </div>
-            )}
-          </div>
-          {group.isJoined && (
-            <div className="ml-2 flex items-center gap-1 bg-green-50 text-green-600 px-2 py-0.5 rounded-full shrink-0">
-              <Check size={11} />
-              <span className="text-[11px] font-bold">Joined</span>
-            </div>
-          )}
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start mb-0.5">
+          <h3 className="font-bold text-gray-900 text-[15px] leading-tight truncate pr-2">{group.name}</h3>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${colorClass}`}>
+            {group.category || 'Group'}
+          </span>
         </div>
-
-        {group.description && (
-          <p className="text-[13px] text-gray-500 leading-snug line-clamp-2 mb-2.5">{group.description}</p>
-        )}
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-gray-500">
-            <Users size={13} />
-            <span className="text-[12px] font-medium">{memberCount.toLocaleString()} members</span>
+        
+        <p className="text-[13px] text-gray-500 truncate mb-1">
+          {group.description || `A ${group.category || 'community'} group`}
+        </p>
+        
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <Users size={12} />
+            <span className="text-[11.5px] font-medium">{memberCount.toLocaleString()} members</span>
           </div>
 
-          {group.type === 'public' && (
-            group.isJoined ? (
-              <button
-                onClick={e => { e.stopPropagation(); onOpen(group._id); }}
-                className="text-brand-primary text-[12.5px] font-bold flex items-center gap-1"
-              >
-                Open <ChevronRight size={14} />
-              </button>
-            ) : (
+          <div className="flex items-center gap-2">
+            {group.isJoined ? (
+              <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                <CheckCheck size={12} />
+                <span className="text-[11px] font-bold">Joined</span>
+              </div>
+            ) : group.type === 'public' ? (
               <button
                 disabled={isLoading}
                 onClick={e => { e.stopPropagation(); onJoin(group._id); }}
-                className="flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95 transition-transform disabled:opacity-60"
+                className="flex items-center gap-1 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary px-3 py-1 rounded-full text-[12px] font-bold transition-colors disabled:opacity-60"
               >
-                {isLoading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                {isLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                 Join
               </button>
-            )
-          )}
-          {group.type !== 'public' && !group.isJoined && (
-            <span className="text-[12px] text-gray-400 font-medium flex items-center gap-1">
-              <Lock size={11} /> Private
-            </span>
-          )}
+            ) : (
+              <span className="text-[11px] font-medium text-gray-400 border border-gray-200 px-2 py-0.5 rounded-full">
+                Private
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -123,6 +119,25 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
   const [error, setError]     = useState(null);
   const fileRef = useRef(null);
 
+  const [search, setSearch] = useState('');
+  const [membersList, setMembersList] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  React.useEffect(() => {
+    if (step === 3) {
+      setLoadingMembers(true);
+      getMembers({ search, limit: 10, page: 1 })
+        .then(res => setMembersList(res.data?.members || []))
+        .catch(err => console.error(err))
+        .finally(() => setLoadingMembers(false));
+    }
+  }, [step, search]);
+
+  const toggleMember = (id) => {
+    setSelectedMembers(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+  };
+
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -140,6 +155,9 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
       formData.append('description', desc.trim());
       formData.append('type', type);
       formData.append('category', category);
+      if (selectedMembers.length > 0) {
+        formData.append('initialMembers', JSON.stringify(selectedMembers));
+      }
       if (avatar) formData.append('photo', avatar);
       const data = await createGroup(formData);
       onCreated(data);
@@ -158,16 +176,16 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative mt-auto bg-white rounded-t-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
-          {step === 2 ? (
-            <button onClick={() => setStep(1)} className="text-brand-primary font-semibold text-[15px]">← Back</button>
+          {step > 1 ? (
+            <button onClick={() => setStep(step - 1)} className="text-brand-primary font-semibold text-[15px]">← Back</button>
           ) : (
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
           )}
           <h2 className="font-bold text-gray-900 text-[17px]">
-            {step === 1 ? 'Create Group' : 'Group Settings'}
+            {step === 1 ? 'Create Group' : step === 2 ? 'Group Settings' : 'Add Members'}
           </h2>
-          {step === 1 ? (
-            <button onClick={() => { if (name.trim()) setStep(2); else setError('Group name is required.'); }}
+          {step < 3 ? (
+            <button onClick={() => { if (name.trim()) setStep(step + 1); else setError('Group name is required.'); }}
               className="text-brand-primary font-bold text-[15px]">Next →</button>
           ) : (
             <button onClick={handleCreate} disabled={submitting}
@@ -280,6 +298,49 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
               )}
             </div>
           )}
+
+          {step === 3 && (
+            <div className="px-5 py-4 flex flex-col h-full space-y-4">
+              <div className="relative">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search members to invite..."
+                  className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-[13.5px] text-gray-800 focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto min-h-[300px]">
+                {loadingMembers ? (
+                  <div className="flex justify-center py-10"><Loader2 className="animate-spin text-brand-primary" /></div>
+                ) : membersList.length === 0 ? (
+                  <div className="text-center text-gray-400 py-10 text-[13px]">No members found</div>
+                ) : (
+                  <div className="space-y-2">
+                    {membersList.map(m => (
+                      <div key={m._id} onClick={() => toggleMember(m._id)}
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          selectedMembers.includes(m._id) ? 'border-brand-primary bg-brand-primary/5' : 'border-gray-100 hover:border-gray-200'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <Avatar src={m.avatar} fallback={m.name} size="md" />
+                          <div>
+                            <p className="text-[14px] font-bold text-gray-900">{m.name}</p>
+                            <p className="text-[12px] text-gray-500">{m.familyId?.headName ? `C/o ${m.familyId.headName}` : 'Member'}</p>
+                          </div>
+                        </div>
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+                          selectedMembers.includes(m._id) ? 'bg-brand-primary border-brand-primary' : 'border-gray-300'
+                        }`}>
+                          {selectedMembers.includes(m._id) && <Check size={12} className="text-white" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -307,6 +368,43 @@ const GroupsPage = ({ isHub = false }) => {
     search: searchText || undefined,
     myGroupsOnly: activeCategory === 'my'
   });
+
+  const [invitations, setInvitations] = useState([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+
+  const fetchInvitations = async () => {
+    setLoadingInvitations(true);
+    try {
+      const res = await groupService.getPendingInvitations();
+      setInvitations(res.data?.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvitations();
+  }, []);
+
+  const handleInvitation = async (id, action) => {
+    try {
+      if (action === 'accept') {
+        await groupService.acceptInvitation(id);
+        setSuccessMsg('Invitation accepted!');
+      } else {
+        await groupService.declineInvitation(id);
+        setSuccessMsg('Invitation declined');
+      }
+      setTimeout(() => setSuccessMsg(null), 3000);
+      fetchInvitations();
+      refresh();
+    } catch (err) {
+      setJoinError(err.response?.data?.message || 'Failed to process invitation');
+      setTimeout(() => setJoinError(null), 3000);
+    }
+  };
 
   const handleJoin = useCallback(async (groupId) => {
     setJoiningId(groupId);
@@ -403,6 +501,41 @@ const GroupsPage = ({ isHub = false }) => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
+        
+        {/* Pending Invitations */}
+        {invitations.length > 0 && !searchText && (
+          <div className="px-4 py-3 border-b border-gray-100 bg-brand-primary/5">
+            <h3 className="text-[13px] font-black text-brand-primary uppercase tracking-wider mb-3">Pending Invitations ({invitations.length})</h3>
+            <div className="space-y-3">
+              {invitations.map(inv => (
+                <div key={inv._id} className="bg-white rounded-2xl p-4 shadow-sm border border-brand-primary/20 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={inv.group?.avatarUrl} initials={(inv.group?.name || '').substring(0,2).toUpperCase()} size="md" color="bg-brand-primary/10 text-brand-primary" />
+                    <div>
+                      <h4 className="text-[15px] font-bold text-gray-900">{inv.group?.name}</h4>
+                      <p className="text-[12px] text-gray-500">Invited by <span className="font-semibold text-gray-700">{inv.invitedBy?.name}</span></p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button 
+                      onClick={() => handleInvitation(inv._id, 'decline')}
+                      className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-xl text-[13px] font-bold hover:bg-gray-200"
+                    >
+                      Decline
+                    </button>
+                    <button 
+                      onClick={() => handleInvitation(inv._id, 'accept')}
+                      className="flex-1 py-2 bg-brand-primary text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-brand-primary/90"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Loading Skeleton */}
         {loading && groups.length === 0 && (
           <div className="grid grid-cols-2 gap-3 p-4">
@@ -419,9 +552,9 @@ const GroupsPage = ({ isHub = false }) => {
           </div>
         )}
 
-        {/* Groups Grid */}
+        {/* Groups List */}
         {groups.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 p-4">
+          <div className="flex flex-col pb-6">
             {groups.map(group => (
               <GroupCard
                 key={group._id}

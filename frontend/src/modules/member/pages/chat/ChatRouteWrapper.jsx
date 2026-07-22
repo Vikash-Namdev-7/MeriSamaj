@@ -1,31 +1,33 @@
-import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useData } from '../../context/DataProvider';
-import ChatRoomPage from './ChatRoomPage';
+import React from 'react';
+import { useParams, Navigate } from 'react-router-dom';
 
 const ChatRouteWrapper = () => {
-  // Routes use either :memberId or :chatId as param name
   const params = useParams();
   const id = params.id || params.chatId || params.memberId;
-  const navigate = useNavigate();
-  const { getOrCreateChat } = useData();
 
-  useEffect(() => {
-    if (id && !id.startsWith('c')) {
-      const resolvedChatId = getOrCreateChat(id);
-      navigate(`/member/chat/${resolvedChatId}`, { replace: true });
-    }
-  }, [id, getOrCreateChat, navigate]);
-
-  if (id && id.startsWith('c')) {
-    return <ChatRoomPage chatId={id} />;
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
-    </div>
-  );
+  // Prevent infinite loops if URL is exactly what we would navigate to
+  if (id === 'member') {
+    return <Navigate to={`/member/chat`} replace />;
+  }
+
+  if (id.length > 20) {
+    // Likely a MongoDB ObjectId for a user or conversation
+    return <Navigate to={`/member/chat/member/${id}`} replace />;
+  } else if (id.startsWith('c')) {
+    // Legacy mock chat ID (c1, c2, c3)
+    return <Navigate to={`/member/chat`} replace />;
+  } else {
+    // Fallback
+    return <Navigate to={`/member/chat/member/${id}`} replace />;
+  }
 };
 
 export default ChatRouteWrapper;

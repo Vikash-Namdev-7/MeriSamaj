@@ -136,16 +136,7 @@ export const AdminLayout = () => {
         }
       ]
     },
-    {
-      category: 'COMMUNICATION',
-      items: [
-        { 
-          name: 'Announcement Channels', 
-          path: '/admin/announcement-channels', 
-          icon: Megaphone 
-        }
-      ]
-    },
+
     {
       category: 'SYSTEM & CONTENT',
       items: [

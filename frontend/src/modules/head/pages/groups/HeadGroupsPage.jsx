@@ -79,6 +79,18 @@ export const HeadGroupsPage = () => {
     }
   };
 
+  const handleReject = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to reject "${name}"?`)) return;
+    try {
+      await headGroupApi.updateGroupStatus(id, 'rejected');
+      showToast(`${name} rejected successfully`);
+      fetchGroups();
+    } catch (err) {
+      showToast(`Rejected ${name} (Mocked)`);
+      setGroups(prev => prev.map(g => g._id === id ? { ...g, approvalStatus: 'rejected' } : g));
+    }
+  };
+
   return (
     <div className="space-y-6 pb-16 relative">
       <AnimatePresence>
@@ -219,7 +231,10 @@ export const HeadGroupsPage = () => {
                   </td>
                   <td className="p-3.5 text-right flex items-center justify-end gap-2">
                     {group.approvalStatus === 'pending' && (
-                      <button onClick={() => handleApprove(group._id, group.name)} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-semibold border border-indigo-100">Approve</button>
+                      <>
+                        <button onClick={() => handleApprove(group._id, group.name)} className="px-2 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded text-[10px] font-semibold border border-emerald-100 transition-colors">Approve</button>
+                        <button onClick={() => handleReject(group._id, group.name)} className="px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-[10px] font-semibold border border-red-100 transition-colors">Reject</button>
+                      </>
                     )}
                     <button onClick={() => navigate(`/head/groups/${group._id}`)} className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded border border-slate-200/80"><Eye size={12} /></button>
                   </td>
@@ -245,7 +260,13 @@ export const HeadGroupsPage = () => {
                 <p className="text-xs text-slate-500 mt-0.5">{group.memberCount} Members • {group.type}</p>
               </div>
               <div className="mt-auto pt-3 border-t border-slate-50 flex gap-2">
-                <button onClick={() => navigate(`/head/groups/${group._id}`)} className="flex-1 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-100">Manage</button>
+                {group.approvalStatus === 'pending' && (
+                  <>
+                    <button onClick={() => handleApprove(group._id, group.name)} className="flex-1 py-1.5 bg-emerald-50 border border-emerald-100 rounded text-[10px] font-semibold text-emerald-600 hover:bg-emerald-100 transition-colors">Approve</button>
+                    <button onClick={() => handleReject(group._id, group.name)} className="flex-1 py-1.5 bg-red-50 border border-red-100 rounded text-[10px] font-semibold text-red-600 hover:bg-red-100 transition-colors">Reject</button>
+                  </>
+                )}
+                <button onClick={() => navigate(`/head/groups/${group._id}`)} className="flex-1 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Manage</button>
               </div>
             </div>
           ))}

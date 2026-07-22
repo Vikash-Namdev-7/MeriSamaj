@@ -39,6 +39,14 @@ const app = express();
 connectDB();
 
 // Global Middlewares
+// CORS must be first so preflight and rate-limited requests get headers!
+app.use(cors({
+  origin: process.env.CLIENT_URL 
+    ? process.env.CLIENT_URL.split(',') 
+    : true,
+  credentials: true
+}));
+
 if (helmet) {
   app.use(helmet());
 }
@@ -57,13 +65,6 @@ if (rateLimit) {
   });
   app.use('/api', limiter);
 }
-
-app.use(cors({
-  origin: process.env.CLIENT_URL 
-    ? process.env.CLIENT_URL.split(',') 
-    : true,
-  credentials: true
-}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
