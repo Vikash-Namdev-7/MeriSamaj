@@ -17,9 +17,12 @@ import ObituaryManagement from '../pages/obituary/ObituaryManagement';
 import DharmashalaManagement from '../pages/dharmashala/DharmashalaManagement';
 import HeadProtectedRoute from '../components/HeadProtectedRoute';
 import HeadLoginPage from '../pages/login/HeadLoginPage';
+import HeadAnnouncementsPage from '../pages/announcements/HeadAnnouncementsPage';
+import HeadAnnouncementChatPage from '../pages/announcements/HeadAnnouncementChatPage';
 
 import SocialCityFeed from '../pages/social/SocialCityFeed';
 import SocialCommunityFeed from '../pages/social/SocialCommunityFeed';
+import { HeadGroupsPage } from '../pages/groups/HeadGroupsPage';
 
 export const HeadRoutes = () => {
   return (
@@ -41,6 +44,8 @@ export const HeadRoutes = () => {
             <Route path="city-feed" element={<SocialCityFeed />} />
             <Route path="community-feed" element={<SocialCommunityFeed />} />
           </Route>
+          
+          <Route path="groups" element={<HeadGroupsPage />} />
 
           {/* Member Management Desk */}
           <Route path="members" element={<MemberManagement />} />
@@ -58,6 +63,10 @@ export const HeadRoutes = () => {
           <Route path="matrimonial" element={<MatrimonialManagement />} />
           <Route path="funds" element={<FundGovernance />} />
           <Route path="elections" element={<ElectionCommission />} />
+          <Route path="announcements">
+            <Route index element={<HeadAnnouncementsPage />} />
+            <Route path=":id" element={<HeadAnnouncementChatPage />} />
+          </Route>
           <Route path="home-content" element={<HomepageContentManager />} />
           <Route path="engagement" element={<CommunityEngagement />} />
 

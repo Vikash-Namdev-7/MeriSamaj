@@ -182,7 +182,9 @@ const MatrimonialHomePage = () => {
   // Messenger layout state
   const [messengerTab, setMessengerTab] = useState('accepted'); // 'accepted' | 'interests'
   const [onlyInterestsWithMsgs, setOnlyInterestsWithMsgs] = useState(false);
-  
+  const [conversations, setConversations] = useState([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+
   // Advanced Filter state
   const [ageRange, setAgeRange] = useState({ min: 18, max: 40 });
   const [selectedGotra, setSelectedGotra] = useState('All');
@@ -352,6 +354,24 @@ const MatrimonialHomePage = () => {
   // Reset Subviews on bottom tab change
   useEffect(() => {
     setCurrentSubView(null);
+  }, [activeBottomTab]);
+
+  // Fetch conversations when messenger tab opens
+  useEffect(() => {
+    if (activeBottomTab === 'messenger') {
+      const fetchConvs = async () => {
+        setConversationsLoading(true);
+        try {
+          const res = await matrimonialChatService.getConversations();
+          setConversations(res.data.data.conversations || []);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setConversationsLoading(false);
+        }
+      };
+      fetchConvs();
+    }
   }, [activeBottomTab]);
 
   // Listener for simulated interest acceptance event
@@ -1384,15 +1404,9 @@ const MatrimonialHomePage = () => {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-[15px] font-black text-slate-800">Online Matches</h3>
-                  <span className="text-[12px] font-bold text-slate-400">114</span>
+                  <h3 className="text-[15px] font-black text-slate-800">Your Matches</h3>
+                  <span className="text-[12px] font-bold text-slate-400">{acceptedInterests.length}</span>
                 </div>
-                <button 
-                  onClick={() => showToast('Showing all online matches')}
-                  className="text-[12px] font-extrabold text-rose-500 hover:text-rose-600"
-                >
-                  View All
-                </button>
               </div>
               <p className="text-[11px] text-slate-400 font-semibold mb-4 leading-none">
                 Initiate a chat with your matches to get faster response
@@ -1400,31 +1414,34 @@ const MatrimonialHomePage = () => {
 
               {/* Horizontal Scroll list */}
               <div className="flex gap-4 overflow-x-auto scrollbar-hide py-2" data-swipe-block="true">
-                {[
-                  { id: 's_verma', name: 'S verma', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80' },
-                  { id: 'rani', name: 'Rani', avatar: '' },
-                  { id: 'jagriti', name: 'Jagriti Gupta', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' },
-                  { id: 'pragati', name: 'Jaiswal Pragati', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80' },
-                  { id: 'feed_priya', name: 'Priyel Bhatnagar', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80' }
-                ].map((user, idx) => (
-                  <div 
-                    key={idx} 
-                    onClick={() => openChatWithProfile(user._id || user.id)}
-                    className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 transition-transform"
-                  >
-                    <div className="w-13 h-13 rounded-full bg-slate-200 border-2 border-slate-100 flex items-center justify-center text-slate-500 relative shadow-sm">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <User size={22} />
-                      )}
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-xs" />
+                {acceptedInterests.map((interest) => {
+                  const otherUser = interest.senderId?._id === currentUser?._id 
+                    ? interest.receiverId 
+                    : interest.senderId;
+                  if (!otherUser) return null;
+                  return (
+                    <div 
+                      key={interest._id} 
+                      onClick={() => openChatWithProfile(otherUser._id)}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 transition-transform"
+                    >
+                      <div className="w-13 h-13 rounded-full bg-slate-200 border-2 border-slate-100 flex items-center justify-center text-slate-500 relative shadow-sm">
+                        {otherUser.avatar ? (
+                          <img src={otherUser.avatar} alt={otherUser.name} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <User size={22} />
+                        )}
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-xs" />
+                      </div>
+                      <span className="text-[10.5px] font-bold text-slate-700 max-w-[70px] truncate text-center">
+                        {otherUser.name?.split(' ')[0]}
+                      </span>
                     </div>
-                    <span className="text-[10.5px] font-bold text-slate-700 max-w-[70px] truncate text-center">
-                      {user.name}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
+                {acceptedInterests.length === 0 && (
+                  <p className="text-[12px] text-slate-400">No accepted matches yet.</p>
+                )}
               </div>
             </div>
 
@@ -1457,32 +1474,56 @@ const MatrimonialHomePage = () => {
               {/* Accepted list container (Image 1) */}
               {messengerTab === 'accepted' && (
                 <div className="divide-y divide-slate-100 bg-white rounded-3xl border border-slate-200/50 shadow-sm p-2">
-                  {[
-                    { id: 'feed_priya', name: 'Priyel Bhatnagar', date: '26-Jun-26', msg: 'They accepted your interest', unread: 1, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80' },
-                    { id: 'feed_ruchi', name: 'Aakanksha Saini', date: '25-Jun-26', msg: 'You accepted their interest', unread: 0, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80' }
-                  ].map((conv) => (
-                    <div
-                      key={conv.id}
-                      onClick={() => navigate(`/member/matrimonial/chat/${conv.id}`)}
-                      className="p-3.5 flex gap-3.5 items-center cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors first:rounded-t-3xl last:rounded-b-3xl"
-                    >
-                      <img src={conv.avatar} alt={conv.name} className="w-12 h-12 rounded-full object-cover border border-slate-100 shadow-xs" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <h4 className="text-[13.5px] font-black text-slate-850 truncate">{conv.name}</h4>
-                          <span className="text-[10px] font-bold text-slate-400">{conv.date}</span>
-                        </div>
-                        <div className="flex justify-between items-center mt-1">
-                          <p className="text-[11.5px] font-semibold text-slate-500 truncate">{conv.msg}</p>
-                          {conv.unread > 0 && (
-                            <span className="w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                              {conv.unread}
-                            </span>
+                  {conversationsLoading ? (
+                    <div className="p-4 text-center text-slate-400 text-[13px]">Loading...</div>
+                  ) : conversations.length > 0 ? (
+                    conversations.map((conv) => {
+                      const otherUser = conv.participants?.find(p => p._id !== currentUser?._id) || conv.participants?.[0];
+                      const lastMsg = conv.lastMessageId;
+                      let msgText = 'No messages yet';
+                      if (lastMsg) {
+                        msgText = lastMsg.type === 'image' ? '📸 Image' : lastMsg.type === 'deleted' ? '🗑️ This message was deleted' : lastMsg.message;
+                      }
+                      const unread = conv.unreadCount?.[currentUser?._id] || 0;
+                      let dateStr = '';
+                      if (lastMsg) {
+                        const d = new Date(lastMsg.createdAt);
+                        dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                      }
+
+                      return (
+                        <div
+                          key={conv._id}
+                          onClick={() => navigate(`/member/matrimonial/chat/${conv._id}`)}
+                          className="p-3.5 flex gap-3.5 items-center cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors first:rounded-t-3xl last:rounded-b-3xl"
+                        >
+                          {otherUser?.avatar ? (
+                            <img src={otherUser.avatar} alt={otherUser.name} className="w-12 h-12 rounded-full object-cover border border-slate-100 shadow-xs" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-slate-200 border-2 border-slate-100 flex items-center justify-center text-slate-500 shadow-xs"><User size={20} /></div>
                           )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline">
+                              <h4 className="text-[13.5px] font-black text-slate-850 truncate">{otherUser?.name || 'Unknown User'}</h4>
+                              <span className="text-[10px] font-bold text-slate-400">{dateStr}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-[11.5px] font-semibold text-slate-500 truncate">{msgText}</p>
+                              {unread > 0 && (
+                                <span className="w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                                  {unread}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-8 text-center text-slate-400 text-[13px] font-semibold">
+                      No conversations yet. Start a chat from your matches!
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
 
@@ -1491,39 +1532,51 @@ const MatrimonialHomePage = () => {
                 <div className="space-y-3">
                   {/* Toggle filter bar */}
                   <div className="flex items-center justify-between bg-slate-100 rounded-xl px-4 py-2 mb-3">
-                    <span className="text-[11px] font-extrabold text-slate-500">Only Interests with messages</span>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={onlyInterestsWithMsgs} 
-                        onChange={() => setOnlyInterestsWithMsgs(prev => !prev)}
-                        className="sr-only peer" 
-                      />
-                      <div className="w-9 h-5 bg-slate-350 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500" />
-                    </label>
+                    <span className="text-[11px] font-extrabold text-slate-500">Only pending interests</span>
                   </div>
 
                   <div className="divide-y divide-slate-100 bg-white rounded-3xl border border-slate-200/50 shadow-sm p-2">
-                    {[
-                      { id: 'txar8899', name: 'TXAR8899', age: 29, height: "5' 0\"", job: 'Marketing Professional', community: 'Mali', lang: 'Hindi-Rajasthan', income: 'Rs. 15 - 20 Lakh Never Married', avatar: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&q=80' },
-                      { id: 'aanchal', name: 'Aanchal Parheta', age: 25, height: "5' 5\"", job: 'Software Professional', community: 'Koshti', lang: 'Hindi-MP/CG', income: 'Rs. 7.5 - 10 Lakh Never Married', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80' }
-                    ].map((interest) => (
-                      <div
-                        key={interest.id}
-                        onClick={() => navigate(`/member/matrimonial/chat/${interest.id}`)}
-                        className="p-3.5 flex gap-3.5 items-center cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors first:rounded-t-3xl last:rounded-b-3xl"
-                      >
-                        <img src={interest.avatar} alt={interest.name} className="w-13 h-15 rounded-xl object-cover border border-slate-100 shadow-xs" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[13.5px] font-black text-indigo-950">{interest.name}</h4>
-                          <p className="text-[11px] text-slate-500 font-bold mt-1 leading-relaxed">
-                            {interest.age}Years, {interest.height}, {interest.job}<br/>
-                            {interest.community}, {interest.lang}<br/>
-                            {interest.income}
-                          </p>
-                        </div>
+                    {receivedInterests.length > 0 ? (
+                      receivedInterests.map((interest) => {
+                        const user = interest.senderId;
+                        if (!user) return null;
+                        return (
+                          <div key={interest._id} className="p-3.5 flex gap-3 items-start relative hover:bg-slate-50/50 transition-colors first:rounded-t-3xl last:rounded-b-3xl">
+                            {user.avatar ? (
+                              <img src={user.avatar} alt={user.name} className="w-12 h-12 rounded-full object-cover border border-slate-100 shadow-xs mt-1" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-slate-200 border-2 border-slate-100 flex items-center justify-center text-slate-500 shadow-xs mt-1"><User size={20} /></div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-[13px] font-black text-slate-850 truncate">{user.name}</h4>
+                              <p className="text-[11px] font-semibold text-slate-400 mt-0.5 leading-tight flex items-center gap-1.5 flex-wrap">
+                                <span>{user.matrimonialProfile?.age ? `${user.matrimonialProfile.age} Yrs` : ''}</span>
+                                {user.matrimonialProfile?.height && <span>• {user.matrimonialProfile.height}</span>}
+                                {user.matrimonialProfile?.occupation && <span>• {user.matrimonialProfile.occupation}</span>}
+                              </p>
+                              <div className="flex items-center gap-2 mt-2.5">
+                                <button 
+                                  onClick={() => handleInterestResponse(interest._id, 'accept')}
+                                  className="flex-1 h-8 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition-colors"
+                                >
+                                  Accept
+                                </button>
+                                <button 
+                                  onClick={() => handleInterestResponse(interest._id, 'reject')}
+                                  className="w-8 h-8 flex items-center justify-center border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-8 text-center text-slate-400 text-[13px] font-semibold">
+                        No pending interests received.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

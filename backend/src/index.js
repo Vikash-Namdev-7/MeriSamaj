@@ -9,6 +9,7 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 const rootRouter = require('./routes/index');
 const cookieParser = require('cookie-parser');
 const matrimonialSocket = require('./services/matrimonialSocket');
+const { chatSocketService } = require('./services/chatSocketService');
 
 // Load optional security middlewares with try-catch fallbacks to prevent crashes
 let helmet;
@@ -93,9 +94,11 @@ const io = new Server(httpServer, {
 });
 
 // Register socket handlers
-matrimonialSocket(io);
+matrimonialSocket(io);       // Handles matrimonial:* events (backward compat)
+chatSocketService(io);       // Handles chat:* events (member, group, community, support)
 
-// Attach io to app for access in controllers if needed
+// Attach io to app for access in controllers
 app.set('io', io);
+console.log('[Socket.io] Both matrimonialSocket and chatSocketService registered.');
 
 module.exports = { app, httpServer };

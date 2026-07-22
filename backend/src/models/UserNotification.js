@@ -16,7 +16,7 @@ const userNotificationSchema = new mongoose.Schema(
     // ─── Categorization ──────────────────────────────────────────────────────
     module: {
       type: String,
-      enum: ['matrimonial', 'events', 'donations', 'voting', 'chat', 'referral', 'fund', 'system'],
+      enum: ['matrimonial', 'events', 'donations', 'voting', 'chat', 'referral', 'fund', 'system', 'community'],
       required: true,
       index: true
     },

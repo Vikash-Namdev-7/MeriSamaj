@@ -3,38 +3,49 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Megaphone, Heart, Calendar, Users, Check, Vote, Mail, HeartHandshake,
   Flame, Loader2, RefreshCw, Trash2, BellOff, CheckCheck, Bell, ArrowLeft,
-  ShieldCheck, Crown, Eye
+  ShieldCheck, Crown, Eye, MessageCircle, UserPlus, UserMinus, AtSign
 } from 'lucide-react';
 import { notificationService } from '../../../../core/api/matrimonialService';
 
 const TYPE_CONFIG = {
-  // Matrimonial types (must match exactly what backend sends)
-  matrimonial_interest_received:     { icon: Heart,         color: 'bg-rose-100 text-rose-500',    label: 'Interest' },
-  matrimonial_interest_accepted:     { icon: Heart,         color: 'bg-emerald-100 text-emerald-600', label: 'Match' },
-  matrimonial_interest_rejected:     { icon: Heart,         color: 'bg-slate-100 text-slate-400',  label: 'Matrimonial' },
-  matrimonial_profile_verified:      { icon: ShieldCheck,   color: 'bg-emerald-100 text-emerald-600', label: 'Verified' },
-  matrimonial_profile_rejected:      { icon: ShieldCheck,   color: 'bg-red-100 text-red-500',     label: 'Rejected' },
-  matrimonial_photo_moderated:       { icon: CheckCheck,    color: 'bg-blue-100 text-blue-500',   label: 'Photo' },
-  matrimonial_subscription_activated:{ icon: Crown,         color: 'bg-amber-100 text-amber-600', label: 'Premium' },
-  matrimonial_subscription_expired:  { icon: Bell,          color: 'bg-orange-100 text-orange-600',label: 'Expired' },
-  matrimonial_profile_viewed:        { icon: Eye,           color: 'bg-purple-100 text-purple-600',label: 'Viewed' },
-  chat_new_message:                  { icon: Mail,          color: 'bg-blue-100 text-blue-500',   label: 'Chat' },
-  // Legacy/other types
-  matrimonial_interest:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Matrimonial' },
-  matrimonial_accepted:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Match' },
-  matrimonial_rejected:              { icon: Heart,         color: 'bg-slate-100 text-slate-400', label: 'Matrimonial' },
-  matrimonial_chat:                  { icon: Mail,          color: 'bg-blue-100 text-blue-500',   label: 'Chat' },
-  announcement:                      { icon: Megaphone,     color: 'bg-purple-100 text-purple-600',label: 'Announcement' },
-  event:                             { icon: Calendar,      color: 'bg-indigo-100 text-indigo-600',label: 'Event' },
-  voting:                            { icon: Vote,          color: 'bg-amber-100 text-amber-600', label: 'Voting' },
-  donation:                          { icon: HeartHandshake,color: 'bg-rose-100 text-rose-600',   label: 'Donation' },
-  community:                         { icon: Users,         color: 'bg-emerald-100 text-emerald-600',label:'Community' },
-  general:                           { icon: Bell,          color: 'bg-slate-100 text-slate-500', label: 'General' },
+  // Matrimonial types
+  matrimonial_interest_received:     { icon: Heart,         color: 'bg-rose-100 text-rose-500',    label: 'Interest',   module: 'matrimonial' },
+  matrimonial_interest_accepted:     { icon: Heart,         color: 'bg-emerald-100 text-emerald-600', label: 'Match',    module: 'matrimonial' },
+  matrimonial_interest_rejected:     { icon: Heart,         color: 'bg-slate-100 text-slate-400',  label: 'Matrimonial', module: 'matrimonial' },
+  matrimonial_profile_verified:      { icon: ShieldCheck,   color: 'bg-emerald-100 text-emerald-600', label: 'Verified', module: 'matrimonial' },
+  matrimonial_profile_rejected:      { icon: ShieldCheck,   color: 'bg-red-100 text-red-500',     label: 'Rejected',   module: 'matrimonial' },
+  matrimonial_photo_moderated:       { icon: CheckCheck,    color: 'bg-blue-100 text-blue-500',   label: 'Photo',      module: 'matrimonial' },
+  matrimonial_subscription_activated:{ icon: Crown,         color: 'bg-amber-100 text-amber-600', label: 'Premium',    module: 'matrimonial' },
+  matrimonial_subscription_expired:  { icon: Bell,          color: 'bg-orange-100 text-orange-600',label: 'Expired',   module: 'matrimonial' },
+  matrimonial_profile_viewed:        { icon: Eye,           color: 'bg-purple-100 text-purple-600',label: 'Viewed',     module: 'matrimonial' },
+  // Legacy matrimonial aliases
+  matrimonial_interest:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Matrimonial', module: 'matrimonial' },
+  matrimonial_accepted:              { icon: Heart,         color: 'bg-rose-100 text-rose-500',   label: 'Match',       module: 'matrimonial' },
+  matrimonial_rejected:              { icon: Heart,         color: 'bg-slate-100 text-slate-400', label: 'Matrimonial', module: 'matrimonial' },
+  matrimonial_chat:                  { icon: Mail,          color: 'bg-blue-100 text-blue-500',   label: 'Chat',        module: 'matrimonial' },
+  // ── Community Chat types (new) ──────────────────────────────────────────────
+  new_message:                       { icon: MessageCircle, color: 'bg-blue-100 text-blue-600',   label: 'Message',     module: 'chat' },
+  chat_new_message:                  { icon: MessageCircle, color: 'bg-blue-100 text-blue-600',   label: 'Message',     module: 'chat' },
+  group_message:                     { icon: MessageCircle, color: 'bg-violet-100 text-violet-600',label: 'Group Msg',   module: 'group' },
+  group_invite:                      { icon: UserPlus,      color: 'bg-indigo-100 text-indigo-600',label: 'Invited',     module: 'group' },
+  group_join_request:                { icon: Users,         color: 'bg-amber-100 text-amber-600', label: 'Join Req',    module: 'group' },
+  group_join_approved:               { icon: UserPlus,      color: 'bg-green-100 text-green-600', label: 'Approved',    module: 'group' },
+  group_removed:                     { icon: UserMinus,     color: 'bg-red-100 text-red-500',     label: 'Removed',     module: 'group' },
+  mention:                           { icon: AtSign,        color: 'bg-pink-100 text-pink-600',   label: 'Mention',     module: 'chat' },
+  // ── Announcement (new) ──────────────────────────────────────────────────────
+  community_announcement:            { icon: Megaphone,     color: 'bg-purple-100 text-purple-600',label: 'Announcement', module: 'announcement' },
+  // ── General community types ─────────────────────────────────────────────────
+  announcement:                      { icon: Megaphone,     color: 'bg-purple-100 text-purple-600',label: 'Announcement', module: 'announcement' },
+  event:                             { icon: Calendar,      color: 'bg-indigo-100 text-indigo-600',label: 'Event',       module: 'event' },
+  voting:                            { icon: Vote,          color: 'bg-amber-100 text-amber-600', label: 'Voting',      module: 'community' },
+  donation:                          { icon: HeartHandshake,color: 'bg-rose-100 text-rose-600',   label: 'Donation',    module: 'community' },
+  community:                         { icon: Users,         color: 'bg-emerald-100 text-emerald-600',label:'Community',  module: 'community' },
+  general:                           { icon: Bell,          color: 'bg-slate-100 text-slate-500', label: 'General',     module: 'all' },
 };
 
 const getConfig = (type) => TYPE_CONFIG[type] || TYPE_CONFIG.general;
 
-const TABS = ['all', 'matrimonial', 'announcement', 'event', 'community'];
+const TABS = ['all', 'chat', 'group', 'announcement', 'matrimonial', 'event', 'community'];
 
 const timeAgo = (date) => {
   if (!date) return '';
@@ -106,18 +117,36 @@ const NotificationsPage = () => {
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) await handleMarkRead(notif._id);
 
-    // Use actionUrl from notification if available (most specific)
+    // Use actionUrl from notification if available
     if (notif.actionUrl) {
       navigate(notif.actionUrl);
       return;
     }
 
-    // Fallback navigation by type
-    if (notif.type?.startsWith('matrimonial_interest')) {
-      navigate('/member/matrimonial/interests');
-    } else if (notif.type === 'chat_new_message') {
-      navigate('/member/matrimonial/interests');
-    } else if (notif.referenceType === 'InterestRequest') {
+    // Navigation by type — Community Chat types
+    if (notif.type === 'new_message' || notif.type === 'chat_new_message') {
+      // For matrimonial chat
+      if (notif.module === 'matrimonial') {
+        navigate('/member/matrimonial/interests');
+      } else if (notif.referenceId) {
+        navigate(`/member/chat/conv/${notif.referenceId}`);
+      } else {
+        navigate('/member/chat');
+      }
+    } else if (notif.type === 'group_message' || notif.type === 'group_invite' || notif.type === 'group_join_approved') {
+      if (notif.referenceId) navigate(`/member/groups/${notif.referenceId}`);
+      else navigate('/member/groups');
+    } else if (notif.type === 'group_join_request') {
+      if (notif.referenceId) navigate(`/member/groups/${notif.referenceId}`);
+      else navigate('/member/groups');
+    } else if (notif.type === 'group_removed') {
+      navigate('/member/groups');
+    } else if (notif.type === 'mention') {
+      if (notif.referenceId) navigate(`/member/chat/conv/${notif.referenceId}`);
+      else navigate('/member/chat');
+    } else if (notif.type === 'community_announcement' || notif.type === 'announcement') {
+      navigate('/member/announcements');
+    } else if (notif.type?.startsWith('matrimonial_interest')) {
       navigate('/member/matrimonial/interests');
     } else if (notif.module === 'matrimonial') {
       navigate('/member/matrimonial');
@@ -130,7 +159,11 @@ const NotificationsPage = () => {
 
   const filtered = notifications.filter(n => {
     if (activeTab === 'all') return true;
-    return n.module === activeTab || n.type?.startsWith(activeTab);
+    const cfg = getConfig(n.type);
+    // Match by module field, type prefix, or config-derived module
+    return n.module === activeTab
+      || n.type?.startsWith(activeTab)
+      || cfg.module === activeTab;
   });
 
   const unreadFiltered = filtered.filter(n => !n.isRead).length;

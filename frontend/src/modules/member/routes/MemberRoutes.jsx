@@ -97,14 +97,17 @@ import LeadershipPage from '../pages/leadership/LeadershipPage';
 import { CensusPage } from '../pages/census/CensusPage';
 
 // Feature: Chat
-// import ChatListPage from '../pages/chat/ChatListPage';
+import ChatListPage from '../pages/chat/ChatListPage';
 import ChatRouteWrapper from '../pages/chat/ChatRouteWrapper';
 import ChatInfoPage from '../pages/chat/ChatInfoPage';
+import ChatRoomPage from '../pages/chat/ChatRoomPage';
+import GroupsPage from '../pages/groups/GroupsPage';
 
 // Feature: Invitations
 import InvitationHomePage from '../pages/invitations/InvitationHomePage';
 import CreateInvitationPage from '../pages/invitations/CreateInvitationPage';
 import InvitationDetailPage from '../pages/invitations/InvitationDetailPage';
+import AnnouncementReaderPage from '../pages/announcements/AnnouncementReaderPage';
 
 export const MemberRoutes = () => {
   const location = useLocation();
@@ -130,6 +133,7 @@ export const MemberRoutes = () => {
             <Route path="home" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="social" element={<AnimatedPage><SocialHubPage initialTab="feed" /></AnimatedPage>} />
             <Route path="social/insights" element={<AnimatedPage><SocialInsightsPage /></AnimatedPage>} />
+            <Route path="announcements/:id" element={<AnimatedPage><AnnouncementReaderPage /></AnimatedPage>} />
             <Route path="matrimonial" element={<MatrimonialProvider />}>
               <Route index element={<AnimatedPage><MatrimonialHomePage /></AnimatedPage>} />
               <Route path="setup" element={<AnimatedPage><MatrimonialSetupPage /></AnimatedPage>} />
@@ -149,8 +153,8 @@ export const MemberRoutes = () => {
             <Route path="events" element={<AnimatedPage><EventsPage /></AnimatedPage>} />
             <Route path="events/:eventId" element={<AnimatedPage><EventDetailPage /></AnimatedPage>} />
 
-            {/* Groups base route mapped to SocialHub */}
-            <Route path="groups" element={<AnimatedPage><SocialHubPage initialTab="groups" /></AnimatedPage>} />
+            {/* Groups — discover, create, join groups */}
+            <Route path="groups" element={<AnimatedPage><GroupsPage /></AnimatedPage>} />
             <Route path="groups/:groupId" element={<AnimatedPage><GroupDetailPage /></AnimatedPage>} />
 
             <Route path="social/create" element={<AnimatedPage><CreatePostPage /></AnimatedPage>} />
@@ -184,8 +188,14 @@ export const MemberRoutes = () => {
           <Route path="leadership" element={<AnimatedPage><LeadershipPage /></AnimatedPage>} />
           <Route path="census" element={<AnimatedPage><CensusPage /></AnimatedPage>} />
 
-          {/* Chat base route mapped to SocialHub */}
-          <Route path="chat" element={<AnimatedPage><SocialHubPage initialTab="chat" /></AnimatedPage>} />
+          {/* ─── Community Chat Routes ───────────────────────────────────────────── */}
+          {/* Chat list (Chats tab + Joined Groups tab) */}
+          <Route path="chat" element={<AnimatedPage><ChatListPage /></AnimatedPage>} />
+          {/* 1-to-1 conversation by conversationId */}
+          <Route path="chat/conv/:conversationId" element={<AnimatedPage><ChatRoomPage chatType="member" /></AnimatedPage>} />
+          {/* Open/create conversation by targetUserId */}
+          <Route path="chat/member/:targetUserId" element={<AnimatedPage><ChatRoomPage chatType="member" openByUserId />{/* ← auto opens conversation */}</AnimatedPage>} />
+          {/* Legacy chatId-based route (from mockChats era) */}
           <Route path="chat/:chatId" element={<AnimatedPage><ChatRouteWrapper /></AnimatedPage>} />
           <Route path="chat/info/:chatId" element={<AnimatedPage><ChatInfoPage /></AnimatedPage>} />
 

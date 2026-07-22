@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Wallet, Vote, Send, Settings, LogOut, Menu, X, Award, ShieldCheck, Users, Calendar, Briefcase, Heart, Search, BarChart3, HeartHandshake, User, ChevronDown, ChevronUp, Mail, LayoutTemplate, Home, Share2
+  LayoutDashboard, Wallet, Vote, Send, Settings, LogOut, Menu, X, Award, ShieldCheck, Users, Calendar, Briefcase, Heart, Search, BarChart3, HeartHandshake, User, ChevronDown, ChevronUp, Mail, LayoutTemplate, Home, Share2, Megaphone
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { useHeadAuth } from '../auth/useHeadAuth';
@@ -40,7 +40,8 @@ export const HeadLayout = () => {
           icon: Share2,
           children: [
             { name: 'City Feed', path: '/head/social/city-feed' },
-            { name: 'Community Feed', path: '/head/social/community-feed' }
+            { name: 'Community Feed', path: '/head/social/community-feed' },
+            { name: 'Community Groups', path: '/head/groups' }
           ]
         },
         {
@@ -83,6 +84,16 @@ export const HeadLayout = () => {
           name: 'Invitations',
           path: '/head/invitations',
           icon: Mail
+        },
+        {
+          name: 'Announcement Channels',
+          path: '/head/announcements',
+          icon: Megaphone
+        },
+        {
+          name: 'Notification Center',
+          path: '/head/notifications',
+          icon: Send
         },
         { 
           name: 'Fund Governance', 

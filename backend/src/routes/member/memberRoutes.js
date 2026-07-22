@@ -11,6 +11,11 @@ const votingRoutes = require('./votingRoutes');
 const eventRoutes = require('./eventRoutes');
 const fundRoutes = require('./fundRoutes');
 
+// ─── Community Chat, Groups & Announcements ────────────────────────────────────
+const memberChatRoutes = require('./memberChatRoutes');
+const groupRoutes      = require('./groupRoutes');
+const announcementRoutes = require('./announcementRoutes');
+
 // Test Route
 router.get('/test', (req, res) => {
   res.status(200).json({
@@ -51,6 +56,11 @@ router.use('/fund', fundRoutes);
 // Professional Directory
 const professionalRoutes = require('./professionalRoutes');
 router.use('/professional', professionalRoutes);
+
+// ─── Community Chat ──────────────────────────────────────────────────────────
+router.use('/chat',           memberChatRoutes);
+router.use('/groups',         groupRoutes);
+router.use('/announcements',  announcementRoutes);
 
 // ─── Matrimonial Module ───────────────────────────────────────────────────────
 const matrimonialProfileRoutes      = require('./matrimonial/matrimonialProfileRoutes');

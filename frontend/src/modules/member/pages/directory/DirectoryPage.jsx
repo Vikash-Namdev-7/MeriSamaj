@@ -256,7 +256,7 @@ const DirectoryPage = () => {
                 {/* Quick actions (Chat only) */}
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button 
-                    onClick={() => navigate(`/member/chat/${member._id}`)}
+                    onClick={() => navigate(`/member/chat/member/${member._id}`)}
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-brand-primary border border-purple-100/50 hover:bg-brand-primary hover:text-white transition-all duration-200 press-scale"
                     style={{ background: 'rgba(124,58,237,0.05)' }}
                   >

@@ -325,7 +325,7 @@ const LeaderHeroBanner = ({ city, onBack, navigate, hideHeader = false, activeCi
                 <Phone size={10} /> Call
               </a>
               <button 
-                onClick={() => navigate(`/member/chat/${leader.id}`)}
+                onClick={() => navigate(`/member/chat/member/${leader.id}`)}
                 className="flex-1 py-1.5 rounded-xl border border-emerald-300/30 hover:bg-white/5 text-white text-[9px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm"
               >
                 <MessageCircle size={10} /> Chat
@@ -370,7 +370,7 @@ const MemberSliderCard = ({ member, navigate, activeCityDetail }) => {
         >
           <Phone size={9} />
         </button>
-        <button onClick={() => navigate(`/member/chat/${member.id}`)}
+        <button onClick={() => navigate(`/member/chat/member/${member.id}`)}
           className="w-5.5 h-5.5 rounded-full border border-emerald-250 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"
         >
           <MessageCircle size={9} />
@@ -413,7 +413,7 @@ const CabinetMemberCard = ({ member, navigate, activeCityDetail }) => {
           style={{ background: 'rgba(16,185,129,0.04)' }}>
           <MessageCircle size={9.5} className="text-emerald-500" />
         </a>
-        <button onClick={() => navigate(`/member/chat/${member.id}`)}
+        <button onClick={() => navigate(`/member/chat/member/${member.id}`)}
           className="w-6 h-6 rounded-lg border border-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
           style={{ background: 'rgba(51,128,255,0.04)' }}>
           <MessageSquare size={9.5} className="text-blue-500" />

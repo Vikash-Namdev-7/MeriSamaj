@@ -21,12 +21,14 @@ import GlobalProfessionalCategories from '../pages/professionals/GlobalProfessio
 import GlobalFundManagement from '../pages/fund/GlobalFundManagement';
 import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementCenter';
 import DonationManagement from '../../../pages/admin/DonationManagement';
+import AdminAnnouncementsPage from '../pages/announcements/AdminAnnouncementsPage';
 import CommunitiesPage from '../pages/communities/CommunitiesPage';
 import AdminLogin from '../pages/login/AdminLogin';
 
 import CityFeedManagement from '../pages/social/CityFeedManagement';
 import CommunityFeedManagement from '../pages/social/CommunityFeedManagement';
 import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
+import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
 
 export const AdminRoutes = () => {
   return (
@@ -67,6 +69,7 @@ export const AdminRoutes = () => {
         <Route path="donations" element={<DonationManagement />} />
         <Route path="funds" element={<GlobalFundManagement />} />
         <Route path="announcements" element={<GlobalAnnouncementCenter />} />
+        <Route path="announcement-channels" element={<AdminAnnouncementsPage />} />
 
         {/* 📱 Social Module Management */}
         <Route path="social">
@@ -77,6 +80,9 @@ export const AdminRoutes = () => {
 
         {/* 🏛️ Multi-Community Management — Master Admin Core Feature */}
         <Route path="communities" element={<CommunitiesPage />} />
+        
+        {/* Global Groups */}
+        <Route path="groups" element={<AdminGroupsPage />} />
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="dashboard" replace />} />

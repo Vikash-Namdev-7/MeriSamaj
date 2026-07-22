@@ -167,6 +167,36 @@ exports.createCommunity = async (req, res) => {
 
     await community.save({ session });
 
+    // --- AUTO-CREATE DEFAULT ANNOUNCEMENT CHANNEL ---
+    const AnnouncementChannel = require('../../models/AnnouncementChannel');
+    const Conversation = require('../../models/Conversation');
+
+    // Create the conversation first
+    const defaultConv = new Conversation({
+      participants: [req.user._id],
+      type: 'community',
+      createdBy: req.user._id
+    });
+    await defaultConv.save({ session });
+
+    // Create the default announcement channel
+    const defaultChannel = new AnnouncementChannel({
+      communityId: communityId,
+      name: 'Community Announcements',
+      description: `Official broadcast channel for ${name.trim()}`,
+      whoCanPost: 'head_only',
+      whoCanView: 'everyone',
+      creator: req.user._id,
+      conversationId: defaultConv._id,
+      isDefault: true
+    });
+    await defaultChannel.save({ session });
+
+    // Link conversation referenceId back to channel
+    defaultConv.referenceId = defaultChannel._id;
+    await defaultConv.save({ session });
+    // -------------------------------------------------
+
     await session.commitTransaction();
     session.endSession();
 

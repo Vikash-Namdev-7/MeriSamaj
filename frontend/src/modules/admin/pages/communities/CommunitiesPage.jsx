@@ -426,16 +426,23 @@ const EditCommunityModal = ({ community, onClose, onUpdated }) => {
           </div>
 
           <div className="community-form-group">
-            <label>Assigned Community Head (User ID)</label>
-            <input
-              type="text"
-              placeholder="e.g. 64abc123def456... (Must be role 'head')"
+            <label>Assigned Community Head</label>
+            <select
               value={form.headId}
               onChange={e => setForm(f => ({ ...f, headId: e.target.value }))}
-              className="community-input community-input-mono"
-            />
+              className="community-input"
+              style={{ height: '42px' }}
+            >
+              <option value="">-- No Head Assigned --</option>
+              {community.headId && (
+                <option value={community.headId._id || community.headId}>
+                  Current: {community.headId.name || community.headId}
+                </option>
+              )}
+              {/* Note: In a production setting, this would fetch a list of eligible users with the 'head' role from userService */}
+            </select>
             <small className="community-hint">
-              ℹ️ Remove text to clear head assignment, or enter a Head user's Mongo ID to change head.
+              ℹ️ Select an eligible user to assign as the Community Head.
             </small>
           </div>
 

@@ -74,7 +74,25 @@ const communitySchema = new mongoose.Schema(
       dharmashalaEnabled: { type: Boolean, default: true },
       obituaryEnabled:    { type: Boolean, default: true },
       socialFeedEnabled:  { type: Boolean, default: true },
+
+      // ─── Chat & Group Settings ─────────────────────────────────────────────
+      chatEnabled:                { type: Boolean, default: true },
+      announcementChannelEnabled: { type: Boolean, default: true },
+
+      /**
+       * groupCreationPolicy — controls who can create groups in this community.
+       *  'head_only'              — Only Community Head
+       *  'head_admin'             — Head + Admins
+       *  'verified_with_approval' — Any verified member (requires Head approval)
+       *  'verified_instant'       — Any verified member (instant creation)
+       */
+      groupCreationPolicy: {
+        type: String,
+        enum: ['head_only', 'head_admin', 'verified_with_approval', 'verified_instant'],
+        default: 'head_admin'
+      }
     },
+
   },
   {
     timestamps: true,
