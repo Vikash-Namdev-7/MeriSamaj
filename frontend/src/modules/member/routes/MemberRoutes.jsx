@@ -110,6 +110,7 @@ import ChatInfoPage from '../pages/chat/ChatInfoPage';
 import InvitationHomePage from '../pages/invitations/InvitationHomePage';
 import CreateInvitationPage from '../pages/invitations/CreateInvitationPage';
 import InvitationDetailPage from '../pages/invitations/InvitationDetailPage';
+import AnnouncementReaderPage from '../pages/announcements/AnnouncementReaderPage';
 
 export const MemberRoutes = () => {
   const location = useLocation();
@@ -136,6 +137,7 @@ export const MemberRoutes = () => {
             <Route path="home" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="social" element={<AnimatedPage><SocialHubPage initialTab="feed" /></AnimatedPage>} />
             <Route path="social/insights" element={<AnimatedPage><SocialInsightsPage /></AnimatedPage>} />
+            <Route path="announcements/:id" element={<AnimatedPage><AnnouncementReaderPage /></AnimatedPage>} />
             <Route path="matrimonial" element={<MatrimonialProvider />}>
               <Route index element={<AnimatedPage><MatrimonialHomePage /></AnimatedPage>} />
               <Route path="setup" element={<AnimatedPage><MatrimonialSetupPage /></AnimatedPage>} />

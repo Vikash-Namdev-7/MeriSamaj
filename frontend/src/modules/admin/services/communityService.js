@@ -6,21 +6,15 @@
  * These endpoints are restricted to Master Admin only.
  */
 
-import axios from 'axios';
+import { axiosPrivate } from '../../../core/api/axiosPrivate';
 
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1'}/admin/communities`;
-
-// Helper to get auth headers from localStorage
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('merisamaj_token') || localStorage.getItem('admin_auth_token') || localStorage.getItem('auth_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+const API_BASE = '/admin/communities';
 
 // ─────────────────────────────────────────────
 // GET /admin/communities → All communities with member counts
 // ─────────────────────────────────────────────
 export const getAllCommunities = async () => {
-  const response = await axios.get(API_BASE, { headers: getAuthHeaders() });
+  const response = await axiosPrivate.get(API_BASE);
   return response.data;
 };
 
@@ -28,7 +22,7 @@ export const getAllCommunities = async () => {
 // GET /admin/communities/:id → Single community
 // ─────────────────────────────────────────────
 export const getCommunityById = async (id) => {
-  const response = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() });
+  const response = await axiosPrivate.get(`${API_BASE}/${id}`);
   return response.data;
 };
 
@@ -36,7 +30,7 @@ export const getCommunityById = async (id) => {
 // POST /admin/communities → Create community
 // ─────────────────────────────────────────────
 export const createCommunity = async (data) => {
-  const response = await axios.post(API_BASE, data, { headers: getAuthHeaders() });
+  const response = await axiosPrivate.post(API_BASE, data);
   return response.data;
 };
 
@@ -44,7 +38,7 @@ export const createCommunity = async (data) => {
 // PUT /admin/communities/:id → Update community info / settings
 // ─────────────────────────────────────────────
 export const updateCommunity = async (id, data) => {
-  const response = await axios.put(`${API_BASE}/${id}`, data, { headers: getAuthHeaders() });
+  const response = await axiosPrivate.put(`${API_BASE}/${id}`, data);
   return response.data;
 };
 
@@ -52,7 +46,7 @@ export const updateCommunity = async (id, data) => {
 // DELETE /admin/communities/:id → Deactivate or delete community
 // ─────────────────────────────────────────────
 export const deleteCommunity = async (id) => {
-  const response = await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() });
+  const response = await axiosPrivate.delete(`${API_BASE}/${id}`);
   return response.data;
 };
 
@@ -60,10 +54,9 @@ export const deleteCommunity = async (id) => {
 // PUT /admin/communities/:id/assign-head → Assign head (atomic)
 // ─────────────────────────────────────────────
 export const assignHeadToCommunity = async (communityId, userId) => {
-  const response = await axios.put(
+  const response = await axiosPrivate.put(
     `${API_BASE}/${communityId}/assign-head`,
-    { userId },
-    { headers: getAuthHeaders() }
+    { userId }
   );
   return response.data;
 };
@@ -72,9 +65,8 @@ export const assignHeadToCommunity = async (communityId, userId) => {
 // DELETE /admin/communities/:id/assign-head → Remove head
 // ─────────────────────────────────────────────
 export const removeHeadFromCommunity = async (communityId) => {
-  const response = await axios.delete(
-    `${API_BASE}/${communityId}/assign-head`,
-    { headers: getAuthHeaders() }
+  const response = await axiosPrivate.delete(
+    `${API_BASE}/${communityId}/assign-head`
   );
   return response.data;
 };
@@ -83,10 +75,9 @@ export const removeHeadFromCommunity = async (communityId) => {
 // PUT /admin/communities/:id → Update module settings only
 // ─────────────────────────────────────────────
 export const updateCommunitySettings = async (communityId, settings) => {
-  const response = await axios.put(
+  const response = await axiosPrivate.put(
     `${API_BASE}/${communityId}`,
-    { settings },
-    { headers: getAuthHeaders() }
+    { settings }
   );
   return response.data;
 };

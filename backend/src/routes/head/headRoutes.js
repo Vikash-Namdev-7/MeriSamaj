@@ -24,6 +24,10 @@ router.use('/funds', headFundRoutes);
 const headSocialRoutes = require('./headSocialRoutes');
 router.use('/social', headSocialRoutes);
 
+// Announcement Channels Routes
+const headAnnouncementRoutes = require('./headAnnouncementRoutes');
+router.use('/announcements', headAnnouncementRoutes);
+
 // Professional Directory Approval Routes
 const headProfessionalRoutes = require('./headProfessionalRoutes');
 router.use('/professional', headProfessionalRoutes);

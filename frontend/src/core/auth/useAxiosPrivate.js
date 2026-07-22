@@ -7,7 +7,7 @@ import { authService } from './authService';
 
 export const useAxiosPrivate = () => {
   const { auth, setAuth } = useAuth();
-  const { headAuth } = useHeadAuth();
+  const { headAuth, setHeadAuth } = useHeadAuth();
   const { adminAuth, setAdminAuth } = useAdminAuth();
 
   useEffect(() => {
@@ -90,6 +90,12 @@ export const useAxiosPrivate = () => {
               localStorage.removeItem('head_auth_user');
               localStorage.removeItem('head_auth_token');
               localStorage.removeItem('head_has_session');
+              
+              setHeadAuth({
+                headUser: null,
+                isAuthenticated: false,
+                isInitialized: true,
+              });
             } else if (isAdminPanel) {
               localStorage.removeItem('admin_auth_user');
               localStorage.removeItem('admin_auth_token');
@@ -123,7 +129,7 @@ export const useAxiosPrivate = () => {
       axiosPrivate.interceptors.request.eject(requestIntercept);
       axiosPrivate.interceptors.response.eject(responseIntercept);
     };
-  }, [auth, setAuth, headAuth, adminAuth, setAdminAuth]);
+  }, [auth, setAuth, headAuth, setHeadAuth, adminAuth, setAdminAuth]);
 
   return axiosPrivate;
 };

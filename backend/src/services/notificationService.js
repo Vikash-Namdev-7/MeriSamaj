@@ -131,6 +131,24 @@ const notifyProfileViewed = (profileOwnerId, viewerName) =>
     actionUrl:'/member/matrimonial/profile'
   });
 
+const notifyAnnouncement = (userIds, channelName, message, channelId) => {
+  if (!Array.isArray(userIds)) userIds = [userIds];
+  userIds.forEach(userId => {
+    createNotification({
+      userId,
+      module:   'community',
+      type:     'community_announcement',
+      title:    `New Announcement in ${channelName} 📢`,
+      message:  message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+      icon:     '📢',
+      priority: 'high',
+      actionUrl:`/member/announcements/${channelId}`,
+      referenceId: channelId,
+      referenceType: 'AnnouncementChannel'
+    });
+  });
+};
+
 module.exports = {
   createNotification,
   notifyInterestReceived,
@@ -139,5 +157,6 @@ module.exports = {
   notifySubscriptionExpired,
   notifySubscriptionActivated,
   notifyNewMessage,
-  notifyProfileViewed
+  notifyProfileViewed,
+  notifyAnnouncement
 };

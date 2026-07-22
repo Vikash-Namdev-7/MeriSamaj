@@ -139,8 +139,8 @@ export const AdminLayout = () => {
       category: 'COMMUNICATION',
       items: [
         { 
-          name: 'Global Announcements & Communication', 
-          path: '/admin/announcements', 
+          name: 'Announcement Channels', 
+          path: '/admin/announcement-channels', 
           icon: Megaphone 
         }
       ]

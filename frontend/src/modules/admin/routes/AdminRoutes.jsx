@@ -22,6 +22,7 @@ import GlobalProfessionalCategories from '../pages/professionals/GlobalProfessio
 import GlobalDonationManagement from '../pages/donations/GlobalDonationManagement';
 import GlobalFundManagement from '../pages/fund/GlobalFundManagement';
 import GlobalAnnouncementCenter from '../pages/announcements/GlobalAnnouncementCenter';
+import AdminAnnouncementsPage from '../pages/announcements/AdminAnnouncementsPage';
 import CommunitiesPage from '../pages/communities/CommunitiesPage';
 import AdminLogin from '../pages/login/AdminLogin';
 
@@ -69,6 +70,7 @@ export const AdminRoutes = () => {
         <Route path="donations" element={<GlobalDonationManagement />} />
         <Route path="funds" element={<GlobalFundManagement />} />
         <Route path="announcements" element={<GlobalAnnouncementCenter />} />
+        <Route path="announcement-channels" element={<AdminAnnouncementsPage />} />
 
         {/* 📱 Social Module Management */}
         <Route path="social">

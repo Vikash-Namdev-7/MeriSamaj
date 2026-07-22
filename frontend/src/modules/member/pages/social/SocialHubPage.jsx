@@ -12,6 +12,7 @@ import GroupsPage from '../groups/GroupsPage';
 import ChatListPage from '../chat/ChatListPage';
 import DirectoryPage from '../directory/DirectoryPage';
 import { DiscoverContent } from './components/DiscoverContent';
+import AnnouncementListPage from '../announcements/AnnouncementListPage';
 
 // React Icons
 import { FiUsers } from 'react-icons/fi';
@@ -34,17 +35,7 @@ const CityFeedIcon = ({ size = 26, isActive }) => (
 );
 
 const CommunityFeedIcon = ({ size = 26, isActive }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={isActive ? '#7C3AED' : '#828E9E'}
-    strokeWidth="2.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="transition-all duration-200"
-  >
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={isActive ? '#7C3AED' : '#828E9E'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-all duration-200">
     <circle cx="12" cy="12.5" r="7.5" opacity="0.6" />
     <circle cx="12" cy="5.5" r="1.5" />
     <path d="M10 9a2.2 2.2 0 0 1 4 0" />
@@ -54,6 +45,13 @@ const CommunityFeedIcon = ({ size = 26, isActive }) => (
     <path d="M4 19a2.2 2.2 0 0 1 4 0" />
     <circle cx="18" cy="15.5" r="1.5" />
     <path d="M16 19a2.2 2.2 0 0 1 4 0" />
+  </svg>
+);
+
+const AnnouncementsIcon = ({ size = 26, isActive }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={isActive ? '#7C3AED' : '#828E9E'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-all duration-200">
+    <path d="M3 11l18-5v12L3 14v-3z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
   </svg>
 );
 
@@ -136,11 +134,13 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
         return `${userCity} ${userCommunity} Community`;
       case 1: // Community Feed
         return `Entire ${userCommunity} Community`;
-      case 2: // Groups
+      case 2: // Announcements
+        return 'Announcement Channels';
+      case 3: // Groups
         return 'Groups';
-      case 3: // Chat
+      case 4: // Chat
         return 'Chats';
-      case 4: // Discover
+      case 5: // Discover
         return 'Discover';
       default:
         return 'Social Hub';
@@ -162,6 +162,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const tabs = [
     { id: 'city-feed', label: 'City Feed', icon: CityFeedIcon, component: FeedPage, feedProps: { feedType: 'city' } },
     { id: 'community-feed', label: 'Community Feed', icon: CommunityFeedIcon, component: FeedPage, feedProps: { feedType: 'community' } },
+    { id: 'announcements', label: 'Announcements', icon: AnnouncementsIcon, component: AnnouncementListPage },
     { id: 'groups', label: 'Groups', icon: GroupsIcon, component: GroupsPage },
     { id: 'chat', label: 'Chat', icon: ChatIcon, component: ChatListPage },
     { id: 'discover', label: 'Discover', icon: DiscoverIcon, component: DiscoverContent }
@@ -371,7 +372,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
         </button>
       );
     }
-    if (activeTab === 2) { // Groups
+    if (activeTab === 3) { // Groups
       return (
         <button 
           onClick={() => setTriggerCreateGroup(true)} 

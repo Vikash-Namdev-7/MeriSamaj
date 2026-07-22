@@ -16,9 +16,9 @@ const protect = async (req, res, next) => {
     const isApiHead = req.baseUrl.startsWith('/api/v1/head') || req.path.startsWith('/head');
     
     if (isApiAdmin) {
-      token = req.cookies.admin_jwt || req.cookies.jwt;
+      token = req.cookies.admin_jwt;
     } else if (isApiHead) {
-      token = req.cookies.head_jwt || req.cookies.jwt;
+      token = req.cookies.head_jwt;
     } else {
       token = req.cookies.member_jwt || req.cookies.jwt;
     }
