@@ -39,12 +39,15 @@ export const useMatrimonialChat = (userId) => {
     socket.on('matrimonial:online_users', (users) => setOnlineUsers(users));
 
     socket.on('matrimonial:new_message', (msg) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages(prev => {
+        if (prev.some(m => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
       // Update conversation preview
       setConversations(prev =>
         prev.map(c =>
           c._id === msg.conversationId
-            ? { ...c, lastMessagePreview: msg.message, lastMessageAt: msg.createdAt }
+            ? { ...c, lastMessagePreview: msg.type === 'image' ? '📷 Photo' : msg.message, lastMessageAt: msg.createdAt }
             : c
         ).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
       );
@@ -68,6 +71,28 @@ export const useMatrimonialChat = (userId) => {
           ? { ...m, seenBy: [...(m.seenBy || []), { userId: sid, seenAt: new Date() }] }
           : m
       ));
+    });
+
+    socket.on('matrimonial:message_deleted', ({ conversationId, messageId }) => {
+      setMessages(prev => prev.map(m => 
+        m._id === messageId 
+          ? { ...m, isDeleted: true, message: 'This message was deleted', type: 'deleted', mediaUrl: null, mediaPublicId: null }
+          : m
+      ));
+      
+      setConversations(prev => {
+        return prev.map(c => {
+          if (c._id !== conversationId) return c;
+          
+          // Re-evaluate the last message preview logic if this was the last message
+          // The socket payload doesn't provide the entire conversation list of messages, 
+          // so we'll just set it to 'This message was deleted' if it was the last message.
+          if (c.lastMessageId === messageId || c.lastMessageId?._id === messageId) {
+            return { ...c, lastMessagePreview: 'This message was deleted' };
+          }
+          return c;
+        });
+      });
     });
 
     return () => socket.disconnect();
@@ -110,12 +135,27 @@ export const useMatrimonialChat = (userId) => {
   const sendMessage = useCallback(async (conversationId, data) => {
     setSending(true);
     try {
-      if (socketRef.current?.connected) {
-        socketRef.current.emit('matrimonial:send_message', { conversationId, ...data });
+      // If data is FormData (image upload), we MUST use REST
+      if (socketRef.current?.connected && !(data instanceof FormData)) {
+        // Map frontend fields to backend socket expectations
+        const socketPayload = {
+          conversationId,
+          message: data.message,
+          type: data.messageType || 'text',
+          replyTo: data.replyToId || null
+        };
+        socketRef.current.emit('matrimonial:send_message', socketPayload);
       } else {
-        // REST fallback
-        const res = await matrimonialChatService.sendMessage(conversationId, data);
-        setMessages(prev => [...prev, res.data.data.message]);
+        let res;
+        if (data instanceof FormData) {
+          res = await matrimonialChatService.sendImageMessage(conversationId, data);
+        } else {
+          res = await matrimonialChatService.sendMessage(conversationId, data);
+        }
+        setMessages(prev => {
+          if (prev.some(m => m._id === res.data.data.message._id)) return prev;
+          return [...prev, res.data.data.message];
+        });
       }
       return { success: true };
     } catch (err) {
@@ -131,7 +171,7 @@ export const useMatrimonialChat = (userId) => {
       await matrimonialChatService.deleteMessage(msgId, { deleteFor });
       if (deleteFor === 'everyone') {
         setMessages(prev => prev.map(m =>
-          m._id === msgId ? { ...m, isDeleted: true, message: '' } : m
+          m._id === msgId ? { ...m, isDeleted: true, message: 'This message was deleted', type: 'deleted', mediaUrl: null, mediaPublicId: null } : m
         ));
       } else {
         // Mark as deleted for current user — filter from list

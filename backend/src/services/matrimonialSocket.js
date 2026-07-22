@@ -71,15 +71,20 @@ const matrimonialSocket = (io) => {
           deliveredTo: [userId]
         });
 
+        // Populate senderId before broadcasting so receiver gets avatar/name in real-time
+        const populatedMsg = await Message.findById(newMsg._id)
+          .populate('senderId', 'name avatar _id')
+          .lean();
+
         // Update conversation cache
         await Conversation.findByIdAndUpdate(conversationId, {
           lastMessageId:      newMsg._id,
           lastMessageAt:      newMsg.createdAt,
-          lastMessagePreview: type === 'text' ? (message || '').substring(0, 80) : `📷 ${type}`
+          lastMessagePreview: type === 'text' ? (message || '').substring(0, 80) : '📷 Photo'
         });
 
         // Broadcast to room
-        io.to(`conv:${conversationId}`).emit('matrimonial:new_message', newMsg);
+        io.to(`conv:${conversationId}`).emit('matrimonial:new_message', populatedMsg);
 
         // Mark as delivered to other participants currently online
         for (const participantId of conversation.participants) {

@@ -132,7 +132,7 @@ exports.getMessages = async (req, res) => {
 exports.sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { message, type = 'text', mediaUrl, replyTo } = req.body;
+    let { message, type = 'text', mediaUrl, replyTo } = req.body;
 
     const conversation = await Conversation.findOne({
       _id: conversationId,
@@ -149,22 +149,49 @@ exports.sendMessage = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Chat requires an accepted interest request.' });
     }
 
+    let finalMediaUrl = mediaUrl || null;
+    let finalPublicId = null;
+
+    if (req.file) {
+      if (req.file.path) {
+        finalMediaUrl = req.file.path; // Cloudinary secure_url
+        finalPublicId = req.file.filename || req.file.public_id; // Cloudinary public_id
+      } else if (req.file.buffer) {
+        // Fallback to base64 if memory storage is used (no Cloudinary config)
+        const base64Str = req.file.buffer.toString('base64');
+        finalMediaUrl = `data:${req.file.mimetype};base64,${base64Str}`;
+      }
+      type = 'image';
+    }
+
     const newMsg = await Message.create({
       conversationId,
       senderId: req.user._id,
       type,
       message: message || '',
-      mediaUrl: mediaUrl || null,
+      mediaUrl: finalMediaUrl,
+      mediaPublicId: finalPublicId,
       replyTo:  replyTo  || null,
       deliveredTo: [req.user._id]
     });
+
+    const populatedMsg = await Message.findById(newMsg._id)
+      .populate('senderId', 'name avatar _id')
+      .populate('replyTo', 'message type senderId')
+      .lean();
 
     // Update conversation last message cache
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessageId:      newMsg._id,
       lastMessageAt:      newMsg.createdAt,
-      lastMessagePreview: type === 'text' ? (message || '').substring(0, 80) : `📷 ${type}`
+      lastMessagePreview: type === 'text' ? (message || '').substring(0, 80) : '📷 Photo'
     });
+
+    // Safely emit to socket room if io is attached
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`conv:${conversationId}`).emit('matrimonial:new_message', populatedMsg);
+    }
 
     // Notify other participants
     const otherParticipants = conversation.participants.filter(p => !p.equals(req.user._id));
@@ -172,7 +199,7 @@ exports.sendMessage = async (req, res) => {
       notifyNewMessage(participantId, req.user.name, conversationId);
     }
 
-    res.status(201).json({ status: 'success', data: { message: newMsg } });
+    res.status(201).json({ status: 'success', data: { message: populatedMsg } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -187,16 +214,61 @@ exports.deleteMessage = async (req, res) => {
     const msg = await Message.findOne({ _id: messageId });
     if (!msg) return res.status(404).json({ status: 'error', message: 'Message not found.' });
 
-    if (deleteFor === 'everyone' && msg.senderId.equals(req.user._id)) {
+    if (deleteFor === 'everyone') {
+      if (!msg.senderId.equals(req.user._id)) {
+        return res.status(403).json({ status: 'error', message: 'You can only delete your own messages for everyone.' });
+      }
+
+      // Cleanup Cloudinary asset if it exists
+      if (msg.type === 'image' && msg.mediaPublicId) {
+        try {
+          const cloudinary = require('cloudinary').v2;
+          await cloudinary.uploader.destroy(msg.mediaPublicId);
+        } catch (cloudErr) {
+          console.warn('[Delete Message] Cloudinary deletion failed for', msg.mediaPublicId, cloudErr.message);
+        }
+      }
+
       msg.isDeleted = true;
       msg.deletedAt = new Date();
-      msg.message   = '';
+      msg.message   = 'This message was deleted';
+      msg.type      = 'deleted';
+      msg.mediaUrl  = null;
+      msg.mediaPublicId = null;
+
+      // Broadcast socket event
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`conv:${msg.conversationId}`).emit('matrimonial:message_deleted', {
+          conversationId: msg.conversationId,
+          messageId: msg._id
+        });
+      }
     } else {
       if (!msg.deletedFor.includes(req.user._id)) {
         msg.deletedFor.push(req.user._id);
       }
     }
+    
     await msg.save();
+
+    // Update conversation preview if deleted for everyone
+    if (deleteFor === 'everyone') {
+      const actualLast = await Message.findOne({ conversationId: msg.conversationId }).sort({ createdAt: -1 });
+      let preview = 'No messages yet';
+      
+      if (actualLast) {
+         if (actualLast.type === 'deleted') preview = 'This message was deleted';
+         else if (actualLast.type === 'image') preview = '📷 Photo';
+         else preview = (actualLast.message || '').substring(0, 80);
+      }
+
+      await Conversation.findByIdAndUpdate(msg.conversationId, {
+        lastMessagePreview: preview,
+        updatedAt: new Date()
+      });
+    }
+
     res.json({ status: 'success', message: 'Message deleted.' });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
