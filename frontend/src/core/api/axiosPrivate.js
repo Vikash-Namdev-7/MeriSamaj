@@ -27,7 +27,6 @@ axiosPrivate.interceptors.request.use(
       
       const adminToken = localStorage.getItem('admin_auth_token') || localStorage.getItem('merisamaj_admin_token');
       const headToken = localStorage.getItem('head_auth_token');
-      const adminToken = localStorage.getItem('admin_auth_token');
       const memberToken = localStorage.getItem('merisamaj_token');
 
       let token;

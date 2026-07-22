@@ -22,7 +22,10 @@ const {
   notifyGroupInvite,
   notifyGroupJoinRequest,
   notifyGroupJoinApproved,
-  notifyGroupRemoved
+  notifyGroupRemoved,
+  notifyGroupCreatedInstant,
+  notifyMemberPromoted,
+  notifyMemberDemoted
 } = require('../../services/notificationService');
 
 // ─── Helper: Get group with member check ─────────────────────────────────────
@@ -129,6 +132,25 @@ exports.createGroup = async (req, res) => {
         group._id,
         group.name
       );
+    } else if (approvalStatus === 'approved') {
+      try {
+        User.find({
+          communityId,
+          verificationStatus: 'verified',
+          accountStatus: 'active',
+          _id: { $ne: req.user._id }
+        })
+          .select('_id')
+          .lean()
+          .then(members => {
+            if (members.length > 0) {
+              notifyGroupCreatedInstant(members.map(m => m._id), group.name, group._id);
+            }
+          })
+          .catch(err => console.error('[GroupController] createGroup notify members error:', err.message));
+      } catch (notifErr) {
+        console.warn('[Notify] createGroup group_created failed:', notifErr.message);
+      }
     }
 
     res.status(201).json({
@@ -572,6 +594,13 @@ exports.promoteToAdmin = async (req, res) => {
     group.members[memberIndex].role = 'admin';
     await group.save();
 
+    // ── Notification: notify promoted member ───────────────────────────────────────
+    try {
+      notifyMemberPromoted(targetUserId, group.name, group._id);
+    } catch (notifErr) {
+      console.warn('[Notify] promoteToAdmin member_promoted failed:', notifErr.message);
+    }
+
     const io = req.app.get('io');
     if (io && group.conversationId) {
       io.to(`conv:${group.conversationId}`).emit('chat:member_promoted', { groupId: group._id, userId: targetUserId, role: 'admin' });
@@ -601,6 +630,13 @@ exports.demoteAdmin = async (req, res) => {
 
     group.members[memberIndex].role = 'member';
     await group.save();
+
+    // ── Notification: notify demoted member ────────────────────────────────────────
+    try {
+      notifyMemberDemoted(targetUserId, group.name, group._id);
+    } catch (notifErr) {
+      console.warn('[Notify] demoteAdmin member_demoted failed:', notifErr.message);
+    }
 
     const io = req.app.get('io');
     if (io && group.conversationId) {

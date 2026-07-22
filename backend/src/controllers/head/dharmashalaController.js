@@ -2,6 +2,7 @@ const Dharmashala = require('../../models/Dharmashala');
 const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
+const { notifyBookingStatusChanged } = require('../../services/notificationService');
 
 // Helper to check user's community
 const getCommunity = (req) => {
@@ -432,6 +433,16 @@ exports.updateBookingStatus = async (req, res) => {
     
     await booking.save();
     
+    // ── Notification: notify booking applicant on status change ────────────────────
+    try {
+      const dName = booking.dharmashala?.name || 'Dharmashala';
+      if (booking.user && oldStatus !== status && ['approved', 'cancelled', 'checked_in', 'rejected'].includes(status)) {
+        notifyBookingStatusChanged(booking.user, status, dName, booking._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] updateBookingStatus booking_status_changed failed:', notifErr.message);
+    }
+
     res.status(200).json({ status: 'success', data: booking });
   } catch (error) {
     res.status(400).json({ status: 'error', message: error.message });

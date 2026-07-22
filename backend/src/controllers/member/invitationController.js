@@ -1,4 +1,5 @@
 const Invitation = require('../../models/Invitation');
+const { notifyInvitationReceived } = require('../../services/notificationService');
 
 // @desc    Create a new invitation
 // @route   POST /api/member/invitations
@@ -78,6 +79,16 @@ exports.createInvitation = async (req, res) => {
     });
 
     const createdInvitation = await invitation.save();
+
+    // ── Notification: notify invited members ──────────────────────────────────────
+    try {
+      if (parsedMemberIds && parsedMemberIds.length > 0) {
+        notifyInvitationReceived(parsedMemberIds, hostName || req.user.name || 'A member', title, createdInvitation._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] createInvitation invitation_received failed:', notifErr.message);
+    }
+
     res.status(201).json(createdInvitation);
   } catch (error) {
     console.error('Error creating invitation:', error);

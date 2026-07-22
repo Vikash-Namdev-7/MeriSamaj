@@ -6,6 +6,7 @@ import HeadRoutes from './modules/head/routes/HeadRoutes';
 import { DataProvider } from './modules/member/context/DataProvider';
 import { FundProvider } from './modules/member/context/FundContext';
 import { AuthProvider } from './core/auth/AuthContext';
+import { NotificationProvider } from './modules/member/context/NotificationContext';
 import { HeadAuthProvider } from './modules/head/auth/HeadAuthContext';
 import { AdminAuthProvider } from './modules/admin/auth/AdminAuthContext';
 import { useAxiosPrivate } from './core/auth/useAxiosPrivate';
@@ -43,6 +44,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
+    <NotificationProvider>
     <HeadAuthProvider>
     <AdminAuthProvider>
     <DataProvider>
@@ -52,6 +54,7 @@ const App = () => {
     </DataProvider>
     </AdminAuthProvider>
     </HeadAuthProvider>
+    </NotificationProvider>
     </AuthProvider>
   );
 };

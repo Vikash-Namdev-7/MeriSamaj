@@ -11,6 +11,7 @@ const SocialAuditLog = require('../../models/SocialAuditLog');
 const User = require('../../models/User');
 const City = require('../../models/City');
 const Community = require('../../models/Community');
+const { notifyPostActioned } = require('../../services/notificationService');
 
 // Helper to write audit logs
 const logAdminAction = async (req, action, targetType, targetId, details) => {
@@ -281,6 +282,18 @@ exports.deletePost = async (req, res) => {
     await post.save();
 
     await logAdminAction(req, 'delete_post', 'Post', post._id, `Admin deleted post ID: ${post._id}`);
+
+    // ── Notification: notify post author ──────────────────────────────────────────
+    try {
+      const authorId = post.authorId || post.userId;
+      if (authorId) {
+        const preview = (post.content || '').substring(0, 30);
+        notifyPostActioned(authorId, 'deleted', preview, post._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] deletePost post_deleted failed:', notifErr.message);
+    }
+
     res.json({ success: true, message: 'Post deleted successfully' });
   } catch (error) {
     console.error('Admin deletePost error:', error);
@@ -318,6 +331,18 @@ exports.togglePinPost = async (req, res) => {
     await post.save();
 
     await logAdminAction(req, post.isPinned ? 'pin_post' : 'unpin_post', 'Post', post._id, `Admin toggled pin to ${post.isPinned}`);
+
+    // ── Notification: notify post author ──────────────────────────────────────────
+    try {
+      const authorId = post.authorId || post.userId;
+      if (authorId && post.isPinned) {
+        const preview = (post.content || '').substring(0, 30);
+        notifyPostActioned(authorId, 'pinned', preview, post._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] togglePinPost post_pinned failed:', notifErr.message);
+    }
+
     res.json({ success: true, data: post });
   } catch (error) {
     console.error('Admin togglePinPost error:', error);
@@ -336,6 +361,18 @@ exports.toggleFeaturePost = async (req, res) => {
     await post.save();
 
     await logAdminAction(req, post.isFeatured ? 'feature_post' : 'unfeature_post', 'Post', post._id, `Admin toggled feature to ${post.isFeatured}`);
+
+    // ── Notification: notify post author ──────────────────────────────────────────
+    try {
+      const authorId = post.authorId || post.userId;
+      if (authorId && post.isFeatured) {
+        const preview = (post.content || '').substring(0, 30);
+        notifyPostActioned(authorId, 'featured', preview, post._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] toggleFeaturePost post_featured failed:', notifErr.message);
+    }
+
     res.json({ success: true, data: post });
   } catch (error) {
     console.error('Admin toggleFeaturePost error:', error);
@@ -354,6 +391,18 @@ exports.toggleHidePost = async (req, res) => {
     await post.save();
 
     await logAdminAction(req, 'hide_post', 'Post', post._id, `Admin set post status to: ${post.status}`);
+
+    // ── Notification: notify post author ──────────────────────────────────────────
+    try {
+      const authorId = post.authorId || post.userId;
+      if (authorId && post.status === 'archived') {
+        const preview = (post.content || '').substring(0, 30);
+        notifyPostActioned(authorId, 'hidden', preview, post._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] toggleHidePost post_hidden failed:', notifErr.message);
+    }
+
     res.json({ success: true, data: post });
   } catch (error) {
     console.error('Admin toggleHidePost error:', error);

@@ -1,5 +1,7 @@
 const Donation = require('../models/Donation');
+const User = require('../models/User');
 const { handleDonationPayment } = require('../utils/paymentHandler');
+const { notifyDonationReceived, notifyDonationReceipt } = require('../services/notificationService');
 
 // GET /member/donations — Server-side filtered to status: "Active", isDeleted: false
 exports.getActiveDonations = async (req, res) => {
@@ -89,6 +91,27 @@ exports.donate = async (req, res) => {
       },
       { new: true }
     );
+
+    // ── Non-critical notifications ──────────────────────────────────────────
+    try {
+      // Find the community head (if this campaign belongs to a community)
+      // The simple Donation model doesn't store communityId, so we skip head lookup
+      // and notify only admins + the donor.
+      const adminIds = await User.find({ role: 'admin' }).distinct('_id');
+      await notifyDonationReceived(
+        null,       // headId — not available from this model; override below if needed
+        adminIds,
+        name,
+        parsedAmount,
+        updatedDonation.title,
+        updatedDonation._id
+      );
+      if (req.user?._id) {
+        await notifyDonationReceipt(req.user._id, parsedAmount, updatedDonation.title, updatedDonation._id);
+      }
+    } catch (notifyErr) {
+      console.warn('[Notify] Donation notifications failed:', notifyErr.message);
+    }
 
     res.status(200).json({
       success: true,

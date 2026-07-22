@@ -8,7 +8,7 @@ const UserSubscription    = require('../../models/UserSubscription');
 const ProfileReport       = require('../../models/ProfileReport');
 const MatrimonialSettings = require('../../models/MatrimonialSettings');
 const InterestRequest     = require('../../models/InterestRequest');
-const { createNotification } = require('../../services/notificationService');
+const { createNotification, notifyReportActioned, notifyProfileSuspended } = require('../../services/notificationService');
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 exports.getStats = async (req, res) => {
@@ -113,6 +113,11 @@ exports.verifyProfile = async (req, res) => {
       profile.status = 'active';
     } else if (status === 'rejected') {
       profile.status = 'hidden'; // Hidden but not deleted — user can update and resubmit
+      try {
+        notifyProfileSuspended(profile.userId, adminNote || 'Profile verification rejected by admin.');
+      } catch (notifErr) {
+        console.warn('[Notify] verifyProfile profile_suspended failed:', notifErr.message);
+      }
     }
     profile.verifiedBy = req.user._id;
     profile.verifiedAt = new Date();
@@ -245,10 +250,27 @@ exports.actionReport = async (req, res) => {
     report.adminNotes = adminNotes;
     await report.save();
 
+    // ── Notification: notify reporter about action ────────────────────────────────
+    try {
+      if (report.reporterId) {
+        notifyReportActioned(report.reporterId, action);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] actionReport report_actioned failed:', notifErr.message);
+    }
+
     // If actioned — optionally deactivate the reported profile
     if (action === 'actioned' && req.body.deactivateProfile) {
-      await MatrimonialProfile.findOne({ userId: report.reportedUserId }).then(p => {
-        if (p) { p.status = 'hidden'; return p.save(); }
+      await MatrimonialProfile.findOne({ userId: report.reportedUserId }).then(async p => {
+        if (p) {
+          p.status = 'hidden';
+          await p.save();
+          try {
+            notifyProfileSuspended(p.userId, adminNotes || 'Profile deactivated due to user report.');
+          } catch (notifErr) {
+            console.warn('[Notify] actionReport profile_suspended failed:', notifErr.message);
+          }
+        }
       });
     }
 

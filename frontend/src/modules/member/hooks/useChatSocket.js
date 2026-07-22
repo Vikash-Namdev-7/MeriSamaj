@@ -16,7 +16,7 @@ import { useAuth } from '../../../core/auth/useAuth';
 // ─── Singleton socket instance (shared across components in same session) ──────
 let socketInstance = null;
 
-const getSocket = (userId) => {
+export const getSocket = (userId) => {
   if (!socketInstance || !socketInstance.connected) {
     const backendUrl = import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')

@@ -1,5 +1,6 @@
 const Professional = require('../../models/Professional');
 const User = require('../../models/User');
+const { notifyListingApproved, notifyListingRejected } = require('../../services/notificationService');
 
 // 1. Get all listings with filters, pagination, and dynamic statistics
 exports.getListings = async (req, res) => {
@@ -191,6 +192,15 @@ exports.approveListing = async (req, res) => {
       });
     }
 
+    // ── Notification: notify listing owner ─────────────────────────────────────
+    try {
+      if (updated.ownerId) {
+        notifyListingApproved(updated.ownerId, updated.companyName, updated._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] admin approveListing listing_approved failed:', notifErr.message);
+    }
+
     res.status(200).json({ success: true, message: 'Listing approved successfully.', data: updated });
   } catch (error) {
     console.error('admin approveListing error:', error);
@@ -229,6 +239,15 @@ exports.rejectListing = async (req, res) => {
         success: false, 
         message: `Unable to reject. Listing state is already ${current.status}.` 
       });
+    }
+
+    // ── Notification: notify listing owner ─────────────────────────────────────
+    try {
+      if (updated.ownerId) {
+        notifyListingRejected(updated.ownerId, updated.companyName, reason, updated._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] admin rejectListing listing_rejected failed:', notifErr.message);
     }
 
     res.status(200).json({ success: true, message: 'Listing rejected successfully.', data: updated });

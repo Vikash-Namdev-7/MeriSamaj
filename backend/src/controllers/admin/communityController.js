@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Community = require('../../models/Community');
 const User = require('../../models/User');
+const { notifyHeadAssigned } = require('../../services/notificationService');
 
 // ─────────────────────────────────────────────
 // @desc    Get all communities
@@ -372,6 +373,14 @@ exports.assignHead = async (req, res) => {
     await session.commitTransaction();
 
     const updated = await Community.findById(communityId).populate('headId', 'name email phone avatar');
+
+    // ── Notification: notify assigned user ────────────────────────────────────────
+    try {
+      notifyHeadAssigned(userId, updated?.name || community.name);
+    } catch (notifErr) {
+      console.warn('[Notify] assignHead head_assigned failed:', notifErr.message);
+    }
+
     res.json({
       success: true,
       message: 'Head assigned successfully',

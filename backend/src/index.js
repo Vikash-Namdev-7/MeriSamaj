@@ -10,6 +10,7 @@ const rootRouter = require('./routes/index');
 const cookieParser = require('cookie-parser');
 const matrimonialSocket = require('./services/matrimonialSocket');
 const { chatSocketService } = require('./services/chatSocketService');
+const { setIO } = require('./services/socketRegistry');
 
 // Load optional security middlewares with try-catch fallbacks to prevent crashes
 let helmet;
@@ -96,6 +97,7 @@ const io = new Server(httpServer, {
 // Register socket handlers
 matrimonialSocket(io);       // Handles matrimonial:* events (backward compat)
 chatSocketService(io);       // Handles chat:* events (member, group, community, support)
+setIO(io);                   // Store io in registry for service-layer access
 
 // Attach io to app for access in controllers
 app.set('io', io);

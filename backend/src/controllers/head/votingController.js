@@ -1,5 +1,6 @@
 const Voting = require('../../models/Voting');
 const Vote = require('../../models/Vote');
+const { notifyElectionCreated } = require('../../services/notificationService');
 
 // Helper to resolve the community ID for write/bind operations
 const resolveCommunityId = async (req) => {
@@ -168,6 +169,20 @@ exports.createElection = async (req, res) => {
       communityId,
       createdBy
     });
+
+    // ── Notification: notify community members about new election ───────────────
+    try {
+      const User = require('../../models/User');
+      const members = await User.find({
+        communityId,
+        accountStatus: 'active',
+        verificationStatus: 'verified',
+        _id: { $ne: req.user._id }
+      }).select('_id').lean();
+      notifyElectionCreated(members.map(m => m._id), title, newVoting._id);
+    } catch (notifErr) {
+      console.warn('[Notify] createElection election_created failed:', notifErr.message);
+    }
 
     res.status(201).json({
       status: 'success',

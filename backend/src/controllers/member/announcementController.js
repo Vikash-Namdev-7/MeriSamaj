@@ -10,7 +10,7 @@ const Conversation        = require('../../models/Conversation');
 const Message             = require('../../models/Message');
 const { findOrCreateGroupConversation } = require('../../services/conversationService');
 const { createMessage, getMessages, pinMessage, unpinMessage, deleteMessageForEveryone } = require('../../services/messageService');
-const { notifyAnnouncement } = require('../../services/notificationService');
+const { notifyAnnouncement, notifyChannelCreated, notifyChannelDeleted } = require('../../services/notificationService');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +100,26 @@ exports.createChannel = async (req, res) => {
     await channel.save();
 
     await logAction(channel._id, communityId, 'CHANNEL_CREATED', req.user._id, { name: channel.name });
+
+    // ── Notification: notify community members about new channel ──────────────────
+    try {
+      User.find({
+        communityId,
+        verificationStatus: 'verified',
+        accountStatus: 'active',
+        _id: { $ne: req.user._id }
+      })
+        .select('_id')
+        .lean()
+        .then(users => {
+          if (users.length > 0) {
+            notifyChannelCreated(users.map(u => u._id), channel.name, channel._id);
+          }
+        })
+        .catch(err => console.error('[AnnouncementController] createChannel notify error:', err.message));
+    } catch (notifErr) {
+      console.warn('[Notify] createChannel channel_created failed:', notifErr.message);
+    }
 
     res.status(201).json({ status: 'success', data: { channel } });
   } catch (err) {
@@ -222,6 +242,26 @@ exports.deleteChannel = async (req, res) => {
 
     if (channel.conversationId) {
       await Conversation.findByIdAndUpdate(channel.conversationId, { isDeleted: true, deletedAt: new Date() });
+    }
+
+    // ── Notification: notify members about channel deletion ─────────────────────
+    try {
+      User.find({
+        communityId: channel.communityId,
+        verificationStatus: 'verified',
+        accountStatus: 'active',
+        _id: { $ne: req.user._id }
+      })
+        .select('_id')
+        .lean()
+        .then(users => {
+          if (users.length > 0) {
+            notifyChannelDeleted(users.map(u => u._id), channel.name);
+          }
+        })
+        .catch(err => console.error('[AnnouncementController] deleteChannel notify error:', err.message));
+    } catch (notifErr) {
+      console.warn('[Notify] deleteChannel channel_deleted failed:', notifErr.message);
     }
 
     res.json({ status: 'success', message: 'Channel deleted.' });

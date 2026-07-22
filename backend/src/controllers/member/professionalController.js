@@ -1,5 +1,6 @@
 const Professional = require('../../models/Professional');
 const User = require('../../models/User');
+const { notifyListingSubmitted } = require('../../services/notificationService');
 
 // Helper to resolve communityId
 const getCommunityId = (req) => {
@@ -168,6 +169,18 @@ exports.createProfessional = async (req, res) => {
     });
 
     await p.save();
+
+    // ── Notification: alert community head about new pending listing ──────────
+    try {
+      const Community = require('../../models/Community');
+      const comm = await Community.findById(p.communityId).select('headId').lean();
+      if (comm?.headId) {
+        notifyListingSubmitted(comm.headId, req.user.name || 'A member', p.companyName, p._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] createProfessional listing_submitted failed:', notifErr.message);
+    }
+
     res.status(201).json({ success: true, data: p });
   } catch (error) {
     console.error('createProfessional error:', error);

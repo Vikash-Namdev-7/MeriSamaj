@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { notifyInvitationAccepted, notifyReferralBonusEarned } = require('../services/notificationService');
+
+const DEFAULT_REFERRAL_BONUS_AMOUNT = 100;
 
 // Helper to generate stateless access and refresh tokens
 const generateTokens = (user) => {
@@ -128,6 +131,25 @@ const registerUser = async (req, res) => {
 
     if (user) {
       await user.populate('communityId', 'name slug isActive settings logoUrl description city');
+
+      // ── Notification: notify inviter / referral bonus ────────────────────────────
+      if (referralCode) {
+        try {
+          const mongoose = require('mongoose');
+          const searchOpts = [{ referralCode }, { phone: referralCode }];
+          if (mongoose.isValidObjectId(referralCode)) {
+            searchOpts.push({ _id: referralCode });
+          }
+          const inviter = await User.findOne({ $or: searchOpts }).select('_id name').lean();
+          if (inviter) {
+            notifyInvitationAccepted(inviter._id, user.name || 'A member');
+            notifyReferralBonusEarned(inviter._id, DEFAULT_REFERRAL_BONUS_AMOUNT);
+          }
+        } catch (notifErr) {
+          console.warn('[Notify] registerUser referral notification failed:', notifErr.message);
+        }
+      }
+
       const { accessToken, refreshToken } = generateTokens(user);
       
       // Store Refresh Token in HttpOnly cookies

@@ -3,6 +3,8 @@ const Event = require('../../models/Event');
 const EventResponse = require('../../models/EventResponse');
 const EventActivityLog = require('../../models/EventActivityLog');
 const Community = require('../../models/Community');
+const User = require('../../models/User');
+const { notifyEventCreated, notifyEventCancelled, notifyEventDeleted } = require('../../services/notificationService');
 
 // Helper to attach dynamic reaction counts to an array of event objects
 const attachEventStats = async (events) => {
@@ -333,6 +335,15 @@ exports.createEvent = async (req, res) => {
       console.warn('Event Activity Log Warning:', logErr.message);
     }
 
+    try {
+      const memberQuery = { role: 'user', accountStatus: 'active' };
+      if (validCommunityId) { memberQuery.communityId = validCommunityId; }
+      const memberIds = await User.find(memberQuery).distinct('_id');
+      await notifyEventCreated(memberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventCreated failed:', notifyErr.message);
+    }
+
     res.status(201).json({
       status: 'success',
       data: event
@@ -439,6 +450,16 @@ exports.deleteEvent = async (req, res) => {
       console.warn('Log warning:', logErr.message);
     }
 
+    try {
+      const respondedMemberIds = await EventResponse.find({
+        eventId: event._id,
+        $or: [{ response: { $in: ['Going', 'Interested'] } }, { isGoing: true }, { isInterested: true }]
+      }).distinct('memberId');
+      await notifyEventDeleted(respondedMemberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventDeleted failed:', notifyErr.message);
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Event deleted successfully.'
@@ -466,6 +487,16 @@ exports.cancelEvent = async (req, res) => {
     event.cancelledBy = userId;
     event.cancelledAt = new Date();
     await event.save();
+
+    try {
+      const respondedMemberIds = await EventResponse.find({
+        eventId: event._id,
+        $or: [{ response: { $in: ['Going', 'Interested'] } }, { isGoing: true }, { isInterested: true }]
+      }).distinct('memberId');
+      await notifyEventCancelled(respondedMemberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventCancelled failed:', notifyErr.message);
+    }
 
     try {
       await EventActivityLog.create({
