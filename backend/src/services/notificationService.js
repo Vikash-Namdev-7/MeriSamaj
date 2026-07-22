@@ -1,7 +1,7 @@
 /**
  * notificationService.js
  * Centralized service for creating UserNotification documents.
- * Used by all modules: matrimonial, events, donations, voting, etc.
+ * Used by all modules: matrimonial, events, donations, voting, chat, groups, announcements.
  */
 const UserNotification = require('../models/UserNotification');
 
@@ -105,16 +105,25 @@ const notifySubscriptionActivated = (userId, planName) =>
     actionUrl:'/member/matrimonial'
   });
 
-const notifyNewMessage = (receiverId, senderName, conversationId) =>
+/**
+ * New Message notification — supports matrimonial and community chat.
+ * @param {string} receiverId
+ * @param {string} senderName
+ * @param {string} conversationId
+ * @param {string} [module='matrimonial'] - 'matrimonial' | 'chat'
+ */
+const notifyNewMessage = (receiverId, senderName, conversationId, module = 'matrimonial') =>
   createNotification({
     userId:        receiverId,
-    module:        'matrimonial',
+    module,
     type:          'chat_new_message',
     title:         'New Message 💬',
     message:       `${senderName} sent you a message.`,
     icon:          '💬',
     priority:      'normal',
-    actionUrl:     `/member/matrimonial/chat/${conversationId}`,
+    actionUrl:     module === 'matrimonial'
+      ? `/member/matrimonial/chat/${conversationId}`
+      : `/member/chat/${conversationId}`,
     referenceId:   conversationId,
     referenceType: 'Conversation'
   });
@@ -131,23 +140,141 @@ const notifyProfileViewed = (profileOwnerId, viewerName) =>
     actionUrl:'/member/matrimonial/profile'
   });
 
-const notifyAnnouncement = (userIds, channelName, message, channelId) => {
-  if (!Array.isArray(userIds)) userIds = [userIds];
-  userIds.forEach(userId => {
+// ─── Group & Community Chat Notification Helpers ──────────────────────────────
+
+/**
+ * Notify a list of group members about a new group message (offline only).
+ * @param {string[]} memberIds   - Array of user IDs to notify (excludes sender)
+ * @param {string}   senderName
+ * @param {string}   groupId
+ * @param {string}   groupName
+ */
+const notifyGroupMessage = (memberIds, senderName, groupId, groupName) => {
+  const promises = (memberIds || []).map(memberId =>
     createNotification({
-      userId,
-      module:   'community',
-      type:     'community_announcement',
-      title:    `New Announcement in ${channelName} 📢`,
-      message:  message.substring(0, 100) + (message.length > 100 ? '...' : ''),
-      icon:     '📢',
-      priority: 'high',
-      actionUrl:`/member/announcements/${channelId}`,
-      referenceId: channelId,
-      referenceType: 'AnnouncementChannel'
-    });
-  });
+      userId:        memberId,
+      module:        'chat',
+      type:          'group_new_message',
+      title:         `New message in ${groupName}`,
+      message:       `${senderName} sent a message.`,
+      icon:          '👥',
+      priority:      'normal',
+      actionUrl:     `/member/groups/${groupId}`,
+      referenceId:   groupId,
+      referenceType: 'Group'
+    })
+  );
+  return Promise.allSettled(promises);
 };
+
+/**
+ * Notify a user they were added to a group.
+ */
+const notifyGroupInvite = (userId, inviterName, groupId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_invite',
+    title:         `You were added to ${groupName} 👥`,
+    message:       `${inviterName} added you to the group "${groupName}".`,
+    icon:          '👥',
+    priority:      'high',
+    actionUrl:     `/member/groups/${groupId}`,
+    referenceId:   groupId,
+    referenceType: 'Group'
+  });
+
+/**
+ * Notify Community Head of a pending group creation request.
+ */
+const notifyGroupJoinRequest = (headUserId, requesterName, groupId, groupName) =>
+  createNotification({
+    userId:        headUserId,
+    module:        'chat',
+    type:          'group_join_request',
+    title:         'New Group Creation Request',
+    message:       `${requesterName} wants to create the group "${groupName}". Approval required.`,
+    icon:          '📋',
+    priority:      'high',
+    actionUrl:     `/member/groups/${groupId}`,
+    referenceId:   groupId,
+    referenceType: 'Group'
+  });
+
+/**
+ * Notify user their group creation/join request was approved.
+ */
+const notifyGroupJoinApproved = (userId, groupId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_join_approved',
+    title:         'Group Request Approved ✅',
+    message:       `Your request for "${groupName}" has been approved.`,
+    icon:          '✅',
+    priority:      'high',
+    actionUrl:     `/member/groups/${groupId}`,
+    referenceId:   groupId,
+    referenceType: 'Group'
+  });
+
+/**
+ * Notify user they were removed from a group.
+ */
+const notifyGroupRemoved = (userId, groupName) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'group_removed',
+    title:         'Removed from Group',
+    message:       `You have been removed from "${groupName}".`,
+    icon:          '❌',
+    priority:      'normal',
+    actionUrl:     '/member/groups'
+  });
+
+/**
+ * Notify community members about a new announcement.
+ * @param {string[]} memberIds
+ * @param {string}   channelName
+ * @param {string}   messagePreview
+ * @param {string}   channelId
+ */
+const notifyAnnouncement = (memberIds, channelName, messagePreview, channelId) => {
+  const preview = (messagePreview || '').substring(0, 80);
+  const promises = (memberIds || []).map(memberId =>
+    createNotification({
+      userId:        memberId,
+      module:        'chat',
+      type:          'announcement',
+      title:         `📢 ${channelName}`,
+      message:       preview,
+      icon:          '📢',
+      priority:      'high',
+      actionUrl:     `/member/announcements/${channelId}`,
+      referenceId:   channelId,
+      referenceType: 'AnnouncementChannel'
+    })
+  );
+  return Promise.allSettled(promises);
+};
+
+/**
+ * Notify a user they were @mentioned in a message.
+ */
+const notifyMention = (userId, mentionerName, conversationId) =>
+  createNotification({
+    userId,
+    module:        'chat',
+    type:          'mention',
+    title:         `${mentionerName} mentioned you 🔔`,
+    message:       'You were mentioned in a conversation.',
+    icon:          '@',
+    priority:      'high',
+    actionUrl:     `/member/chat/${conversationId}`,
+    referenceId:   conversationId,
+    referenceType: 'Conversation'
+  });
 
 module.exports = {
   createNotification,
@@ -158,5 +285,12 @@ module.exports = {
   notifySubscriptionActivated,
   notifyNewMessage,
   notifyProfileViewed,
-  notifyAnnouncement
+  // ─── Group & Community Chat ─────────────────────────────────────────────────
+  notifyGroupMessage,
+  notifyGroupInvite,
+  notifyGroupJoinRequest,
+  notifyGroupJoinApproved,
+  notifyGroupRemoved,
+  notifyAnnouncement,
+  notifyMention
 };

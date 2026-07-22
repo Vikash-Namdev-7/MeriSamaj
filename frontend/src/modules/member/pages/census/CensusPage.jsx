@@ -1301,7 +1301,7 @@ export const CensusPage = () => {
                     <motion.a whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} href={`tel:${member.phone}`} className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 transition-colors hover:bg-blue-600 hover:text-white shadow-sm">
                       <Phone size={13} />
                     </motion.a>
-                    <motion.button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/${member.id}`); }} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white shadow-sm">
+                    <motion.button onClick={(e) => { e.stopPropagation(); navigate(`/member/chat/member/${member.id}`); }} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 transition-colors hover:bg-emerald-600 hover:text-white shadow-sm">
                       <MessageCircle size={13} />
                     </motion.button>
                   </div>

@@ -29,6 +29,7 @@ import AdminLogin from '../pages/login/AdminLogin';
 import CityFeedManagement from '../pages/social/CityFeedManagement';
 import CommunityFeedManagement from '../pages/social/CommunityFeedManagement';
 import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
+import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
 
 export const AdminRoutes = () => {
   return (
@@ -81,6 +82,9 @@ export const AdminRoutes = () => {
 
         {/* 🏛️ Multi-Community Management — Master Admin Core Feature */}
         <Route path="communities" element={<CommunitiesPage />} />
+        
+        {/* Global Groups */}
+        <Route path="groups" element={<AdminGroupsPage />} />
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="dashboard" replace />} />

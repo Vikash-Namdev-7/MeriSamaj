@@ -28,6 +28,10 @@ router.use('/social', headSocialRoutes);
 const headAnnouncementRoutes = require('./headAnnouncementRoutes');
 router.use('/announcements', headAnnouncementRoutes);
 
+// Group Management Routes
+const headGroupRoutes = require('./headGroupRoutes');
+router.use('/groups', headGroupRoutes);
+
 // Professional Directory Approval Routes
 const headProfessionalRoutes = require('./headProfessionalRoutes');
 router.use('/professional', headProfessionalRoutes);

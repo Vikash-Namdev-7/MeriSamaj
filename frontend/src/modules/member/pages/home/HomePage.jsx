@@ -1015,7 +1015,7 @@ const HomePage = () => {
                       <Phone size={11} /> Call
                     </a>
                     <button 
-                      onClick={() => navigate(`/member/chat/${president.id}`)}
+                      onClick={() => navigate(`/member/chat/member/${president.id}`)}
                       className="flex-1 py-1.5 rounded-xl border border-emerald-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm"
                     >
                       <MessageCircle size={11} /> Chat
@@ -1083,7 +1083,7 @@ const HomePage = () => {
                             <Phone size={10} />
                           </button>
                           <button 
-                            onClick={() => navigate(`/member/chat/${member.id}`)} 
+                            onClick={() => navigate(`/member/chat/member/${member.id}`)} 
                             className="w-7 h-7 rounded-full border border-emerald-250 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
                           >
                             <MessageCircle size={10} />

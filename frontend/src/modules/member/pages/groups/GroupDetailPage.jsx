@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Send, Paperclip, Image as ImageIcon, X, FileText, Link2, Phone, Info, Users, Bell, BellOff, Settings, Search, Check, CheckCheck, Shield, Mic, Plus, LogOut, Star, ChevronRight, Video, Trash, Camera, Edit, Smile, Square, MapPin, UserSquare, Headphones, Copy, Forward, Trash2, CornerUpLeft } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Send, Paperclip, Image as ImageIcon, X, FileText, Link2, Phone, Info, Users, Bell, BellOff, Settings, Search, Check, CheckCheck, Shield, Mic, Plus, LogOut, Star, ChevronRight, Video, Trash, Camera, Edit, Smile, Square, MapPin, UserSquare, Headphones, Copy, Forward, Trash2, CornerUpLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
+import { useGroupChat } from '../../hooks/useGroupChat';
+import { useGroups } from '../../hooks/useGroups';
+import { groupService } from '../../../../core/api/groupService';
+import { useAuth } from '../../../../core/auth/useAuth';
 
 const groupColors = {
   General: 'bg-indigo-100 text-indigo-700',
@@ -37,7 +41,48 @@ const getSenderColor = (senderName, role) => {
 const GroupDetailPage = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
-  const { groups, groupMessages, members, currentUser, sendGroupMessage, toggleGroupMute, leaveGroup, updateGroupDetails, reactToGroupMessage, clearChatMessages } = useData();
+  const { user: currentUser } = useAuth();
+
+  // ─── Real data from backend ────────────────────────────────────────────────
+  const { groups, loading: groupsLoading, refreshGroups, leaveGroupById, muteGroup } = useGroups();
+  const group = groups.find(g => (g._id || g.id) === groupId);
+
+  // Once we have the group, we know its conversationId to init chat
+  const [
+    groupConversationId,
+    setGroupConversationId
+  ] = useState(null);
+
+  useEffect(() => {
+    // Fetch the group's conversation ID if not embedded
+    if (group?.conversationId) {
+      setGroupConversationId(group.conversationId?._id || group.conversationId);
+    } else if (group && !groupConversationId) {
+      groupService.getGroupConversation(groupId).then(res => {
+        setGroupConversationId(res.data?.data?.conversation?._id);
+      }).catch(() => {});
+    }
+  }, [group, groupId]);
+
+  const {
+    messages: realMessages,
+    loading: chatLoading,
+    sending,
+    error: chatError,
+    typingUsers,
+    members: realMembers,
+    myRole,
+    sendMessage: sendGroupMsg,
+    deleteMessage: deleteGroupMsg,
+    pinMessage: pinGroupMsg,
+    startTyping,
+    stopTyping
+  } = useGroupChat(groupConversationId, group);
+
+  // Keep legacy useData for any remaining shared state (notifications etc.)
+  const { clearChatMessages } = useData();
+
+  const isGroupCreator = group?.creator?._id === currentUser?.id || group?.creator === currentUser?.id;
   
   // View State: chat | info | members | settings
   const [viewState, setViewState] = useState('chat');
@@ -46,14 +91,9 @@ const GroupDetailPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [memberSearch, setMemberSearch] = useState('');
-  const [joinedMemberIds, setJoinedMemberIds] = useState(() => {
-    const saved = localStorage.getItem(`merisamaj_v6_group_members_${groupId}`);
-    if (saved) return JSON.parse(saved);
-    if (groupId === 'g1') return ['m1', 'm2', 'm3', 'm4', 'm5'];
-    if (groupId === 'g2') return ['m3', 'm4', 'm7', 'm8'];
-    if (groupId === 'g3') return ['m2', 'm4', 'm6', 'm9'];
-    return ['m1', 'm3', 'm5'];
-  });
+  // joinedMemberIds is now driven by realMembers from useGroupChat hook
+  // Keep a local display count derived from realMembers for UI
+  const joinedMemberIds = (realMembers || []).map(m => m.userId?._id || m.userId);
 
   // Chat dropdown, search and reactions states
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -71,7 +111,7 @@ const GroupDetailPage = () => {
   const [isSearchingChat, setIsSearchingChat] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState(null);
-  const [isGroupTyping, setIsGroupTyping] = useState(false);
+  // isGroupTyping is now derived from socket typingUsers
   const [toastMessage, setToastMessage] = useState('');
   const toastTimeoutRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -115,7 +155,7 @@ const GroupDetailPage = () => {
     setIsRecording(false);
     clearInterval(recordingIntervalRef.current);
     if (recordDuration > 0) {
-      sendGroupMessage(groupId, '', { type: 'audio', name: `Voice Note (${formatDuration(recordDuration)})`, url: '#' });
+      sendGroupMsg({ text: `Voice Note (${formatDuration(recordDuration)})`, type: 'audio' });
     }
   };
   const formatDuration = (sec) => `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
@@ -136,66 +176,76 @@ const GroupDetailPage = () => {
   const [isEditingNameInline, setIsEditingNameInline] = useState(false);
   const [inlineGroupName, setInlineGroupName] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(`merisamaj_v6_group_members_${groupId}`, JSON.stringify(joinedMemberIds));
-  }, [joinedMemberIds, groupId]);
+  // Members are now tracked by the realMembers from useGroupChat hook, no localStorage needed
 
-  const handleAddMember = (memberId) => {
-    setJoinedMemberIds(prev => {
-      const next = [...prev, memberId];
-      updateGroupDetails(groupId, { members: next.length + 1 });
-      return next;
-    });
+  const handleAddMember = async (targetUserId) => {
+    try {
+      await groupService.addGroupMember(groupId, targetUserId);
+      await refreshGroups();
+    } catch (err) {
+      showToast('Failed to add member');
+    }
   };
 
-  const handleGroupAvatarChange = (e) => {
+  const handleGroupAvatarChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64Url = event.target.result;
-        updateGroupDetails(groupId, { avatarUrl: base64Url });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      await groupService.updateGroup(groupId, formData);
+      await refreshGroups();
+    } catch {
+      showToast('Failed to update avatar');
     }
   };
 
-  const handleSaveGroupNameInline = () => {
-    if (inlineGroupName.trim()) {
-      updateGroupDetails(groupId, { name: inlineGroupName.trim() });
+  const handleSaveGroupNameInline = async () => {
+    if (!inlineGroupName.trim()) return;
+    try {
+      await groupService.updateGroup(groupId, { name: inlineGroupName.trim() });
+      await refreshGroups();
       setIsEditingNameInline(false);
+    } catch {
+      showToast('Failed to save name');
     }
   };
 
-  const displayMemberCount = joinedMemberIds.length + 1; // including current user
+  const handleUpdateGroupSettings = async (patch) => {
+    try {
+      await groupService.updateGroupSettings(groupId, patch);
+      await refreshGroups();
+    } catch {
+      showToast('Failed to save settings');
+    }
+  };
+
+  const displayMemberCount = joinedMemberIds.length || group?.memberCount || realMembers?.length || 0;
   
   const messagesEndRef = useRef(null);
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const group = groups.find(g => g.id === groupId);
-  const isGroupCreator = group?.creatorId === currentUser.id;
-  const messagesFromProvider = groupMessages[groupId] || [];
   const [localMessages, setLocalMessages] = useState([]);
   const [starredMessageIds, setStarredMessageIds] = useState([]);
 
   useEffect(() => {
-    setLocalMessages(messagesFromProvider);
-  }, [messagesFromProvider, groupId]);
+    setLocalMessages(realMessages);
+  }, [realMessages, groupId]);
 
   const messages = localMessages;
 
   // Group settings state (local copy for toggle interaction)
   const [privacySettings, setPrivacySettings] = useState({
-    type: group?.privacy?.type || 'Public',
-    canAdd: group?.privacy?.canAddMembers || 'all', // all | admin
-    canSee: group?.privacy?.canSeeMembers || 'all'  // all | admin
+    type: group?.type || group?.privacy?.type || 'Public',
+    canAdd: group?.chatPermissions?.canAddMembers || group?.privacy?.canAddMembers || 'all',
+    canSee: group?.privacy?.canSeeMembers || 'all'
   });
 
   const [chatPermissions, setChatPermissions] = useState({
-    canSend: group?.chatSettings?.canSendMessages || 'All Members',
-    canMedia: group?.chatSettings?.canShareMedia || 'All Members',
-    canLinks: group?.chatSettings?.canShareLinks || 'All Members'
+    canSend: group?.chatPermissions?.canSendMessages || 'All Members',
+    canMedia: group?.chatPermissions?.canShareMedia || 'All Members',
+    canLinks: group?.chatPermissions?.canShareLinks || 'All Members'
   });
 
   const scrollToBottom = () => {
@@ -209,30 +259,34 @@ const GroupDetailPage = () => {
   }, [messages, viewState]);
 
   useEffect(() => {
-    if (group && !group.isJoined) {
-      const wasVoluntary = sessionStorage.getItem(`voluntary_exit_${group.id}`);
-      if (wasVoluntary) {
-        sessionStorage.removeItem(`voluntary_exit_${group.id}`);
-      } else {
-        navigate('/member/groups', { state: { showJoinAlert: true } });
-      }
+    if (group && !group.isJoined && !myRole) {
+      navigate('/member/groups', { state: { showJoinAlert: true } });
     }
-  }, [group, navigate]);
+  }, [group, navigate, myRole]);
 
   useEffect(() => {
     if (group) {
       setPrivacySettings({
-        type: group.privacy?.type || 'Public',
-        canAdd: group.privacy?.canAddMembers || 'all',
+        type: group.type || group.privacy?.type || 'Public',
+        canAdd: group.chatPermissions?.canAddMembers || group.privacy?.canAddMembers || 'all',
         canSee: group.privacy?.canSeeMembers || 'all'
       });
       setChatPermissions({
-        canSend: group.chatSettings?.canSendMessages || 'All Members',
-        canMedia: group.chatSettings?.canShareMedia || 'All Members',
-        canLinks: group.chatSettings?.canShareLinks || 'All Members'
+        canSend: group.chatPermissions?.canSendMessages || 'All Members',
+        canMedia: group.chatPermissions?.canShareMedia || 'All Members',
+        canLinks: group.chatPermissions?.canShareLinks || 'All Members'
       });
     }
-  }, [group?.id]);
+  }, [group?._id || group?.id]);
+
+  // Loading state for groups
+  if (groupsLoading && !group) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#F5F6FA] flex items-center justify-center">
+        <Loader2 size={32} className="text-brand-primary animate-spin" />
+      </div>
+    );
+  }
 
   if (!group) return null;
 
@@ -262,27 +316,68 @@ const GroupDetailPage = () => {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!newMessage.trim() && !pendingAttachment) return;
-    sendGroupMessage(groupId, newMessage, pendingAttachment, replyTarget?.id);
+    try {
+      await sendGroupMsg({
+        text: newMessage,
+        imageFile: pendingAttachment?.type === 'image' ? pendingAttachment._file : null,
+        replyTo: replyTarget?._id
+      });
+    } catch {
+      // optimistic update already handles error state in hook
+    }
     setNewMessage('');
     setPendingAttachment(null);
     setReplyTarget(null);
-    setIsGroupTyping(true);
-    setTimeout(() => setIsGroupTyping(false), 1500);
+    stopTyping();
   };
+
+  // ─── Message normalizer ─────────────────────────────────────────────────────
+  // Adapts backend shape → UI shape so the existing rendering logic works unchanged
+  const normalizeMessage = (msg) => {
+    if (!msg) return msg;
+    const senderId = msg.senderId?._id || msg.senderId;
+    const myId = currentUser?.id || currentUser?._id;
+    const isMe = senderId?.toString() === myId?.toString();
+    const senderName = msg.senderId?.name || msg.senderName || 'Unknown';
+    const senderRole = (realMembers || []).find(m => (m.userId?._id || m.userId)?.toString() === senderId?.toString())?.role;
+
+    // Parse time
+    const d = new Date(msg.createdAt || msg.timestamp || Date.now());
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    return {
+      ...msg,
+      id: msg._id || msg.id,
+      isMe,
+      isSelf: isMe,
+      senderName,
+      role: senderRole === 'admin' ? 'Admin' : senderRole === 'head' ? 'Admin' : '',
+      text: msg.message || msg.text || '',
+      time,
+      attachment: msg.mediaUrl
+        ? { type: msg.type === 'image' ? 'image' : 'file', url: msg.mediaUrl, name: msg.mediaUrl.split('/').pop() }
+        : msg.attachment || null,
+      reactions: msg.reactions || [],
+      replyTo: msg.replyTo?._id || msg.replyTo || null,
+      isDeleted: msg.isDeleted || msg.type === 'deleted',
+    };
+  };
+
+  const normalizedMessages = (localMessages || []).map(normalizeMessage);
 
   const isSelectionMode = selectedMessages.length > 0;
   const groupedMessages = [];
   let lastDateStr = null;
 
-  messages
+  normalizedMessages
     .filter(msg => {
       if (!chatSearchQuery.trim()) return true;
-      return msg.text && msg.text.toLowerCase().includes(chatSearchQuery.toLowerCase());
+      return (msg.message || msg.text || '') && (msg.message || msg.text || '').toLowerCase().includes(chatSearchQuery.toLowerCase());
     })
     .forEach((msg) => {
-      const d = new Date(msg.timestamp || Date.now());
+      const d = new Date(msg.createdAt || msg.timestamp || Date.now());
       const dateStr = d.toLocaleDateString();
       
       if (dateStr !== lastDateStr) {
@@ -406,7 +501,7 @@ const GroupDetailPage = () => {
                 <div className="flex-1 min-w-0">
                   <h2 className="text-[17px] font-bold truncate leading-tight">{group.name}</h2>
                   <p className="text-white/80 text-[13px] truncate font-medium">
-                    {isGroupTyping ? (
+                    {typingUsers.length > 0 ? (
                       <span className="text-green-300 font-bold animate-pulse">Vikas Jain is typing...</span>
                     ) : (
                       `${displayMemberCount} members`
@@ -656,7 +751,13 @@ const GroupDetailPage = () => {
                               key={emoji}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                reactToGroupMessage(group.id, msg.id, emoji);
+                                // Reactions will be handled via Socket.io in production;
+                                // For now do optimistic local update
+                                setLocalMessages(prev => prev.map(m =>
+                                  (m._id || m.id) === (msg._id || msg.id)
+                                    ? { ...m, reactions: [...(m.reactions || []), { emoji, userId: currentUser?.id }] }
+                                    : m
+                                ));
                                 setActiveReactionMsgId(null);
                               }}
                               className="text-[18px] hover:scale-125 transition-transform press-scale outline-none"
@@ -1021,12 +1122,12 @@ const GroupDetailPage = () => {
             <div className="bg-white shadow-sm mb-2 text-left">
               {/* Mute Notifications */}
               <div 
-                onClick={() => toggleGroupMute(group.id)}
+                onClick={async () => { await muteGroup(groupId); }}
                 className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50"
               >
                 <p className="text-[15px] font-bold text-gray-900">Mute Notifications</p>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); toggleGroupMute(group.id); }}
+                  onClick={async (e) => { e.stopPropagation(); await muteGroup(groupId); }}
                   className={`w-11 h-6 rounded-full transition-colors duration-200 relative focus:outline-none shrink-0 ${
                     group.isMuted ? 'bg-[#4CD964]' : 'bg-[#E5E5EA]'
                   }`}
@@ -1121,13 +1222,7 @@ const GroupDetailPage = () => {
               </div>
               <button 
                 onClick={() => {
-                  const unjoined = members.find(m => !joinedMemberIds.includes(m.id));
-                  if (unjoined) {
-                    handleAddMember(unjoined.id);
-                    showToast(`${unjoined.name} has been added to the group!`);
-                  } else {
-                    showToast('All members are already in the group!');
-                  }
+                  showToast('Add member: Coming soon — invite via link or search');
                 }}
                 className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center press-scale shrink-0 hover:bg-brand-primary/20 transition-all"
               >
@@ -1138,46 +1233,48 @@ const GroupDetailPage = () => {
 
           {/* Members list */}
           <div className="flex-1 overflow-y-auto bg-white divide-y divide-gray-50 pb-10">
-            {members
-              .filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
-              .map((m, idx) => {
-                const isJoined = joinedMemberIds.includes(m.id);
-                const isAdmin = m.name.includes('Rajesh Sharma') || m.name.includes('Amit') || m.name.includes('Ramesh') || idx === 1;
-                
-                return (
-                  <div 
-                    key={m.id} 
-                    onClick={() => navigate(`/member/directory/${m.id}`)}
-                    className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors animate-fade-in cursor-pointer press-scale-slight"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <Avatar initials={m.initials} size="md" color={isJoined ? "bg-indigo-50 text-indigo-700" : "bg-gray-100 text-gray-700"} />
-                      <div>
-                        <h4 className="text-[13.5px] font-extrabold text-gray-900 leading-tight">{m.name}</h4>
-                        <p className="text-[10px] text-gray-400 font-semibold mt-1">{m.city} · {m.profession || 'Member'}</p>
+            {(realMembers || []).length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <Users size={40} className="mb-3 opacity-30" />
+                <p className="text-[13px] font-semibold">No members yet</p>
+              </div>
+            ) : (
+              (realMembers || [])
+                .filter(m => {
+                  const name = m.userId?.name || m.name || '';
+                  return name.toLowerCase().includes(memberSearch.toLowerCase());
+                })
+                .map((m) => {
+                  const memberId = m.userId?._id || m.userId;
+                  const memberName = m.userId?.name || m.name || 'Unknown';
+                  const memberAvatar = m.userId?.avatar || m.avatar || null;
+                  const memberRole = m.role || 'member';
+                  const initials = memberName.slice(0, 2).toUpperCase();
+                  const isMe = memberId?.toString() === (currentUser?.id || currentUser?._id)?.toString();
+
+                  return (
+                    <div
+                      key={memberId}
+                      onClick={() => navigate(`/member/directory/${memberId}`)}
+                      className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors animate-fade-in cursor-pointer press-scale-slight"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <Avatar initials={initials} src={memberAvatar} size="md" color="bg-indigo-50 text-indigo-700" />
+                        <div>
+                          <h4 className="text-[13.5px] font-extrabold text-gray-900 leading-tight">{memberName} {isMe && <span className="text-gray-400 text-[11px] font-normal">(You)</span>}</h4>
+                          <p className="text-[10px] text-gray-400 font-semibold mt-1">{memberRole === 'admin' || memberRole === 'head' ? 'Admin' : 'Member'}</p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    {isJoined ? (
+
                       <span className={`text-[11.5px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                        isAdmin ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-50'
+                        memberRole === 'admin' || memberRole === 'head' ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-50'
                       }`}>
-                        {isAdmin ? 'Admin' : 'Member'}
+                        {memberRole === 'admin' || memberRole === 'head' ? 'Admin' : 'Member'}
                       </span>
-                    ) : (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddMember(m.id);
-                        }}
-                        className="text-[11.5px] font-extrabold text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white border border-brand-primary/10 px-3.5 py-1.5 rounded-full transition-all press-scale"
-                      >
-                        + Member
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })
+            )}
           </div>
         </div>
       )}
@@ -1219,12 +1316,7 @@ const GroupDetailPage = () => {
                             key={opt}
                             onClick={() => {
                               setPrivacySettings(prev => ({ ...prev, type: opt }));
-                              updateGroupDetails(group.id, {
-                                privacy: {
-                                  ...(group.privacy || {}),
-                                  type: opt
-                                }
-                              });
+                              handleUpdateGroupSettings({ privacy: { type: opt } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1262,12 +1354,7 @@ const GroupDetailPage = () => {
                             key={opt.value}
                             onClick={() => {
                               setPrivacySettings(prev => ({ ...prev, canAdd: opt.value }));
-                              updateGroupDetails(group.id, {
-                                privacy: {
-                                  ...(group.privacy || {}),
-                                  canAddMembers: opt.value
-                                }
-                              });
+                              handleUpdateGroupSettings({ privacy: { canAddMembers: opt.value } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1305,12 +1392,7 @@ const GroupDetailPage = () => {
                             key={opt.value}
                             onClick={() => {
                               setPrivacySettings(prev => ({ ...prev, canSee: opt.value }));
-                              updateGroupDetails(group.id, {
-                                privacy: {
-                                  ...(group.privacy || {}),
-                                  canSeeMembers: opt.value
-                                }
-                              });
+                              handleUpdateGroupSettings({ privacy: { canSeeMembers: opt.value } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1349,12 +1431,7 @@ const GroupDetailPage = () => {
                             key={opt}
                             onClick={() => {
                               setChatPermissions(prev => ({ ...prev, canSend: opt }));
-                              updateGroupDetails(group.id, {
-                                chatSettings: {
-                                  ...(group.chatSettings || {}),
-                                  canSendMessages: opt
-                                }
-                              });
+                              handleUpdateGroupSettings({ chatPermissions: { canSendMessages: opt } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1387,12 +1464,7 @@ const GroupDetailPage = () => {
                             key={opt}
                             onClick={() => {
                               setChatPermissions(prev => ({ ...prev, canMedia: opt }));
-                              updateGroupDetails(group.id, {
-                                chatSettings: {
-                                  ...(group.chatSettings || {}),
-                                  canShareMedia: opt
-                                }
-                              });
+                              handleUpdateGroupSettings({ chatPermissions: { canShareMedia: opt } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1425,12 +1497,7 @@ const GroupDetailPage = () => {
                             key={opt}
                             onClick={() => {
                               setChatPermissions(prev => ({ ...prev, canLinks: opt }));
-                              updateGroupDetails(group.id, {
-                                chatSettings: {
-                                  ...(group.chatSettings || {}),
-                                  canShareLinks: opt
-                                }
-                              });
+                              handleUpdateGroupSettings({ chatPermissions: { canShareLinks: opt } });
                               setActiveDropdownField(null);
                             }}
                             className="w-full text-left px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-slate-50 flex items-center justify-between"
@@ -1540,14 +1607,19 @@ const GroupDetailPage = () => {
 
             {/* Save */}
             <button 
-              onClick={() => {
+              onClick={async () => {
                 if (!editGroupName.trim()) return;
-                updateGroupDetails(group.id, {
-                  name: editGroupName,
-                  description: editGroupDesc,
-                  avatarUrl: editGroupAvatar
-                });
-                setIsEditingInfo(false);
+                try {
+                  await groupService.updateGroup(groupId, {
+                    name: editGroupName,
+                    description: editGroupDesc
+                  });
+                  await refreshGroups();
+                  setIsEditingInfo(false);
+                  showToast('Group updated!');
+                } catch {
+                  showToast('Failed to save changes');
+                }
               }}
               className="mt-6 w-full py-3.5 bg-brand-primary text-white rounded-2xl text-[13.5px] font-bold shadow-md shadow-brand-primary/20 press-scale"
             >
@@ -1708,7 +1780,7 @@ const GroupDetailPage = () => {
             </div>
             <div className="p-4 flex gap-3 bg-gray-50/50 rounded-b-2xl">
               <button onClick={() => setShowMuteDialog(false)} className="flex-1 py-2.5 rounded-xl text-gray-600 font-bold hover:bg-gray-100 transition-colors">Cancel</button>
-              <button onClick={() => { toggleGroupMute(group.id); setShowMuteDialog(false); }} className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white font-bold hover:bg-brand-primary-dark transition-colors shadow-sm">OK</button>
+              <button onClick={async () => { await muteGroup(group.id); setShowMuteDialog(false); }} className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white font-bold hover:bg-brand-primary-dark transition-colors shadow-sm">OK</button>
             </div>
           </div>
         </div>

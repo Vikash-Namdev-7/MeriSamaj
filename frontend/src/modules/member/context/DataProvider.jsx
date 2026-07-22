@@ -9,7 +9,8 @@ import { mockPosts as initialPosts } from '../data/mockPosts';
 import { mockEvents as initialEvents } from '../data/mockEvents';
 import { mockMatrimonialProfiles as initialMatrimonial } from '../data/mockMatrimonial'; // DEPRECATED: matrimonial module now uses MatrimonialContext, not DataProvider
 import { mockObituaries as initialObituaries } from '../data/mockObituaries';
-import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
+// mockChats/mockMessages DEPRECATED — Community Chat now uses useMemberChat hook + real API
+// import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
 import invitationService from '../../../core/api/invitationService';
 import obituaryService from '../../../core/api/obituaryService';
@@ -681,10 +682,11 @@ export const DataProvider = ({ children }) => {
     setEventsLoading(true);
     setEventsError(null);
     try {
-      if (headAuth?.isAuthenticated) {
+      const isHeadPanel = typeof window !== 'undefined' && window.location.pathname.startsWith('/head');
+      if (isHeadPanel && headAuth?.isAuthenticated) {
         const res = await headEventService.getEvents();
         setEvents(res.data || []);
-      } else if (auth.isAuthenticated) {
+      } else if (!isHeadPanel && auth.isAuthenticated) {
         const res = await eventService.getEvents();
         setEvents(res.data || []);
       }
@@ -788,34 +790,19 @@ export const DataProvider = ({ children }) => {
   // Do NOT initialise from mockMatrimonial — that data is served by the backend.
   const [matrimonialProfiles, setMatrimonialProfiles] = useState([]);
   const [language, setLanguage] = useState(() => loadState('language', 'en'));
-  const [groups, setGroups] = useState(() => {
-    const saved = loadState('groups', initialGroups);
-    return initialGroups.map(initG => {
-      const savedG = saved.find(g => g.id === initG.id);
-      if (savedG) {
-        return {
-          ...initG,
-          isJoined: savedG.isJoined !== undefined ? savedG.isJoined : initG.isJoined,
-          isMuted: savedG.isMuted !== undefined ? savedG.isMuted : initG.isMuted,
-          unread: savedG.unread !== undefined ? savedG.unread : initG.unread,
-        };
-      }
-      return initG;
-    });
-  });
-  const [groupMessages, setGroupMessages] = useState(() => {
-    const saved = loadState('groupMessages', initialGroupMessages);
-    const merged = { ...initialGroupMessages };
-    Object.keys(saved).forEach(key => {
-      if (saved[key] && saved[key].length > 0) {
-        merged[key] = saved[key];
-      }
-    });
-    return merged;
-  });
   const [notifications, setNotifications] = useState(() => loadState('notifications', initialNotifications));
   const [sentNotifications, setSentNotifications] = useState(() => loadState('sentNotifications', defaultSentNotifications));
   const [notificationTemplates, setNotificationTemplates] = useState(() => loadState('notificationTemplates', defaultTemplates));
+
+  // ─── DEPRECATED — Groups now served by useGroups hook + real API ────────────────────────────────
+  // Stubs kept for backward-compat with any legacy references. Use useGroups() for new code.
+  const [groups, setGroups] = useState([]);
+  const [groupMessages, setGroupMessages] = useState({});
+
+
+  // ─── DEPRECATED — 1-to-1 Chats now served by useMemberChat + real API (⽔member⽔chat) ───────────────────────────────────────────────────────
+  // These stubs are kept to avoid breaking any legacy component references.
+  // Do NOT add new features here. Use useMemberChat() instead.
 
   // Event Reminders State: { [eventId]: true/false }
   const [eventReminders, setEventReminders] = useState(() => loadState('eventReminders', {}));
@@ -829,12 +816,9 @@ export const DataProvider = ({ children }) => {
   // Mobile Menu Navigation Drawer State
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Direct Message Chats & Messages States
-  const [chats, setChats] = useState(() => {
-    const loaded = loadState('chats', initialChats);
-    return deduplicateById(loaded);
-  });
-  const [chatMessages, setChatMessages] = useState(() => loadState('chatMessages', initialMessages));
+  // ─── DEPRECATED — Chats now served by useMemberChat + real API ─────────────────────────────────────────────────────────────────────────────────────────────
+  const [chats, setChats] = useState([]);
+  const [chatMessages, setChatMessages] = useState({});
 
   // Follow System & Privacy States
   const [profilePrivacy, setProfilePrivacy] = useState(() => loadState('profilePrivacy', defaultProfilePrivacy));
@@ -906,17 +890,21 @@ export const DataProvider = ({ children }) => {
   // NOTE: matrimonialProfiles localStorage sync removed — managed by MatrimonialContext
   useEffect(() => saveState('language', language), [language]);
   useEffect(() => saveState('professionals', professionals), [professionals]);
-  useEffect(() => saveState('groups', groups), [groups]);
-  useEffect(() => saveState('groupMessages', groupMessages), [groupMessages]);
+  // Groups localStorage sync DEPRECATED — useGroups hook manages its own state
+  // useEffect(() => saveState('groups', groups), [groups]);
+  // useEffect(() => saveState('groupMessages', groupMessages), [groupMessages]);
+  // Chats localStorage sync DEPRECATED — useMemberChat hook manages its own state
+  // useEffect(() => saveState('chats', chats), [chats]);
+  // useEffect(() => saveState('chatMessages', chatMessages), [chatMessages]);
+
+  // Active localStorage effects
   useEffect(() => saveState('notifications', notifications), [notifications]);
   useEffect(() => saveState('sentNotifications', sentNotifications), [sentNotifications]);
   useEffect(() => saveState('notificationTemplates', notificationTemplates), [notificationTemplates]);
   useEffect(() => saveState('eventReminders', eventReminders), [eventReminders]);
   useEffect(() => saveState('eventRegistrations', eventRegistrations), [eventRegistrations]);
   useEffect(() => saveState('surveyResponses', surveyResponses), [surveyResponses]);
-  useEffect(() => saveState('chats', chats), [chats]);
-  useEffect(() => saveState('chatMessages', chatMessages), [chatMessages]);
-  
+
   // Follow System Syncs
   useEffect(() => saveState('profilePrivacy', profilePrivacy), [profilePrivacy]);
   useEffect(() => saveState('followRelations', followRelations), [followRelations]);

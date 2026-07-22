@@ -27,6 +27,7 @@ import HeadAnnouncementChatPage from '../pages/announcements/HeadAnnouncementCha
 
 import SocialCityFeed from '../pages/social/SocialCityFeed';
 import SocialCommunityFeed from '../pages/social/SocialCommunityFeed';
+import { HeadGroupsPage } from '../pages/groups/HeadGroupsPage';
 
 export const HeadRoutes = () => {
   return (
@@ -48,6 +49,8 @@ export const HeadRoutes = () => {
             <Route path="city-feed" element={<SocialCityFeed />} />
             <Route path="community-feed" element={<SocialCommunityFeed />} />
           </Route>
+          
+          <Route path="groups" element={<HeadGroupsPage />} />
 
           {/* Member Management Desk */}
           <Route path="members" element={<MemberManagement />} />

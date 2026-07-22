@@ -23,10 +23,16 @@ axiosPrivate.interceptors.request.use(
     
     if (!hasAuth) {
       const isHeadPanel = typeof window !== 'undefined' && window.location.pathname.startsWith('/head');
+      const isAdminPanel = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+      
       const headToken = localStorage.getItem('head_auth_token');
+      const adminToken = localStorage.getItem('admin_auth_token');
       const memberToken = localStorage.getItem('merisamaj_token');
 
-      const token = isHeadPanel ? headToken : memberToken;
+      let token = memberToken;
+      if (isAdminPanel) token = adminToken;
+      else if (isHeadPanel) token = headToken;
+
       if (token) {
         if (config.headers.set) {
           config.headers.set('Authorization', `Bearer ${token}`);

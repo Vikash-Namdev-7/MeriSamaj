@@ -47,5 +47,9 @@ router.use('/matrimonial', adminMatrimonialRoutes);
 const adminSocialRoutes = require('./adminSocialRoutes');
 router.use('/social', adminSocialRoutes);
 
+// Group Management Routes
+const adminGroupRoutes = require('./adminGroupRoutes');
+router.use('/groups', adminGroupRoutes);
+
 module.exports = router;
 

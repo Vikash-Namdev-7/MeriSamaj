@@ -40,7 +40,8 @@ export const HeadLayout = () => {
           icon: Share2,
           children: [
             { name: 'City Feed', path: '/head/social/city-feed' },
-            { name: 'Community Feed', path: '/head/social/community-feed' }
+            { name: 'Community Feed', path: '/head/social/community-feed' },
+            { name: 'Community Groups', path: '/head/groups' }
           ]
         },
         {

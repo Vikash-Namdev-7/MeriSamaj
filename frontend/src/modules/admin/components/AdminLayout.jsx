@@ -130,7 +130,8 @@ export const AdminLayout = () => {
           icon: Globe,
           children: [
             { name: 'City Feed', path: '/admin/social/city-feed' },
-            { name: 'Community Feed', path: '/admin/social/community-feed' }
+            { name: 'Community Feed', path: '/admin/social/community-feed' },
+            { name: 'Community Groups', path: '/admin/groups' }
           ]
         }
       ]
