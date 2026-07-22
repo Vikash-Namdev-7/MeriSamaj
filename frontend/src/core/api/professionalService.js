@@ -92,6 +92,11 @@ export const professionalService = {
     return res.data;
   },
 
+  adminDeleteListing: async (id) => {
+    const res = await axiosPrivate.delete(`${ADMIN_BASE}/${id}`);
+    return res.data;
+  },
+
   // Admin Category Endpoints
   adminGetCategories: async () => {
     const res = await axiosPrivate.get(`${ADMIN_BASE}/categories`);
@@ -161,6 +166,11 @@ export const professionalService = {
 
   headRestoreListing: async (id) => {
     const res = await axiosPrivate.post(`${HEAD_BASE}/${id}/restore`);
+    return res.data;
+  },
+
+  headDeleteListing: async (id) => {
+    const res = await axiosPrivate.delete(`${HEAD_BASE}/${id}`);
     return res.data;
   },
 

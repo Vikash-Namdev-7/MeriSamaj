@@ -100,6 +100,14 @@ const registerUser = async (req, res) => {
       isEmailVerified: true
     };
 
+    // Root Fix: Look up default community and assign it to new users
+    const Community = require('../models/Community');
+    const defaultComm = await Community.findOne({});
+    if (defaultComm) {
+      userData.communityId = defaultComm._id;
+      userData.community = defaultComm.name;
+    }
+
     if (email && email.trim() !== '') {
       email = email.trim().toLowerCase();
       // Basic email regex validation
@@ -158,22 +166,20 @@ const loginUser = async (req, res) => {
 
     identifier = identifier.trim();
     
-    // Auto-detect email or phone
-    let searchQuery = {};
-    if (identifier.includes('@')) {
-      searchQuery = { email: identifier.toLowerCase() };
-    } else {
-      // Assume phone, remove spaces and non-digits
-      const normalizedPhone = identifier.replace(/\D/g, '');
-      searchQuery = { 
-        $or: [
-          { phone: normalizedPhone || identifier }, 
-          { phone: identifier }, 
-          { email: identifier.toLowerCase() }, 
-          { loginId: identifier }
-        ] 
-      };
+    // Auto-detect email, loginId, or phone
+    const normalizedPhone = identifier.replace(/\D/g, '');
+    const searchConditions = [
+      { email: identifier.toLowerCase() },
+      { loginId: identifier },
+      { loginId: identifier.toLowerCase() },
+      { phone: identifier }
+    ];
+    
+    if (normalizedPhone && normalizedPhone.length >= 7) {
+      searchConditions.push({ phone: normalizedPhone });
     }
+
+    const searchQuery = { $or: searchConditions };
 
     // Find by resolved query
     const user = await User.findOne(searchQuery)
@@ -415,6 +421,12 @@ const updateProfile = async (req, res) => {
       user.facebook = req.body.facebook !== undefined ? req.body.facebook : user.facebook;
       user.twitter = req.body.twitter !== undefined ? req.body.twitter : user.twitter;
       user.linkedin = req.body.linkedin !== undefined ? req.body.linkedin : user.linkedin;
+
+      // Privacy Settings
+      user.isPrivate = req.body.isPrivate !== undefined ? req.body.isPrivate : user.isPrivate;
+      user.phonePrivacy = req.body.phonePrivacy !== undefined ? req.body.phonePrivacy : user.phonePrivacy;
+      user.emailPrivacy = req.body.emailPrivacy !== undefined ? req.body.emailPrivacy : user.emailPrivacy;
+      user.familyPrivacy = req.body.familyPrivacy !== undefined ? req.body.familyPrivacy : user.familyPrivacy;
 
       // Avatar & Cover upload handling
       if (req.file) {

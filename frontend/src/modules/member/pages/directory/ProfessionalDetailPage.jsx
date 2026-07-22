@@ -88,8 +88,13 @@ const ProfessionalDetailPage = () => {
               )}
             </div>
             <p className="text-[13px] font-bold text-indigo-600 mt-1">
-              {activeProfessional.category} · {activeProfessional.city}
+              {activeProfessional.category}{activeProfessional.profession ? ` · ${activeProfessional.profession}` : ''}
             </p>
+            {activeProfessional.experience !== undefined && activeProfessional.experience !== null && (
+              <span className="inline-block text-[11px] font-black text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-md mt-2 border border-slate-200">
+                {activeProfessional.experience} {Number(activeProfessional.experience) === 1 ? 'Year' : 'Years'} Experience
+              </span>
+            )}
           </div>
         </div>
 
@@ -147,7 +152,7 @@ const ProfessionalDetailPage = () => {
           </div>
         )}
 
-        {/* Working Hours & Address */}
+        {/* Working Hours, Experience & Location Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm space-y-1">
             <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Working Hours</h4>
@@ -155,7 +160,7 @@ const ProfessionalDetailPage = () => {
             <p className="text-[11px] text-emerald-500 font-black">Open Now</p>
           </div>
           <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm space-y-1">
-            <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Location</h4>
+            <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Location / Work Address</h4>
             <p className="text-[13px] font-black text-gray-800 leading-snug mt-1 flex items-center gap-1">
               <MapPin size={12} className="shrink-0 text-indigo-600" />
               <span className="truncate">{activeProfessional.address || activeProfessional.city || 'Indore'}</span>
@@ -176,20 +181,14 @@ const ProfessionalDetailPage = () => {
         </div>
       </div>
 
-      {/* Fixed Action Buttons at Bottom */}
+      {/* Fixed Action Button at Bottom (Message Only) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 max-w-2xl mx-auto">
-        <a
-          href={`tel:${activeProfessional.phone}`}
-          className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-[14px] font-black text-center shadow-lg shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-2"
-        >
-          <Phone size={18} />
-          Call Now
-        </a>
         <button
           onClick={() => {
-            navigate(`/member/chat/${activeProfessional.id}`);
+            const targetId = activeProfessional.ownerId || activeProfessional.id;
+            navigate(`/member/chat/${targetId}`);
           }}
-          className="flex-1 py-4 bg-white text-indigo-700 border-2 border-indigo-100 rounded-2xl text-[14px] font-black hover:bg-indigo-50 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
+          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[15px] font-black shadow-lg shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <MessageCircle size={18} />
           Message

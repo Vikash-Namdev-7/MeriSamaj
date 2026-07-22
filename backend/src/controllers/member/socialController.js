@@ -566,13 +566,14 @@ exports.searchSocial = async (req, res) => {
 // @access  Private
 exports.getProfileStats = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const targetUserId = req.query.userId || req.user._id;
+    const isOwner = targetUserId.toString() === req.user._id.toString();
 
     const [postsCount, followersCount, followingCount, savedCount] = await Promise.all([
-      Post.countDocuments({ authorId: userId, isDeleted: false }),
-      Follower.countDocuments({ followingId: userId, status: 'accepted' }),
-      Follower.countDocuments({ followerId: userId, status: 'accepted' }),
-      SavedPost.countDocuments({ userId: userId })
+      Post.countDocuments({ authorId: targetUserId, isDeleted: false }),
+      Follower.countDocuments({ followingId: targetUserId, status: 'accepted' }),
+      Follower.countDocuments({ followerId: targetUserId, status: 'accepted' }),
+      SavedPost.countDocuments({ userId: targetUserId })
     ]);
 
     res.json({
@@ -581,7 +582,7 @@ exports.getProfileStats = async (req, res) => {
         postsCount,
         followersCount,
         followingCount,
-        savedCount
+        savedCount: isOwner ? savedCount : 0
       }
     });
   } catch (error) {
@@ -655,3 +656,63 @@ exports.getMyLikedPosts = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error loading liked posts' });
   }
 };
+
+// @desc    Get posts by a specific user (for their profile feed)
+// @route   GET /api/v1/member/social/posts/user/:userId
+// @access  Private
+exports.getUserPosts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 10, cursor } = req.query;
+
+    const filter = {
+      authorId: userId,
+      status: 'published',
+      isDeleted: false
+    };
+
+    if (cursor) {
+      filter.createdAt = { $lt: new Date(cursor) };
+    }
+
+    const posts = await Post.find(filter)
+      .populate('userId', 'name avatar role city community communityId')
+      .populate('authorId', 'name avatar role city community communityId')
+      .populate('communityId', 'name slug city')
+      .populate('cityId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(Number(limit) + 1);
+
+    const hasMore = posts.length > Number(limit);
+    if (hasMore) {
+      posts.pop();
+    }
+
+    const postIds = posts.map(p => p._id);
+    const [likes, saves] = await Promise.all([
+      PostLike.find({ postId: { $in: postIds }, userId: req.user._id }),
+      SavedPost.find({ postId: { $in: postIds }, userId: req.user._id })
+    ]);
+
+    const likedPostIds = new Set(likes.map(l => l.postId.toString()));
+    const savedPostIds = new Set(saves.map(s => s.postId.toString()));
+
+    const formattedPosts = posts.map(p => ({
+      ...p.toObject(),
+      id: p._id,
+      isLiked: likedPostIds.has(p._id.toString()),
+      isSaved: savedPostIds.has(p._id.toString())
+    }));
+
+    res.json({
+      success: true,
+      data: formattedPosts,
+      hasMore,
+      nextCursor: hasMore && posts.length > 0 ? posts[posts.length - 1].createdAt : null
+    });
+  } catch (error) {
+    console.error('getUserPosts error:', error);
+    res.status(500).json({ success: false, message: 'Server error loading user posts' });
+  }
+};
+

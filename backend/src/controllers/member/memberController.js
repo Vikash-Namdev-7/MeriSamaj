@@ -1,4 +1,6 @@
 const User = require('../../models/User');
+const Follower = require('../../models/Follower');
+const UserBlock = require('../../models/UserBlock');
 
 // ─────────────────────────────────────────────
 // @desc    Get members of the logged-in user's community
@@ -13,9 +15,18 @@ exports.getCommunityMembers = async (req, res) => {
      * req.communityId is always a plain ObjectId, set by authMiddleware.
      */
     if (!req.communityId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Community context not available. Please contact your admin.'
+      const pageNum = Number(req.query.page || 1);
+      const limitNum = Number(req.query.limit || 10);
+      return res.status(200).json({
+        success: true,
+        status: 'success',
+        data: [],
+        pagination: {
+          total: 0,
+          page: pageNum,
+          limit: limitNum,
+          pages: 0
+        }
       });
     }
 
@@ -103,7 +114,42 @@ exports.getCommunityMembers = async (req, res) => {
 // ─────────────────────────────────────────────
 exports.getMemberProfile = async (req, res) => {
   try {
-    const member = await User.findById(req.params.id)
+    const requestingUserId = req.user._id;
+    const targetUserId = req.params.id;
+    const isMe = requestingUserId.toString() === targetUserId.toString();
+
+    // 1. Block Check
+    let hasBlockedOrIsBlocked = false;
+    if (!isMe) {
+      const blockRelationship = await UserBlock.findOne({
+        $or: [
+          { userId: requestingUserId, blockedUserId: targetUserId },
+          { userId: targetUserId, blockedUserId: requestingUserId }
+        ]
+      });
+      if (blockRelationship) {
+        hasBlockedOrIsBlocked = true;
+      }
+    }
+
+    if (hasBlockedOrIsBlocked) {
+      const minimalUser = await User.findById(targetUserId).select('name avatar');
+      if (!minimalUser) {
+        return res.status(404).json({ status: 'error', message: 'Member not found' });
+      }
+      return res.json({
+        success: true,
+        data: {
+          _id: minimalUser._id,
+          id: minimalUser._id,
+          name: minimalUser.name,
+          avatar: minimalUser.avatar,
+          isBlocked: true
+        }
+      });
+    }
+
+    const member = await User.findById(targetUserId)
       .select('-password -deviceTokens -refreshToken');
 
     if (!member) {
@@ -121,7 +167,81 @@ exports.getMemberProfile = async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: member });
+    // 2. Follow / Privacy Check
+    let isFollowing = false;
+    if (!isMe) {
+      const followRel = await Follower.findOne({
+        followerId: requestingUserId,
+        followingId: targetUserId,
+        status: 'accepted'
+      });
+      if (followRel) {
+        isFollowing = true;
+      }
+    }
+
+    const isPrivate = member.isPrivate === true;
+    const canAccess = isMe || !isPrivate || isFollowing;
+
+    if (!canAccess) {
+      // Return minimal info for private profiles
+      return res.json({
+        success: true,
+        data: {
+          _id: member._id,
+          id: member._id,
+          name: member.name,
+          avatar: member.avatar,
+          cover: member.cover,
+          bio: member.bio,
+          city: member.city,
+          state: member.state,
+          community: member.community,
+          subCommunity: member.subCommunity,
+          role: member.role,
+          isPrivate: true,
+          isVerified: member.isVerified,
+          isPremium: member.isPremium
+        }
+      });
+    }
+
+    // 3. Granular Field-level Privacy check (Condition 1)
+    const memberObj = member.toObject();
+    
+    if (!isMe) {
+      // Remove detailed street address, landmark, pincodeAddress, houseNumber
+      delete memberObj.streetAddress;
+      delete memberObj.landmark;
+      delete memberObj.pincodeAddress;
+      delete memberObj.houseNumber;
+      delete memberObj.detailedAddress;
+
+      // Phone number privacy check
+      const phonePrivacySetting = member.phonePrivacy || 'followers';
+      const showPhone = phonePrivacySetting === 'public' || (phonePrivacySetting === 'followers' && isFollowing);
+      if (!showPhone) {
+        delete memberObj.phone;
+        delete memberObj.alternatePhone;
+      }
+
+      // Email privacy check
+      const emailPrivacySetting = member.emailPrivacy || 'followers';
+      const showEmail = emailPrivacySetting === 'public' || (emailPrivacySetting === 'followers' && isFollowing);
+      if (!showEmail) {
+        delete memberObj.email;
+        delete memberObj.alternateEmail;
+      }
+
+      // Family privacy check
+      const familyPrivacySetting = member.familyPrivacy || 'followers';
+      const showFamily = familyPrivacySetting === 'public' || (familyPrivacySetting === 'followers' && isFollowing);
+      if (!showFamily) {
+        delete memberObj.familyMembers;
+      }
+    }
+
+    res.json({ success: true, data: memberObj });
   } catch (error) {
     console.error('getMemberProfile error:', error);
     res.status(500).json({ status: 'error', message: 'Server error' });

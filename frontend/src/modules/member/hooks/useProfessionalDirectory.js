@@ -41,7 +41,7 @@ const useProfessionalDirectory = (communityId) => {
           { text: 'text-violet-600 bg-violet-50 border-violet-100', icon: 'Briefcase' }
         ];
 
-        const derivedCategories = apiCategories.map((cat, idx) => {
+        let derivedCategories = apiCategories.map((cat, idx) => {
           const colorMatch = colorPalette[idx % colorPalette.length];
           return {
             id: cat.key,
@@ -51,6 +51,14 @@ const useProfessionalDirectory = (communityId) => {
             color: colorMatch.text
           };
         });
+
+        // Ensure "Others" category is placed at the very end of the list
+        const othersIndex = derivedCategories.findIndex(c => c.categoryKey?.toLowerCase() === 'others');
+        if (othersIndex > -1) {
+          const othersCat = derivedCategories[othersIndex];
+          derivedCategories.splice(othersIndex, 1);
+          derivedCategories.push(othersCat);
+        }
 
         // Derive unique cities dynamically from data and API fallback
         let uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).filter(Boolean).sort())];

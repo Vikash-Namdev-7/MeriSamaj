@@ -23,6 +23,9 @@ async function main() {
 
   // ─── 2. Create Member A (Test user for matrimonial) ───────────────────────
   console.log('\n=== CREATING TEST MEMBERS ===');
+  const Community = require('./src/models/Community');
+  const defaultCommunity = await Community.findOne({}) || await Community.create({ name: 'Agrawal Samaj', city: 'Indore' });
+
   const testMembers = [
     { name: 'Anil Kumar Test', phone: '9990001111', password: 'Test@1234', role: 'user' },
     { name: 'Sunita Devi Test', phone: '9990002222', password: 'Test@1234', role: 'user' }
@@ -35,6 +38,8 @@ async function main() {
     } else {
       const user = await User.create({
         ...m,
+        communityId: defaultCommunity._id,
+        community: defaultCommunity.name,
         accountStatus: 'active',
         verificationStatus: 'verified',
         isPhoneVerified: true,

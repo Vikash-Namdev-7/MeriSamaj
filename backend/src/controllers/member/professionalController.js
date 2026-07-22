@@ -4,9 +4,12 @@ const User = require('../../models/User');
 // Helper to resolve communityId
 const getCommunityId = (req) => {
   let communityId = req.communityId || req.user?.communityId;
-  if (communityId) return communityId;
+  if (communityId) {
+    return communityId._id ? communityId._id : communityId;
+  }
   if (req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-    return req.user.assignedCommunityIds[0];
+    const firstAssigned = req.user.assignedCommunityIds[0];
+    return firstAssigned._id ? firstAssigned._id : firstAssigned;
   }
   return null;
 };
@@ -52,6 +55,7 @@ exports.getProfessionals = async (req, res) => {
       title: p.companyName,
       category: p.category,
       categoryKey: p.categoryKey,
+      profession: p.profession,
       city: p.city,
       rating: p.rating || 5.0,
       initials: p.initials || p.companyName.substring(0, 2).toUpperCase(),

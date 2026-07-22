@@ -53,7 +53,8 @@ export default function GlobalProfessionalGrid() {
   const [drawerLoading, setDrawerLoading] = useState(false);
 
   // Modals State
-  const [actionType, setActionType] = useState(null); // 'verify' | null
+  const [actionType, setActionType] = useState(null); // 'verify' | 'reject' | null
+  const [rejectionReason, setRejectionReason] = useState('');
   const [verifyStatus, setVerifyStatus] = useState('VERIFIED');
   const [verifyNote, setVerifyNote] = useState('');
 
@@ -204,6 +205,55 @@ export default function GlobalProfessionalGrid() {
       }
     } catch (err) {
       triggerToast(err.response?.data?.message || 'Failed to reactivate listing.', 'error');
+    }
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      const res = await professionalService.adminApproveListing(id);
+      if (res.success) {
+        triggerToast('Listing approved successfully.');
+        loadListings();
+        if (selectedListing && selectedListing.id === id) {
+          viewDetails(id);
+        }
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to approve listing.', 'error');
+    }
+  };
+
+  const handleRejectSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectionReason.trim()) {
+      triggerToast('Rejection reason is required.', 'error');
+      return;
+    }
+    try {
+      const res = await professionalService.adminRejectListing(selectedListing.id, rejectionReason);
+      if (res.success) {
+        triggerToast('Listing rejected successfully.');
+        setActionType(null);
+        setRejectionReason('');
+        loadListings();
+        viewDetails(selectedListing.id);
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to reject listing.', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this business listing?')) return;
+    try {
+      const res = await professionalService.adminDeleteListing(id);
+      if (res.success) {
+        triggerToast('Listing deleted successfully.');
+        setIsDrawerOpen(false);
+        loadListings();
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to delete listing.', 'error');
     }
   };
 
@@ -621,23 +671,46 @@ export default function GlobalProfessionalGrid() {
                 </div>
 
                 {/* Actions Bottom Bar */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex gap-2">
-                    {selectedListing.status === 'Approved' ? (
+                    {selectedListing.status === 'Pending' && (
+                      <>
+                        <button 
+                          onClick={() => handleApprove(selectedListing.id)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
+                        >
+                          <CheckCircle size={14} /> Approve
+                        </button>
+                        <button 
+                          onClick={() => setActionType('reject')}
+                          className="bg-rose-650 hover:bg-rose-750 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
+                        >
+                          <XCircle size={14} /> Reject
+                        </button>
+                      </>
+                    )}
+                    {selectedListing.status === 'Approved' && (
                       <button 
                         onClick={() => handleSuspend(selectedListing.id)}
                         className="bg-slate-650 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
                       >
                         <ToggleLeft size={15} /> Suspend Listing
                       </button>
-                    ) : selectedListing.status === 'Suspended' ? (
+                    )}
+                    {selectedListing.status === 'Suspended' && (
                       <button 
                         onClick={() => handleReactivate(selectedListing.id)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                        className="bg-emerald-650 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
                       >
                         <ToggleRight size={15} /> Reactivate Listing
                       </button>
-                    ) : null}
+                    )}
+                    <button 
+                      onClick={() => handleDelete(selectedListing.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow-md"
+                    >
+                      Delete
+                    </button>
                   </div>
                   <button 
                     onClick={() => setActionType('verify')}
@@ -693,6 +766,42 @@ export default function GlobalProfessionalGrid() {
                 className="w-full py-3 rounded-xl bg-indigo-650 text-white font-bold uppercase tracking-wider text-xs shadow-lg shadow-indigo-200"
               >
                 Log Verification
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* REJECTION MODAL */}
+      {actionType === 'reject' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-md font-black text-slate-900 flex items-center gap-2">
+                <ShieldAlert size={18} className="text-rose-650" />
+                Reject Listing Request
+              </h3>
+              <button onClick={() => setActionType(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 hover:bg-slate-200">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleRejectSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reason for Rejection *</label>
+                <textarea 
+                  rows="3"
+                  required
+                  placeholder="Provide feedback..." 
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 focus:bg-white text-xs text-slate-800 resize-none font-semibold"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full py-3 rounded-xl bg-rose-600 text-white font-bold uppercase tracking-wider text-xs shadow-lg shadow-rose-200 hover:bg-opacity-90 cursor-pointer"
+              >
+                Reject Listing
               </button>
             </form>
           </div>

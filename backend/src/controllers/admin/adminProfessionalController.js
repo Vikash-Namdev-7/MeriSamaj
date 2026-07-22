@@ -409,3 +409,17 @@ exports.deleteCategory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// 9. Delete listing (Admin has no community scoping boundaries)
+exports.deleteListing = async (req, res) => {
+  try {
+    const deleted = await Professional.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Listing not found.' });
+    }
+    res.status(200).json({ success: true, message: 'Listing deleted successfully.' });
+  } catch (error) {
+    console.error('admin deleteListing error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

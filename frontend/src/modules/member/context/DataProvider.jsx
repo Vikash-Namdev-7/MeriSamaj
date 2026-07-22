@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '../../../core/auth/useAuth';
 import { useHeadAuth } from '../../head/auth/useHeadAuth';
+import { axiosPrivate } from '../../../core/api/axiosPrivate';
 
 // Import initial mocks
 import { currentUser as initialUser, mockMembers as initialMembers, mockAdmins as initialAdmins } from '../data/mockUsers';
@@ -622,6 +623,29 @@ export const DataProvider = ({ children }) => {
     }
   }, [auth.isAuthenticated, auth.user]);
   const [members, setMembers] = useState(() => loadState('members', initialMembers));
+
+  const loadMembers = async () => {
+    try {
+      const response = await axiosPrivate.get('/member/members', { params: { limit: 200 } });
+      if (response.data && Array.isArray(response.data.data)) {
+        const mapped = response.data.data.map(m => ({
+          ...m,
+          id: m._id || m.id,
+          initials: m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+        }));
+        setMembers(mapped);
+        saveState('members', mapped);
+      }
+    } catch (error) {
+      console.error('Failed to load real members for invitations:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      loadMembers();
+    }
+  }, [auth.isAuthenticated]);
   const [admins, setAdmins] = useState(() => {
     const loaded = loadState('admins', initialAdmins);
     if (loaded && loaded.length < initialAdmins.length) {

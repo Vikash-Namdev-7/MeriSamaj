@@ -247,8 +247,26 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
             )}
 
             {step === 2 && (
-              <div className="max-w-3xl mx-auto">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Select Communities</h3>
+              <div className="max-w-3xl mx-auto space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">Select Communities</h3>
+                  {availableCommunities.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected = availableCommunities.every(c => formData.assignedCommunityIds.includes(c._id));
+                        if (allSelected) {
+                          setFormData(f => ({ ...f, assignedCommunityIds: [] }));
+                        } else {
+                          setFormData(f => ({ ...f, assignedCommunityIds: availableCommunities.map(c => c._id) }));
+                        }
+                      }}
+                      className="text-xs font-bold text-brand-primary hover:underline cursor-pointer"
+                    >
+                      {availableCommunities.every(c => formData.assignedCommunityIds.includes(c._id)) ? 'Deselect All' : 'Select All Communities'}
+                    </button>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {isFetchingCommunities ? (
                     <div className="col-span-1 sm:col-span-2 text-center py-10 bg-white rounded-2xl border border-gray-100 text-gray-500 font-medium">
@@ -287,25 +305,55 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
             )}
 
             {step === 3 && (
-              <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.keys(permissions).map(key => {
-                  const label = key.replace('can', '').replace(/([A-Z])/g, ' $1').trim();
-                  return (
-                    <label key={key} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl cursor-pointer hover:border-brand-primary/30 transition-all shadow-sm">
-                      <span className="text-sm font-semibold text-gray-700">{label}</span>
-                      <div className={`w-10 h-6 rounded-full p-1 transition-colors ${permissions[key] ? 'bg-brand-primary' : 'bg-gray-200'}`}>
-                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`} />
-                      </div>
-                      {/* Hidden checkbox for a11y */}
-                      <input 
-                        type="checkbox" 
-                        className="hidden"
-                        checked={permissions[key]} 
-                        onChange={e => setPermissions({...permissions, [key]: e.target.checked})} 
-                      />
-                    </label>
-                  );
-                })}
+              <div className="max-w-4xl mx-auto space-y-4">
+                {/* Select All Bar */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">Module Access & Permissions</h4>
+                    <p className="text-xs text-gray-500">Toggle individual rights or grant full administrative access at once.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allTrue = Object.values(permissions).every(Boolean);
+                      const updated = {};
+                      Object.keys(permissions).forEach(k => {
+                        updated[k] = !allTrue;
+                      });
+                      setPermissions(updated);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                      Object.values(permissions).every(Boolean)
+                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                        : 'bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:bg-brand-primary/20'
+                    }`}
+                  >
+                    <CheckCircle size={14} />
+                    {Object.values(permissions).every(Boolean) ? 'Deselect All' : 'Select All Permissions'}
+                  </button>
+                </div>
+
+                {/* Permissions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.keys(permissions).map(key => {
+                    const label = key.replace('can', '').replace(/([A-Z])/g, ' $1').trim();
+                    return (
+                      <label key={key} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl cursor-pointer hover:border-brand-primary/30 transition-all shadow-sm">
+                        <span className="text-sm font-semibold text-gray-700">{label}</span>
+                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${permissions[key] ? 'bg-brand-primary' : 'bg-gray-200'}`}>
+                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                        {/* Hidden checkbox for a11y */}
+                        <input 
+                          type="checkbox" 
+                          className="hidden"
+                          checked={permissions[key]} 
+                          onChange={e => setPermissions({...permissions, [key]: e.target.checked})} 
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

@@ -15,5 +15,6 @@ router.post('/:id/reject', headProfessionalController.rejectListing);
 router.post('/:id/verify', headProfessionalController.verifyCredentials);
 router.post('/:id/suspend', headProfessionalController.suspendListing);
 router.post('/:id/restore', headProfessionalController.restoreListing);
+router.delete('/:id', headProfessionalController.deleteListing);
 
 module.exports = router;

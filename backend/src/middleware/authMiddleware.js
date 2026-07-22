@@ -89,6 +89,18 @@ const protect = async (req, res, next) => {
       req.communityId = user.communityId._id
         ? user.communityId._id   // populated object → extract _id
         : user.communityId;      // already a plain ObjectId
+    } else if (user.community) {
+      // Self-heal user model using community string fallback
+      const Community = require('../models/Community');
+      const commDoc = await Community.findOne({ name: user.community });
+      if (commDoc) {
+        req.communityId = commDoc._id;
+        user.communityId = commDoc._id;
+        if (!user.assignedCommunityIds || user.assignedCommunityIds.length === 0) {
+          user.assignedCommunityIds = [commDoc._id];
+        }
+        await user.save();
+      }
     } else if (user.role === 'head' && user.assignedCommunityIds && user.assignedCommunityIds.length > 0) {
       const firstComm = user.assignedCommunityIds[0];
       req.communityId = firstComm._id ? firstComm._id : firstComm;

@@ -13,8 +13,11 @@ exports.getCampaigns = async (req, res) => {
     const filter = { status: { $in: ['Active', 'Published'] } };
 
     if (req.communityId) {
-      // Member / Head: strictly scoped to their community
-      filter.communityId = req.communityId;
+      // Member / Head: scoped to their community OR global campaigns (communityId = null)
+      filter.$or = [
+        { communityId: req.communityId },
+        { communityId: null }
+      ];
     } else if (req.user.role === 'admin' && req.query.communityId) {
       // Admin: optional filter by communityId query param
       filter.communityId = req.query.communityId;

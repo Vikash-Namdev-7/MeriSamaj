@@ -4,9 +4,12 @@ const User = require('../../models/User');
 // Helper to resolve Head's community ID
 const getCommunityId = (req) => {
   let communityId = req.communityId || req.user?.communityId;
-  if (communityId) return communityId;
+  if (communityId) {
+    return communityId._id ? communityId._id : communityId;
+  }
   if (req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-    return req.user.assignedCommunityIds[0];
+    const firstAssigned = req.user.assignedCommunityIds[0];
+    return firstAssigned._id ? firstAssigned._id : firstAssigned;
   }
   return null;
 };
@@ -488,6 +491,31 @@ exports.deleteCategory = async (req, res) => {
     res.status(200).json({ success: true, message: 'Category deleted successfully.' });
   } catch (error) {
     console.error('head deleteCategory error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// 10. Delete listing scoped to Head's community
+exports.deleteListing = async (req, res) => {
+  try {
+    const communityId = getCommunityId(req);
+    if (!communityId) {
+      return res.status(403).json({ success: false, message: 'Access Denied. No community assigned.' });
+    }
+
+    const listing = await Professional.findOne({ _id: req.params.id });
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found.' });
+    }
+
+    if (listing.communityId.toString() !== communityId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access Denied. Cannot delete listing of another community.' });
+    }
+
+    await Professional.findByIdAndDelete(req.params.id);
+    res.status(200).json({ success: true, message: 'Listing deleted successfully.' });
+  } catch (error) {
+    console.error('head deleteListing error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

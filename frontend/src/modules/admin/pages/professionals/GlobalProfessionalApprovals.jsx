@@ -16,13 +16,15 @@ export default function GlobalProfessionalApprovals() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     category: '',
-    city: ''
+    city: '',
+    community: ''
   });
 
   // Dynamic filter boundaries loaded from database
   const [filterOptions, setFilterOptions] = useState({
     categories: [],
-    cities: []
+    cities: [],
+    communities: []
   });
 
   // UI Drawer / Modal States
@@ -42,10 +44,7 @@ export default function GlobalProfessionalApprovals() {
     try {
       const res = await professionalService.adminGetFilterOptions();
       if (res.success) {
-        setFilterOptions({
-          categories: res.data.categories,
-          cities: res.data.cities
-        });
+        setFilterOptions(res.data);
       }
     } catch (err) {
       console.error(err);
@@ -61,6 +60,7 @@ export default function GlobalProfessionalApprovals() {
         status: 'Pending',
         category: filters.category,
         city: filters.city,
+        community: filters.community,
         limit: 100
       };
       const res = await professionalService.adminGetListings(params);
@@ -81,7 +81,7 @@ export default function GlobalProfessionalApprovals() {
 
   useEffect(() => {
     loadData();
-  }, [searchQuery, filters.category, filters.city]);
+  }, [searchQuery, filters.category, filters.city, filters.community]);
 
   const viewDetails = async (id) => {
     setDrawerLoading(true);
@@ -131,6 +131,20 @@ export default function GlobalProfessionalApprovals() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this business listing?')) return;
+    try {
+      const res = await professionalService.adminDeleteListing(id);
+      if (res.success) {
+        triggerToast('Listing deleted successfully.');
+        setIsDrawerOpen(false);
+        loadData();
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to delete listing.', 'error');
+    }
+  };
+
   return (
     <div className="p-6 bg-slate-50 min-h-screen text-slate-800 font-sans rounded-3xl">
       {/* Toast Notification */}
@@ -176,6 +190,19 @@ export default function GlobalProfessionalApprovals() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Community</label>
+            <select 
+              value={filters.community}
+              onChange={(e) => setFilters({ ...filters, community: e.target.value })}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] font-bold outline-none text-slate-800"
+            >
+              <option value="">All</option>
+              {filterOptions.communities?.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-1.5">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Category</label>
             <select 
@@ -392,6 +419,12 @@ export default function GlobalProfessionalApprovals() {
                     className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-rose-100"
                   >
                     <X size={14} /> Reject Request
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(selectedListing.id)}
+                    className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    Delete
                   </button>
                 </div>
               </>

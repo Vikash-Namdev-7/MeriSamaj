@@ -21,6 +21,8 @@ router.route('/posts')
   .get(socialController.getPosts)
   .post(socialController.createPost);
 
+router.get('/posts/user/:userId', socialController.getUserPosts);
+
 router.route('/posts/:id')
   .get(socialController.getPostById);
 

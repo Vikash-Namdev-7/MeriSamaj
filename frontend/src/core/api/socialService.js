@@ -101,8 +101,16 @@ const getFollowing = async (userId) => {
 };
 
 // Profile Stats & Tab APIs
-const getProfileStats = async () => {
-  const response = await axiosPrivate.get(`${API_URL}/profile-stats`);
+const getProfileStats = async (userId = '') => {
+  const params = userId ? { userId } : {};
+  const response = await axiosPrivate.get(`${API_URL}/profile-stats`, { params });
+  return response.data;
+};
+
+const getUserPosts = async (userId, limit = 10, cursor = '') => {
+  const params = { limit };
+  if (cursor) params.cursor = cursor;
+  const response = await axiosPrivate.get(`${API_URL}/posts/user/${userId}`, { params });
   return response.data;
 };
 
@@ -169,7 +177,8 @@ const socialService = {
   getPastStories,
   createHighlight,
   deleteHighlight,
-  updateUserProfile
+  updateUserProfile,
+  getUserPosts
 };
 
 export default socialService;

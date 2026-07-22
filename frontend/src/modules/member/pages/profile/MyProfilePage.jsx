@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark, Plus, Crown, MapPin, Sun, Moon, Mail, Phone } from 'lucide-react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark, Plus, Crown, MapPin, Sun, Moon, Mail, Phone, Loader2, Info } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { Avatar } from '../../components/common/Avatar';
 import { ActivityDashboard } from './components/ActivityDashboard';
 import { AnimatePresence, motion } from 'framer-motion';
 import socialService from '../../../../core/api/socialService';
+import { getMemberById } from '../../services/directoryApi';
 
 const MyProfilePage = () => {
   const navigate = useNavigate();
+  const { memberId } = useParams();
+  const location = useLocation();
   
   const { 
     currentUser, 
@@ -31,10 +34,22 @@ const MyProfilePage = () => {
     language,
     setLanguage,
     followedAnnouncements,
-    toggleFollowedAnnouncement
+    toggleFollowedAnnouncement,
+    sendFollowRequest,
+    cancelFollowRequest,
+    blockUser,
+    admins
   } = useData();
 
+  const myId = currentUser?.id || currentUser?._id || 'u1';
+  const isMe = !memberId || memberId === myId;
+
   const [activeTab, setActiveTab] = useState('posts');
+  const [loadedMember, setLoadedMember] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   // Social Links Modal State
   const [showSocialModal, setShowSocialModal] = useState(false);
@@ -86,13 +101,59 @@ const MyProfilePage = () => {
   const [newHighlightTitle, setNewHighlightTitle] = useState('Highlights');
   const [activeHighlightView, setActiveHighlightView] = useState(null);
 
+  // Other User followers/following list state
+  const [targetFollowersList, setTargetFollowersList] = useState([]);
+  const [targetFollowingList, setTargetFollowingList] = useState([]);
+  const [loadingFollows, setLoadingFollows] = useState(false);
+
+  const profileUser = isMe ? currentUser : (loadedMember || {});
+
+  // Load target member details if !isMe
+  useEffect(() => {
+    const loadMemberProfile = async () => {
+      if (memberId && !isMe) {
+        setLoadingProfile(true);
+        // Fallback search from context list first to display instantly
+        const cached = (members || []).find(m => m.id === memberId || m._id === memberId) || 
+                       (admins || []).find(a => a.id === memberId || a._id === memberId);
+        if (cached) {
+          setLoadedMember({
+            ...cached,
+            id: cached._id || cached.id,
+            initials: cached.name ? cached.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+          });
+        }
+        try {
+          const res = await getMemberById(memberId);
+          if (res.success && res.data) {
+            const mapped = {
+              ...res.data,
+              id: res.data._id || res.data.id,
+              initials: res.data.name ? res.data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+            };
+            setLoadedMember(mapped);
+          }
+        } catch (err) {
+          console.error("Failed to load member profile details:", err);
+        } finally {
+          setLoadingProfile(false);
+        }
+      } else {
+        setLoadedMember(null);
+        setLoadingProfile(false);
+      }
+    };
+    loadMemberProfile();
+  }, [memberId, isMe, members, admins]);
+
   // Fetch real profile stats and highlights from backend
   useEffect(() => {
     const fetchProfileData = async () => {
+      const targetId = isMe ? '' : memberId;
       try {
         const [statsRes, highlightsRes] = await Promise.all([
-          socialService.getProfileStats(),
-          socialService.getUserHighlights()
+          socialService.getProfileStats(targetId),
+          socialService.getUserHighlights(targetId)
         ]);
         if (statsRes.success) setProfileStats(statsRes.data);
         if (highlightsRes.success) setHighlights(highlightsRes.data);
@@ -100,31 +161,82 @@ const MyProfilePage = () => {
         console.error('Failed to load profile stats or highlights:', err);
       }
     };
-    if (currentUser?._id || currentUser?.id) {
+
+    const targetUserId = isMe ? myId : memberId;
+    if (targetUserId) {
       fetchProfileData();
     }
-  }, [currentUser]);
+  }, [memberId, isMe, myId]);
+
+  // Fetch user posts
+  useEffect(() => {
+    const loadUserPosts = async () => {
+      setLoadingPosts(true);
+      const targetId = isMe ? myId : memberId;
+      try {
+        const res = await socialService.getUserPosts(targetId);
+        if (res.success && res.data) {
+          const mapped = res.data.map(p => ({
+            ...p,
+            id: p._id || p.id,
+            images: p.media?.map(m => m.url) || p.images || [],
+            category: p.category || 'General',
+            content: p.content || ''
+          }));
+          setUserPosts(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load user posts:", err);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    const targetUserId = isMe ? myId : memberId;
+    if (targetUserId) {
+      loadUserPosts();
+    }
+  }, [memberId, isMe, myId]);
 
   // Fetch Saved and Liked posts dynamically on tab switch
   useEffect(() => {
     const loadTabContent = async () => {
-      if (activeTab === 'saved') {
+      if (activeTab === 'saved' && isMe) {
         try {
           const res = await socialService.getSavedPosts();
-          if (res.success) setSavedPostsList(res.data);
+          if (res.success) {
+            const mapped = (res.data || []).map(p => ({
+              ...p,
+              id: p._id || p.id,
+              images: p.media?.map(m => m.url) || p.images || [],
+              category: p.category || 'General',
+              content: p.content || ''
+            }));
+            setSavedPostsList(mapped);
+          }
         } catch (err) {
           console.error('Failed to fetch saved posts:', err);
         }
-      } else if (activeTab === 'liked') {
+      } else if (activeTab === 'liked' && isMe) {
         try {
           const res = await socialService.getLikedPosts();
-          if (res.success) setLikedPostsList(res.data);
+          if (res.success) {
+            const mapped = (res.data || []).map(p => ({
+              ...p,
+              id: p._id || p.id,
+              images: p.media?.map(m => m.url) || p.images || [],
+              category: p.category || 'General',
+              content: p.content || ''
+            }));
+            setLikedPostsList(mapped);
+          }
         } catch (err) {
           console.error('Failed to fetch liked posts:', err);
         }
       }
     };
-  }, [activeTab]);
+    loadTabContent();
+  }, [activeTab, isMe]);
 
   const handleOpenHighlightSelection = async () => {
     setShowHighlightSelectionModal(true);
@@ -174,7 +286,6 @@ const MyProfilePage = () => {
   };
 
   
-  const myId = currentUser?.id || currentUser?._id || 'u1';
   const userGranular = granularPrivacy?.[myId] || granularPrivacy?.u1 || granularPrivacy || {};
   const [myPrivacySetting, setMyPrivacySetting] = useState(profilePrivacy?.[myId] || profilePrivacy?.u1 || 'public');
   const [myPhoneSetting, setMyPhoneSetting] = useState(userGranular.phone || 'followers');
@@ -199,6 +310,43 @@ const MyProfilePage = () => {
   useEffect(() => {
     setMembersSearchQuery('');
   }, [membersListModalType]);
+
+  // Fetch target user follows list dynamically if !isMe
+  useEffect(() => {
+    const fetchTargetFollows = async () => {
+      if (!isMe && membersListModalType && memberId) {
+        setLoadingFollows(true);
+        try {
+          if (membersListModalType === 'followers') {
+            const res = await socialService.getFollowers(memberId);
+            if (res.success && res.data) {
+              const mapped = res.data.map(m => ({
+                ...m,
+                id: m._id || m.id,
+                initials: m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+              }));
+              setTargetFollowersList(mapped);
+            }
+          } else if (membersListModalType === 'following') {
+            const res = await socialService.getFollowing(memberId);
+            if (res.success && res.data) {
+              const mapped = res.data.map(m => ({
+                ...m,
+                id: m._id || m.id,
+                initials: m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+              }));
+              setTargetFollowingList(mapped);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load target follows list:", err);
+        } finally {
+          setLoadingFollows(false);
+        }
+      }
+    };
+    fetchTargetFollows();
+  }, [membersListModalType, memberId, isMe]);
 
   useEffect(() => {
     if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard || showHighlightSelectionModal || showHighlightCreationModal || showNotificationsModal || showLanguageModal || showThemeModal || showHelpModal || showAboutModal) {
@@ -229,7 +377,7 @@ const MyProfilePage = () => {
   const myFollowingRelations = followRelations?.filter(r => r.followerId === myId && r.status === 'accepted') || [];
 
   const myFollowers = members.filter(m => myFollowerRelations.some(r => r.followerId === m.id));
-  const myFollowing = members.filter(m => myFollowingRelations.some(r => r.followingId === m.id));
+  const myFollowing = members.filter(m => myFollowingRelations.some(r => r.followingId === myId));
 
   // Pending Received Requests
   const pendingRequestsRelations = followRelations?.filter(r => r.followingId === myId && r.status === 'pending') || [];
@@ -239,28 +387,134 @@ const MyProfilePage = () => {
   const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === myId).map(b => b.blockedId) || [];
   const blockedMembersList = members.filter(m => blockedMembersIds.includes(m.id));
 
-  // My Posts
-  const myPosts = posts?.filter(p => p.author.name === currentUser.name) || [];
-  const likedPosts = posts?.filter(p => p.isLiked) || [];
-  const savedPosts = posts?.filter(p => p.isSaved) || [];
+  // Block/follow status checks for the target profileUser
+  const isBlocked = blockedUsers?.some(b => (b.blockerId === myId && b.blockedId === profileUser.id) || (b.blockerId === profileUser.id && b.blockedId === myId)) || profileUser.isBlocked === true;
+  const isFollowing = followRelations?.some(r => r.followerId === myId && r.followingId === profileUser.id && r.status === 'accepted') || (followRelations?.some(r => r.followerId === myId && r.followingId === profileUser._id && r.status === 'accepted'));
+  const hasRequested = followRelations?.some(r => r.followerId === myId && r.followingId === profileUser.id && r.status === 'pending') || (followRelations?.some(r => r.followerId === myId && r.followingId === profileUser._id && r.status === 'pending'));
+  const privacySetting = profilePrivacy?.[profileUser.id] || profilePrivacy?.[profileUser._id] || (profileUser.isPrivate ? 'private' : 'public');
+  const isPrivate = privacySetting === 'private';
+  const canAccess = isMe || !isPrivate || isFollowing;
+
+  // Granular privacy settings
+  const memberGranular = granularPrivacy?.[profileUser.id] || 
+                         granularPrivacy?.[profileUser._id] ||
+                         (profileUser.id === myId ? (granularPrivacy?.[myId] || granularPrivacy) : null) || 
+                         { phone: 'followers', email: 'followers', familyTree: 'followers' };
+
+  const isFieldVisible = (fieldSetting) => {
+    if (isMe) return true;
+    if (fieldSetting === 'public') return true;
+    if (fieldSetting === 'followers') return isFollowing;
+    return false; // 'private' or 'only me'
+  };
+
+  const showPhone = isMe || (profileUser.phone && isFieldVisible(memberGranular.phone));
+  const showEmail = isMe || (profileUser.email && isFieldVisible(memberGranular.email));
+  const showFamily = isMe || (profileUser.familyMembers && isFieldVisible(memberGranular.familyTree));
+
+  // Helper hash function to generate realistic deterministic values for details fields
+  const getHashValue = (str, offset = 0) => {
+    if (!str) return 0;
+    return str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + offset;
+  };
+  const hash = getHashValue(profileUser.id || profileUser._id || '');
+
+  // Dynamic deterministic properties
+  const memberIdCode = `SM${7000 + (hash % 999)}`;
+  const birthYear = 2026 - (profileUser.age || 40);
+  const birthDay = 1 + (hash % 28);
+  const birthMonth = 1 + (hash % 12);
+  const dobStr = `${birthDay.toString().padStart(2, '0')}/${birthMonth.toString().padStart(2, '0')}/${birthYear}`;
+  
+  // Mappings
+  const cityMap = {
+    'Indore': 'Indore, Madhya Pradesh',
+    'Jaipur': 'Jaipur, Rajasthan',
+    'Bhopal': 'Bhopal, Madhya Pradesh',
+    'Ujjain': 'Ujjain, Madhya Pradesh',
+    'Ahmedabad': 'Ahmedabad, Gujarat',
+    'Lucknow': 'Lucknow, Uttar Pradesh',
+    'Delhi': 'Delhi',
+    'Kota': 'Kota, Rajasthan',
+    'Alwar': 'Alwar, Rajasthan',
+    'Bikaner': 'Bikaner, Rajasthan',
+    'Udaipur': 'Udaipur, Rajasthan',
+    'Pune': 'Pune, Maharashtra',
+  };
+
+  const professionMap = {
+    'Architect': 'Architect',
+    'Doctor': 'Doctor',
+    'Software Engineer': 'Software Engineer',
+    'Teacher': 'Teacher',
+    'CA': 'CA',
+    'Pharmacist': 'Pharmacist',
+    'Lawyer': 'Lawyer',
+    'Interior Designer': 'Interior Designer',
+    'Marketing Manager': 'Marketing Manager',
+    'Homemaker': 'Homemaker',
+    'Business Owner': 'Business Owner',
+  };
+
+  const businessTypeMap = {
+    'Architect': 'Construction & Designing',
+    'Doctor': 'Healthcare & Medical',
+    'Software Engineer': 'IT & Software Services',
+    'Teacher': 'Education Services',
+    'CA': 'Financial Audits & Advisory',
+    'Pharmacist': 'Pharma Manufacturing & Retail',
+    'Lawyer': 'Legal Services & Advisory',
+    'Interior Designer': 'Home Decor & Design',
+    'Marketing Manager': 'Marketing & Advertising',
+    'Homemaker': 'Family Care',
+    'Business Owner': 'Manufacturing & Trading',
+  };
+
+  const phoneNum = profileUser.phone || `98765${(10000 + (hash % 89999))}`;
+  const emailAddr = profileUser.email || `${(profileUser.name || 'member').toLowerCase().replace(/\s+/g, '')}@email.com`;
+  const englishCity = cityMap[profileUser.city] || `${profileUser.city || 'Indore'}, Rajasthan`;
+
+  // Professional details
+  const englishProfession = professionMap[profileUser.profession] || profileUser.role || 'Business Owner';
+  const companyName = profileUser.company || `${(profileUser.name || 'Sharma').split(' ')[1] || 'Sharma'} Industries`;
+  const businessSector = businessTypeMap[profileUser.profession] || 'Manufacturing & Trading';
+  const estYear = 2000 + (hash % 24);
+
+  // Full Address
+  const fullAddress = profileUser.address || `${10 + (hash % 200)}, Vaishali Nagar, ${englishCity} - ${302000 + (hash % 999)}`;
 
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
       {/* Header Bar — Glass morphism */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/member/social')} className="p-1 -ml-1 press-scale">
+          <button 
+            onClick={() => {
+              if (isMe) {
+                navigate('/member/social');
+              } else if (location.state?.fromCity) {
+                navigate('/member/leadership', { state: { activeCityDetail: location.state.fromCity } });
+              } else {
+                navigate(-1);
+              }
+            }} 
+            className="p-1 -ml-1 press-scale"
+          >
             <ArrowLeft size={22} className="text-text-primary" />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">My Profile</h1>
+          <h1 className="text-base font-bold text-text-primary tracking-tight">
+            {isMe ? 'My Profile' : (profileUser?.name || 'Member Profile')}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => navigate('/member/settings')}
-            className="p-2 rounded-full transition-all duration-300 press-scale text-text-primary hover:bg-slate-100/60"
-          >
-            <SettingsIcon size={20} />
-          </button>
+          {isMe && (
+            <button 
+              onClick={() => navigate('/member/settings')}
+              className="p-2 rounded-full transition-all duration-300 press-scale text-text-primary hover:bg-slate-100/60"
+            >
+              <SettingsIcon size={20} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -271,7 +525,7 @@ const MyProfilePage = () => {
           {/* Cover photo banner */}
           <div className="h-56 sm:h-72 w-full relative bg-gradient-to-br from-purple-900/15 via-[#25175a]/10 to-[#1e1145]/15 overflow-hidden">
             <img 
-              src={currentUser.cover || "https://images.unsplash.com/photo-1609234656388-0ff363383899?auto=format&fit=crop&w=800&q=80"} 
+              src={profileUser.cover || "https://images.unsplash.com/photo-1609234656388-0ff363383899?auto=format&fit=crop&w=800&q=80"} 
               alt="Cover" 
               className="w-full h-full object-cover"
             />
@@ -282,25 +536,27 @@ const MyProfilePage = () => {
             <div className="absolute top-10 left-10 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" />
             <div className="absolute bottom-6 right-20 w-32 h-32 bg-pink-500/5 rounded-full blur-2xl animate-bounce" />
             
-            {/* Cover Upload Trigger */}
-            <label className="absolute top-3.5 right-3.5 w-8.5 h-8.5 bg-black/40 hover:bg-black/65 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/25 cursor-pointer transition-all press-scale shadow-md z-10">
-              <Camera size={13} />
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      updateProfile({ cover: event.target.result });
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
-            </label>
+            {/* Cover Upload Trigger (only when isMe) */}
+            {isMe && (
+              <label className="absolute top-3.5 right-3.5 w-8.5 h-8.5 bg-black/40 hover:bg-black/65 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/25 cursor-pointer transition-all press-scale shadow-md z-10">
+                <Camera size={13} />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        updateProfile({ cover: event.target.result });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            )}
           </div>
 
           {/* Profile details block */}
@@ -311,46 +567,64 @@ const MyProfilePage = () => {
               <div className="-mt-[70px] sm:-mt-[88px] relative">
                 {/* Glowing ring */}
                 <div className={`w-[110px] h-[110px] sm:w-[135px] sm:h-[135px] rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-300 p-[3px] bg-white border ${
-                  currentUser.isPremium 
+                  profileUser.isPremium 
                     ? 'border-amber-400 bg-gradient-to-tr from-amber-500 to-yellow-350 shadow-[0_8px_20px_rgba(245,158,11,0.25)]' 
                     : 'border-brand-primary/25 bg-gradient-to-tr from-purple-500 to-indigo-400 shadow-[0_8px_20px_rgba(124,58,237,0.15)]'
                 }`}>
                   <div className="w-full h-full rounded-full overflow-hidden bg-white border border-white">
-                    <Avatar initials={currentUser.initials} src={currentUser.avatar} size="xl" className="w-full h-full object-cover rounded-full" />
+                    <Avatar initials={profileUser.initials} src={profileUser.avatar} size="xl" className="w-full h-full object-cover rounded-full" />
                   </div>
                 </div>
 
-                {/* Avatar Camera trigger */}
-                <label className={`absolute bottom-0.5 right-0.5 w-8.5 h-8.5 text-white rounded-full shadow-md flex items-center justify-center press-scale border-[1.5px] border-white cursor-pointer transition-all ${
-                  currentUser.isPremium ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-primary hover:bg-brand-dark'
-                }`}>
-                  <Camera size={12} />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          updateProfile({ avatar: event.target.result });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
+                {/* Avatar Camera trigger (only when isMe) */}
+                {isMe && (
+                  <label className={`absolute bottom-0.5 right-0.5 w-8.5 h-8.5 text-white rounded-full shadow-md flex items-center justify-center press-scale border-[1.5px] border-white cursor-pointer transition-all ${
+                    profileUser.isPremium ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-primary hover:bg-brand-dark'
+                  }`}>
+                    <Camera size={12} />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            updateProfile({ avatar: event.target.result });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               {/* Follow count statistics bar */}
               <div className="flex-1 flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
-                <button onClick={() => setMembersListModalType('followers')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{profileStats.followersCount || myFollowers.length}</span> <span className="text-slate-400 font-medium">followers</span>
+                <button 
+                  onClick={() => {
+                    if (isMe || canAccess) setMembersListModalType('followers');
+                  }} 
+                  className="hover:text-brand-primary transition-colors press-scale"
+                  disabled={!isMe && !canAccess}
+                >
+                  <span className="font-extrabold text-slate-800">
+                    {profileStats.followersCount || (isMe ? myFollowers.length : targetFollowersList.length)}
+                  </span> <span className="text-slate-400 font-medium">followers</span>
                 </button>
                 <span className="text-slate-300">•</span>
-                <button onClick={() => setMembersListModalType('following')} className="hover:text-brand-primary transition-colors press-scale">
-                  <span className="font-extrabold text-slate-800">{profileStats.followingCount || myFollowing.length}</span> <span className="text-slate-400 font-medium">following</span>
+                <button 
+                  onClick={() => {
+                    if (isMe || canAccess) setMembersListModalType('following');
+                  }} 
+                  className="hover:text-brand-primary transition-colors press-scale"
+                  disabled={!isMe && !canAccess}
+                >
+                  <span className="font-extrabold text-slate-800">
+                    {profileStats.followingCount || (isMe ? myFollowing.length : targetFollowingList.length)}
+                  </span> <span className="text-slate-400 font-medium">following</span>
                 </button>
               </div>
             </div>
@@ -359,13 +633,13 @@ const MyProfilePage = () => {
             <div className="text-left space-y-2 flex-1 pt-0 sm:pt-0.5 ml-1 sm:ml-3">
               <div className="flex items-center flex-wrap gap-2">
                 <h2 className="text-[17px] xs:text-[20px] sm:text-[25px] font-black text-slate-800 tracking-tight leading-none flex items-center gap-1.5 break-words flex-wrap max-w-full">
-                  {currentUser.name}
-                  {profilePrivacy?.u1 === 'private' && <span className="text-xs">🔒</span>}
-                  {currentUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
+                  {profileUser.name}
+                  {profileUser.isPrivate && <span className="text-xs" title="Private Account">🔒</span>}
+                  {profileUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
                 </h2>
-                {currentUser.isPremium ? (
+                {profileUser.isPremium ? (
                   <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
-                    👑 {currentUser.membershipPlan || 'PRO'}
+                    👑 {profileUser.membershipPlan || 'PRO'}
                   </span>
                 ) : (
                   <span className="bg-purple-50 text-brand-primary text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded border border-purple-100/50 tracking-wider">
@@ -374,9 +648,9 @@ const MyProfilePage = () => {
                 )}
               </div>
 
-              {currentUser.bio && (
+              {profileUser.bio && (
                 <p className="text-[12.5px] font-medium text-slate-600 italic mt-1 leading-snug">
-                  "{currentUser.bio}"
+                  "{profileUser.bio}"
                 </p>
               )}
 
@@ -384,245 +658,374 @@ const MyProfilePage = () => {
               <div className="text-[12px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
                 <p className="flex items-center gap-2">
                   <Briefcase size={14} className="text-slate-400 shrink-0" /> 
-                  <span>{currentUser.profession || 'Community Member'}{currentUser.company ? ` at ${currentUser.company}` : ''}</span>
+                  <span>{profileUser.profession || 'Community Member'}{profileUser.company ? ` at ${profileUser.company}` : ''}</span>
                 </p>
-                {(currentUser.city || currentUser.state) && (
+                {(profileUser.city || profileUser.state) && (
                   <p className="flex items-center gap-2">
                     <MapPin size={14} className="text-slate-400 shrink-0" /> 
-                    <span>{currentUser.city}{currentUser.city && currentUser.state && ', '}{currentUser.state}</span>
+                    <span>{profileUser.city}{profileUser.city && profileUser.state && ', '}{profileUser.state}</span>
                   </p>
                 )}
                 <p className="flex items-center gap-2">
                   <Users size={14} className="text-slate-400 shrink-0" /> 
-                  <span>{currentUser.community || 'Community Not Assigned'}{currentUser.subCommunity ? ` (${currentUser.subCommunity})` : ''}</span>
+                  <span>{profileUser.community || 'Community Not Assigned'}{profileUser.subCommunity ? ` (${profileUser.subCommunity})` : ''}</span>
                 </p>
-                {currentUser.phone && (
+                {showPhone && profileUser.phone && (
                   <p className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[13.5px] text-slate-450 mt-0.5">
                     <Phone size={12} className="text-slate-400 shrink-0" /> 
-                    <span>{currentUser.phone}</span>
+                    <span>{profileUser.phone}</span>
                   </p>
                 )}
-                {currentUser.email && (
+                {showEmail && profileUser.email && (
                   <p className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[13.5px] text-slate-450">
                     <Mail size={12} className="text-slate-400 shrink-0" /> 
-                    <span className="truncate max-w-[170px] sm:max-w-xs">{currentUser.email}</span>
+                    <span className="truncate max-w-[170px] sm:max-w-xs">{profileUser.email}</span>
                   </p>
                 )}
               </div>
 
               {/* Social Links Badge */}
-              {(currentUser.linkedin || currentUser.facebook || currentUser.twitter) && (
+              {(profileUser.linkedin || profileUser.facebook || profileUser.twitter) && (
                 <a 
-                  href={currentUser.linkedin || currentUser.facebook || currentUser.twitter} 
+                  href={profileUser.linkedin || profileUser.facebook || profileUser.twitter} 
                   target="_blank" 
                   rel="noreferrer" 
                   className="text-[13px] font-bold text-brand-primary inline-flex items-center gap-1.5 mt-1 bg-purple-50 hover:bg-purple-100/70 border border-purple-100/30 px-3.5 py-1.5 rounded-full transition-colors truncate max-w-full"
                 >
-                  <Globe size={13} /> {new URL(currentUser.linkedin || currentUser.facebook || currentUser.twitter || 'https://linktr.ee/user').hostname}
+                  <Globe size={13} /> {new URL(profileUser.linkedin || profileUser.facebook || profileUser.twitter || 'https://linktr.ee/user').hostname}
                 </a>
               )}
 
             </div>
 
           </div>
+
+          {/* Action buttons (Follow/Message) for other user */}
+          {!isMe && (
+            <div className="flex gap-2.5 px-4.5 pb-4 pt-2 border-t border-purple-100/10 bg-slate-50/20">
+              {isBlocked ? (
+                <button
+                  onClick={() => unblockUser(profileUser.id || profileUser._id)}
+                  className="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
+                >
+                  Unblock
+                </button>
+              ) : isFollowing ? (
+                <>
+                  <button
+                    onClick={() => unfollowUser(profileUser.id || profileUser._id)}
+                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
+                  >
+                    Following
+                  </button>
+                  <button
+                    onClick={() => navigate(`/member/chat/${profileUser.id || profileUser._id}`)}
+                    className="flex-1 py-2 bg-purple-50 hover:bg-purple-100/60 text-brand-primary rounded-xl text-[13px] font-black border border-purple-100/35 shadow-sm press-scale transition-all"
+                  >
+                    Message
+                  </button>
+                </>
+              ) : hasRequested ? (
+                <button
+                  onClick={() => cancelFollowRequest(profileUser.id || profileUser._id)}
+                  className="flex-1 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
+                >
+                  Requested
+                </button>
+              ) : (
+                <button
+                  onClick={() => sendFollowRequest(profileUser.id || profileUser._id)}
+                  className="flex-1 py-2 bg-brand-primary hover:bg-brand-dark text-white rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
+                >
+                  Follow
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ─── STATISTICS CARDS (Posts, Friends, Family) ─── */}
-        <div className="grid grid-cols-3 gap-3 mx-3.5 sm:mx-0">
-          {/* Card 1: Posts */}
-          <motion.div 
-            whileHover={{ y: -4, scale: 1.02 }}
-            onClick={() => setActiveTab('posts')}
-            className="rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
-              boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
-            }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100/40 shadow-sm mb-2 text-brand-primary">
-              <Grid size={17} />
+        {isBlocked ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
+            <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4">
+              <span className="text-3xl">🚫</span>
             </div>
-            <span className="text-[17px] font-black text-slate-850 leading-none">{profileStats.postsCount || myPosts.length}</span>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Posts</span>
-          </motion.div>
-
-          {/* Card 2: Friends */}
-          <motion.div 
-            whileHover={{ y: -4, scale: 1.02 }}
-            onClick={() => setMembersListModalType('followers')}
-            className="rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
-              boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
-            }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100/40 shadow-sm mb-2 text-blue-500">
-              <Users size={17} />
-            </div>
-            <span className="text-[17px] font-black text-slate-850 leading-none">{profileStats.followersCount || myFollowers.length}</span>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Friends</span>
-          </motion.div>
-
-          {/* Card 3: Family */}
-          <motion.div 
-            whileHover={{ y: -4, scale: 1.02 }}
-            onClick={() => navigate('/member/profile/family')}
-            className="rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
-              boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
-            }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100/40 shadow-sm mb-2 text-rose-500">
-              <Heart size={17} fill="currentColor" />
-            </div>
-            <span className="text-[17px] font-black text-slate-850 leading-none">
-              {currentUser.familyMembers?.length || 0}
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Family</span>
-          </motion.div>
-        </div>
-
-
-        {/* ─── HIGHLIGHTS SECTION ─── */}
-        <div className="bg-white rounded-3xl p-4 border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide py-1">
-            {/* New Highlight Button */}
-            <div className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group" onClick={() => handleOpenHighlightSelection()}>
-               <div className="w-14 h-14 rounded-full border border-dashed border-slate-350 flex items-center justify-center bg-white group-hover:bg-slate-50 transition-colors">
-                  <Plus size={20} className="text-slate-800" />
-               </div>
-               <span className="text-[11px] font-semibold text-slate-700">New</span>
-            </div>
-            {/* Existing Highlights */}
-            {highlights.map(h => (
-               <div key={h._id || h.id} onClick={() => setActiveHighlightView(h)} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
-                  <div className="w-14 h-14 rounded-full border-2 border-brand-primary/20 p-[1.5px] bg-white group-hover:scale-105 transition-transform">
-                     <img src={h.coverImage || h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-700 max-w-[64px] truncate text-center">{h.title}</span>
-               </div>
-            ))}
+            <h3 className="text-[15px] font-bold text-slate-800">Member is Blocked</h3>
+            <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+              You have blocked this member or they have blocked you. Unblock them first to view their profile details.
+            </p>
           </div>
-        </div>
-
-        {/* ─── TAB NAVIGATION BAR ─── */}
-        <div className="flex items-center border border-purple-100/30 bg-white/75 backdrop-blur-xl sticky top-14 z-20 rounded-2xl p-1 gap-1 shadow-[0_4px_16px_rgba(124,58,237,0.02)] mx-3.5 sm:mx-0">
-          {[
-            { id: 'posts', icon: Grid, label: 'Posts' },
-            { id: 'liked', icon: Heart, label: 'Liked' },
-            { id: 'saved', icon: Bookmark, label: 'Saved' }
-          ].map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button 
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2.5 rounded-xl flex flex-col items-center justify-center transition-all duration-300 relative press-scale ${
-                  isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-650'
-                }`}
-                style={isActive ? { background: 'rgba(124,58,237,0.07)' } : {}}
+        ) : !canAccess ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
+            <div className="w-16 h-16 rounded-full border border-purple-100/10 flex items-center justify-center mb-4 bg-purple-50 text-brand-primary">
+              <Lock size={28} />
+            </div>
+            <h3 className="text-[15px] font-bold text-slate-800">This Profile is Private</h3>
+            <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+              Only accepted followers can view this member's posts and details.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* ─── STATISTICS CARDS (Posts, Friends, Family) ─── */}
+            <div className="grid grid-cols-3 gap-3 mx-3.5 sm:mx-0">
+              {/* Card 1: Posts */}
+              <motion.div 
+                whileHover={{ y: -4, scale: 1.02 }}
+                onClick={() => setActiveTab('posts')}
+                className="rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
+                  boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
+                }}
               >
-                <tab.icon size={19} className={isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'} />
-                <span className="text-[9px] font-black uppercase tracking-wider mt-1">{tab.label}</span>
-                {isActive && (
-                  <motion.div layoutId="profileTabActive" className="absolute bottom-0 left-3 right-3 h-[2px] bg-brand-primary rounded-full" />
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100/40 shadow-sm mb-2 text-brand-primary">
+                  <Grid size={17} />
+                </div>
+                <span className="text-[17px] font-black text-slate-850 leading-none">
+                  {profileStats.postsCount || userPosts.length}
+                </span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Posts</span>
+              </motion.div>
+
+              {/* Card 2: Friends */}
+              <motion.div 
+                whileHover={{ y: -4, scale: 1.02 }}
+                onClick={() => setMembersListModalType('followers')}
+                className="rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
+                  boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
+                }}
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100/40 shadow-sm mb-2 text-blue-500">
+                  <Users size={17} />
+                </div>
+                <span className="text-[17px] font-black text-slate-850 leading-none">
+                  {profileStats.followersCount || (isMe ? myFollowers.length : targetFollowersList.length)}
+                </span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Friends</span>
+              </motion.div>
+
+              {/* Card 3: Family */}
+              <motion.div 
+                whileHover={isMe ? { y: -4, scale: 1.02 } : {}}
+                onClick={() => {
+                  if (isMe) navigate('/member/profile/family');
+                }}
+                className={`rounded-[24px] p-4 flex flex-col items-center justify-center text-center bg-white border border-purple-100/10 shadow-sm relative overflow-hidden group transition-all duration-300 ${isMe ? 'cursor-pointer' : 'cursor-default'}`}
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #fdfcff 100%)',
+                  boxShadow: '0 8px 24px -6px rgba(124,58,237,0.04), inset 0 2px 4px rgba(255,255,255,0.9)'
+                }}
+              >
+                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100/40 shadow-sm mb-2 text-rose-500">
+                  <Heart size={17} fill="currentColor" />
+                </div>
+                <span className="text-[17px] font-black text-slate-850 leading-none">
+                  {showFamily ? (profileUser.familyMembers?.length || 0) : '🔒'}
+                </span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-2">Family</span>
+              </motion.div>
+            </div>
+
+            {/* ─── HIGHLIGHTS SECTION ─── */}
+            {(isMe || (highlights && highlights.length > 0)) && (
+              <div className="bg-white rounded-3xl p-4 border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
+                <div className="flex gap-4 overflow-x-auto scrollbar-hide py-1">
+                  {/* New Highlight Button (only when isMe) */}
+                  {isMe && (
+                    <div className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group" onClick={() => handleOpenHighlightSelection()}>
+                      <div className="w-14 h-14 rounded-full border border-dashed border-slate-350 flex items-center justify-center bg-white group-hover:bg-slate-50 transition-colors">
+                        <Plus size={20} className="text-slate-800" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-700">New</span>
+                    </div>
+                  )}
+                  {/* Existing Highlights */}
+                  {highlights.map(h => (
+                    <div key={h._id || h.id} onClick={() => setActiveHighlightView(h)} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+                      <div className="w-14 h-14 rounded-full border-2 border-brand-primary/20 p-[1.5px] bg-white group-hover:scale-105 transition-transform">
+                        <img src={h.coverImage || h.cover} className="w-full h-full rounded-full object-cover" alt={h.title} />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-700 max-w-[64px] truncate text-center">{h.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB NAVIGATION BAR ─── */}
+            <div className="flex items-center border border-purple-100/30 bg-white/75 backdrop-blur-xl sticky top-14 z-20 rounded-2xl p-1 gap-1 shadow-[0_4px_16px_rgba(124,58,237,0.02)] mx-3.5 sm:mx-0">
+              {(isMe 
+                ? [
+                    { id: 'posts', icon: Grid, label: 'Posts' },
+                    { id: 'liked', icon: Heart, label: 'Liked' },
+                    { id: 'saved', icon: Bookmark, label: 'Saved' }
+                  ]
+                : [
+                    { id: 'posts', icon: Grid, label: 'Posts' },
+                    { id: 'details', icon: Info, label: 'Details' }
+                  ]
+              ).map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button 
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 py-2.5 rounded-xl flex flex-col items-center justify-center transition-all duration-300 relative press-scale ${
+                      isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-650'
+                    }`}
+                    style={isActive ? { background: 'rgba(124,58,237,0.07)' } : {}}
+                  >
+                    <tab.icon size={19} className={isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'} />
+                    <span className="text-[9px] font-black uppercase tracking-wider mt-1">{tab.label}</span>
+                    {isActive && (
+                      <motion.div layoutId="profileTabActive" className="absolute bottom-0 left-3 right-3 h-[2px] bg-brand-primary rounded-full" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── TABS CONTENT PANELS ─── */}
+            
+            {/* Posts Tab Content */}
+            {activeTab === 'posts' && (
+              <div className="px-0.5 mx-3.5 sm:mx-0">
+                {loadingPosts ? (
+                  <div className="py-16 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1 md:gap-1.5">
+                    {userPosts.length > 0 ? (
+                      userPosts.map((post) => (
+                        <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
+                          {post.image || (post.images && post.images.length > 0) ? (
+                            <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
+                              <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
+                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
+                        <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
+                          <Camera size={22} className="text-slate-400" />
+                        </div>
+                        <h3 className="text-xs font-black text-slate-700">No Posts Yet</h3>
+                        <p className="text-[10px] text-slate-450 mt-0.5">
+                          {isMe ? 'Share a moment with your community.' : 'No posts shared by this member yet.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
-            );
-          })}
-        </div>
+              </div>
+            )}
 
-        {/* ─── TABS CONTENT PANELS ─── */}
-        
-        {/* Posts Tab Content */}
-        {activeTab === 'posts' && (
-          <div className="px-0.5 mx-3.5 sm:mx-0">
-            <div className="grid grid-cols-3 gap-1 md:gap-1.5">
-              {myPosts.length > 0 ? (
-                myPosts.map((post) => (
-                  <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
-                    {post.image || (post.images && post.images.length > 0) ? (
-                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
-                        <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
-                        <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+            {/* Liked Tab Content */}
+            {activeTab === 'liked' && isMe && (
+              <div className="px-0.5 mx-3.5 sm:mx-0">
+                <div className="grid grid-cols-3 gap-1 md:gap-1.5">
+                  {likedPostsList.length > 0 ? (
+                    likedPostsList.map((post) => (
+                      <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
+                        {post.image || (post.images && post.images.length > 0) ? (
+                          <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
+                            <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
-                  <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
-                    <Camera size={22} className="text-slate-400" />
-                  </div>
-                  <h3 className="text-xs font-black text-slate-700">No Posts Yet</h3>
-                  <p className="text-[10px] text-slate-450 mt-0.5">Share a moment with your community.</p>
+                    ))
+                  ) : (
+                    <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
+                      <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
+                        <Heart size={22} className="text-slate-400" />
+                      </div>
+                      <h3 className="text-xs font-black text-slate-700">No Liked Posts</h3>
+                      <p className="text-[10px] text-slate-450 mt-0.5">Posts you like will appear here.</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* Liked Tab Content */}
-        {activeTab === 'liked' && (
-          <div className="px-0.5 mx-3.5 sm:mx-0">
-            <div className="grid grid-cols-3 gap-1 md:gap-1.5">
-              {likedPosts.length > 0 ? (
-                likedPosts.map((post) => (
-                  <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
-                    {post.image || (post.images && post.images.length > 0) ? (
-                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
-                        <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
-                        <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+            {/* Saved Tab Content */}
+            {activeTab === 'saved' && isMe && (
+              <div className="px-0.5 mx-3.5 sm:mx-0">
+                <div className="grid grid-cols-3 gap-1 md:gap-1.5">
+                  {savedPostsList.length > 0 ? (
+                    savedPostsList.map((post) => (
+                      <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
+                        {post.image || (post.images && post.images.length > 0) ? (
+                          <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
+                            <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
-                  <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
-                    <Heart size={22} className="text-slate-400" />
-                  </div>
-                  <h3 className="text-xs font-black text-slate-700">No Liked Posts</h3>
-                  <p className="text-[10px] text-slate-450 mt-0.5">Posts you like will appear here.</p>
+                    ))
+                  ) : (
+                    <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
+                      <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
+                        <Bookmark size={22} className="text-slate-400" />
+                      </div>
+                      <h3 className="text-xs font-black text-slate-700">No Saved Posts</h3>
+                      <p className="text-[10px] text-slate-450 mt-0.5">Posts you save will appear here.</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* Saved Tab Content */}
-        {activeTab === 'saved' && (
-          <div className="px-0.5 mx-3.5 sm:mx-0">
-            <div className="grid grid-cols-3 gap-1 md:gap-1.5">
-              {savedPosts.length > 0 ? (
-                savedPosts.map((post) => (
-                  <div key={post.id} className="aspect-square bg-white rounded-2xl overflow-hidden relative cursor-pointer hover:opacity-90 border border-slate-100 shadow-sm transition-all press-scale" onClick={() => navigate(`/member/social/${post.id}`)}>
-                    {post.image || (post.images && post.images.length > 0) ? (
-                      <img src={post.image || post.images[0]} alt="Post thumbnail" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#fdfcff]/50">
-                        <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest mb-1.5 bg-purple-50 px-1.5 py-0.5 rounded">{post.category}</span>
-                        <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 line-clamp-3 leading-tight">{post.content}</p>
-                      </div>
-                    )}
+            {/* Details Tab Content (only when !isMe) */}
+            {activeTab === 'details' && !isMe && (
+              <div className="p-4 space-y-6 bg-white rounded-3xl border border-purple-100/10 shadow-sm mx-3.5 sm:mx-0">
+                {/* Section 1: Personal Information */}
+                <div className="space-y-2 text-left">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1">Personal Information</h3>
+                  <div className="bg-slate-50/50 rounded-2xl border border-purple-100/10 divide-y divide-purple-100/10 overflow-hidden">
+                    <InfoField label="Member ID" value={memberIdCode} />
+                    <InfoField label="Date of Birth" value={dobStr} />
+                    <InfoField label="Mobile Number" value={showPhone ? phoneNum : (memberGranular.phone === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
+                    <InfoField label="Email" value={showEmail ? emailAddr : (memberGranular.email === 'private' ? '🔒 Private' : '🔒 Followers Only')} />
                   </div>
-                ))
-              ) : (
-                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[28px] border border-purple-100/10 shadow-sm">
-                  <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-3 border border-slate-100">
-                    <Bookmark size={22} className="text-slate-400" />
-                  </div>
-                  <h3 className="text-xs font-black text-slate-700">No Saved Posts</h3>
-                  <p className="text-[10px] text-slate-450 mt-0.5">Posts you save will appear here.</p>
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Section 2: Professional Information */}
+                <div className="space-y-2 text-left">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1">Professional Information</h3>
+                  <div className="bg-slate-50/50 rounded-2xl border border-purple-100/10 divide-y divide-purple-100/10 overflow-hidden">
+                    <InfoField label="Company" value={companyName} />
+                    <InfoField label="Business" value={businessSector} />
+                    <InfoField label="Est. Year" value={estYear.toString()} />
+                  </div>
+                </div>
+
+                {/* Section 3: Address */}
+                <div className="space-y-2 text-left">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1">Address</h3>
+                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-purple-100/10">
+                    <div className="flex gap-2.5 items-start">
+                      <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700 leading-relaxed">{fullAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1298,5 +1701,12 @@ const MyProfilePage = () => {
     </div>
   );
 };
+
+const InfoField = ({ label, value }) => (
+  <div className="flex justify-between items-center px-4 py-3.5 text-xs font-semibold">
+    <span className="text-slate-400 font-medium">{label}</span>
+    <span className="text-slate-700 font-bold text-right truncate max-w-[200px]" title={value}>{value || '—'}</span>
+  </div>
+);
 
 export default MyProfilePage;

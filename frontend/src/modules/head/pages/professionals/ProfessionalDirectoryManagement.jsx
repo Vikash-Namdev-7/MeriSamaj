@@ -216,6 +216,20 @@ export default function ProfessionalDirectoryManagement() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this business listing?')) return;
+    try {
+      const res = await professionalService.headDeleteListing(id);
+      if (res.success) {
+        triggerToast('Listing deleted successfully.');
+        setIsDrawerOpen(false);
+        loadListings();
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to delete listing.', 'error');
+    }
+  };
+
   const activeChips = [];
   if (status) activeChips.push({ label: `Status: ${status}`, key: 'status' });
   if (category) activeChips.push({ label: `Category: ${category}`, key: 'category' });
@@ -615,7 +629,7 @@ export default function ProfessionalDirectoryManagement() {
                 </div>
 
                 {/* Actions Bottom Bar */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex gap-2">
                     {selectedListing.status === 'Pending' && (
                       <>
@@ -649,6 +663,12 @@ export default function ProfessionalDirectoryManagement() {
                         <ToggleRight size={14} /> Reactivate
                       </button>
                     )}
+                    <button 
+                      onClick={() => handleDelete(selectedListing.id)}
+                      className="bg-red-605 hover:bg-red-705 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      Delete
+                    </button>
                   </div>
                   <button 
                     onClick={() => setActionType('verify')}

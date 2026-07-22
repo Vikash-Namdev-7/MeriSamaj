@@ -181,228 +181,145 @@ const seedCampaigns = [
   }
 ];
 
+import { axiosPrivate } from '../../../core/api/axiosPrivate';
+
+const mapBackendToFrontend = (c) => {
+  const target = c.targetAmount || 0;
+  const collected = c.collectedAmount || 0;
+  const remaining = Math.max(0, target - collected);
+  return {
+    id: c._id || c.id,
+    name: c.title || c.name || '',
+    community: c.community || 'Agrawal Samaj',
+    city: c.city || 'Indore',
+    type: c.category || c.type || 'General',
+    targetAmount: target,
+    collectedAmount: collected,
+    remainingAmount: remaining,
+    status: c.status || 'Active',
+    startDate: c.startDate ? c.startDate.split('T')[0] : '',
+    endDate: c.endDate ? c.endDate.split('T')[0] : '',
+    createdBy: c.createdBy?.name || c.createdBy || 'System',
+    creatorRole: c.creatorRole || 'Community Head',
+    description: c.description || '',
+    contributorsCount: c.contributorsCount || 0,
+    documents: c.documents || [],
+    announcements: c.announcements || [],
+    auditHistory: c.auditHistory || []
+  };
+};
+
+const mapFrontendToBackend = (campaignData) => {
+  return {
+    title: campaignData.name,
+    category: campaignData.type,
+    targetAmount: Number(campaignData.targetAmount),
+    startDate: campaignData.startDate,
+    endDate: campaignData.endDate,
+    description: campaignData.description,
+    status: campaignData.status || 'Active',
+    city: campaignData.city || 'Indore',
+    community: campaignData.community || 'Agrawal Samaj'
+  };
+};
+
 class CampaignService {
-  constructor() {
-    this.storageKey = 'merisamaj_v6_donation_campaigns';
-    this.initStore();
-  }
-
-  initStore() {
-    try {
-      const data = localStorage.getItem(this.storageKey);
-      if (!data) {
-        localStorage.setItem(this.storageKey, JSON.stringify(seedCampaigns));
-      }
-    } catch (e) {
-      console.error('Failed to initialize campaigns store:', e);
-    }
-  }
-
-  _getRawCampaigns() {
-    try {
-      const data = localStorage.getItem(this.storageKey);
-      return data ? JSON.parse(data) : [...seedCampaigns];
-    } catch (e) {
-      return [...seedCampaigns];
-    }
-  }
-
-  _saveRawCampaigns(campaigns) {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(campaigns));
-    } catch (e) {
-      console.error('Failed to save campaigns store:', e);
-    }
-  }
-
   async getCampaigns(filters = {}) {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    let list = this._getRawCampaigns();
+    try {
+      const response = await axiosPrivate.get('/head/donations/campaigns');
+      let list = (response.data.data || []).map(mapBackendToFrontend);
+      
+      // Filter soft deleted
+      list = list.filter(c => c.status !== 'Soft Deleted');
 
-    // Filter soft deleted
-    list = list.filter(c => c.status !== 'Soft Deleted');
-
-    // Advanced search
-    if (filters.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      list = list.filter(c => 
-        c.name.toLowerCase().includes(q) ||
-        c.id.toLowerCase().includes(q) ||
-        c.community.toLowerCase().includes(q) ||
-        c.city.toLowerCase().includes(q) ||
-        c.createdBy.toLowerCase().includes(q) ||
-        c.type.toLowerCase().includes(q)
-      );
-    }
-
-    // Filters
-    if (filters.community && filters.community !== 'All') {
-      list = list.filter(c => c.community.toLowerCase() === filters.community.toLowerCase());
-    }
-
-    if (filters.city && filters.city !== 'All') {
-      list = list.filter(c => c.city.toLowerCase() === filters.city.toLowerCase());
-    }
-
-    if (filters.campaignStatus && filters.campaignStatus !== 'All') {
-      list = list.filter(c => c.status.toLowerCase() === filters.campaignStatus.toLowerCase());
-    }
-
-    if (filters.campaignType && filters.campaignType !== 'All') {
-      list = list.filter(c => c.type.toLowerCase() === filters.campaignType.toLowerCase());
-    }
-
-    if (filters.minAmount) {
-      list = list.filter(c => c.targetAmount >= Number(filters.minAmount));
-    }
-    if (filters.maxAmount) {
-      list = list.filter(c => c.targetAmount <= Number(filters.maxAmount));
-    }
-
-    // Sort
-    if (filters.sort) {
-      switch (filters.sort) {
-        case 'newest':
-          list.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-          break;
-        case 'oldest':
-          list.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-          break;
-        case 'highest':
-          list.sort((a, b) => b.targetAmount - a.targetAmount);
-          break;
-        case 'lowest':
-          list.sort((a, b) => a.targetAmount - b.targetAmount);
-          break;
-        case 'recentlyUpdated':
-          list.sort((a, b) => (b.updatedAt ? new Date(b.updatedAt) : new Date(b.startDate)) - (a.updatedAt ? new Date(a.updatedAt) : new Date(a.startDate)));
-          break;
-        default:
-          list.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+      // Advanced search
+      if (filters.searchQuery) {
+        const q = filters.searchQuery.toLowerCase();
+        list = list.filter(c => 
+          c.name.toLowerCase().includes(q) ||
+          c.id.toLowerCase().includes(q) ||
+          c.community.toLowerCase().includes(q) ||
+          c.city.toLowerCase().includes(q) ||
+          c.type.toLowerCase().includes(q)
+        );
       }
-    } else {
-      list.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-    }
 
-    return {
-      data: list,
-      totalCount: list.length
-    };
+      // Filters
+      if (filters.community && filters.community !== 'All') {
+        list = list.filter(c => c.community.toLowerCase() === filters.community.toLowerCase());
+      }
+      if (filters.city && filters.city !== 'All') {
+        list = list.filter(c => c.city.toLowerCase() === filters.city.toLowerCase());
+      }
+      if (filters.campaignStatus && filters.campaignStatus !== 'All') {
+        list = list.filter(c => c.status.toLowerCase() === filters.campaignStatus.toLowerCase());
+      }
+      if (filters.campaignType && filters.campaignType !== 'All') {
+        list = list.filter(c => c.type.toLowerCase() === filters.campaignType.toLowerCase());
+      }
+      if (filters.minAmount) {
+        list = list.filter(c => c.targetAmount >= Number(filters.minAmount));
+      }
+      if (filters.maxAmount) {
+        list = list.filter(c => c.targetAmount <= Number(filters.maxAmount));
+      }
+
+      // Sort
+      if (filters.sort) {
+        switch (filters.sort) {
+          case 'newest':
+            list.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+            break;
+          case 'oldest':
+            list.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            break;
+          case 'highest':
+            list.sort((a, b) => b.targetAmount - a.targetAmount);
+            break;
+          case 'lowest':
+            list.sort((a, b) => a.targetAmount - b.targetAmount);
+            break;
+          default:
+            list.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+        }
+      }
+
+      return {
+        data: list,
+        totalCount: list.length
+      };
+    } catch (e) {
+      console.error('Failed to get campaigns:', e);
+      return { data: [], totalCount: 0 };
+    }
   }
 
   async getCampaignById(id) {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const list = this._getRawCampaigns();
-    const item = list.find(c => c.id === id);
-    if (!item) throw new Error('Campaign not found');
-    return item;
+    const response = await axiosPrivate.get(`/head/donations/campaigns/${id}`);
+    return mapBackendToFrontend(response.data.data);
   }
 
   async createCampaign(campaignData, operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const list = this._getRawCampaigns();
-    const id = `CMP-${100 + list.length + 1}`;
-    const now = new Date().toISOString();
-
-    const newCampaign = {
-      id,
-      collectedAmount: 0,
-      remainingAmount: Number(campaignData.targetAmount),
-      status: 'Active',
-      startDate: campaignData.startDate || now.split('T')[0],
-      endDate: campaignData.endDate || now.split('T')[0],
-      createdBy: operator,
-      creatorRole: operator === 'Master Admin' ? 'Master Admin' : 'Community Head',
-      contributorsCount: 0,
-      documents: [],
-      announcements: [],
-      auditHistory: [
-        {
-          id: `aud-${Date.now()}-1`,
-          date: now,
-          action: 'Campaign Created',
-          operator,
-          details: `Campaign launched directly by ${operator}. Target goal ₹${campaignData.targetAmount}`
-        }
-      ],
-      ...campaignData,
-      targetAmount: Number(campaignData.targetAmount)
-    };
-
-    list.push(newCampaign);
-    this._saveRawCampaigns(list);
-
-    // Track Audit Log
-    await donationAuditService.logEvent(id, 'Campaign Created', `Created campaign "${newCampaign.name}" with goal ₹${newCampaign.targetAmount}`, operator);
-
-    return newCampaign;
+    const body = mapFrontendToBackend(campaignData);
+    const response = await axiosPrivate.post('/head/donations/campaigns', body);
+    const created = mapBackendToFrontend(response.data.data);
+    await donationAuditService.logEvent(created.id, 'Campaign Created', `Created campaign "${created.name}" with goal ₹${created.targetAmount}`, operator);
+    return created;
   }
 
   async updateCampaign(id, updatedFields, operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const list = this._getRawCampaigns();
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Campaign not found');
-
-    const existing = list[idx];
-    const now = new Date().toISOString();
-
-    const targetAmount = updatedFields.targetAmount !== undefined ? Number(updatedFields.targetAmount) : existing.targetAmount;
-    const collectedAmount = existing.collectedAmount;
-    const remainingAmount = Math.max(0, targetAmount - collectedAmount);
-
-    const updated = {
-      ...existing,
-      ...updatedFields,
-      targetAmount,
-      remainingAmount,
-      updatedAt: now,
-      auditHistory: [
-        {
-          id: `aud-${Date.now()}`,
-          date: now,
-          action: 'Campaign Updated',
-          operator,
-          details: 'Campaign details, target goals or description updated.'
-        },
-        ...(existing.auditHistory || [])
-      ]
-    };
-
-    list[idx] = updated;
-    this._saveRawCampaigns(list);
-
+    const body = mapFrontendToBackend({ ...updatedFields, name: updatedFields.name || updatedFields.title });
+    const response = await axiosPrivate.put(`/head/donations/campaigns/${id}`, body);
+    const updated = mapBackendToFrontend(response.data.data);
     await donationAuditService.logEvent(id, 'Campaign Updated', `Updated details for campaign "${updated.name}"`, operator);
     return updated;
   }
 
   async changeCampaignStatus(id, newStatus, details = '', operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const list = this._getRawCampaigns();
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Campaign not found');
-
-    const existing = list[idx];
-    const oldStatus = existing.status;
-    const now = new Date().toISOString();
-
-    existing.status = newStatus;
-    existing.updatedAt = now;
-    existing.auditHistory = [
-      {
-        id: `aud-${Date.now()}`,
-        date: now,
-        action: `Campaign ${newStatus}`,
-        operator,
-        details: details || `Campaign status changed from '${oldStatus}' to '${newStatus}' by ${operator}.`
-      },
-      ...(existing.auditHistory || [])
-    ];
-
-    this._saveRawCampaigns(list);
-
+    const response = await axiosPrivate.patch(`/head/donations/campaigns/${id}/status`, { status: newStatus });
+    const updated = mapBackendToFrontend(response.data.data);
     await donationAuditService.logEvent(id, `Campaign ${newStatus}`, `Status set to ${newStatus}. Details: ${details}`, operator);
-    return existing;
+    return updated;
   }
 
   async overrideDecision(id, approved = true, notes = '', operator = 'Master Admin') {
@@ -412,74 +329,19 @@ class CampaignService {
   }
 
   async softDeleteCampaign(id, operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const list = this._getRawCampaigns();
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Campaign not found');
-
-    const existing = list[idx];
-    const now = new Date().toISOString();
-
-    existing.status = 'Soft Deleted';
-    existing.updatedAt = now;
-    existing.auditHistory = [
-      {
-        id: `aud-${Date.now()}`,
-        date: now,
-        action: 'Campaign Soft Deleted',
-        operator,
-        details: `Soft deleted from systems by ${operator}.`
-      },
-      ...(existing.auditHistory || [])
-    ];
-
-    this._saveRawCampaigns(list);
-
-    await donationAuditService.logEvent(id, 'Campaign Soft Deleted', `Campaign "${existing.name}" soft deleted.`, operator);
-    return existing;
+    await axiosPrivate.delete(`/head/donations/campaigns/${id}`);
+    await donationAuditService.logEvent(id, 'Campaign Soft Deleted', `Campaign soft deleted.`, operator);
+    return { id, status: 'Soft Deleted' };
   }
 
   async addAnnouncement(id, title, content, operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const list = this._getRawCampaigns();
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Campaign not found');
-
-    const existing = list[idx];
-    const newAnnouncement = {
-      id: `ann-${Date.now()}`,
-      title,
-      content,
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    existing.announcements = [newAnnouncement, ...(existing.announcements || [])];
-    this._saveRawCampaigns(list);
-
     await donationAuditService.logEvent(id, 'Announcement Created', `Added notice: "${title}"`, operator);
-    return existing;
+    return { id, title, content };
   }
 
   async uploadDocument(id, documentTitle, filename, operator = 'Master Admin') {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const list = this._getRawCampaigns();
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Campaign not found');
-
-    const existing = list[idx];
-    const newDoc = {
-      id: `doc-${Date.now()}`,
-      title: documentTitle,
-      fileUrl: filename,
-      status: 'Verified',
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    existing.documents = [...(existing.documents || []), newDoc];
-    this._saveRawCampaigns(list);
-
     await donationAuditService.logEvent(id, 'Document Uploaded', `Uploaded document: "${documentTitle}"`, operator);
-    return existing;
+    return { id, title: documentTitle, fileUrl: filename, status: 'Verified' };
   }
 }
 

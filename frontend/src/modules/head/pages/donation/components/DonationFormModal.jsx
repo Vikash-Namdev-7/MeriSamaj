@@ -216,6 +216,18 @@ const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                      <select 
+                        name="status"
+                        value={formData.status} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand-primary outline-none transition-all"
+                      >
+                        <option value="Published">Active / Published</option>
+                        <option value="Draft">Draft</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Short Description</label>
                       <input 
                         type="text" 

@@ -66,6 +66,12 @@ const userSchema = new mongoose.Schema({
   alternatePhone: { type: String },
   alternateEmail: { type: String },
   
+  // Profile Privacy Configuration
+  isPrivate: { type: Boolean, default: false },
+  phonePrivacy: { type: String, enum: ['public', 'followers', 'private'], default: 'followers' },
+  emailPrivacy: { type: String, enum: ['public', 'followers', 'private'], default: 'followers' },
+  familyPrivacy: { type: String, enum: ['public', 'followers', 'private'], default: 'followers' },
+  
   // Family Members Array
   familyMembers: [{
     name: String,

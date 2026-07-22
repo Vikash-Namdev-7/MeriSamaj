@@ -17,3 +17,12 @@ export const getMemberStats = async () => {
     throw error.response?.data || { message: 'Network error occurred' };
   }
 };
+
+export const getMemberById = async (id) => {
+  try {
+    const response = await axiosPrivate.get(`/member/members/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Network error occurred' };
+  }
+};
