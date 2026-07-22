@@ -1,12 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Building2, Palette, LayoutTemplate, Link, UserPlus, FileSpreadsheet, Users, Heart, Calendar, Briefcase, Award, Bell, Mail, MessageSquare, Phone, FileText, Network, Zap, ShieldCheck, ShieldAlert, HardDrive, History, Clock, Settings, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Settings, Building2, Palette, LayoutTemplate, Link, UserPlus, FileSpreadsheet,
-  Users, Heart, Calendar, Briefcase, Bell, Mail, MessageSquare, Phone, FileText,
-  Network, Zap, ShieldCheck, ShieldAlert, HardDrive, Clock, History, Save, X, Download, Award
-} from 'lucide-react';
-import { useData } from '../../../member/context/DataProvider';
-import { useCommunitySettings } from './hooks/useCommunitySettings';
+import { useCommunitySettings } from '../../hooks/useCommunitySettings';
+import { useData } from '../../hooks/useData';
 
 import { GeneralInfoTab } from './components/GeneralInfoTab';
 import { BrandingTab } from './components/BrandingTab';

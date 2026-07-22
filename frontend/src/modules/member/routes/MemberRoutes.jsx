@@ -56,13 +56,8 @@ import PollDetailPage from '../pages/voting/PollDetailPage';
 import ElectionsListPage from '../pages/voting/ElectionsListPage';
 // import SurveysPage from '../pages/voting/SurveysPage';
 import { VotingProvider } from '../pages/voting/VotingContext';
-import DonationPage from '../pages/donation/DonationPage';
-import DonateSetupPage from '../pages/donation/DonateSetupPage';
-import DonatePaymentPage from '../pages/donation/DonatePaymentPage';
-import DonateSuccessPage from '../pages/donation/DonateSuccessPage';
-import MyDonationsPage from '../pages/donation/MyDonationsPage';
-import DonationCampaignDetailPage from '../pages/donation/DonationCampaignDetailPage';
-import { DonationProvider } from '../pages/donation/DonationContext';
+import MemberDonations from '../../../pages/member/MemberDonations';
+import DonationDetails from '../../../pages/member/DonationDetails';
 
 // Referral & Rewards
 import { ReferralProvider } from '../pages/referral/ReferralContext';
@@ -119,8 +114,7 @@ export const MemberRoutes = () => {
   return (
     <AnimatePresence mode="wait">
       <ReferralProvider>
-        <DonationProvider>
-          <Routes location={location} key={location.pathname}>
+        <Routes location={location} key={location.pathname}>
           {/* Onboarding — no bottom nav */}
           <Route path="splash" element={<SplashScreen />} />
           <Route element={<PublicRoute />}>
@@ -184,12 +178,8 @@ export const MemberRoutes = () => {
             </Route>
 
             <Route path="donation" element={<Outlet />}>
-              <Route index element={<AnimatedPage><DonationPage /></AnimatedPage>} />
-              <Route path="setup" element={<AnimatedPage><DonateSetupPage /></AnimatedPage>} />
-              <Route path="payment" element={<AnimatedPage><DonatePaymentPage /></AnimatedPage>} />
-              <Route path="success" element={<AnimatedPage><DonateSuccessPage /></AnimatedPage>} />
-              <Route path="my" element={<AnimatedPage><MyDonationsPage /></AnimatedPage>} />
-              <Route path="campaign/:id" element={<AnimatedPage><DonationCampaignDetailPage /></AnimatedPage>} />
+              <Route index element={<AnimatedPage><MemberDonations /></AnimatedPage>} />
+              <Route path=":id" element={<AnimatedPage><DonationDetails /></AnimatedPage>} />
             </Route>
 
             <Route path="notifications" element={<AnimatedPage><NotificationsPage /></AnimatedPage>} />
@@ -248,7 +238,6 @@ export const MemberRoutes = () => {
         </Route>
       </Route>
       </Routes>
-        </DonationProvider>
       </ReferralProvider>
     </AnimatePresence>
   );

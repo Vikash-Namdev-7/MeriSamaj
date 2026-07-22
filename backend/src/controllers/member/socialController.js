@@ -447,6 +447,45 @@ exports.addComment = async (req, res) => {
   }
 };
 
+// @desc    Toggle like for a comment
+// @route   POST /api/v1/member/social/comments/:id/like
+// @access  Private
+exports.toggleCommentLike = async (req, res) => {
+  try {
+    const commentId = req.params.id;
+    const userId = req.user._id;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const likedIndex = (comment.likes || []).findIndex(id => id.toString() === userId.toString());
+    let isLiked = false;
+
+    if (likedIndex > -1) {
+      comment.likes.splice(likedIndex, 1);
+    } else {
+      comment.likes.push(userId);
+      isLiked = true;
+    }
+
+    comment.likesCount = comment.likes.length;
+    await comment.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isLiked,
+        likesCount: comment.likesCount
+      }
+    });
+  } catch (error) {
+    console.error('toggleCommentLike error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Toggle save post
 // @route   POST /api/v1/member/social/posts/:id/save
 // @access  Private

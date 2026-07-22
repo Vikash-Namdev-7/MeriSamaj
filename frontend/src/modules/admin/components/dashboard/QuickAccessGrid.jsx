@@ -10,7 +10,6 @@ export const QuickAccessGrid = () => {
     { name: 'Subscriptions', icon: CreditCard, color: 'text-emerald-400', bg: 'bg-emerald-500/10', path: '/admin/subscriptions' },
     { name: 'Matrimonial', icon: Heart, color: 'text-pink-400', bg: 'bg-pink-500/10', path: '/admin/matrimonial' },
     { name: 'Complaints', icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/10', path: '/admin/complaints' },
-    { name: 'CMS & Banners', icon: FileText, color: 'text-cyan-400', bg: 'bg-cyan-500/10', path: '/admin/cms' },
     { name: 'City Config', icon: Database, color: 'text-purple-400', bg: 'bg-purple-500/10', path: '/admin/cities' },
     { name: 'Settings', icon: Settings, color: 'text-gray-400', bg: 'bg-gray-500/10', path: '/admin/config' },
   ];

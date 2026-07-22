@@ -1,120 +1,142 @@
 const mongoose = require('mongoose');
 const Event = require('../../models/Event');
+const EventResponse = require('../../models/EventResponse');
 const EventActivityLog = require('../../models/EventActivityLog');
 const Community = require('../../models/Community');
+const User = require('../../models/User');
+const { notifyEventCreated, notifyEventCancelled, notifyEventDeleted } = require('../../services/notificationService');
 
-// Date parser helper to generate localized months, short months, day, and date string
-const parseEventDate = (startDateStr) => {
-  const d = new Date(startDateStr);
-  if (isNaN(d.getTime())) {
-    return {
-      date: 'TBA',
-      day: '01',
-      month: 'Month',
-      monthShort: 'MON',
-      weekday: 'Day'
-    };
-  }
-
-  const daysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
-  const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
-  const monthsShortHi = ['जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून', 'जुला', 'अग', 'सित', 'अक्तू', 'नव', 'दिस'];
-
-  const weekdayVal = daysHi[d.getDay()];
-  const dayVal = String(d.getDate()).padStart(2, '0');
-  const monthHiVal = monthsHi[d.getMonth()];
-  const monthShortVal = monthsShortHi[d.getMonth()];
-  
-  // Format as e.g. "2026-07-15"
-  const yr = d.getFullYear();
-  const mt = String(d.getMonth() + 1).padStart(2, '0');
-  const dy = String(d.getDate()).padStart(2, '0');
-  const formattedDate = `${yr}-${mt}-${dy}`;
-
-  return {
-    date: formattedDate,
-    day: dayVal,
-    month: monthHiVal,
-    monthShort: monthShortVal,
-    weekday: weekdayVal
-  };
-};
-
-// Helper to resolve the community ID for write/bind operations
 const getEventCommunityId = async (req) => {
-  // 1. Check req.communityId or req.user.communityId
   let communityId = req.communityId || req.user?.communityId;
-  if (communityId) return communityId;
+  if (communityId && mongoose.Types.ObjectId.isValid(communityId)) return communityId;
 
-  // 2. Head role fallback: first assigned community ID
   if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
     return req.user.assignedCommunityIds[0];
   }
 
-  // 3. Fallback for users not yet fully migrated to ObjectId references
   if (req.user?.community) {
     const comm = await Community.findOne({ name: req.user.community });
     if (comm) return comm._id;
   }
 
-  // 4. Dev Fallback: Return a dummy one so the UI still functions for testing
-  return new mongoose.Types.ObjectId('000000000000000000000000');
+  return null;
 };
 
-// Helper to build the community filter for queries (Read operations)
-const getEventQueryFilter = (req) => {
-  // 1. If head user, match any of their assigned communities
+const getHeadCommunityFilter = (req) => {
   if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
     return { communityId: { $in: req.user.assignedCommunityIds } };
   }
-
-  // 2. Check req.communityId
-  if (req.communityId) {
-    return { communityId: req.communityId };
+  const commId = req.communityId || req.user?.communityId;
+  if (commId && mongoose.Types.ObjectId.isValid(commId)) {
+    return { communityId: commId };
   }
-
-  // 3. Check req.user.communityId
-  if (req.user?.communityId) {
-    return { communityId: req.user.communityId };
-  }
-
-  // 4. Fallback for pre-migration data (community String)
-  if (req.user?.community) {
-    return { community: req.user.community };
-  }
-
-  // 5. Dev fallback to dummy ID
   return { communityId: new mongoose.Types.ObjectId('000000000000000000000000') };
 };
 
-// Helper to check if user has access to a specific community's event
-const hasEventAccess = (req, eventCommunityId) => {
+const hasHeadEventAccess = (req, eventCommunityId) => {
   if (!eventCommunityId) return false;
-  
   if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
     return req.user.assignedCommunityIds.some(id => id.toString() === eventCommunityId.toString());
   }
-  
-  const communityId = req.communityId || req.user?.communityId;
-  if (communityId) {
-    return eventCommunityId.toString() === communityId.toString();
+  const commId = req.communityId || req.user?.communityId;
+  if (commId) {
+    return eventCommunityId.toString() === commId.toString();
   }
-  
   return false;
 };
 
-// @desc    Get head events for their community (Strict Isolation)
+const attachEventStats = async (events) => {
+  if (!events || events.length === 0) return [];
+  const eventIds = events.map(e => e._id);
+
+  const stats = await EventResponse.aggregate([
+    { $match: { eventId: { $in: eventIds } } },
+    {
+      $group: {
+        _id: '$eventId',
+        interestedCount: {
+          $sum: { $cond: [{ $or: [{ $eq: ['$isInterested', true] }, { $eq: ['$response', 'Interested'] }] }, 1, 0] }
+        },
+        goingCount: {
+          $sum: { $cond: [{ $or: [{ $eq: ['$isGoing', true] }, { $eq: ['$registered', true] }, { $eq: ['$response', 'Going'] }] }, 1, 0] }
+        },
+        notGoingCount: {
+          $sum: { $cond: [{ $eq: ['$response', 'Not Going'] }, 1, 0] }
+        },
+        registeredCount: {
+          $sum: { $cond: [{ $or: [{ $eq: ['$registered', true] }, { $eq: ['$isGoing', true] }] }, 1, 0] }
+        }
+      }
+    }
+  ]);
+
+  const statsMap = {};
+  stats.forEach(s => {
+    statsMap[s._id.toString()] = s;
+  });
+
+  return events.map(e => {
+    const s = statsMap[e._id.toString()] || {};
+    return {
+      ...e,
+      interestedCount: s.interestedCount || 0,
+      goingCount: s.goingCount || 0,
+      notGoingCount: s.notGoingCount || 0,
+      registeredCount: s.registeredCount || 0
+    };
+  });
+};
+
+// @desc    Get head events for their community
 // @route   GET /api/v1/head/events
 // @access  Head
 exports.getHeadEvents = async (req, res) => {
   try {
-    const queryFilter = getEventQueryFilter(req);
-    const query = { ...queryFilter, isDeleted: { $ne: true } };
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = '', 
+      category = 'all', 
+      status = 'all'
+    } = req.query;
 
-    const events = await Event.find(query).sort({ createdAt: -1 });
+    const commFilter = getHeadCommunityFilter(req);
+    const query = { ...commFilter, isDeleted: { $ne: true } };
+
+    if (search.trim()) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { titleEn: { $regex: search, $options: 'i' } },
+        { venue: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (category !== 'all') {
+      query.category = category;
+    }
+
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await Event.countDocuments(query);
+    const rawEvents = await Event.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    const events = await attachEventStats(rawEvents);
 
     res.status(200).json({
       status: 'success',
+      total,
+      pages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
       data: events
     });
   } catch (error) {
@@ -123,7 +145,7 @@ exports.getHeadEvents = async (req, res) => {
   }
 };
 
-// @desc    Create a new event (Automatic Community Binding)
+// @desc    Create new community event
 // @route   POST /api/v1/head/events
 // @access  Head
 exports.createEvent = async (req, res) => {
@@ -147,25 +169,52 @@ exports.createEvent = async (req, res) => {
       venue,
       venueEn,
       address,
-      city,
-      googleMapsLink,
+      cityId,
       startDate,
       endDate,
-      timings,
+      startTime,
+      endTime,
       time,
       timeEn,
       entryFee,
       contact,
+      capacity,
+      registrationRequired,
       objectiveEn,
       programsEn,
       audienceEn,
       importantInfoEn,
       tagsEn,
       tags,
-      isFeatured
+      isFeatured,
+      status
     } = req.body;
 
-    const parsedDate = parseEventDate(startDate || new Date());
+    let parsedDate = {
+      date: 'TBA',
+      day: '01',
+      month: 'Month',
+      monthShort: 'MON',
+      weekday: 'Day'
+    };
+    if (startDate) {
+      const d = new Date(startDate);
+      if (!isNaN(d.getTime())) {
+        const daysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+        const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+        const monthsShortHi = ['जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून', 'जुला', 'अग', 'सित', 'अक्तू', 'नव', 'दिस'];
+        parsedDate = {
+          date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+          day: String(d.getDate()).padStart(2, '0'),
+          month: monthsHi[d.getMonth()],
+          monthShort: monthsShortHi[d.getMonth()],
+          weekday: daysHi[d.getDay()]
+        };
+      }
+    }
+
+    const validCityId = (cityId && mongoose.Types.ObjectId.isValid(cityId)) ? cityId : undefined;
+    const userId = req.user?._id || req.user?.id;
 
     const event = new Event({
       title,
@@ -175,45 +224,65 @@ exports.createEvent = async (req, res) => {
       month: parsedDate.month,
       monthShort: parsedDate.monthShort,
       weekday: parsedDate.weekday,
-      time: time || timings || 'TBA',
-      timeEn: timeEn || timings || 'TBA',
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      startTime: startTime || 'TBA',
+      endTime: endTime || 'TBA',
+      time: time || startTime || 'TBA',
+      timeEn: timeEn || startTime || 'TBA',
       venue: venue || address || 'TBA',
       venueEn: venueEn || address || 'TBA',
       address,
-      city,
-      googleMapsLink,
+      cityId: validCityId,
       description,
       descriptionEn: descriptionEn || description,
       category: category || 'Cultural',
       categoryEn: categoryEn || category || 'Cultural',
       image: image || bannerImage || thumbnailImage,
+      capacity: capacity ? parseInt(capacity) : 0,
+      registrationRequired: !!registrationRequired,
       isFeatured: !!isFeatured,
+      visibility: 'COMMUNITY',
+      isGlobal: false,
+      communityId,
+      status: status || 'Published',
+      createdByRole: 'COMMUNITY_HEAD',
+      createdBy: userId,
       entryFee: entryFee || 'Free',
-      contact: contact || req.user.phone,
-      communityId, // Enforce community of authenticated Head
+      contact: contact || req.user?.phone || 'N/A',
       organizer: {
-        name: req.user.name || 'Community Head',
-        role: req.user.role === 'head' ? 'Community Head' : 'Admin',
-        avatar: req.user.avatar,
-        initials: req.user.name ? req.user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CH'
+        name: req.user?.name || 'Community Head',
+        role: 'Community Head',
+        avatar: req.user?.avatar,
+        initials: req.user?.name ? req.user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CH'
       },
       objectiveEn,
       programsEn: Array.isArray(programsEn) ? programsEn : (programsEn ? [programsEn] : []),
       audienceEn,
       importantInfoEn,
-      tagsEn: Array.isArray(tagsEn) ? tagsEn : (tags ? tags.split(',').map(t => t.trim()) : []),
-      createdBy: req.user._id
+      tagsEn: Array.isArray(tagsEn) ? tagsEn : (tags ? tags.split(',').map(t => t.trim()) : [])
     });
 
     await event.save();
 
-    await EventActivityLog.create({
-      actor: { id: req.user._id, name: req.user.name || 'Community Head', role: req.user.role || 'head' },
-      action: 'Create',
-      event: { id: event._id, title: event.title },
-      community: { id: event.communityId },
-      description: `Community Head ${req.user.name || ''} created event "${event.title}"`
-    });
+    try {
+      await EventActivityLog.create({
+        actor: { id: userId, name: req.user?.name || 'Community Head', role: 'head' },
+        action: 'Create',
+        event: { id: event._id, title: event.title },
+        community: { id: event.communityId },
+        description: `Community Head ${req.user?.name || ''} created event "${event.title}"`
+      });
+    } catch (logErr) {
+      console.warn('Log warning:', logErr.message);
+    }
+
+    try {
+      const memberIds = await User.find({ communityId: event.communityId, role: 'user', accountStatus: 'active' }).distinct('_id');
+      await notifyEventCreated(memberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventCreated failed:', notifyErr.message);
+    }
 
     res.status(201).json({
       status: 'success',
@@ -221,11 +290,11 @@ exports.createEvent = async (req, res) => {
     });
   } catch (error) {
     console.error('Create Event Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to create event' });
+    res.status(500).json({ status: 'error', message: error.message || 'Failed to create event' });
   }
 };
 
-// @desc    Update event details (Strict Isolation Check)
+// @desc    Update event details
 // @route   PUT /api/v1/head/events/:eventId
 // @access  Head
 exports.updateEvent = async (req, res) => {
@@ -237,31 +306,31 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
-    // Strict Scope check: must belong to the head's community
-    if (!hasEventAccess(req, event.communityId)) {
+    if (!hasHeadEventAccess(req, event.communityId)) {
       return res.status(403).json({ status: 'fail', message: 'Access denied. You cannot edit events from other communities.' });
     }
 
     const updates = req.body;
+    updates.updatedBy = req.user?._id || req.user?.id;
+
+    if (updates.cityId && !mongoose.Types.ObjectId.isValid(updates.cityId)) {
+      updates.cityId = undefined;
+    }
 
     if (updates.startDate) {
-      const parsedDate = parseEventDate(updates.startDate);
-      updates.date = parsedDate.date;
-      updates.day = parsedDate.day;
-      updates.month = parsedDate.month;
-      updates.monthShort = parsedDate.monthShort;
-      updates.weekday = parsedDate.weekday;
+      const d = new Date(updates.startDate);
+      if (!isNaN(d.getTime())) {
+        const daysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+        const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+        const monthsShortHi = ['जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून', 'जुला', 'अग', 'सित', 'अक्तू', 'नव', 'दिस'];
+        updates.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        updates.day = String(d.getDate()).padStart(2, '0');
+        updates.month = monthsHi[d.getMonth()];
+        updates.monthShort = monthsShortHi[d.getMonth()];
+        updates.weekday = daysHi[d.getDay()];
+      }
     }
 
-    if (updates.subtitle) updates.titleEn = updates.subtitle;
-    if (updates.timings) {
-      updates.time = updates.timings;
-      updates.timeEn = updates.timings;
-    }
-    if (updates.address) {
-      updates.venue = updates.address;
-      updates.venueEn = updates.address;
-    }
     if (updates.bannerImage || updates.thumbnailImage) {
       updates.image = updates.bannerImage || updates.thumbnailImage;
     }
@@ -269,13 +338,17 @@ exports.updateEvent = async (req, res) => {
     Object.assign(event, updates);
     await event.save();
 
-    await EventActivityLog.create({
-      actor: { id: req.user._id, name: req.user.name || 'Community Head', role: req.user.role || 'head' },
-      action: 'Update',
-      event: { id: event._id, title: event.title },
-      community: { id: event.communityId },
-      description: `Community Head ${req.user.name || ''} updated event "${event.title}"`
-    });
+    try {
+      await EventActivityLog.create({
+        actor: { id: req.user?._id || req.user?.id, name: req.user?.name || 'Community Head', role: 'head' },
+        action: 'Update',
+        event: { id: event._id, title: event.title },
+        community: { id: event.communityId },
+        description: `Community Head ${req.user?.name || ''} updated event "${event.title}"`
+      });
+    } catch (logErr) {
+      console.warn('Log warning:', logErr.message);
+    }
 
     res.status(200).json({
       status: 'success',
@@ -283,11 +356,11 @@ exports.updateEvent = async (req, res) => {
     });
   } catch (error) {
     console.error('Update Event Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to update event' });
+    res.status(500).json({ status: 'error', message: error.message || 'Failed to update event' });
   }
 };
 
-// @desc    Soft-delete event (Strict Isolation Check)
+// @desc    Soft-delete event
 // @route   DELETE /api/v1/head/events/:eventId
 // @access  Head
 exports.deleteEvent = async (req, res) => {
@@ -299,21 +372,38 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
-    // Strict Scope check: must belong to the head's community
-    if (!hasEventAccess(req, event.communityId)) {
+    if (!hasHeadEventAccess(req, event.communityId)) {
       return res.status(403).json({ status: 'fail', message: 'Access denied. You cannot delete events from other communities.' });
     }
 
+    const userId = req.user?._id || req.user?.id;
     event.isDeleted = true;
+    event.status = 'Deleted';
+    event.deletedBy = userId;
+    event.deletedAt = new Date();
     await event.save();
 
-    await EventActivityLog.create({
-      actor: { id: req.user._id, name: req.user.name || 'Community Head', role: req.user.role || 'head' },
-      action: 'Delete',
-      event: { id: event._id, title: event.title },
-      community: { id: event.communityId },
-      description: `Community Head ${req.user.name || ''} deleted event "${event.title}"`
-    });
+    try {
+      await EventActivityLog.create({
+        actor: { id: userId, name: req.user?.name || 'Community Head', role: 'head' },
+        action: 'Delete',
+        event: { id: event._id, title: event.title },
+        community: { id: event.communityId },
+        description: `Community Head ${req.user?.name || ''} deleted event "${event.title}"`
+      });
+    } catch (logErr) {
+      console.warn('Log warning:', logErr.message);
+    }
+
+    try {
+      const respondedMemberIds = await EventResponse.find({
+        eventId: event._id,
+        $or: [{ response: { $in: ['Going', 'Interested'] } }, { isGoing: true }, { isInterested: true }]
+      }).distinct('memberId');
+      await notifyEventDeleted(respondedMemberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventDeleted failed:', notifyErr.message);
+    }
 
     res.status(200).json({
       status: 'success',
@@ -325,252 +415,152 @@ exports.deleteEvent = async (req, res) => {
   }
 };
 
-// @desc    Toggle Featured Event status
-// @route   PATCH /api/v1/head/events/:eventId/feature
+// @desc    Cancel event
+// @route   PATCH /api/v1/head/events/:eventId/cancel
 // @access  Head
-exports.toggleFeatured = async (req, res) => {
+exports.cancelEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-
     const event = await Event.findOne({ _id: eventId, isDeleted: { $ne: true } });
     if (!event) {
       return res.status(404).json({ status: 'fail', message: 'Event not found' });
     }
 
-    if (!hasEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied. You can only feature events for your own community.' });
+    if (!hasHeadEventAccess(req, event.communityId)) {
+      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
     }
 
-    event.isFeatured = !event.isFeatured;
+    const userId = req.user?._id || req.user?.id;
+    event.status = 'Cancelled';
+    event.cancelledBy = userId;
+    event.cancelledAt = new Date();
     await event.save();
 
-    await EventActivityLog.create({
-      actor: { id: req.user._id, name: req.user.name || 'Community Head', role: 'head' },
-      action: event.isFeatured ? 'Feature' : 'Unfeature',
-      event: { id: event._id, title: event.title },
-      community: { id: event.communityId },
-      description: `Community Head ${req.user.name || ''} ${event.isFeatured ? 'featured' : 'unfeatured'} event "${event.title}"`
-    });
+    try {
+      const respondedMemberIds = await EventResponse.find({
+        eventId: event._id,
+        $or: [{ response: { $in: ['Going', 'Interested'] } }, { isGoing: true }, { isInterested: true }]
+      }).distinct('memberId');
+      await notifyEventCancelled(respondedMemberIds, event.title, event._id);
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyEventCancelled failed:', notifyErr.message);
+    }
 
     res.status(200).json({ status: 'success', data: event });
   } catch (error) {
-    console.error('Toggle Featured Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to update featured status' });
+    console.error('Head Cancel Event Error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to cancel event' });
   }
 };
 
-// @desc    Update Event status
-// @route   PATCH /api/v1/head/events/:eventId/status
+// @desc    Get member responses for a community event
+// @route   GET /api/v1/head/events/:eventId/responses
 // @access  Head
-exports.updateStatus = async (req, res) => {
+exports.getMemberResponses = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { status } = req.body;
 
-    const event = await Event.findOne({ _id: eventId, isDeleted: { $ne: true } });
+    const event = await Event.findOne({ _id: eventId, isDeleted: { $ne: true } }).lean();
     if (!event) {
       return res.status(404).json({ status: 'fail', message: 'Event not found' });
     }
 
-    if (!hasEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied. You can only update status for events in your own community.' });
+    if (!hasHeadEventAccess(req, event.communityId)) {
+      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
     }
 
-    event.status = status;
-    await event.save();
-
-    await EventActivityLog.create({
-      actor: { id: req.user._id, name: req.user.name || 'Community Head', role: 'head' },
-      action: 'Status Change',
-      event: { id: event._id, title: event.title },
-      community: { id: event.communityId },
-      description: `Community Head ${req.user.name || ''} updated status of event "${event.title}" to ${status}`
-    });
-
-    res.status(200).json({ status: 'success', data: event });
-  } catch (error) {
-    console.error('Update Status Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to update status' });
-  }
-};
-
-// @desc    Get Event Monitoring Logs for this community
-// @route   GET /api/v1/head/events/monitoring
-// @access  Head
-exports.getMonitoringLogs = async (req, res) => {
-  try {
-    const queryFilter = getEventQueryFilter(req);
-    const logQuery = {};
-    if (queryFilter.communityId) {
-      logQuery['community.id'] = queryFilter.communityId;
-    } else if (queryFilter.community) {
-      logQuery['community.name'] = queryFilter.community;
-    }
-
-    const logs = await EventActivityLog.find(logQuery)
-      .sort({ timestamp: -1 })
-      .limit(50)
+    const responses = await EventResponse.find({ eventId })
+      .populate({
+        path: 'memberId',
+        select: 'name email phone avatar gotra communityId city',
+        populate: [
+          { path: 'communityId', select: 'name' },
+          { path: 'city', select: 'name' }
+        ]
+      })
+      .sort({ updatedAt: -1 })
       .lean();
 
-    const formattedLogs = logs.map(l => ({
-      id: l._id,
-      actor: l.actor.name,
-      role: l.actor.role,
-      action: l.action,
-      eventTitle: l.event.title,
-      description: l.description,
-      timestamp: l.timestamp
-    }));
+    const memberResponses = responses.map(r => {
+      const u = r.memberId || {};
+      const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+      return {
+        id: r._id,
+        memberId: u._id,
+        name: u.name || 'Member',
+        email: u.email || 'N/A',
+        phone: u.phone || 'N/A',
+        avatar: u.avatar || null,
+        initials,
+        gotra: u.gotra || 'N/A',
+        communityName: u.communityId?.name || 'N/A',
+        cityName: u.city?.name || 'N/A',
+        response: r.response,
+        registered: r.registered,
+        registeredAt: r.registeredAt,
+        responseTime: r.updatedAt || r.respondedAt
+      };
+    });
 
-    res.status(200).json({ status: 'success', data: formattedLogs });
+    res.status(200).json({ status: 'success', data: memberResponses });
   } catch (error) {
-    console.error('Get Monitoring Logs Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to fetch monitoring logs' });
+    console.error('Get Member Responses Error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch member responses' });
   }
 };
 
-// @desc    Get Event Analytics aggregated for this community
+// @desc    Get real analytics aggregated for Head's community events
 // @route   GET /api/v1/head/events/analytics
 // @access  Head
 exports.getAnalytics = async (req, res) => {
   try {
-    const queryFilter = getEventQueryFilter(req);
-    const query = { ...queryFilter, isDeleted: { $ne: true } };
+    const commFilter = getHeadCommunityFilter(req);
+    const query = { ...commFilter, isDeleted: { $ne: true } };
 
     const events = await Event.find(query).lean();
+    const eventIds = events.map(e => e._id);
 
     const totalEvents = events.length;
-    const featuredEvents = events.filter(e => e.isFeatured).length;
-    const upcomingEvents = events.filter(e => ['Draft', 'Published', 'Registration Open'].includes(e.status)).length;
+    const upcomingEvents = events.filter(e => e.status === 'Upcoming' || e.status === 'Published').length;
+    const ongoingEvents = events.filter(e => e.status === 'Ongoing').length;
     const completedEvents = events.filter(e => e.status === 'Completed').length;
-    const liveEvents = events.filter(e => e.status === 'Event Live').length;
+    const cancelledEvents = events.filter(e => e.status === 'Cancelled').length;
 
-    let totalAttendees = 0;
-    let totalInterested = 0;
-    let createdByThisHead = 0;
-
-    events.forEach(e => {
-      totalAttendees += (e.attendees || []).length;
-      totalInterested += (e.interested || []).length;
-      if (e.createdBy?.toString() === req.user._id.toString()) {
-        createdByThisHead += 1;
+    const responseAgg = await EventResponse.aggregate([
+      { $match: { eventId: { $in: eventIds } } },
+      {
+        $group: {
+          _id: null,
+          totalInterested: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$isInterested', true] }, { $eq: ['$response', 'Interested'] }] }, 1, 0] }
+          },
+          totalGoing: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$isGoing', true] }, { $eq: ['$registered', true] }, { $eq: ['$response', 'Going'] }] }, 1, 0] }
+          },
+          totalRegistrations: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$registered', true] }, { $eq: ['$isGoing', true] }] }, 1, 0] }
+          }
+        }
       }
-    });
+    ]);
 
-    const categoriesMap = {};
-    events.forEach(e => {
-      categoriesMap[e.category] = (categoriesMap[e.category] || 0) + 1;
-    });
-    const categoryDistribution = Object.keys(categoriesMap).map(k => ({
-      category: k,
-      count: categoriesMap[k]
-    }));
-
-    const popularEvents = [...events]
-      .sort((a, b) => (b.attendees || []).length - (a.attendees || []).length)
-      .slice(0, 5)
-      .map(e => ({
-        id: e._id,
-        title: e.title,
-        attendees: (e.attendees || []).length,
-        interested: (e.interested || []).length
-      }));
+    const totals = responseAgg[0] || { totalInterested: 0, totalGoing: 0, totalRegistrations: 0 };
 
     res.status(200).json({
       status: 'success',
       data: {
         totalEvents,
-        featuredEvents,
         upcomingEvents,
+        ongoingEvents,
         completedEvents,
-        liveEvents,
-        totalAttendees,
-        totalInterested,
-        createdByThisHead,
-        categoryDistribution,
-        popularEvents
+        cancelledEvents,
+        totalInterested: totals.totalInterested,
+        totalGoing: totals.totalGoing,
+        totalRegistrations: totals.totalRegistrations
       }
     });
   } catch (error) {
     console.error('Get Head Analytics Error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch analytics data' });
-  }
-};
-
-// @desc    Get attendees for a community event
-// @route   GET /api/v1/head/events/:eventId/attendees
-// @access  Head
-exports.getAttendees = async (req, res) => {
-  try {
-    const { eventId } = req.params;
-
-    const event = await Event.findOne({ _id: eventId, isDeleted: { $ne: true } })
-      .populate('attendees', 'name email phone avatar gotra communityId')
-      .lean();
-
-    if (!event) {
-      return res.status(404).json({ status: 'fail', message: 'Event not found' });
-    }
-
-    if (!hasEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied. Event does not belong to your community.' });
-    }
-
-    const attendeeProfiles = (event.attendees || []).map(u => {
-      const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
-      return {
-        id: u._id,
-        name: u.name || 'Member',
-        email: u.email || 'N/A',
-        phone: u.phone || 'N/A',
-        avatar: u.avatar || null,
-        initials,
-        gotra: u.gotra || 'N/A'
-      };
-    });
-
-    res.status(200).json({ status: 'success', data: attendeeProfiles });
-  } catch (error) {
-    console.error('Get Event Attendees Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to fetch attendees' });
-  }
-};
-
-// @desc    Get interested users for a community event
-// @route   GET /api/v1/head/events/:eventId/interested
-// @access  Head
-exports.getInterested = async (req, res) => {
-  try {
-    const { eventId } = req.params;
-
-    const event = await Event.findOne({ _id: eventId, isDeleted: { $ne: true } })
-      .populate('interested', 'name email phone avatar gotra communityId')
-      .lean();
-
-    if (!event) {
-      return res.status(404).json({ status: 'fail', message: 'Event not found' });
-    }
-
-    if (!hasEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
-    }
-
-    const interestedProfiles = (event.interested || []).map(u => {
-      const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
-      return {
-        id: u._id,
-        name: u.name || 'Member',
-        email: u.email || 'N/A',
-        phone: u.phone || 'N/A',
-        avatar: u.avatar || null,
-        initials,
-        gotra: u.gotra || 'N/A'
-      };
-    });
-
-    res.status(200).json({ status: 'success', data: interestedProfiles });
-  } catch (error) {
-    console.error('Get Interested Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to fetch interested list' });
   }
 };

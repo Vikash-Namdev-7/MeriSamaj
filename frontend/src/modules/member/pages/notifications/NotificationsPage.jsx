@@ -6,6 +6,7 @@ import {
   ShieldCheck, Crown, Eye, MessageCircle, UserPlus, UserMinus, AtSign
 } from 'lucide-react';
 import { notificationService } from '../../../../core/api/matrimonialService';
+import { useNotifications } from '../../context/NotificationContext';
 
 const TYPE_CONFIG = {
   // Matrimonial types
@@ -69,6 +70,21 @@ const NotificationsPage = () => {
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [loading,       setLoading]       = useState(true);
   const [activeTab,     setActiveTab]     = useState(moduleFilter !== 'all' ? moduleFilter : 'all');
+
+  const { latestNotification, resetUnreadCount } = useNotifications();
+
+  // Reset the bell badge whenever the user opens this page
+  useEffect(() => { resetUnreadCount(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prepend real-time notifications (deduplicate by _id)
+  useEffect(() => {
+    if (!latestNotification) return;
+    setNotifications(prev => {
+      const alreadyExists = prev.some(n => n._id === latestNotification._id);
+      if (alreadyExists) return prev;
+      return [latestNotification, ...prev];
+    });
+  }, [latestNotification]);
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);

@@ -9,7 +9,7 @@ const UserBlock           = require('../../models/UserBlock');
 const ProfileVisitor      = require('../../models/ProfileVisitor');
 const { calculateMatchPercentage, calcAge } = require('../../services/matchService');
 const { buildRestrictedProfile, buildFullProfile } = require('../../middleware/matrimonialPrivacy');
-const { notifyProfileViewed, createNotification } = require('../../services/notificationService');
+const { notifyProfileViewed, createNotification, notifyProfileSubmittedToAdmin } = require('../../services/notificationService');
 const { getEffectiveFeatures } = require('../../middleware/subscriptionMiddleware');
 
 // ─── Completion Calculator ────────────────────────────────────────────────────
@@ -79,7 +79,18 @@ exports.createProfile = async (req, res) => {
 
     await profile.save();
 
-    // Notify admin about new pending profile
+    // Notify admin/head about new pending profile
+    try {
+      const Community = require('../../models/Community');
+      const comm = await Community.findById(req.communityId).select('headId').lean();
+      if (comm?.headId) {
+        notifyProfileSubmittedToAdmin([comm.headId], req.user.name || 'A member', profile._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] createProfile profile_submitted_to_admin failed:', notifErr.message);
+    }
+
+    // Notify user
     createNotification({
       userId:        req.user._id,
       module:        'matrimonial',

@@ -2,6 +2,7 @@ const Fund = require('../../models/Fund');
 const Contribution = require('../../models/Contribution');
 const FundExpense = require('../../models/FundExpense');
 const User = require('../../models/User');
+const { notifyFundCreated } = require('../../services/notificationService');
 
 const formatDate = (date) => {
   if (!date) return '';
@@ -160,6 +161,15 @@ exports.createFund = async (req, res) => {
 
     if (contributions.length > 0) {
       await Contribution.insertMany(contributions);
+    }
+
+    // ── Notification: notify community members about new fund ─────────────────────
+    try {
+      if (members.length > 0) {
+        notifyFundCreated(members.map(m => m._id), fund.name, fund._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] createFund fund_created failed:', notifErr.message);
     }
 
     res.status(201).json({ success: true, data: fund });

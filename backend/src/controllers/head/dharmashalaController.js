@@ -2,6 +2,7 @@ const Dharmashala = require('../../models/Dharmashala');
 const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
+const { notifyBookingStatusChanged } = require('../../services/notificationService');
 
 // Helper to check user's community
 const getCommunity = (req) => {
@@ -132,6 +133,13 @@ exports.getProperties = async (req, res) => {
   }
 };
 
+const getFilePath = (file) => {
+  if (!file) return null;
+  if (file.path) return file.path;
+  if (file.buffer) return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  return null;
+};
+
 exports.createProperty = async (req, res) => {
   try {
     const community = getCommunity(req);
@@ -146,22 +154,39 @@ exports.createProperty = async (req, res) => {
     let image = req.body.image || '';
     let galleryImages = [];
     
-    if (req.files) {
-      if (req.files.image && req.files.image[0]) {
-        image = req.files.image[0].path;
-      }
-      if (req.files.galleryImages) {
-        galleryImages = req.files.galleryImages.map(file => file.path);
+    if (req.body.galleryImages) {
+      if (typeof req.body.galleryImages === 'string') {
+        try { galleryImages = JSON.parse(req.body.galleryImages); } catch (e) { galleryImages = [req.body.galleryImages]; }
+      } else if (Array.isArray(req.body.galleryImages)) {
+        galleryImages = req.body.galleryImages;
       }
     }
     
+    if (req.files) {
+      if (req.files.image && req.files.image[0]) {
+        const uploadedPath = getFilePath(req.files.image[0]);
+        if (uploadedPath) image = uploadedPath;
+      }
+      if (req.files.galleryImages) {
+        const newUploaded = req.files.galleryImages.map(file => getFilePath(file)).filter(Boolean);
+        galleryImages = [...galleryImages, ...newUploaded];
+      }
+    }
+    
+    let communityId = req.communityId || req.user?.communityId;
+    if (!communityId && req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
+      const first = req.user.assignedCommunityIds[0];
+      communityId = first._id ? first._id : first;
+    }
+
     const property = new Dharmashala({
       ...req.body,
-      communityId: req.communityId,
+      communityId,
       community,
       amenities,
       image,
-      galleryImages
+      galleryImages,
+      status: req.body.status || 'Active'
     });
     
     await property.save();
@@ -178,15 +203,24 @@ exports.updateProperty = async (req, res) => {
     if (typeof updateData.amenities === 'string') {
       try { updateData.amenities = JSON.parse(updateData.amenities); } catch (e) { updateData.amenities = []; }
     }
+
+    let existingGallery = [];
+    if (updateData.galleryImages) {
+      if (typeof updateData.galleryImages === 'string') {
+        try { existingGallery = JSON.parse(updateData.galleryImages); } catch (e) { existingGallery = [updateData.galleryImages]; }
+      } else if (Array.isArray(updateData.galleryImages)) {
+        existingGallery = updateData.galleryImages;
+      }
+    }
     
     if (req.files) {
       if (req.files.image && req.files.image[0]) {
-        updateData.image = req.files.image[0].path;
+        const uploadedPath = getFilePath(req.files.image[0]);
+        if (uploadedPath) updateData.image = uploadedPath;
       }
       if (req.files.galleryImages) {
-        const newGallery = req.files.galleryImages.map(file => file.path);
-        // Append or replace? Let's replace or add based on design
-        updateData.galleryImages = newGallery;
+        const newUploaded = req.files.galleryImages.map(file => getFilePath(file)).filter(Boolean);
+        updateData.galleryImages = [...existingGallery, ...newUploaded];
       }
     }
     
@@ -399,6 +433,16 @@ exports.updateBookingStatus = async (req, res) => {
     
     await booking.save();
     
+    // ── Notification: notify booking applicant on status change ────────────────────
+    try {
+      const dName = booking.dharmashala?.name || 'Dharmashala';
+      if (booking.user && oldStatus !== status && ['approved', 'cancelled', 'checked_in', 'rejected'].includes(status)) {
+        notifyBookingStatusChanged(booking.user, status, dName, booking._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] updateBookingStatus booking_status_changed failed:', notifErr.message);
+    }
+
     res.status(200).json({ status: 'success', data: booking });
   } catch (error) {
     res.status(400).json({ status: 'error', message: error.message });

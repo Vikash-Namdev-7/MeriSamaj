@@ -1,4 +1,5 @@
 const User = require('../../models/User');
+const { notifyUserBlocked, notifyUserActivated } = require('../../services/notificationService');
 const Community = require('../../models/Community');
 const Post = require('../../models/Post');
 const Donation = require('../../models/Donation');
@@ -348,6 +349,13 @@ exports.blockUser = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'User not found' });
     }
 
+    // ── Notification: notify blocked user ────────────────────────────────────────
+    try {
+      notifyUserBlocked(user._id, reason);
+    } catch (notifErr) {
+      console.warn('[Notify] blockUser account_blocked failed:', notifErr.message);
+    }
+
     res.status(200).json({ status: 'success', data: formatUser(user), message: 'User blocked successfully' });
   } catch (error) {
     console.error('Block User Error:', error);
@@ -380,6 +388,13 @@ exports.activateUser = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ status: 'fail', message: 'User not found' });
+    }
+
+    // ── Notification: notify activated user ───────────────────────────────────────
+    try {
+      notifyUserActivated(user._id);
+    } catch (notifErr) {
+      console.warn('[Notify] activateUser account_activated failed:', notifErr.message);
     }
 
     res.status(200).json({ status: 'success', data: formatUser(user), message: 'User activated successfully' });

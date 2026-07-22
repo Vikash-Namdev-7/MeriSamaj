@@ -10,4 +10,8 @@ router.get('/history', donationController.getHistory);
 router.post('/submit', donationController.createDonation);
 router.get('/stats', donationController.getStats);
 
+// Aliases for root endpoint compatibility
+router.get('/', donationController.getCampaigns);
+router.get('/:id', donationController.getCampaignById);
+
 module.exports = router;

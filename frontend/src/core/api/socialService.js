@@ -38,6 +38,11 @@ const addComment = async (id, commentData) => {
   return response.data;
 };
 
+const toggleCommentLike = async (commentId) => {
+  const response = await axiosPrivate.post(`${API_URL}/comments/${commentId}/like`);
+  return response.data;
+};
+
 const toggleSave = async (id) => {
   const response = await axiosPrivate.post(`${API_URL}/posts/${id}/save`);
   return response.data;
@@ -158,6 +163,7 @@ const socialService = {
   toggleLike,
   getComments,
   addComment,
+  toggleCommentLike,
   toggleSave,
   recordView,
   recordShare,

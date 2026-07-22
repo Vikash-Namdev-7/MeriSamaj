@@ -35,6 +35,8 @@ router.route('/posts/:id/comments')
   .get(socialController.getComments)
   .post(socialController.addComment);
 
+router.post('/comments/:id/like', socialController.toggleCommentLike);
+
 router.get('/search', socialController.searchSocial);
 
 // ─────────────────────────────────────────────

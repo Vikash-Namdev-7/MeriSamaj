@@ -18,6 +18,7 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
   // Filters State
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active'); // 'active' | 'deleted' | 'all'
+  const [selectedCity, setSelectedCity] = useState('all');
 
   // Pagination State
   const [page, setPage] = useState(1);
@@ -35,6 +36,7 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
       const params = {
         search,
         status,
+        cityId: selectedCity,
         page,
         limit: 10
       };
@@ -53,7 +55,7 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
     } finally {
       setLoading(false);
     }
-  }, [feedType, search, status, page]);
+  }, [feedType, search, status, selectedCity, page]);
 
   useEffect(() => {
     fetchPosts();
@@ -86,6 +88,7 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
   const resetFilters = () => {
     setSearch('');
     setStatus('active');
+    setSelectedCity('all');
     setPage(1);
   };
 
@@ -124,7 +127,7 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           {/* Search Box */}
-          <div className="md:col-span-8 relative">
+          <div className={`${feedType === 'city' ? 'md:col-span-5' : 'md:col-span-8'} relative`}>
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -135,12 +138,32 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
             />
           </div>
 
+          {/* City Filter (Only for City Feed) */}
+          {feedType === 'city' && (
+            <div className="md:col-span-4 flex items-center">
+              <div className="relative w-full">
+                <select
+                  value={selectedCity}
+                  onChange={(e) => { setSelectedCity(e.target.value); setPage(1); }}
+                  className="w-full py-2.5 pl-3 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+                >
+                  <option value="all">🏙️ All Cities</option>
+                  {jurisdiction?.cities?.map((city) => (
+                    <option key={city._id} value={city._id}>
+                      📍 {city.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Status Tabs */}
-          <div className="md:col-span-4 flex items-center justify-end">
+          <div className={`${feedType === 'city' ? 'md:col-span-3' : 'md:col-span-4'} flex items-center justify-end`}>
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
             >
               <option value="active">Active Posts</option>
               <option value="deleted">Deleted Posts</option>
@@ -150,14 +173,14 @@ export const SocialPostList = ({ feedType, title, subtitle, icon: IconComponent 
         </div>
 
         {/* Filter Indicator & Clear button */}
-        {(search || status !== 'active') && (
+        {(search || status !== 'active' || selectedCity !== 'all') && (
           <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
             <span className="text-slate-500 font-medium">
               Filtered search active • Showing matching records
             </span>
             <button
               onClick={resetFilters}
-              className="text-indigo-600 font-semibold hover:text-indigo-800 flex items-center gap-1"
+              className="text-indigo-600 font-semibold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" /> Clear Filters
             </button>

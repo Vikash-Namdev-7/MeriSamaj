@@ -49,8 +49,8 @@ exports.getDashboardOverview = async (req, res) => {
     
     // 9. Revenue Overview
     const donationAgg = await Donation.aggregate([
-      { $match: { status: 'Approved' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { $match: { isDeleted: { $ne: true } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$raisedAmount', '$amount'] } } } }
     ]);
     const totalRevenue = donationAgg.length > 0 ? donationAgg[0].total : 0;
     

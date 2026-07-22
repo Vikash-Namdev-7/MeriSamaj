@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building, Plus, Edit, Trash2, Loader, Calendar, DollarSign, Check, X, 
-  ChevronRight, Info, MapPin, Phone, Shield, Activity, Users, Settings, Wrench, Grid, AlertCircle
+  ChevronRight, Info, MapPin, Phone, Shield, Activity, Users, Settings, Wrench, Grid, AlertCircle,
+  Upload, Image as ImageIcon, Camera
 } from 'lucide-react';
 import headDharmashalaService from '../../../../core/api/headDharmashalaService';
 import { useData } from '../../../member/context/DataProvider';
@@ -25,7 +26,11 @@ export default function DharmashalaManagement() {
     name: '', description: '', address: '', city: '', state: '', pincode: '',
     googleMapsUrl: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '',
     alternateContact: '', email: '', website: '', status: 'Active', isFeatured: false,
-    rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: []
+    rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: [],
+    image: '',
+    coverFile: null,
+    galleryImages: [],
+    galleryFiles: []
   });
 
   const [showRoomModal, setShowRoomModal] = useState(false);
@@ -101,12 +106,22 @@ export default function DharmashalaManagement() {
     e.preventDefault();
     const formData = new FormData();
     Object.keys(propertyForm).forEach(key => {
-      if (key === 'amenities') {
-        formData.append(key, JSON.stringify(propertyForm[key]));
-      } else {
-        formData.append(key, propertyForm[key]);
+      if (key === 'amenities' || key === 'galleryImages') {
+        formData.append(key, JSON.stringify(propertyForm[key] || []));
+      } else if (key !== 'coverFile' && key !== 'galleryFiles') {
+        formData.append(key, propertyForm[key] !== undefined && propertyForm[key] !== null ? propertyForm[key] : '');
       }
     });
+
+    if (propertyForm.coverFile) {
+      formData.append('image', propertyForm.coverFile);
+    }
+
+    if (propertyForm.galleryFiles && propertyForm.galleryFiles.length > 0) {
+      propertyForm.galleryFiles.forEach(file => {
+        formData.append('galleryImages', file);
+      });
+    }
 
     try {
       let res;
@@ -152,7 +167,11 @@ export default function DharmashalaManagement() {
       rules: prop.rules || '',
       checkInTime: prop.checkInTime || '10:00',
       checkOutTime: prop.checkOutTime || '10:00',
-      amenities: prop.amenities || []
+      amenities: prop.amenities || [],
+      image: prop.image || '',
+      coverFile: null,
+      galleryImages: prop.galleryImages || [],
+      galleryFiles: []
     });
     setShowPropertyModal(true);
   };
@@ -328,7 +347,8 @@ export default function DharmashalaManagement() {
                 name: '', description: '', address: '', city: '', state: '', pincode: '',
                 googleMapsUrl: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '',
                 alternateContact: '', email: '', website: '', status: 'Active', isFeatured: false,
-                rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: []
+                rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: [],
+                image: '', coverFile: null, galleryImages: [], galleryFiles: []
               });
               setShowPropertyModal(true);
             }}
@@ -864,6 +884,134 @@ export default function DharmashalaManagement() {
                     onChange={(e) => setPropertyForm(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
                   />
+                </div>
+
+                {/* Single Image Upload - Property Cover Photo */}
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block">
+                    Property Cover Image (Single Upload)
+                  </label>
+                  <div className="flex items-center gap-4 bg-slate-50 border border-dashed border-slate-200 p-3 rounded-xl">
+                    {(propertyForm.coverFile || propertyForm.image) ? (
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                        <img 
+                          src={propertyForm.coverFile ? URL.createObjectURL(propertyForm.coverFile) : propertyForm.image} 
+                          alt="Cover Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPropertyForm(prev => ({ ...prev, coverFile: null, image: '' }))}
+                          className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-full hover:bg-rose-600 shadow-sm cursor-pointer"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400 shrink-0">
+                        <Camera size={20} />
+                        <span className="text-[9px] font-bold mt-1">No Image</span>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        id="propertyCoverUpload"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setPropertyForm(prev => ({ ...prev, coverFile: file }));
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor="propertyCoverUpload"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-100"
+                      >
+                        <Upload size={13} /> Select Cover Photo
+                      </label>
+                      <p className="text-[10px] text-slate-400 font-medium mt-1">Supports JPG, PNG, WEBP (Max 5MB). Uploads via Multer / Cloudinary.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multiple Images Upload - Property Gallery */}
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 block">
+                    Property Gallery Images (Multiple Upload)
+                  </label>
+                  <div className="bg-slate-50 border border-dashed border-slate-200 p-3 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-600">
+                        Gallery Photos ({(propertyForm.galleryImages?.length || 0) + (propertyForm.galleryFiles?.length || 0)} uploaded)
+                      </span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        multiple
+                        id="propertyGalleryUpload"
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length > 0) {
+                            setPropertyForm(prev => ({ 
+                              ...prev, 
+                              galleryFiles: [...(prev.galleryFiles || []), ...files] 
+                            }));
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor="propertyGalleryUpload"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-all shadow-sm"
+                      >
+                        <Plus size={13} /> Add Photos
+                      </label>
+                    </div>
+
+                    {/* Previews grid */}
+                    <div className="flex flex-wrap gap-2.5 max-h-36 overflow-y-auto p-1">
+                      {/* Existing server gallery images */}
+                      {propertyForm.galleryImages?.map((url, idx) => (
+                        <div key={`exist-${idx}`} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0 group">
+                          <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setPropertyForm(prev => ({
+                              ...prev,
+                              galleryImages: prev.galleryImages.filter((_, i) => i !== idx)
+                            }))}
+                            className="absolute top-0.5 right-0.5 p-0.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 opacity-90 transition-opacity cursor-pointer"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Newly added file objects */}
+                      {propertyForm.galleryFiles?.map((file, idx) => (
+                        <div key={`new-${idx}`} className="relative w-16 h-16 rounded-lg overflow-hidden border border-indigo-300 ring-2 ring-indigo-500/20 shrink-0 group">
+                          <img src={URL.createObjectURL(file)} alt={`New upload ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setPropertyForm(prev => ({
+                              ...prev,
+                              galleryFiles: prev.galleryFiles.filter((_, i) => i !== idx)
+                            }))}
+                            className="absolute top-0.5 right-0.5 p-0.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 opacity-90 transition-opacity cursor-pointer"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {(!propertyForm.galleryImages?.length && !propertyForm.galleryFiles?.length) && (
+                        <p className="text-[11px] text-slate-400 font-medium py-2">No gallery images added yet. Click 'Add Photos' to select multiple images.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

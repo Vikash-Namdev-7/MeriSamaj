@@ -174,16 +174,16 @@ export const HeadDashboard = () => {
       </AnimatePresence>
 
       {/* ─── PAGE HEADER ─── */}
-      <div className="px-6 py-4 bg-white border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
+      <div className="px-5 py-3 bg-white border border-slate-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-            <LayoutDashboardIcon size={20} />
+          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+            <LayoutDashboardIcon size={18} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+            <h1 className="text-base font-bold text-slate-800 tracking-tight whitespace-nowrap">
               President Dashboard
             </h1>
-            <p className="text-[12px] text-slate-500 font-medium mt-0.5">
+            <p className="text-[12px] text-slate-500 font-medium mt-0.5 whitespace-nowrap">
               {currentUser?.community || 'Agrawal Samaj'} &nbsp;•&nbsp;
               <span className="text-indigo-600 font-semibold">Session: Active Council</span>
             </p>
@@ -192,7 +192,7 @@ export const HeadDashboard = () => {
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
           <button
             onClick={() => setActiveModal('approve')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
             <Check size={14} className="text-slate-500" />
             <span>Approve Members</span>
@@ -204,21 +204,21 @@ export const HeadDashboard = () => {
           </button>
           <button
             onClick={() => setActiveModal('event')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={14} className="text-slate-500" />
             <span>Create Event</span>
           </button>
           <button
             onClick={() => setActiveModal('announce')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
           >
             <Send size={13} className="text-slate-500" />
             <span>Announcement</span>
           </button>
           <button
             onClick={() => setActiveModal('reports')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all active:scale-95 shadow-sm shadow-indigo-500/10 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all active:scale-95 shadow-sm shadow-indigo-500/10 cursor-pointer"
           >
             <FileText size={14} />
             <span>View Reports</span>

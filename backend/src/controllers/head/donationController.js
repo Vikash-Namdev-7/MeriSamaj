@@ -1,6 +1,8 @@
 const Campaign = require('../../models/Campaign');
 const Donation = require('../../models/Donation');
 const Expense = require('../../models/Expense');
+const User = require('../../models/User');
+const { notifyCampaignCreated } = require('../../services/notificationService');
 
 /**
  * Helper: build the community filter for Head queries.
@@ -139,10 +141,26 @@ exports.createCampaign = async (req, res) => {
        */
       communityId: req.communityId || req.user?.communityId?._id || req.user?.communityId,
       community,
+      status: parsedData.status || 'Active',
       createdBy: req.user?._id
     });
     
     await newCampaign.save();
+
+    // ── Non-critical: notify active community members ──────────────────────
+    try {
+      if (newCampaign.communityId) {
+        const memberIds = await User.find({
+          communityId: newCampaign.communityId,
+          role: 'user',
+          accountStatus: 'active'
+        }).distinct('_id');
+        await notifyCampaignCreated(memberIds, newCampaign.title, newCampaign._id);
+      }
+    } catch (notifyErr) {
+      console.warn('[Notify] notifyCampaignCreated failed:', notifyErr.message);
+    }
+
     res.status(201).json({ status: 'success', data: newCampaign });
   } catch (error) {
     res.status(400).json({ status: 'error', message: error.message });

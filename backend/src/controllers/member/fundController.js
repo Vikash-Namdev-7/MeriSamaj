@@ -2,6 +2,7 @@ const Fund = require('../../models/Fund');
 const Contribution = require('../../models/Contribution');
 const FundExpense = require('../../models/FundExpense');
 const User = require('../../models/User');
+const { notifyContributionRecorded } = require('../../services/notificationService');
 
 // Helper: Format Date as DD MMM YYYY (e.g. "12 Jun 2024")
 const formatDisplayDate = (date) => {
@@ -181,6 +182,17 @@ exports.makePayment = async (req, res) => {
     contribution.lastPaymentDate = new Date();
 
     await contribution.save();
+
+    // ── Notification: notify head about contribution ─────────────────────────────
+    try {
+      const Community = require('../../models/Community');
+      const comm = await Community.findById(fund.communityId || req.communityId).select('headId').lean();
+      if (comm?.headId) {
+        notifyContributionRecorded(comm.headId, req.user.name || 'A member', amount, fund.name, fund._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] makePayment contribution_recorded failed:', notifErr.message);
+    }
 
     res.status(200).json({
       success: true,

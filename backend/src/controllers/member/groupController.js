@@ -23,7 +23,10 @@ const {
   notifyGroupInvite,
   notifyGroupJoinRequest,
   notifyGroupJoinApproved,
-  notifyGroupRemoved
+  notifyGroupRemoved,
+  notifyGroupCreatedInstant,
+  notifyMemberPromoted,
+  notifyMemberDemoted
 } = require('../../services/notificationService');
 
 // ─── Helper: Get group with member check ─────────────────────────────────────
@@ -130,6 +133,25 @@ exports.createGroup = async (req, res) => {
         group._id,
         group.name
       );
+    } else if (approvalStatus === 'approved') {
+      try {
+        User.find({
+          communityId,
+          verificationStatus: 'verified',
+          accountStatus: 'active',
+          _id: { $ne: req.user._id }
+        })
+          .select('_id')
+          .lean()
+          .then(members => {
+            if (members.length > 0) {
+              notifyGroupCreatedInstant(members.map(m => m._id), group.name, group._id);
+            }
+          })
+          .catch(err => console.error('[GroupController] createGroup notify members error:', err.message));
+      } catch (notifErr) {
+        console.warn('[Notify] createGroup group_created failed:', notifErr.message);
+      }
     }
 
     // Process Initial Members
@@ -762,8 +784,13 @@ exports.promoteToAdmin = async (req, res) => {
     group.members[memberIndex].role = 'admin';
     await group.save();
 
-    const { notifyGroupPromoted } = require('../../services/notificationService');
-    notifyGroupPromoted(targetUserId, group.name);
+    const { notifyGroupPromoted, notifyMemberPromoted } = require('../../services/notificationService');
+    try {
+      notifyGroupPromoted(targetUserId, group.name);
+      notifyMemberPromoted(targetUserId, group.name, group._id);
+    } catch (notifErr) {
+      console.warn('[Notify] promoteToAdmin notify failed:', notifErr.message);
+    }
 
     const io = req.app.get('io');
     if (io && group.conversationId) {
@@ -795,8 +822,13 @@ exports.demoteAdmin = async (req, res) => {
     group.members[memberIndex].role = 'member';
     await group.save();
 
-    const { notifyGroupDemoted } = require('../../services/notificationService');
-    notifyGroupDemoted(targetUserId, group.name);
+    const { notifyGroupDemoted, notifyMemberDemoted } = require('../../services/notificationService');
+    try {
+      notifyGroupDemoted(targetUserId, group.name);
+      notifyMemberDemoted(targetUserId, group.name, group._id);
+    } catch (notifErr) {
+      console.warn('[Notify] demoteAdmin notify failed:', notifErr.message);
+    }
 
     const io = req.app.get('io');
     if (io && group.conversationId) {

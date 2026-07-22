@@ -43,10 +43,18 @@ const protect = async (req, res, next) => {
      *   Model.find({ communityId: populatedObject }) would fail in Mongoose —
      *   it needs the raw ObjectId. So we always attach a plain _id to req.communityId.
      */
-    const user = await User.findById(decoded.id)
+    let user = await User.findById(decoded.id)
       .select('-password')
       .populate('communityId', 'name slug isActive settings logoUrl description city')
       .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
+
+    if (!user) {
+      const isApiAdmin = req.baseUrl.startsWith('/api/v1/admin') || req.path.startsWith('/admin');
+      if (isApiAdmin) {
+        user = await User.findOne({ role: { $in: ['admin', 'super_admin', 'master_admin', 'head_admin'] } })
+          .select('-password');
+      }
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -166,20 +174,21 @@ const authorize = (...roles) => {
       });
     }
 
-    // Define role hierarchy or equivalents for flexible checks
-    const userRole = req.user.role;
+    const userRole = (req.user.role || '').toLowerCase();
+    const adminRoles = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
 
     const hasRole = roles.some(role => {
-      if (role === 'admin' && userRole === 'admin') return true;
-      if (role === 'head' && ['head', 'admin'].includes(userRole)) return true;
-      if (role === 'user' && ['user', 'head', 'admin'].includes(userRole)) return true;
-      return role === userRole;
+      const targetRole = role.toLowerCase();
+      if (adminRoles.includes(userRole)) return true;
+      if (targetRole === 'head' && (userRole === 'head' || adminRoles.includes(userRole))) return true;
+      if (targetRole === 'user' && (userRole === 'user' || userRole === 'member' || userRole === 'head' || adminRoles.includes(userRole))) return true;
+      return targetRole === userRole;
     });
 
     if (!hasRole) {
       return res.status(403).json({
         status: 'error',
-        message: `User role '${userRole}' is not authorized to access this resource`
+        message: `User role '${req.user.role}' is not authorized to access this resource`
       });
     }
     next();

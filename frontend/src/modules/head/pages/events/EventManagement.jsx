@@ -1,897 +1,490 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Calendar, Plus, Search, Filter, Edit, Trash2, CheckCircle, XCircle, 
-  UploadCloud, X, ChevronLeft, ChevronRight, Download, Printer, 
-  Clock, MapPin, Users, Check, Share2, FileText, Settings, AlertCircle, 
-  Eye, Video, Image, File, History, Sparkles, TrendingUp, BarChart3, 
-  HelpCircle, ShieldAlert, ListFilter, Copy, Play, Info, Heart, Star,
-  BookOpen, CalendarDays, BarChart2
+  Calendar, Search, Filter, Edit, Trash2, X, ChevronLeft, ChevronRight, 
+  Clock, MapPin, Users, Heart, Plus, Eye, AlertTriangle, CheckCircle, 
+  XCircle, RefreshCw, Shield, Layers
 } from 'lucide-react';
 import { headEventService } from '../../../../core/api/headEventService';
-import { Avatar } from '../../../member/components/common/Avatar';
-
-// Configuration presets for categories
-const categoryConfig = {
-  Cultural: { label: 'Cultural', emoji: '🎭', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', gradient: 'from-purple-500/20 to-indigo-500/10' },
-  Education: { label: 'Education', emoji: '📚', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', gradient: 'from-blue-500/20 to-cyan-500/10' },
-  Matrimonial: { label: 'Matrimonial', emoji: '💍', color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', gradient: 'from-pink-500/20 to-rose-500/10' },
-  Health: { label: 'Health', emoji: '🏥', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', gradient: 'from-emerald-500/20 to-teal-500/10' },
-  Sports: { label: 'Sports', emoji: '🏆', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', gradient: 'from-orange-500/20 to-amber-500/10' },
-};
-
-const statusConfig = {
-  Draft: { label: 'Draft', color: 'bg-amber-500/10 text-amber-450 border border-amber-500/20' },
-  Published: { label: 'Published', color: 'bg-emerald-500/10 text-emerald-450 border border-emerald-500/20' },
-  'Registration Open': { label: 'Registration Open', color: 'bg-emerald-500/10 text-emerald-450 border border-emerald-500/20' },
-  'Registration Closed': { label: 'Registration Closed', color: 'bg-rose-500/10 text-rose-455 border border-rose-500/20' },
-  'Event Live': { label: 'Event Live', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' },
-  Completed: { label: 'Completed', color: 'bg-gray-500/10 text-gray-400 border border-white/5' },
-  Cancelled: { label: 'Cancelled', color: 'bg-rose-500/10 text-rose-455 border border-rose-500/20' }
-};
-
-const TABS = [
-  { id: 'overview', label: 'Overview', icon: BarChart3 },
-  { id: 'all', label: 'All Events', icon: CalendarDays },
-  { id: 'create', label: 'Create Event', icon: Plus },
-  { id: 'monitoring', label: 'Event Monitoring', icon: ShieldAlert },
-  { id: 'analytics', label: 'Event Analytics', icon: TrendingUp }
-];
 
 export const EventManagement = () => {
-  // Localized user state from session storage / window
-  const currentUser = useMemo(() => {
-    try {
-      const stored = sessionStorage.getItem('user');
-      return stored ? JSON.parse(stored) : { name: 'Community Head', community: 'My Community' };
-    } catch {
-      return { name: 'Community Head', community: 'My Community' };
-    }
-  }, []);
-
-  // Primary State Flags
-  const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get('tab') || 'overview';
-  const activeTab = ['overview', 'all', 'create', 'monitoring', 'analytics'].includes(rawTab) ? rawTab : 'overview';
-  const [toast, setToast] = useState(null);
-  
   // Data states
   const [events, setEvents] = useState([]);
-  const [logs, setLogs] = useState([]);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
+  // Filter states
+  const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Attendees list drawer
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedEventDetails, setSelectedEventDetails] = useState(null);
-  const [attendees, setAttendees] = useState([]);
-  const [interested, setInterested] = useState([]);
-  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  // Loading & error
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Create wizard fields
-  const [wizardStep, setWizardStep] = useState(1);
+  // Modal / Drawer States
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [memberResponses, setMemberResponses] = useState([]);
+
+  // Form State
   const [formValues, setFormValues] = useState({
-    title: '', subtitle: '', category: 'Cultural', description: '', image: '',
-    venue: '', address: '', city: '', startDate: '', time: '', entryFee: 'Free',
-    contact: '', objectiveEn: '', programsEn: '', audienceEn: '', importantInfoEn: '', tags: ''
+    title: '', description: '', category: 'Cultural', venue: '', address: '',
+    startDate: '', startTime: '', endTime: '', contact: '', entryFee: 'Free',
+    capacity: 0, registrationRequired: false, isFeatured: false,
+    status: 'Published', image: ''
   });
-  const [submitting, setSubmitting] = useState(false);
 
-  const triggerToast = useCallback((message, type = 'success') => {
+  const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
-  }, []);
-
-  // Fetch events list
-  const fetchEvents = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await headEventService.getEvents();
-      setEvents(res.data || []);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch events.');
-    } finally {
-      setLoading(false);
-    }
   };
 
-  // Fetch monitoring logs
-  const fetchLogs = async () => {
-    setLogsLoading(true);
-    try {
-      const res = await headEventService.getMonitoringLogs();
-      setLogs(res.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLogsLoading(false);
-    }
-  };
-
-  // Fetch analytics
+  // Fetch Real Analytics for Head's Community
   const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
     try {
       const res = await headEventService.getAnalytics();
       setAnalytics(res.data);
     } catch (err) {
+      console.error('Head analytics error', err);
+    }
+  };
+
+  // Fetch Community Events
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page: currentPage,
+        limit: 10,
+        search,
+        category: categoryFilter,
+        status: statusFilter
+      };
+      const res = await headEventService.getEvents(params);
+      setEvents(res.data || []);
+      setTotalEvents(res.total || 0);
+      setTotalPages(res.pages || 1);
+    } catch (err) {
       console.error(err);
+      showToast('Failed to load community events.', 'error');
     } finally {
-      setAnalyticsLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchEvents();
     fetchAnalytics();
-    fetchLogs();
-  }, []);
+  }, [currentPage, categoryFilter, statusFilter]);
 
-  useEffect(() => {
-    if (activeTab === 'all') fetchEvents();
-    if (activeTab === 'monitoring') fetchLogs();
-    if (activeTab === 'analytics') fetchAnalytics();
-  }, [activeTab]);
-
-  // Handle Tab changes
-  const handleTabChange = (tabId) => {
-    setSearchParams({ tab: tabId });
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchEvents();
   };
 
-  // Fetch attendees detail drawer
-  const openAttendeesDrawer = async (evt) => {
-    setSelectedEventDetails(evt);
-    setDrawerOpen(true);
-    setAttendeesLoading(true);
-    try {
-      const resAttendees = await headEventService.getAttendees(evt._id || evt.id);
-      const resInterested = await headEventService.getInterested(evt._id || evt.id);
-      setAttendees(resAttendees.data || []);
-      setInterested(resInterested.data || []);
-    } catch (err) {
-      console.error(err);
-      triggerToast('Failed to load attendees', 'error');
-    } finally {
-      setAttendeesLoading(false);
-    }
-  };
-
-  // Create event submit
+  // Create Event Handler
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    if (!formValues.title || !formValues.description || !formValues.venue || !formValues.startDate) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    setActionLoading(true);
     try {
       await headEventService.createEvent(formValues);
-      triggerToast('Event created successfully');
-      setFormValues({
-        title: '', subtitle: '', category: 'Cultural', description: '', image: '',
-        venue: '', address: '', city: '', startDate: '', time: '', entryFee: 'Free',
-        contact: '', objectiveEn: '', programsEn: '', audienceEn: '', importantInfoEn: '', tags: ''
-      });
-      setWizardStep(1);
-      setActiveTab('all');
+      showToast('Community event created successfully!');
+      setCreateModalOpen(false);
+      resetForm();
       fetchEvents();
       fetchAnalytics();
     } catch (err) {
-      console.error(err);
-      triggerToast('Failed to create event', 'error');
+      showToast(err.response?.data?.message || 'Failed to create event.', 'error');
     } finally {
-      setSubmitting(false);
+      setActionLoading(false);
     }
   };
 
-  // Delete event
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to deactivate/delete this event?')) return;
+  // Edit Event Handler
+  const openEditModal = (event) => {
+    setSelectedEventId(event._id || event.id);
+    setFormValues({
+      title: event.title || '',
+      description: event.description || '',
+      category: event.category || 'Cultural',
+      venue: event.venue || '',
+      address: event.address || '',
+      startDate: event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : (event.date || ''),
+      startTime: event.startTime || event.time || '',
+      endTime: event.endTime || '',
+      contact: event.contact || '',
+      entryFee: event.entryFee || 'Free',
+      capacity: event.capacity || 0,
+      registrationRequired: !!event.registrationRequired,
+      isFeatured: !!event.isFeatured,
+      status: event.status || 'Published',
+      image: event.image || ''
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      await headEventService.updateEvent(selectedEventId, formValues);
+      showToast('Event updated successfully!');
+      setEditModalOpen(false);
+      resetForm();
+      fetchEvents();
+      fetchAnalytics();
+    } catch (err) {
+      showToast('Failed to update event.', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelEvent = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel this event?')) return;
+    try {
+      await headEventService.cancelEvent(id);
+      showToast('Event marked as Cancelled.');
+      fetchEvents();
+      fetchAnalytics();
+    } catch (err) {
+      showToast('Failed to cancel event.', 'error');
+    }
+  };
+
+  const handleDeleteEvent = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
       await headEventService.deleteEvent(id);
-      triggerToast('Event deleted successfully');
+      showToast('Event deleted successfully.');
       fetchEvents();
       fetchAnalytics();
     } catch (err) {
-      triggerToast('Failed to delete event', 'error');
+      showToast('Failed to delete event.', 'error');
     }
   };
 
-  // Toggle Featured
-  const handleToggleFeatured = async (id) => {
+  const handleViewResponses = async (id) => {
+    setSelectedEventId(id);
+    setDetailDrawerOpen(true);
+    setMemberResponses([]);
     try {
-      await headEventService.toggleFeatured(id);
-      triggerToast('Featured status updated successfully');
-      fetchEvents();
-      fetchAnalytics();
+      const res = await headEventService.getMemberResponses(id);
+      setMemberResponses(res.data || []);
     } catch (err) {
-      triggerToast('Failed to update featured status', 'error');
+      showToast('Failed to load member responses.', 'error');
     }
   };
 
-  // Change Status
-  const handleStatusChange = async (id, status) => {
-    try {
-      await headEventService.updateStatus(id, status);
-      triggerToast(`Status updated to ${status}`);
-      fetchEvents();
-      fetchAnalytics();
-    } catch (err) {
-      triggerToast('Failed to update status', 'error');
-    }
+  const resetForm = () => {
+    setFormValues({
+      title: '', description: '', category: 'Cultural', venue: '', address: '',
+      startDate: '', startTime: '', endTime: '', contact: '', entryFee: 'Free',
+      capacity: 0, registrationRequired: false, isFeatured: false,
+      status: 'Published', image: ''
+    });
+    setSelectedEventId(null);
   };
-
-  // Filters computed events
-  const filteredEvents = useMemo(() => {
-    let list = [...events];
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(e => 
-        e.title?.toLowerCase().includes(q) ||
-        e.venue?.toLowerCase().includes(q) ||
-        e.category?.toLowerCase().includes(q)
-      );
-    }
-    if (categoryFilter !== 'all') {
-      list = list.filter(e => e.category === categoryFilter);
-    }
-    if (statusFilter !== 'all') {
-      list = list.filter(e => e.status === statusFilter);
-    }
-    return list;
-  }, [events, searchQuery, categoryFilter, statusFilter]);
-
-  const paginatedEvents = useMemo(() => {
-    const itemsPerPage = 8;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredEvents.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredEvents, currentPage]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / 8));
 
   return (
-    <div className="space-y-6 pb-12 text-slate-100 max-w-7xl mx-auto p-4 md:p-6">
-      
-      {/* ─── TOAST NOTIFICATION ─── */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-6 right-6 z-55 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border backdrop-blur-md ${
-              toast.type === 'success' 
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-            }`}
-          >
-            <CheckCircle size={18} />
-            <span className="text-xs font-black tracking-wide">{toast.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Toast Alert */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
+          {toast.type === 'error' ? <XCircle size={18} /> : <CheckCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
 
-      {/* Main Header widget */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/5 p-6 rounded-3xl border border-white/10">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Calendar className="text-brand-primary" />
-            Event Management
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <Calendar className="text-brand-primary" /> Community Event Desk
           </h1>
-          <p className="text-xs text-purple-200/60 font-semibold mt-1">
-            Community isolation active. Managing events for: <span className="text-white font-bold">{currentUser.community}</span>
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Create and manage exclusive events for your community members.</p>
+        </div>
+        <button
+          onClick={() => { resetForm(); setCreateModalOpen(true); }}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold text-sm rounded-xl transition shadow-md shadow-brand-primary/20"
+        >
+          <Plus size={18} /> Create Event
+        </button>
+      </div>
+
+      {/* REAL DASHBOARD METRICS */}
+      {analytics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs text-center">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Events</p>
+            <p className="text-xl font-black text-slate-800 mt-1">{analytics.totalEvents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-blue-50 bg-blue-50/20 text-center">
+            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Upcoming</p>
+            <p className="text-xl font-black text-blue-700 mt-1">{analytics.upcomingEvents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-amber-50 bg-amber-50/20 text-center">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Ongoing</p>
+            <p className="text-xl font-black text-amber-700 mt-1">{analytics.ongoingEvents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-emerald-50 bg-emerald-50/20 text-center">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Completed</p>
+            <p className="text-xl font-black text-emerald-700 mt-1">{analytics.completedEvents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-rose-50 bg-rose-50/20 text-center">
+            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Cancelled</p>
+            <p className="text-xl font-black text-rose-700 mt-1">{analytics.cancelledEvents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-purple-50 bg-purple-50/20 text-center">
+            <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Interested</p>
+            <p className="text-xl font-black text-purple-700 mt-1">{analytics.totalInterested}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-emerald-50 bg-emerald-50/20 text-center">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Going</p>
+            <p className="text-xl font-black text-emerald-700 mt-1">{analytics.totalGoing}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-indigo-50 bg-indigo-50/20 text-center">
+            <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Registrations</p>
+            <p className="text-xl font-black text-indigo-700 mt-1">{analytics.totalRegistrations}</p>
+          </div>
+        </div>
+      )}
+
+      {/* SEARCH & FILTER */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search community events..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary"
+          />
+        </form>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
+          >
+            <option value="all">All Categories</option>
+            {['Cultural', 'Education', 'Matrimonial', 'Health', 'Sports'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
+          >
+            <option value="all">All Statuses</option>
+            {['Draft', 'Published', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled'].map(st => <option key={st} value={st}>{st}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* Navigation tabs */}
-      <div className="flex items-center overflow-x-auto gap-1 border-b border-white/10 pb-px scrollbar-hide">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 border-b-2 font-black text-xs transition-all whitespace-nowrap ${
-                isActive 
-                  ? 'border-brand-primary text-brand-primary' 
-                  : 'border-transparent text-white/50 hover:text-white'
-              }`}
-            >
-              <Icon size={14} />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab Panels */}
-      <div>
-        
-        {/* ─── OVERVIEW TAB ─── */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {analyticsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map(n => <div key={n} className="h-28 bg-white/5 rounded-3xl animate-pulse" />)}
-              </div>
-            ) : analytics ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Total Events', val: analytics.totalEvents, icon: Calendar },
-                    { label: 'Upcoming Events', val: analytics.upcomingEvents, icon: Clock },
-                    { label: 'Featured Events', val: analytics.featuredEvents, icon: Star },
-                    { label: 'Total Attendees', val: analytics.totalAttendees, icon: Users },
-                    { label: 'Total Interested', val: analytics.totalInterested, icon: Heart },
-                    { label: 'Created by This Head', val: analytics.createdByThisHead, icon: Plus }
-                  ].map((s, i) => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={i} className="p-5 border border-white/10 rounded-3xl bg-white/5 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-black uppercase text-purple-200/60 tracking-wider">{s.label}</span>
-                          <h3 className="text-2xl font-black mt-2 text-white">{s.val}</h3>
-                        </div>
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                          <Icon className="text-brand-primary" size={20} />
-                        </div>
+      {/* EVENT LIST TABLE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-400">Loading events...</div>
+        ) : events.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">No events created yet for your community.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  <th className="py-4 px-4">Banner</th>
+                  <th className="py-4 px-4">Event Title</th>
+                  <th className="py-4 px-4">Category</th>
+                  <th className="py-4 px-4">Date</th>
+                  <th className="py-4 px-4 text-center">Interested</th>
+                  <th className="py-4 px-4 text-center">Going</th>
+                  <th className="py-4 px-4">Status</th>
+                  <th className="py-4 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {events.map((ev) => (
+                  <tr key={ev._id || ev.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-200">
+                        {ev.image ? (
+                          <img src={ev.image} alt={ev.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No Img</div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Popular rankings */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-sm">
-                  <h3 className="text-xs font-black uppercase text-purple-200 tracking-wider mb-4">🏆 Most Attended Community Events</h3>
-                  {analytics.popularEvents?.length > 0 ? (
-                    <div className="space-y-3.5">
-                      {analytics.popularEvents.map((e, idx) => (
-                        <div key={e.id} className="flex items-center justify-between p-3 border border-white/5 bg-white/3 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 rounded-full bg-purple-500/10 text-brand-primary border border-purple-500/20 flex items-center justify-center font-black text-xs">{idx + 1}</span>
-                            <span className="text-xs font-bold text-white">{e.title}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-[10px] font-bold text-purple-200">
-                            <span className="text-emerald-400">{e.attendees} Attending</span>
-                            <span className="text-pink-400">{e.interested} Interested</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-white/40 italic">No events recorded.</p>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-16 text-xs text-white/40">No statistics logged.</div>
-            )}
-          </div>
-        )}
-
-        {/* ─── ALL EVENTS TAB ─── */}
-        {activeTab === 'all' && (
-          <div className="space-y-6">
-            {/* Search & filters bar */}
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-5 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
-                  <input
-                    type="text"
-                    placeholder="Search community events..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-xs outline-none focus:border-brand-primary focus:bg-white/10 transition-all text-white font-semibold"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs outline-none text-white font-semibold focus:border-brand-primary"
-                >
-                  <option value="all" className="bg-[#160b37]">All Categories</option>
-                  {Object.keys(categoryConfig).map(k => <option key={k} value={k} className="bg-[#160b37]">{k}</option>)}
-                </select>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs outline-none text-white font-semibold focus:border-brand-primary"
-                >
-                  <option value="all" className="bg-[#160b37]">All Statuses</option>
-                  {Object.keys(statusConfig).map(k => <option key={k} value={k} className="bg-[#160b37]">{k}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* List */}
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(n => <div key={n} className="h-16 bg-white/5 rounded-2xl animate-pulse" />)}
-              </div>
-            ) : filteredEvents.length > 0 ? (
-              <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white/3 border-b border-white/5 text-[10px] font-black uppercase tracking-wider text-purple-200">
-                        <th className="px-6 py-4">Event Details</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Engagement</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-xs text-purple-200">
-                      {paginatedEvents.map(ev => {
-                        const cat = categoryConfig[ev.category] || categoryConfig.Cultural;
-                        const stat = statusConfig[ev.status] || statusConfig.Draft;
-                        return (
-                          <tr key={ev._id} className="hover:bg-white/3 transition-all">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                {ev.image ? (
-                                  <img src={ev.image} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-base shrink-0">{cat.emoji}</div>
-                                )}
-                                <div>
-                                  <h4 className="font-extrabold text-white line-clamp-1">{ev.title}</h4>
-                                  <div className="flex items-center gap-2 mt-1 text-[10px] text-white/40">
-                                    <span>{ev.date}</span>
-                                    <span>•</span>
-                                    <span>{ev.venue}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${stat.color}`}>
-                                {ev.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3 text-[10px] font-bold text-purple-200/60">
-                                <span className="text-emerald-400">Attendees: {ev.attendees?.length || 0}</span>
-                                <span className="text-pink-400">Interested: {ev.interested?.length || 0}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => openAttendeesDrawer(ev)}
-                                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-purple-200 hover:text-white"
-                                  title="View Attendees Roster"
-                                >
-                                  <Eye size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleToggleFeatured(ev._id)}
-                                  className={`w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center transition-colors ${
-                                    ev.isFeatured ? 'bg-amber-500/10 text-amber-400' : 'bg-white/5 text-white/40 hover:text-amber-400'
-                                  }`}
-                                  title="Toggle Featured"
-                                >
-                                  <Star size={14} fill={ev.isFeatured ? 'currentColor' : 'none'} />
-                                </button>
-                                <select
-                                  value={ev.status}
-                                  onChange={(e) => handleStatusChange(ev._id, e.target.value)}
-                                  className="px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] outline-none font-bold text-purple-200"
-                                >
-                                  {Object.keys(statusConfig).map(k => <option key={k} value={k} className="bg-[#160b37]">{k}</option>)}
-                                </select>
-                                <button
-                                  onClick={() => handleDelete(ev._id)}
-                                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-rose-400 hover:bg-rose-500/10"
-                                  title="Delete Event"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between bg-white/2">
-                    <span className="text-[10px] text-white/40 font-bold">Page {currentPage} of {totalPages}</span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(c => c - 1)}
-                        className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center disabled:opacity-50"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(c => c + 1)}
-                        className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center disabled:opacity-50"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-16 bg-white/5 border border-white/10 rounded-3xl">
-                <p className="text-xs text-white/40">No events found matching current filter sets.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── CREATE EVENT TAB ─── */}
-        {activeTab === 'create' && (
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <div>
-                <h3 className="text-sm font-black uppercase text-purple-200">Scheduled Event Form</h3>
-                <p className="text-[10px] text-purple-200/50 mt-1">Automatic binding to community: {currentUser.community}</p>
-              </div>
-              <span className="text-xs font-black text-brand-primary">Wizard Step {wizardStep} of 2</span>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="space-y-6 text-xs font-bold text-purple-200">
-              {wizardStep === 1 ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Event Title *</label>
-                      <input
-                        type="text" required
-                        value={formValues.title}
-                        onChange={e => setFormValues({ ...formValues, title: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Event Category *</label>
-                      <select
-                        value={formValues.category}
-                        onChange={e => setFormValues({ ...formValues, category: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      >
-                        {Object.keys(categoryConfig).map(k => <option key={k} value={k} className="bg-[#160b37]">{k}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Banner/Image URL</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. https://images.unsplash.com/photo-..."
-                      value={formValues.image}
-                      onChange={e => setFormValues({ ...formValues, image: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Description *</label>
-                    <textarea
-                      required rows={4}
-                      value={formValues.description}
-                      onChange={e => setFormValues({ ...formValues, description: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary text-xs font-normal"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Start Date *</label>
-                      <input
-                        type="text" required placeholder="e.g. Jul 15, 2026"
-                        value={formValues.startDate}
-                        onChange={e => setFormValues({ ...formValues, startDate: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Time *</label>
-                      <input
-                        type="text" required placeholder="e.g. 07:00 PM"
-                        value={formValues.time}
-                        onChange={e => setFormValues({ ...formValues, time: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setWizardStep(2)}
-                      className="px-6 py-2.5 bg-brand-primary text-white text-xs font-black rounded-xl"
-                    >
-                      Next Step
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Venue Name *</label>
-                      <input
-                        type="text" required
-                        value={formValues.venue}
-                        onChange={e => setFormValues({ ...formValues, venue: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Address / Location</label>
-                      <input
-                        type="text"
-                        value={formValues.address}
-                        onChange={e => setFormValues({ ...formValues, address: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Entry Fee</label>
-                      <input
-                        type="text"
-                        value={formValues.entryFee}
-                        onChange={e => setFormValues({ ...formValues, entryFee: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Contact Number</label>
-                      <input
-                        type="text"
-                        value={formValues.contact}
-                        onChange={e => setFormValues({ ...formValues, contact: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase text-purple-200/60 tracking-wider">Programs & Events Schedule</label>
-                    <textarea
-                      placeholder="List scheduled programs..." rows={3}
-                      value={formValues.programsEn}
-                      onChange={e => setFormValues({ ...formValues, programsEn: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl outline-none text-white focus:border-brand-primary text-xs font-normal"
-                    />
-                  </div>
-
-                  <div className="flex justify-between pt-4 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setWizardStep(1)}
-                      className="px-6 py-2.5 border border-white/10 text-white text-xs rounded-xl"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="px-6 py-2.5 bg-brand-primary text-white text-xs font-black rounded-xl disabled:opacity-50"
-                    >
-                      {submitting ? 'Submitting...' : 'Submit Event'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
-        )}
-
-        {/* ─── EVENT MONITORING TAB ─── */}
-        {activeTab === 'monitoring' && (
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-            <h3 className="text-sm font-black text-white mb-6">Activity Timeline</h3>
-            {logsLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(n => <div key={n} className="h-12 bg-white/5 rounded-2xl animate-pulse" />)}
-              </div>
-            ) : logs.length > 0 ? (
-              <div className="relative border-l border-white/10 pl-6 space-y-6">
-                {logs.map(log => (
-                  <div key={log.id} className="relative">
-                    <span className="absolute left-[-30px] top-1 w-4 h-4 rounded-full border-2 border-brand-primary bg-[#160b37]" />
-                    <div className="bg-white/3 p-4 border border-white/5 rounded-2xl">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-xs text-white">{log.actor}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[8px] font-black uppercase text-purple-200/50">{log.role}</span>
-                        </div>
-                        <span className="text-[10px] text-white/40 font-semibold">{new Date(log.timestamp).toLocaleString()}</span>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-slate-800">
+                      {ev.title}
+                      <p className="text-xs text-slate-400 font-normal">{ev.venue}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                        {ev.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-medium text-slate-600">
+                      {ev.date || 'TBA'}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-purple-600">
+                      {ev.interestedCount || 0}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-600">
+                      {ev.goingCount || 0}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                        ev.status === 'Published' ? 'bg-emerald-50 text-emerald-700' :
+                        ev.status === 'Cancelled' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {ev.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleViewResponses(ev._id || ev.id)}
+                          className="p-1.5 text-slate-500 hover:text-brand-primary hover:bg-slate-100 rounded-lg"
+                          title="Member Responses"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(ev)}
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="Edit Event"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        {ev.status !== 'Cancelled' && (
+                          <button
+                            onClick={() => handleCancelEvent(ev._id || ev.id)}
+                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg"
+                            title="Cancel Event"
+                          >
+                            <AlertTriangle size={16} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteEvent(ev._id || ev.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                          title="Delete Event"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <p className="text-xs font-bold text-brand-primary mt-2">{log.action}</p>
-                      <p className="text-xs text-purple-200 mt-1 font-medium">{log.description}</p>
-                      <p className="text-[10px] text-white/40 mt-2 font-semibold">Event: {log.eventTitle}</p>
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-xs text-white/40">No activity logged for your community events.</div>
-            )}
+              </tbody>
+            </table>
           </div>
         )}
-
-        {/* ─── EVENT ANALYTICS TAB ─── */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            {analyticsLoading ? (
-              <div className="h-64 bg-white/5 rounded-3xl animate-pulse" />
-            ) : analytics ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Category counts */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
-                  <h3 className="text-xs font-black uppercase text-purple-200 tracking-wider">🎭 Category-wise Event Counts</h3>
-                  <div className="space-y-3 pt-2">
-                    {analytics.categoryDistribution?.map(c => (
-                      <div key={c.category} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold text-white">
-                          <span>{c.category}</span>
-                          <span>{c.count} Events</span>
-                        </div>
-                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-brand-primary rounded-full" 
-                            style={{ width: `${Math.min(100, (c.count / analytics.totalEvents) * 100)}%` }} 
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Popular listings details */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
-                  <h3 className="text-xs font-black uppercase text-purple-200 tracking-wider">🌟 Popularity Statistics</h3>
-                  <div className="space-y-3">
-                    {analytics.popularEvents?.map((pe, i) => (
-                      <div key={pe.id} className="p-3 border border-white/5 bg-white/2 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-white">{pe.title}</p>
-                          <p className="text-[10px] text-white/40 mt-0.5">Attendee Conversion Rate</p>
-                        </div>
-                        <span className="text-xs font-black text-brand-primary">{pe.attendees} Joined</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-16 text-xs text-white/40">No analytics aggregated.</div>
-            )}
-          </div>
-        )}
-
       </div>
 
-      {/* ─── ATTENDEES ROSTER DRAWER ─── */}
+      {/* CREATE / EDIT EVENT MODAL */}
       <AnimatePresence>
-        {drawerOpen && selectedEventDetails && (
-          <div className="fixed inset-0 z-50 flex justify-end">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-lg bg-[#160b37] border-l border-white/10 h-full shadow-2xl flex flex-col z-10 overflow-hidden"
-            >
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/2">
-                <div>
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">Attendees Roster</h3>
-                  <p className="text-[10px] text-white/40 mt-0.5">{selectedEventDetails.title}</p>
-                </div>
-                <button 
-                  onClick={() => setDrawerOpen(false)}
-                  className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white"
-                >
-                  <X size={15} />
-                </button>
+        {(createModalOpen || editModalOpen) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-800">{createModalOpen ? 'Create Community Event' : 'Edit Event'}</h3>
+                <button onClick={() => { setCreateModalOpen(false); setEditModalOpen(false); }} className="p-1 text-slate-400 hover:text-slate-600"><X size={20} /></button>
               </div>
-
-              {/* Drawer Body Scroll */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {attendeesLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map(n => <div key={n} className="h-12 bg-white/5 rounded-2xl animate-pulse" />)}
+              <form onSubmit={createModalOpen ? handleCreateSubmit : handleEditSubmit} className="p-6 overflow-y-auto space-y-4 text-sm flex-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Event Title *</label>
+                  <input type="text" required value={formValues.title} onChange={e => setFormValues({...formValues, title: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Category *</label>
+                    <select value={formValues.category} onChange={e => setFormValues({...formValues, category: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl">
+                      {['Cultural', 'Education', 'Matrimonial', 'Health', 'Sports'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
-                ) : (
-                  <>
-                    {/* Attending roster */}
-                    <div className="space-y-4">
-                      <h4 className="text-[11px] font-black uppercase text-purple-200 tracking-wider">Attending Members ({attendees.length})</h4>
-                      {attendees.length > 0 ? (
-                        <div className="space-y-3">
-                          {attendees.map(a => (
-                            <div key={a.id} className="flex items-center justify-between p-3 border border-white/5 bg-white/2 rounded-2xl">
-                              <div className="flex items-center gap-3">
-                                <Avatar imageUrl={a.avatar} initials={a.initials} size="sm" />
-                                <div>
-                                  <p className="text-xs font-extrabold text-white">{a.name}</p>
-                                  <p className="text-[9px] text-white/40 mt-0.5">Gotra: {a.gotra}</p>
-                                </div>
-                              </div>
-                              <div className="text-right text-[10px] font-bold text-purple-200">
-                                <p>{a.phone}</p>
-                                <p className="text-white/40 font-semibold">{a.email}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-white/40 italic">No attendees signed up yet.</p>
-                      )}
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Venue *</label>
+                    <input type="text" required value={formValues.venue} onChange={e => setFormValues({...formValues, venue: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Event Date *</label>
+                    <input type="date" required value={formValues.startDate} onChange={e => setFormValues({...formValues, startDate: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Start Time</label>
+                    <input type="text" placeholder="e.g. 10:00 AM" value={formValues.startTime} onChange={e => setFormValues({...formValues, startTime: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Banner Image URL</label>
+                  <input type="url" placeholder="https://..." value={formValues.image} onChange={e => setFormValues({...formValues, image: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Description *</label>
+                  <textarea rows={4} required value={formValues.description} onChange={e => setFormValues({...formValues, description: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+                </div>
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                  <button type="button" onClick={() => { setCreateModalOpen(false); setEditModalOpen(false); }} className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600">Cancel</button>
+                  <button type="submit" disabled={actionLoading} className="px-5 py-2 bg-brand-primary text-white rounded-xl font-bold">{actionLoading ? 'Saving...' : 'Save Event'}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-                    {/* Interested roster */}
-                    <div className="space-y-4 pt-4 border-t border-white/5">
-                      <h4 className="text-[11px] font-black uppercase text-purple-200 tracking-wider">Interested Members ({interested.length})</h4>
-                      {interested.length > 0 ? (
-                        <div className="space-y-3">
-                          {interested.map(a => (
-                            <div key={a.id} className="flex items-center justify-between p-3 border border-white/5 bg-white/2 rounded-2xl">
-                              <div className="flex items-center gap-3">
-                                <Avatar imageUrl={a.avatar} initials={a.initials} size="sm" />
-                                <div>
-                                  <p className="text-xs font-extrabold text-white">{a.name}</p>
-                                  <p className="text-[9px] text-white/40 mt-0.5">Gotra: {a.gotra}</p>
-                                </div>
-                              </div>
-                              <div className="text-right text-[10px] font-bold text-purple-200">
-                                <p>{a.phone}</p>
-                                <p className="text-white/40 font-semibold">{a.email}</p>
-                              </div>
-                            </div>
-                          ))}
+      {/* MEMBER RESPONSES DRAWER */}
+      <AnimatePresence>
+        {detailDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-xs">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="bg-white w-full max-w-xl h-full shadow-2xl overflow-y-auto flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 className="text-lg font-bold text-slate-800">Community Member Responses</h3>
+                <button onClick={() => setDetailDrawerOpen(false)} className="p-1 text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              </div>
+              <div className="p-6 space-y-4 flex-1">
+                {memberResponses.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic text-center py-12">No responses recorded from your community members yet.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
+                    {memberResponses.map((mr) => (
+                      <div key={mr.id} className="p-3 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-800">{mr.name}</p>
+                          <p className="text-slate-400">{mr.phone} • {mr.gotra}</p>
                         </div>
-                      ) : (
-                        <p className="text-xs text-white/40 italic">No interested members logged.</p>
-                      )}
-                    </div>
-                  </>
+                        <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                          mr.response === 'Going' ? 'bg-emerald-100 text-emerald-800' :
+                          mr.response === 'Interested' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {mr.response}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 };

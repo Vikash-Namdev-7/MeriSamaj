@@ -4,41 +4,54 @@ const Donation = require('../../models/Donation');
 // Get all active campaigns — community-scoped
 exports.getCampaigns = async (req, res) => {
   try {
-    /**
-     * Community-scoped campaign query.
-     * Primary filter: communityId ObjectId.
-     * Fallback: community String (for pre-migration documents).
-     * Admin users (req.communityId = null) can optionally filter by req.query.communityId.
-     */
-    const filter = { status: { $in: ['Active', 'Published'] } };
+    const rawCommunityId = req.communityId || (req.user?.communityId?._id || req.user?.communityId);
+    const commIdStr = rawCommunityId ? rawCommunityId.toString() : null;
+    const userCommunityName = req.user?.community;
 
-    if (req.communityId) {
-      // Member / Head: scoped to their community OR global campaigns (communityId = null)
+    const filter = {
+      isDeleted: { $ne: true },
+      status: { $nin: ['Completed', 'Suspended', 'Archived', 'Deleted'] }
+    };
+
+    if (commIdStr) {
       filter.$or = [
-        { communityId: req.communityId },
-        { communityId: null }
+        { communityId: rawCommunityId },
+        { communityId: commIdStr },
+        { community: userCommunityName },
+        { communityId: null },
+        { isGlobal: true },
+        { visibility: 'GLOBAL' }
       ];
-    } else if (req.user.role === 'admin' && req.query.communityId) {
-      // Admin: optional filter by communityId query param
+    } else if (req.user?.role === 'admin' && req.query.communityId) {
       filter.communityId = req.query.communityId;
     }
 
-    const campaigns = await Campaign.find(filter).sort({ startDate: -1 });
+    const campaigns = await Campaign.find(filter).sort({ createdAt: -1 }).lean();
 
     const formattedCampaigns = campaigns.map(c => ({
       id: c._id,
+      _id: c._id,
       title: c.title,
-      raised: c.collectedAmount,
-      target: c.targetAmount,
-      percentage: c.targetAmount > 0 ? Math.min(Math.round((c.collectedAmount / c.targetAmount) * 100), 100) : 0,
-      desc: c.description,
-      city: c.city,
-      visibility: c.visibility,
-      bannerImage: c.bannerImage
+      titleEn: c.title,
+      raised: c.collectedAmount || 0,
+      collectedAmount: c.collectedAmount || 0,
+      target: c.targetAmount || 0,
+      targetAmount: c.targetAmount || 0,
+      percentage: c.targetAmount > 0 ? Math.min(Math.round(((c.collectedAmount || 0) / c.targetAmount) * 100), 100) : 0,
+      desc: c.description || c.shortDescription || '',
+      description: c.description || c.shortDescription || '',
+      city: c.city || 'Indore',
+      category: c.category || 'General',
+      visibility: c.visibility || 'Entire Community',
+      status: c.status || 'Active',
+      bannerImage: c.bannerImage || null,
+      startDate: c.startDate,
+      endDate: c.endDate
     }));
 
     res.status(200).json({ status: 'success', data: formattedCampaigns });
   } catch (error) {
+    console.error('Get Member Campaigns Error:', error);
     res.status(500).json({ status: 'error', message: error.message });
   }
 };

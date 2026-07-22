@@ -1,4 +1,6 @@
 const Obituary = require('../../models/Obituary');
+const User = require('../../models/User');
+const { notifyObituaryPosted } = require('../../services/notificationService');
 
 // @desc    Create a new obituary
 // @route   POST /api/member/obituaries
@@ -78,6 +80,21 @@ exports.createObituary = async (req, res) => {
 
     const savedObituary = await obituary.save();
     
+    // ── Notification: notify community members ────────────────────────────────────
+    try {
+      if (req.communityId) {
+        const members = await User.find({
+          communityId: req.communityId,
+          accountStatus: 'active',
+          verificationStatus: 'verified',
+          _id: { $ne: req.user._id }
+        }).select('_id').lean();
+        notifyObituaryPosted(members.map(m => m._id), fullName, savedObituary._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] createObituary obituary_posted failed:', notifErr.message);
+    }
+
     // Populate creator info
     const populated = await Obituary.findById(savedObituary._id).populate('creatorId', 'name email avatar initials phone');
     

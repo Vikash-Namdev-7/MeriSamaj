@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
@@ -17,8 +17,15 @@ const mockSuccessStories = [
   { id: 'ss2', groomName: 'Vikram & Sunita Sharma', location: 'Bhopal', marriageDate: 'Apr 2026', avatar: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80', quote: 'Community filter made finding the right match easy.' },
   { id: 'ss3', groomName: 'Amit & Kavita Gupta', location: 'Delhi', marriageDate: 'Jun 2026', avatar: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80', quote: 'Our families connected through MeriSamaj. Grateful!' },
 ];
+
+const mockTopDonors = [
+  { id: 1, name: 'Suresh Agrawal', amount: 51000, purpose: 'Chhatrawas Fund', paymentMode: 'Online (UPI)' },
+  { id: 2, name: 'Ramesh Gupta', amount: 25000, purpose: 'Gaushala Seva', paymentMode: 'Bank Transfer' },
+  { id: 3, name: 'Vikram Sharma', amount: 21000, purpose: 'Vivah Sahayata', paymentMode: 'Online (UPI)' },
+  { id: 4, name: 'Anand Verma', amount: 11000, purpose: 'Shiksha Sahayog', paymentMode: 'Cash' },
+  { id: 5, name: 'Pankaj Mittal', amount: 10000, purpose: 'General Relief', paymentMode: 'Online (UPI)' }
+];
 import ReferAndEarnBanner from './ReferAndEarnBanner';
-import { useDonation } from '../donation/DonationContext';
 
 
 
@@ -107,7 +114,6 @@ const quickActions = [
 const HomePage = () => {
   const navigate = useNavigate();
   const { currentUser, members: mockMembers, admins: contextAdmins, posts: mockPosts, events: mockEvents, language, setLanguage, notifications, getUnreadCountForModule } = useData();
-  const { topDonors } = useDonation();
   const mockAdmins = contextAdmins && contextAdmins.length > 0 ? contextAdmins : mockAdminsRaw;
   const subHeadsRef = useDraggableScroll();
   const updatesScrollRef = useDraggableScroll();
@@ -140,19 +146,51 @@ const HomePage = () => {
 
   const [homepageContentSettings, setHomepageContentSettings] = useState(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(`community_settings_${communityId}`);
-    if (saved) {
+  const loadHomepageSettings = useCallback(() => {
+    // 1. Check global key first
+    const globalSaved = localStorage.getItem('merisamaj_global_homepage_content');
+    if (globalSaved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.homepageContent) {
-          setHomepageContentSettings(parsed.homepageContent);
+        const parsed = JSON.parse(globalSaved);
+        if (parsed && (parsed.hero || parsed.exclusiveFeatures)) {
+          setHomepageContentSettings(parsed);
+          return;
         }
-      } catch (e) {
-        console.error('Failed to parse community settings for homepageContent', e);
+      } catch (e) {}
+    }
+
+    // 2. Fallback to community specific key
+    const keysToTry = [
+      `community_settings_${communityId}`,
+      `community_settings_${currentUser?.communityId}`,
+      'community_settings_cm_123'
+    ];
+
+    for (const key of keysToTry) {
+      if (!key) continue;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.homepageContent) {
+            setHomepageContentSettings(parsed.homepageContent);
+            return;
+          }
+        } catch (e) {}
       }
     }
-  }, [communityId]);
+  }, [communityId, currentUser]);
+
+  useEffect(() => {
+    loadHomepageSettings();
+    const handleUpdate = () => loadHomepageSettings();
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('merisamaj_homepage_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('merisamaj_homepage_updated', handleUpdate);
+    };
+  }, [loadHomepageSettings]);
 
   const mergedFeatures = useMemo(() => {
     const content = homepageContentSettings?.exclusiveFeatures;
@@ -502,7 +540,7 @@ const HomePage = () => {
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-purple-300/35 to-transparent" />
           
           <div className="flex flex-col gap-3.5">
-            {[...topDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
+            {[...mockTopDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
               // Select color themes and icons for purposes
               let purposeIcon = <Home size={11} className="text-amber-500" />;
               let purposeBg = 'bg-amber-50';

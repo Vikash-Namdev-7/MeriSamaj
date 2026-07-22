@@ -26,6 +26,11 @@ export const adminEventService = {
     return response.data;
   },
 
+  cancelEvent: async (id) => {
+    const response = await axiosPrivate.patch(`/admin/events/${id}/cancel`);
+    return response.data;
+  },
+
   toggleFeatured: async (id, isFeatured, priority) => {
     const response = await axiosPrivate.patch(`/admin/events/${id}/feature`, { isFeatured, priority });
     return response.data;
@@ -46,4 +51,5 @@ export const adminEventService = {
     return response.data;
   }
 };
+
 export default adminEventService;

@@ -103,7 +103,7 @@ const buildBaseFilter = async (query) => {
 // @access  Private (Head, Admin)
 exports.getCityFeed = async (req, res) => {
   try {
-    const { communityId, communityDoc, cityIds } = await getHeadJurisdiction(req);
+    const { communityId, communityIds, communityDoc, cityIds } = await getHeadJurisdiction(req);
     const filter = await buildBaseFilter(req.query);
 
     // Enforce feedType = "city"
@@ -137,9 +137,23 @@ exports.getCityFeed = async (req, res) => {
       if (req.query.cityId) filter.cityId = req.query.cityId;
     }
 
+    // Apply specific city filter if requested
+    if (req.query.cityId && req.query.cityId !== 'all') {
+      filter.cityId = req.query.cityId;
+    }
+
     const pageNum = parseInt(req.query.page, 10) || 1;
     const limitNum = parseInt(req.query.limit, 10) || 10;
     const skip = (pageNum - 1) * limitNum;
+
+    // Retrieve list of available cities for filter dropdown
+    let availableCities = [];
+    if (cityIds && cityIds.length > 0) {
+      availableCities = await City.find({ _id: { $in: cityIds } }).select('_id name').sort({ name: 1 });
+    }
+    if (availableCities.length === 0) {
+      availableCities = await City.find({}).select('_id name').sort({ name: 1 }).limit(100);
+    }
 
     const [posts, total] = await Promise.all([
       Post.find(filter)
@@ -158,7 +172,8 @@ exports.getCityFeed = async (req, res) => {
       data: posts,
       jurisdiction: {
         communityName: communityDoc ? communityDoc.name : 'All Communities',
-        cityCount: cityIds.length
+        cityCount: cityIds.length,
+        cities: availableCities
       },
       pagination: {
         total,
