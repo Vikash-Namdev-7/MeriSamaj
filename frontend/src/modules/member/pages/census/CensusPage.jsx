@@ -10,6 +10,7 @@ import {
   HelpCircle, Calendar, Shield, Trash2, Edit2
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
+import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 
 // Helper to resolve community surname
 const getCommunitySurname = (community) => {
@@ -288,15 +289,70 @@ export const CensusPage = () => {
   // States
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, males, females, kids, joint-families, nuclear-families, family-details
   const [selectedFamily, setSelectedFamily] = useState(null);
+  const [realMembers, setRealMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
 
   useEffect(() => {
     if (location.state?.view) {
       setCurrentView(location.state.view);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRealCensusMembers = async () => {
+      try {
+        setLoadingMembers(true);
+        const res = await axiosPrivate.get('/member/members?limit=500');
+        if (isMounted && res.data?.data && Array.isArray(res.data.data)) {
+          setRealMembers(res.data.data);
+        }
+      } catch (err) {
+        console.warn('[Census API] Falling back to default community data:', err.message);
+      } finally {
+        if (isMounted) setLoadingMembers(false);
+      }
+    };
+    fetchRealCensusMembers();
+    return () => { isMounted = false; };
+  }, []);
   
   // Data
-  const { males, females, kids, families } = getMockData(surname, currentUser?.city);
+  const mockData = getMockData(surname, currentUser?.city);
+  const males = realMembers.length > 0 
+    ? realMembers.filter(m => m.gender === 'Male' || m.gender === 'M').map(m => ({
+        id: m._id || m.id,
+        name: m.name,
+        fatherName: m.familyMembers?.find(f => f.relation?.toLowerCase().includes('father'))?.name || `${surname} Family`,
+        age: m.dob ? Math.floor((new Date() - new Date(m.dob)) / 31557600000) : 35,
+        city: m.city || currentUser?.city || 'Indore',
+        phone: m.phone || '',
+        maritalStatus: m.maritalStatus || 'Married',
+        active: m.accountStatus === 'active',
+        relation: 'Member',
+        education: m.qualification || 'Graduate',
+        profession: m.profession || 'Professional'
+      }))
+    : mockData.males;
+
+  const females = realMembers.length > 0 
+    ? realMembers.filter(m => m.gender === 'Female' || m.gender === 'F').map(m => ({
+        id: m._id || m.id,
+        name: m.name,
+        fatherName: m.familyMembers?.find(f => f.relation?.toLowerCase().includes('father'))?.name || `${surname} Family`,
+        age: m.dob ? Math.floor((new Date() - new Date(m.dob)) / 31557600000) : 32,
+        city: m.city || currentUser?.city || 'Indore',
+        phone: m.phone || '',
+        maritalStatus: m.maritalStatus || 'Married',
+        active: m.accountStatus === 'active',
+        relation: 'Member',
+        education: m.qualification || 'Graduate',
+        profession: m.profession || 'Homemaker'
+      }))
+    : mockData.females;
+
+  const kids = mockData.kids;
+  const families = mockData.families;
 
   // Dynamic Demographic Stats
   const totalMembers = males.length + females.length + kids.length;

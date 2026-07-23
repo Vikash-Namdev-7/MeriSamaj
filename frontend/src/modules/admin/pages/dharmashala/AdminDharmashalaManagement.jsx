@@ -1,0 +1,317 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Building, MapPin, Phone, Shield, Search, Filter, Loader, 
+  CheckCircle2, XCircle, AlertTriangle, DollarSign, Calendar, RefreshCw, Eye
+} from 'lucide-react';
+import adminDharmashalaService from '../../../../core/api/adminDharmashalaService';
+
+export default function AdminDharmashalaManagement() {
+  const [activeTab, setActiveTab] = useState('properties'); // 'properties' | 'bookings' | 'analytics'
+  const [loading, setLoading] = useState(true);
+  
+  // Data states
+  const [properties, setProperties] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [analytics, setAnalytics] = useState({});
+
+  // Filter states
+  const [search, setSearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+
+  // Override modal
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideBooking, setOverrideBooking] = useState(null);
+  const [overrideStatus, setOverrideStatus] = useState('confirmed');
+  const [overrideRemarks, setOverrideRemarks] = useState('');
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [propsRes, analyticsRes, bookingsRes] = await Promise.all([
+        adminDharmashalaService.getProperties({ search, city: selectedCity, status: selectedStatus }),
+        adminDharmashalaService.getAnalytics(),
+        adminDharmashalaService.getBookings({ search, status: selectedStatus })
+      ]);
+
+      if (propsRes.status === 'success') setProperties(propsRes.data);
+      if (analyticsRes.status === 'success') setAnalytics(analyticsRes.data);
+      if (bookingsRes.status === 'success') setBookings(bookingsRes.data);
+    } catch (err) {
+      console.error("Failed to load admin dharmashala data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [search, selectedCity, selectedStatus]);
+
+  const handleToggleStatus = async (propertyId) => {
+    try {
+      const res = await adminDharmashalaService.togglePropertyStatus(propertyId);
+      if (res.status === 'success') {
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Failed to toggle property status");
+    }
+  };
+
+  const handleApplyOverride = async (e) => {
+    e.preventDefault();
+    if (!overrideBooking) return;
+    try {
+      const res = await adminDharmashalaService.overrideBookingStatus(overrideBooking._id || overrideBooking.id, {
+        status: overrideStatus,
+        remarks: overrideRemarks,
+        paymentStatus: overrideStatus === 'confirmed' ? 'Paid' : overrideBooking.paymentStatus
+      });
+
+      if (res.status === 'success') {
+        setShowOverrideModal(false);
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Override failed");
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div>
+          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-1">
+            <Building size={16} /> Global Supervision
+          </div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Global Dharmashala Management</h1>
+          <p className="text-xs text-slate-500 font-medium">Cross-community oversight, revenue stats, and emergency overrides.</p>
+        </div>
+        <button 
+          onClick={fetchDashboardData}
+          className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl flex items-center gap-2 transition-all active:scale-95"
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh Sync
+        </button>
+      </div>
+
+      {/* Analytics Metric Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Properties</p>
+          <p className="text-2xl font-black text-slate-800 mt-1">{analytics.totalProperties || 0}</p>
+          <span className="text-[10px] font-bold text-emerald-600">{analytics.activeProperties || 0} Active</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Rooms</p>
+          <p className="text-2xl font-black text-indigo-600 mt-1">{analytics.totalRooms || 0}</p>
+          <span className="text-[10px] font-bold text-slate-400">Inventory</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Bookings</p>
+          <p className="text-2xl font-black text-slate-800 mt-1">{analytics.totalBookings || 0}</p>
+          <span className="text-[10px] font-bold text-indigo-600">{analytics.confirmedBookings || 0} Confirmed</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm col-span-2 md:col-span-2 bg-gradient-to-br from-indigo-900 to-slate-900 text-white">
+          <p className="text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider">Total Booking Revenue</p>
+          <p className="text-2xl font-black text-emerald-400 mt-1">₹{(analytics.totalRevenue || 0).toLocaleString()}</p>
+          <span className="text-[10px] font-medium text-slate-300">Verified Razorpay Payments</span>
+        </div>
+      </div>
+
+      {/* Main Tabs Navigation */}
+      <div className="flex border-b border-slate-200 gap-6 text-sm font-bold">
+        <button 
+          onClick={() => setActiveTab('properties')}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === 'properties' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Properties ({properties.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('bookings')}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === 'bookings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Global Bookings ({bookings.length})
+        </button>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-slate-100">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Search property name, city, manager, or booking ID..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <select 
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="pending_approval">Pending Approval</option>
+            <option value="confirmed">Confirmed</option>
+          </select>
+        </div>
+      </div>
+
+      {/* CONTENT TAB 1: PROPERTIES */}
+      {activeTab === 'properties' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {loading ? (
+            <div className="col-span-full py-12 flex justify-center"><Loader className="animate-spin text-indigo-600" size={32} /></div>
+          ) : properties.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-slate-400 font-bold">No Dharmashalas found matching criteria.</div>
+          ) : (
+            properties.map(p => (
+              <div key={p._id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                <div className="h-40 bg-slate-100 relative">
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">No Cover Image</div>
+                  )}
+                  <span className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.status === 'Active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                    {p.status}
+                  </span>
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <h3 className="text-base font-black text-slate-800">{p.name}</h3>
+                    <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mt-1">
+                      <MapPin size={12} className="text-indigo-500" /> {p.city}, {p.state}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Community: <span className="font-bold text-slate-700">{p.communityId?.name || p.community || 'General'}</span></p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-slate-500">Contact: {p.contactPerson} ({p.contactNumber})</span>
+                    <button 
+                      onClick={() => handleToggleStatus(p._id)}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all ${p.status === 'Active' ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                    >
+                      {p.status === 'Active' ? 'Disable' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* CONTENT TAB 2: GLOBAL BOOKINGS */}
+      {activeTab === 'bookings' && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold uppercase text-slate-400">
+                  <th className="p-4">Booking ID</th>
+                  <th className="p-4">Dharmashala</th>
+                  <th className="p-4">Guest Name</th>
+                  <th className="p-4">Dates</th>
+                  <th className="p-4">Amount</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                {loading ? (
+                  <tr><td colSpan="7" className="p-8 text-center"><Loader className="animate-spin text-indigo-600 inline" /></td></tr>
+                ) : bookings.length === 0 ? (
+                  <tr><td colSpan="7" className="p-8 text-center text-slate-400 font-bold">No global bookings found.</td></tr>
+                ) : (
+                  bookings.map(b => (
+                    <tr key={b._id} className="hover:bg-slate-50/50">
+                      <td className="p-4 font-mono font-bold text-indigo-600">{b.bookingId}</td>
+                      <td className="p-4 font-bold">{b.dharmashala?.name || 'N/A'}</td>
+                      <td className="p-4">{b.bookedBy}<span className="block text-[10px] text-slate-400">{b.phone}</span></td>
+                      <td className="p-4">{new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}</td>
+                      <td className="p-4 font-bold text-slate-900">₹{b.totalAmount}</td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${b.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : b.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {b.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <button 
+                          onClick={() => {
+                            setOverrideBooking(b);
+                            setOverrideStatus(b.status);
+                            setOverrideRemarks('');
+                            setShowOverrideModal(true);
+                          }}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-lg text-[11px]"
+                        >
+                          Override
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* OVERRIDE MODAL */}
+      {showOverrideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-black text-slate-800">Admin Emergency Override</h3>
+            <p className="text-xs text-slate-500">Override status for Booking #{overrideBooking?.bookingId}</p>
+
+            <form onSubmit={handleApplyOverride} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Select New Status</label>
+                <select 
+                  value={overrideStatus}
+                  onChange={(e) => setOverrideStatus(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                >
+                  <option value="confirmed">Confirmed (Paid)</option>
+                  <option value="approved">Approved (Awaiting Payment)</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled & Refunded</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Override Remarks</label>
+                <textarea 
+                  rows="3" 
+                  value={overrideRemarks}
+                  onChange={(e) => setOverrideRemarks(e.target.value)}
+                  placeholder="Reason for master admin override..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button type="button" onClick={() => setShowOverrideModal(false)} className="px-4 py-2.5 font-bold text-xs text-slate-500">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-indigo-700">Apply Override</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

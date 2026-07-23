@@ -49,5 +49,9 @@ router.use('/social', adminSocialRoutes);
 const adminDonationRoutes = require('../adminDonationRoutes');
 router.use('/donations', adminDonationRoutes);
 
+// Dharmashala Management Routes
+const adminDharmashalaRoutes = require('./adminDharmashalaRoutes');
+router.use('/dharmashala', adminDharmashalaRoutes);
+
 module.exports = router;
 

@@ -61,6 +61,16 @@ export const communityHeadService = {
     }
   },
 
+  getHeadSubLeaders: async (headId) => {
+    try {
+      const response = await axiosPrivate.get(`${API_BASE}/${headId}/sub-leaders`);
+      return response.data.data;
+    } catch (error) {
+      console.error('getHeadSubLeaders error:', error);
+      return [];
+    }
+  },
+
   updateHead: async (id, data) => {
     try {
       const response = await axiosPrivate.put(`${API_BASE}/${id}`, data);

@@ -345,15 +345,31 @@ exports.createBooking = async (req, res) => {
     
     await booking.save();
     
-    // Simulate background admin approval in 8 seconds for local/dev mock response
-    setTimeout(async () => {
-      try {
-        await DharmashalaBooking.findByIdAndUpdate(booking._id, { status: 'approved' });
-      } catch (err) {
-        console.error("Simulation auto approval error:", err);
-      }
-    }, 8000);
+    // Remove fake 8-second simulation timer. Real workflow requires Community Head to approve.
     
+    // Broadcast Socket.io event for live Head & Admin dashboard updates
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('dharmashala:booking_created', {
+          bookingId: booking._id,
+          dharmashalaId,
+          bookedBy: booking.bookedBy,
+          totalAmount
+        });
+      }
+    } catch (sErr) {
+      console.warn('[Socket] dharmashala:booking_created warning:', sErr.message);
+    }
+
+    // Trigger Notification for Head Users
+    try {
+      const { notifyBookingReceived } = require('../../services/notificationService');
+      notifyBookingReceived(null, booking.bookedBy, dharamshala.name, booking.bookingId);
+    } catch (nErr) {
+      console.warn('[Notify] notifyBookingReceived warning:', nErr.message);
+    }
+
     res.status(201).json({ status: 'success', data: booking });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -368,24 +384,40 @@ exports.getBookingHistory = async (req, res) => {
       .populate('rooms')
       .sort({ createdAt: -1 });
     
-    const formatted = bookings.map(b => ({
-      id: b.bookingId,
-      _id: b._id,
-      dharmashalaId: b.dharmashala?._id,
-      dharmashalaName: b.dharmashala?.name || 'Dharmashala',
-      location: b.dharmashala?.address || b.dharmashala?.location || '',
-      status: b.status,
-      checkIn: b.checkIn.toISOString().split('T')[0],
-      checkOut: b.checkOut.toISOString().split('T')[0],
-      nights: b.nights,
-      totalAmount: b.totalAmount,
-      bookedBy: b.bookedBy,
-      phone: b.phone,
-      roomType: b.roomType,
-      rooms: b.rooms.map(r => r.roomNumber),
-      checkInTime: b.checkInTime,
-      checkOutTime: b.checkOutTime
-    }));
+    const formatted = bookings.map(b => {
+      // Auto-expire reservation lock if 15 minutes window passed without payment
+      let currentStatus = b.status;
+      if (b.reservedUntil && ['approved', 'reserved', 'payment_pending'].includes(currentStatus) && b.paymentStatus !== 'Paid') {
+        if (new Date() > new Date(b.reservedUntil)) {
+          currentStatus = 'expired';
+          b.status = 'expired';
+          b.save().catch(e => console.warn('Auto expire save note:', e.message));
+        }
+      }
+
+      return {
+        id: b.bookingId,
+        _id: b._id,
+        dharmashalaId: b.dharmashala?._id,
+        dharmashalaName: b.dharmashala?.name || 'Dharmashala',
+        location: b.dharmashala?.address || b.dharmashala?.location || '',
+        status: currentStatus,
+        paymentStatus: b.paymentStatus,
+        checkIn: b.checkIn.toISOString().split('T')[0],
+        checkOut: b.checkOut.toISOString().split('T')[0],
+        nights: b.nights,
+        totalAmount: b.totalAmount,
+        bookedBy: b.bookedBy,
+        phone: b.phone,
+        roomType: b.roomType,
+        rooms: b.rooms ? b.rooms.map(r => r.roomNumber) : [],
+        checkInTime: b.checkInTime,
+        checkOutTime: b.checkOutTime,
+        reservedUntil: b.reservedUntil,
+        qrCodeData: b.qrCodeData || `DH-QR-${b.bookingId}`,
+        rejectionReason: b.rejectionReason || null
+      };
+    });
     
     res.status(200).json({ status: 'success', data: formatted });
   } catch (error) {
@@ -393,7 +425,7 @@ exports.getBookingHistory = async (req, res) => {
   }
 };
 
-// Confirm payment for booking
+// Confirm direct or simulated payment for booking
 exports.payBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -405,12 +437,195 @@ exports.payBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
+
+    // Check 15-minute lock expiration
+    if (booking.reservedUntil && new Date() > new Date(booking.reservedUntil)) {
+      booking.status = 'expired';
+      await booking.save();
+      return res.status(400).json({ status: 'error', message: '15-minute reservation window expired. Please re-request approval.' });
+    }
     
-    booking.status = 'upcoming';
+    booking.status = 'confirmed';
     booking.paymentStatus = 'Paid';
+    booking.paidAt = new Date();
+    booking.qrCodeData = `DH-QR-${booking.bookingId}-${Date.now().toString().slice(-6)}`;
     await booking.save();
+
+    // Broadcast Socket
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('dharmashala:payment_completed', { bookingId: booking._id, totalAmount: booking.totalAmount });
+      }
+    } catch (e) {}
     
     res.status(200).json({ status: 'success', data: booking });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Create Razorpay payment order for room booking
+exports.createBookingRazorpayOrder = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    let booking = await DharmashalaBooking.findOne({ bookingId });
+    if (!booking) {
+      booking = await DharmashalaBooking.findById(bookingId);
+    }
+    if (!booking) {
+      return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    // Lock verification: 15 minutes payment timeout
+    if (booking.reservedUntil && new Date() > new Date(booking.reservedUntil)) {
+      booking.status = 'expired';
+      await booking.save();
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Your 15-minute payment reservation window has expired. Please contact Community Head to re-approve your booking.' 
+      });
+    }
+
+    const paymentService = require('../../services/paymentService');
+    const order = await paymentService.initiatePayment({
+      gateway: 'razorpay',
+      amount: booking.totalAmount,
+      currency: 'INR',
+      receipt: `dh_${booking.bookingId}`.slice(0, 40),
+      notes: { bookingId: booking._id.toString() }
+    });
+
+    booking.razorpayOrderId = order.id;
+    await booking.save();
+
+    res.json({
+      status: 'success',
+      data: {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        key: process.env.RAZORPAY_KEY_ID
+      }
+    });
+  } catch (error) {
+    console.error('createBookingRazorpayOrder error:', error);
+    res.status(500).json({ status: 'error', message: error.message || 'Failed to create payment order' });
+  }
+};
+
+// Verify Razorpay payment signature & confirm booking
+exports.verifyRazorpayBookingPayment = async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, bookingId } = req.body;
+    
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ status: 'error', message: 'Missing Razorpay signature parameters' });
+    }
+
+    const paymentService = require('../../services/paymentService');
+    const isValid = paymentService.verifyPayment({
+      gateway: 'razorpay',
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature
+    });
+
+    if (!isValid) {
+      return res.status(400).json({ status: 'error', message: 'Razorpay payment signature verification failed' });
+    }
+
+    let booking = await DharmashalaBooking.findOne({ bookingId });
+    if (!booking) {
+      booking = await DharmashalaBooking.findById(bookingId);
+    }
+    if (!booking) {
+      return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    booking.status = 'confirmed';
+    booking.paymentStatus = 'Paid';
+    booking.razorpayPaymentId = razorpay_payment_id;
+    booking.razorpayOrderId = razorpay_order_id;
+    booking.razorpaySignature = razorpay_signature;
+    booking.paidAt = new Date();
+    booking.qrCodeData = `DH-QR-${booking.bookingId}-${Date.now().toString().slice(-6)}`;
+    await booking.save();
+
+    // Broadcast Socket
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('dharmashala:payment_completed', { 
+          bookingId: booking._id, 
+          dharmashalaId: booking.dharmashala,
+          totalAmount: booking.totalAmount 
+        });
+      }
+    } catch (sErr) {}
+
+    // Notifications
+    try {
+      const { notifyBookingStatusChanged } = require('../../services/notificationService');
+      notifyBookingStatusChanged(booking.user, 'confirmed', 'Dharmashala', booking._id);
+    } catch (nErr) {}
+
+    res.status(200).json({ status: 'success', message: 'Payment verified and booking confirmed!', data: booking });
+  } catch (error) {
+    console.error('verifyRazorpayBookingPayment error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Cancel booking by member
+exports.cancelBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    let booking = await DharmashalaBooking.findOne({ bookingId: id, user: req.user._id });
+    if (!booking) {
+      booking = await DharmashalaBooking.findOne({ _id: id, user: req.user._id });
+    }
+    if (!booking) {
+      return res.status(404).json({ status: 'error', message: 'Booking not found or unauthorized' });
+    }
+
+    if (['completed', 'checked_out', 'cancelled'].includes(booking.status)) {
+      return res.status(400).json({ status: 'error', message: `Booking cannot be cancelled in status: ${booking.status}` });
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelledBy = req.user._id;
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = reason || 'Cancelled by member';
+
+    if (booking.paymentStatus === 'Paid') {
+      booking.paymentStatus = 'Refunded';
+      booking.refundAmount = booking.totalAmount;
+      booking.refundedAt = new Date();
+    }
+
+    // Release assigned rooms
+    if (booking.rooms && booking.rooms.length > 0) {
+      const DharmashalaRoom = require('../../models/DharmashalaRoom');
+      await DharmashalaRoom.updateMany(
+        { _id: { $in: booking.rooms } },
+        { status: 'Available' }
+      );
+    }
+
+    await booking.save();
+
+    // Socket emission
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('dharmashala:booking_status_updated', { bookingId: booking._id, status: 'cancelled' });
+      }
+    } catch (sErr) {}
+
+    res.status(200).json({ status: 'success', message: 'Booking cancelled successfully', data: booking });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }

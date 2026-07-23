@@ -27,6 +27,7 @@ import CityFeedManagement from '../pages/social/CityFeedManagement';
 import CommunityFeedManagement from '../pages/social/CommunityFeedManagement';
 import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
 import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
+import AdminDharmashalaManagement from '../pages/dharmashala/AdminDharmashalaManagement';
 
 export const AdminRoutes = () => {
   return (
@@ -78,6 +79,9 @@ export const AdminRoutes = () => {
         {/* 🏛️ Multi-Community Management — Master Admin Core Feature */}
         <Route path="communities" element={<CommunitiesPage />} />
         
+        {/* 🏨 Dharmashala Master Supervision */}
+        <Route path="dharmashala" element={<AdminDharmashalaManagement />} />
+
         {/* Global Groups */}
         <Route path="groups" element={<AdminGroupsPage />} />
         

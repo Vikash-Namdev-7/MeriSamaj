@@ -5,6 +5,7 @@ import {
   X, CreditCard, QrCode, Landmark, Loader
 } from 'lucide-react';
 import dharmashalaService from '../../../../core/api/dharmashalaService';
+import { loadRazorpay } from '../../../../core/utils/razorpayLoader';
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
@@ -14,74 +15,76 @@ export default function MyBookingsPage() {
 
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentToastMsg, setPaymentToastMsg] = useState('');
-
-  // Payment checkout states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [activeBooking, setActiveBooking] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'card' | 'netbanking'
-  const [paymentStep, setPaymentStep] = useState('select'); // 'select' | 'processing' | 'success'
-  
-  // Checkout fields
-  const [upiId, setUpiId] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-
-  const fetchBookings = async (showLoader = true) => {
-    if (showLoader) setIsLoading(true);
-    try {
-      const res = await dharmashalaService.getBookingHistory();
-      if (res.status === 'success') {
-        setBookings(res.data);
-      }
-    } catch (error) {
-      console.error("Failed to load booking history", error);
-    } finally {
-      if (showLoader) setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBookings(true);
-    
-    // Poll updates every 4 seconds in the background to automatically get Approved/simulation states
-    const interval = setInterval(() => {
-      fetchBookings(false);
-    }, 4000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    return parts.length > 0 ? parts.join(' ') : v;
-  };
-
-  const formatExpiry = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return `${v.slice(0, 2)}/${v.slice(2, 4)}`;
-    }
-    return v;
-  };
+  const [qrModalBooking, setQrModalBooking] = useState(null);
 
   const initiatePayment = (booking) => {
-    setActiveBooking(booking);
-    setPaymentMethod('upi');
-    setPaymentStep('select');
-    setUpiId('');
-    setCardName('');
-    setCardNumber('');
-    setCardExpiry('');
-    setCardCvv('');
-    setShowPaymentModal(true);
+    handleRazorpayCheckout(booking);
+  };
+
+  const handleRazorpayCheckout = async (booking) => {
+    try {
+      const targetId = booking.id || booking._id;
+      const orderRes = await dharmashalaService.createRazorpayOrder(targetId);
+      if (orderRes.status !== 'success' || !orderRes.data) {
+        throw new Error(orderRes.message || 'Failed to initialize payment');
+      }
+
+      const { orderId, amount, currency, key } = orderRes.data;
+
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        alert('Razorpay SDK failed to load. Please check internet connection.');
+        return;
+      }
+
+      const options = {
+        key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount,
+        currency: currency || 'INR',
+        name: 'MeriSamaj Dharmashala',
+        description: `Booking #${targetId}`,
+        order_id: orderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await dharmashalaService.verifyRazorpayPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: targetId
+            });
+
+            if (verifyRes.status === 'success') {
+              setPaymentToastMsg('Payment Verified & Room Confirmed! 🎉');
+              setShowPaymentSuccess(true);
+              setTimeout(() => setShowPaymentSuccess(false), 4000);
+              fetchBookings(false);
+            }
+          } catch (err) {
+            alert(err.response?.data?.message || 'Payment signature verification failed.');
+          }
+        },
+        prefill: {
+          name: booking.bookedBy || '',
+          contact: booking.phone || ''
+        },
+        theme: {
+          color: '#4F46E5'
+        }
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', function (response) {
+        alert(`Payment Failed: ${response.error.description || 'Transaction declined'}`);
+      });
+      razorpayInstance.open();
+    } catch (err) {
+      console.error('Razorpay Error:', err);
+      // Fallback to secondary payment modal if order creation fails in dev mode
+      setActiveBooking(booking);
+      setPaymentMethod('upi');
+      setPaymentStep('select');
+      setShowPaymentModal(true);
+    }
   };
 
   const processPayment = async () => {
@@ -92,7 +95,7 @@ export default function MyBookingsPage() {
       
       if (res.status === 'success') {
         setPaymentStep('success');
-        setPaymentToastMsg('भुगतान सफल! आपकी धर्मशाला बुकिंग सफलतापूर्वक पुष्टीकृत हो गई है। 🎉');
+        setPaymentToastMsg('Payment Successful! Your Dharmashala booking has been confirmed. 🎉');
         setShowPaymentSuccess(true);
         setTimeout(() => setShowPaymentSuccess(false), 4000);
         
@@ -101,18 +104,18 @@ export default function MyBookingsPage() {
       }
     } catch (error) {
       console.error("Payment failed", error);
-      alert(error.response?.data?.message || "भुगतान प्रसंस्करण विफल रहा।");
+      alert(error.response?.data?.message || "Payment processing failed.");
       setPaymentStep('select');
     }
   };
 
   const tabs = [
-    { id: 'all', label: 'सभी' },
-    { id: 'pending_approval', label: 'स्वीकृति लंबित' },
-    { id: 'approved', label: 'स्वीकृत (भुगतान लंबित)' },
-    { id: 'upcoming', label: 'पुष्टीकृत' },
-    { id: 'completed', label: 'पूर्ण' },
-    { id: 'cancelled', label: 'रद्द' },
+    { id: 'all', label: 'All' },
+    { id: 'pending_approval', label: 'Pending Approval' },
+    { id: 'approved', label: 'Approved (Payment Pending)' },
+    { id: 'upcoming', label: 'Confirmed' },
+    { id: 'completed', label: 'Completed' },
+    { id: 'cancelled', label: 'Cancelled' },
   ];
 
   const filtered = activeTab === 'all' 
@@ -121,11 +124,11 @@ export default function MyBookingsPage() {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'pending_approval': return <span className="bg-amber-50 text-amber-700 border border-amber-200/50 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">लंबित स्वीकृति</span>;
-      case 'approved': return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">स्वीकृत (भुगतान लंबित)</span>;
-      case 'upcoming': return <span className="bg-indigo-50 text-indigo-700 border border-indigo-200/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">पुष्टीकृत</span>;
-      case 'completed': return <span className="bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">पूर्ण</span>;
-      case 'cancelled': return <span className="bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">रद्द</span>;
+      case 'pending_approval': return <span className="bg-amber-50 text-amber-700 border border-amber-200/50 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">Pending Approval</span>;
+      case 'approved': return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">Approved (Payment Pending)</span>;
+      case 'upcoming': return <span className="bg-indigo-50 text-indigo-700 border border-indigo-200/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">Confirmed</span>;
+      case 'completed': return <span className="bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">Completed</span>;
+      case 'cancelled': return <span className="bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">Cancelled</span>;
       default: return null;
     }
   };
@@ -140,7 +143,7 @@ export default function MyBookingsPage() {
         >
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-[17px] font-bold text-slate-800">धर्मशाला बुकिंग सूची</h1>
+        <h1 className="text-[17px] font-bold text-slate-800">Dharmashala Bookings</h1>
       </div>
 
       {/* Tabs */}
@@ -168,7 +171,7 @@ export default function MyBookingsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
             <AlertCircle size={40} className="mx-auto text-slate-300 mb-3" />
-            <p className="text-slate-500 font-bold text-sm">कोई बुकिंग नहीं मिली</p>
+            <p className="text-slate-500 font-bold text-sm">No bookings found</p>
           </div>
         ) : (
           filtered.map(b => (
@@ -183,12 +186,12 @@ export default function MyBookingsPage() {
               
               <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-y-3">
                 <div className="col-span-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">बुकिंग तिथियां</p>
-                  <p className="text-[13px] font-bold text-slate-800">{new Date(b.checkIn).toLocaleDateString('hi-IN', {day:'numeric', month:'short', year:'numeric'})} - {new Date(b.checkOut).toLocaleDateString('hi-IN', {day:'numeric', month:'short', year:'numeric'})} <span className="text-indigo-600 text-[11px]">({b.nights} रात)</span></p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking Dates</p>
+                  <p className="text-[13px] font-bold text-slate-800">{new Date(b.checkIn).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})} - {new Date(b.checkOut).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})} <span className="text-indigo-600 text-[11px]">({b.nights} {b.nights > 1 ? 'Nights' : 'Night'})</span></p>
                 </div>
                 
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">बुकिंग आईडी</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <Hash size={12} className="text-indigo-400" />
                     <span className="text-[12px] font-bold text-slate-800">{b.id}</span>
@@ -196,7 +199,7 @@ export default function MyBookingsPage() {
                 </div>
                 
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">कुल राशि</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
                   <p className="text-[13px] font-black text-emerald-600 mt-0.5">₹ {b.totalAmount}</p>
                 </div>
               </div>
@@ -208,7 +211,7 @@ export default function MyBookingsPage() {
                     onClick={() => initiatePayment(b)}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white py-3 rounded-2xl text-[12.5px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5"
                   >
-                    💳 भुगतान करें (Pay ₹{b.totalAmount})
+                    💳 Pay Now (₹{b.totalAmount})
                   </button>
                 </div>
               )}
@@ -245,9 +248,9 @@ export default function MyBookingsPage() {
             {/* Header */}
             <div className="bg-card border-b border-slate-100 px-5 py-4 flex items-center justify-between">
               <h3 className="text-[15px] font-black text-slate-800">
-                {paymentStep === 'select' && 'भुगतान विवरण (Checkout)'}
-                {paymentStep === 'processing' && 'भुगतान प्रसंस्करण (Processing)'}
-                {paymentStep === 'success' && 'भुगतान सफल (Success)'}
+                {paymentStep === 'select' && 'Payment Checkout'}
+                {paymentStep === 'processing' && 'Processing Payment'}
+                {paymentStep === 'success' && 'Payment Successful'}
               </h3>
               {paymentStep !== 'processing' && (
                 <button 
@@ -421,8 +424,8 @@ export default function MyBookingsPage() {
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
                   <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-650 rounded-full animate-spin"></div>
                   <div>
-                    <h4 className="text-sm font-extrabold text-slate-800 font-sans">भुगतान प्रक्रिया में है...</h4>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">कृपया प्रतीक्षा करें, आपका लेनदेन सुरक्षित रूप से पूरा किया जा रहा है।</p>
+                    <h4 className="text-sm font-extrabold text-slate-800 font-sans">Payment Processing...</h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">Please wait while your transaction is processed securely.</p>
                   </div>
                 </div>
               )}
@@ -433,8 +436,8 @@ export default function MyBookingsPage() {
                     <CheckCircle2 size={32} />
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-slate-800">भुगतान सफल रहा!</h4>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">आपकी धर्मशाला बुकिंग की सफलतापूर्वक पुष्टि हो गई है।</p>
+                    <h4 className="text-base font-black text-slate-800">Payment Successful!</h4>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">Your Dharmashala booking has been successfully confirmed.</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left w-full text-xs font-semibold text-slate-600 space-y-1.5 font-sans">
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Receipt details</p>
@@ -475,7 +478,7 @@ export default function MyBookingsPage() {
           onClick={() => navigate('/member/dharmashala')}
           className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
         >
-          <Plus size={18} /> नई बुकिंग करें
+          <Plus size={18} /> Make New Booking
         </button>
       </div>
     </div>

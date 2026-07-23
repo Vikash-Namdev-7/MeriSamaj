@@ -38,4 +38,8 @@ router.use('/professional', headProfessionalRoutes);
 const headMatrimonialRoutes = require('./headMatrimonialRoutes');
 router.use('/matrimonial', headMatrimonialRoutes);
 
+// Leadership & Sub-Leader Management Routes
+const headLeadershipRoutes = require('./headLeadershipRoutes');
+router.use('/leadership', headLeadershipRoutes);
+
 module.exports = router;

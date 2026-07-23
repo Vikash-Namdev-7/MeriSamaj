@@ -97,6 +97,11 @@ export const AdminLayout = () => {
           path: '/admin/donations',
           icon: HeartHandshake
         },
+        { 
+          name: 'Dharmashala Booking', 
+          path: '/admin/dharmashala',
+          icon: Building2
+        },
         {
           name: 'Samaj Funds',
           path: '/admin/funds',
