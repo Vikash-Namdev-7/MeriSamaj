@@ -211,6 +211,20 @@ exports.castVote = async (req, res) => {
       communityId
     });
 
+    // Broadcast real-time Socket event to update live election Commission charts
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('vote:cast', { 
+          votingId, 
+          candidateId,
+          communityId
+        });
+      }
+    } catch (socketErr) {
+      console.warn('[Socket.io] vote:cast broadcast warning:', socketErr.message);
+    }
+
     res.status(201).json({
       status: 'success',
       message: 'Vote cast successfully',

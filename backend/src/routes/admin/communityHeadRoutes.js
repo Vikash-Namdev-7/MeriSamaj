@@ -26,4 +26,6 @@ router.route('/:id')
 router.route('/:id/status')
   .patch(communityHeadController.updateHeadStatus);
 
+router.get('/:headId/sub-leaders', communityHeadController.getHeadSubLeaders);
+
 module.exports = router;

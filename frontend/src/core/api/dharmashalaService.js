@@ -33,6 +33,21 @@ const dharmashalaService = {
   payBooking: async (id) => {
     const response = await axiosPrivate.post(`${API_URL}/bookings/${id}/pay`);
     return response.data;
+  },
+
+  createRazorpayOrder: async (bookingId) => {
+    const response = await axiosPrivate.post(`${API_URL}/bookings/create-order`, { bookingId });
+    return response.data;
+  },
+
+  verifyRazorpayPayment: async (paymentData) => {
+    const response = await axiosPrivate.post(`${API_URL}/bookings/verify-payment`, paymentData);
+    return response.data;
+  },
+
+  cancelBooking: async (id, reason = '') => {
+    const response = await axiosPrivate.post(`${API_URL}/bookings/${id}/cancel`, { reason });
+    return response.data;
   }
 };
 

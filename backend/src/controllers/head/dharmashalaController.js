@@ -403,6 +403,17 @@ exports.updateBookingStatus = async (req, res) => {
     
     if (remarks) booking.remarks = remarks;
     if (paymentStatus) booking.paymentStatus = paymentStatus;
+
+    // Set 15-Minute Reservation Lock on Approval
+    if (status === 'approved') {
+      booking.reservedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+      booking.approvedBy = req.user?._id;
+      booking.approvedAt = new Date();
+    } else if (status === 'rejected') {
+      booking.rejectedBy = req.user?._id;
+      booking.rejectedAt = new Date();
+      booking.rejectionReason = remarks || 'Request rejected by Head';
+    }
     
     // Room assignments
     if (rooms && rooms.length > 0) {
@@ -416,8 +427,8 @@ exports.updateBookingStatus = async (req, res) => {
       );
     }
     
-    // Free rooms if checked out, completed or cancelled
-    if (['checked_out', 'completed', 'cancelled', 'no_show'].includes(status) && booking.rooms.length > 0) {
+    // Free rooms if checked out, completed, cancelled or rejected
+    if (['checked_out', 'completed', 'cancelled', 'rejected', 'no_show', 'expired'].includes(status) && booking.rooms && booking.rooms.length > 0) {
       await DharmashalaRoom.updateMany(
         { _id: { $in: booking.rooms } },
         { status: 'Available' }
@@ -428,15 +439,27 @@ exports.updateBookingStatus = async (req, res) => {
     booking.statusHistory.push({
       status,
       updatedAt: new Date(),
-      updatedBy: req.user?.name || 'Admin'
+      updatedBy: req.user?.name || 'Admin/Head'
     });
     
     await booking.save();
+
+    // Socket.io Broadcast
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('dharmashala:booking_status_updated', {
+          bookingId: booking._id,
+          status,
+          reservedUntil: booking.reservedUntil
+        });
+      }
+    } catch (sErr) {}
     
     // ── Notification: notify booking applicant on status change ────────────────────
     try {
       const dName = booking.dharmashala?.name || 'Dharmashala';
-      if (booking.user && oldStatus !== status && ['approved', 'cancelled', 'checked_in', 'rejected'].includes(status)) {
+      if (booking.user && oldStatus !== status) {
         notifyBookingStatusChanged(booking.user, status, dName, booking._id);
       }
     } catch (notifErr) {

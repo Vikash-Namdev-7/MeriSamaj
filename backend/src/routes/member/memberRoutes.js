@@ -79,4 +79,8 @@ router.use('/matrimonial',               matrimonialAuxRoutes); // dashboard, sh
 const notificationRoutes = require('./notificationRoutes');
 router.use('/notifications', notificationRoutes);
 
+// ─── Leadership Directory ────────────────────────────────────────────────────
+const leadershipRoutes = require('./leadershipRoutes');
+router.use('/leadership', leadershipRoutes);
+
 module.exports = router;

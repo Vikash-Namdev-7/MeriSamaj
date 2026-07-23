@@ -130,8 +130,25 @@ const userSchema = new mongoose.Schema({
   referralCode: { type: String },
   role: { 
     type: String, 
-    enum: ['user', 'admin', 'head'], 
+    enum: ['user', 'admin', 'head', 'sub_head'], 
     default: 'user' 
+  },
+
+  // Sub-Leader Hierarchy Fields
+  parentHeadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  designation: { type: String, default: 'Member' },
+  department: { type: String },
+  termYears: { type: String, default: '2024-2027' },
+  joiningDate: { type: Date },
+  socialLinks: {
+    facebook: { type: String },
+    twitter: { type: String },
+    linkedin: { type: String },
+    whatsapp: { type: String }
   },
 
   // Assigned communities for Head users (array of ObjectIds for multiple assignments)
@@ -140,7 +157,7 @@ const userSchema = new mongoose.Schema({
     ref: 'Community',
   }],
   
-  // Granular module permissions for Head users
+  // Granular module permissions for Head & Sub-Head users
   headPermissions: {
     canViewDashboard: { type: Boolean, default: true },
     
@@ -157,24 +174,49 @@ const userSchema = new mongoose.Schema({
     canEditProfiles: { type: Boolean, default: false },
     
     // Events
+    canViewEvents: { type: Boolean, default: true },
     canCreateEvents: { type: Boolean, default: false },
     canEditEvents: { type: Boolean, default: false },
     canDeleteEvents: { type: Boolean, default: false },
     canManageBookings: { type: Boolean, default: false },
     
     // Donations
-    canCreateDonationCampaigns: { type: Boolean, default: false },
     canViewDonations: { type: Boolean, default: true },
+    canCreateDonationCampaigns: { type: Boolean, default: false },
     canManageExpenses: { type: Boolean, default: false },
-    
-    // Invitations
+
+    // Funds
+    canViewFunds: { type: Boolean, default: true },
+    canManageFunds: { type: Boolean, default: false },
+
+    // Leadership
+    canViewLeadership: { type: Boolean, default: true },
+    canManageLeadership: { type: Boolean, default: false },
+
+    // Dharmashala
+    canViewDharmashala: { type: Boolean, default: true },
+    canManageDharmashala: { type: Boolean, default: false },
+
+    // Social Feed
+    canViewSocial: { type: Boolean, default: true },
+    canManageSocial: { type: Boolean, default: false },
+
+    // Community Kitchen / Food
+    canViewKitchen: { type: Boolean, default: true },
+    canManageKitchen: { type: Boolean, default: false },
+
+    // Professional Directory
+    canViewDirectory: { type: Boolean, default: true },
+    canManageDirectory: { type: Boolean, default: false },
+
+    // Invitations & Obituary
+    canViewInvitations: { type: Boolean, default: true },
     canCreateInvitations: { type: Boolean, default: false },
     canManageInvitations: { type: Boolean, default: false },
+    canViewObituary: { type: Boolean, default: true },
+    canManageObituary: { type: Boolean, default: false },
     
-    // Directory
-    canManageDirectory: { type: Boolean, default: false },
-    
-    // General Admin
+    // General Admin & Notifications
     canSendNotifications: { type: Boolean, default: false },
     canViewReports: { type: Boolean, default: true }
   }

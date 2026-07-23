@@ -76,10 +76,10 @@ export default function DharmashalaBookingPage() {
     }
   };
 
-  const getMonthNameHindi = (m) => {
+  const getMonthName = (m) => {
     const months = [
-      'जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून',
-      'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return months[m - 1];
   };
@@ -111,7 +111,6 @@ export default function DharmashalaBookingPage() {
 
     // Check-in and check-out dates
     const checkInDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${selectedDate.day.toString().padStart(2, '0')}`;
-    // Assume checkout is next day for simplicity (1 night)
     const checkOutDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${(selectedDate.day + 1).toString().padStart(2, '0')}`;
 
     try {
@@ -133,13 +132,13 @@ export default function DharmashalaBookingPage() {
         // Push local/global notification
         addNotification?.({
           type: 'community',
-          title: 'बुकिंग अनुरोध प्राप्त हुआ',
-          message: `${dh.name} के लिए आपका बुकिंग अनुरोध समीक्षा के अधीन है।`,
+          title: 'Booking Request Sent',
+          message: `Your booking request for ${dh.name} is currently under review.`,
         });
       }
     } catch (error) {
       console.error("Booking creation failed", error);
-      alert(error.response?.data?.message || "बुकिंग अनुरोध भेजने में समस्या आई।");
+      alert(error.response?.data?.message || "Failed to send booking request.");
     }
   };
 
@@ -154,8 +153,8 @@ export default function DharmashalaBookingPage() {
   if (!dh) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <p className="text-slate-500 font-bold mb-4">धर्मशाला नहीं मिली</p>
-        <button onClick={() => navigate('/member/dharmashala')} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold">वापस जाएं</button>
+        <p className="text-slate-500 font-bold mb-4">Dharmashala not found</p>
+        <button onClick={() => navigate('/member/dharmashala')} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold">Go Back</button>
       </div>
     );
   }
@@ -171,7 +170,7 @@ export default function DharmashalaBookingPage() {
           >
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-[17px] font-bold text-slate-800">उपलब्धता कैलेंडर</h1>
+          <h1 className="text-[17px] font-bold text-slate-800">Availability Calendar</h1>
         </div>
       </div>
 
@@ -215,12 +214,12 @@ export default function DharmashalaBookingPage() {
           
           <div className="flex items-center justify-between mb-6">
             <button onClick={handlePrevMonth} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronLeft size={20} /></button>
-            <h3 className="font-bold text-[15px] text-indigo-700">{getMonthNameHindi(currentMonth)} {currentYear}</h3>
+            <h3 className="font-bold text-[15px] text-indigo-700">{getMonthName(currentMonth)} {currentYear}</h3>
             <button onClick={handleNextMonth} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronRight size={20} /></button>
           </div>
 
           <div className="grid grid-cols-7 gap-y-1.5 text-center mb-2">
-            {['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'].map(d => (
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="text-[10px] font-bold text-slate-400 py-1">{d}</div>
             ))}
             
@@ -242,9 +241,9 @@ export default function DharmashalaBookingPage() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap justify-between gap-2 text-[10px] font-bold text-slate-500">
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-100"></span> उपलब्ध</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-100"></span> बुक्ड</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-100"></span> आंशिक उपलब्ध</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-100"></span> Available</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-100"></span> Booked</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-100"></span> Partial</div>
           </div>
         </div>
 
@@ -253,11 +252,11 @@ export default function DharmashalaBookingPage() {
           <div className="bg-indigo-50 p-5 rounded-3xl border border-indigo-100/50 space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-[11px] font-bold text-indigo-400 mb-1 uppercase tracking-wider">चयनित तिथि</h4>
-                <span className="text-[15px] font-black text-indigo-900">{selectedDate.day} {getMonthNameHindi(currentMonth)} {currentYear}</span>
+                <h4 className="text-[11px] font-bold text-indigo-400 mb-1 uppercase tracking-wider">Selected Date</h4>
+                <span className="text-[15px] font-black text-indigo-900">{selectedDate.day} {getMonthName(currentMonth)} {currentYear}</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase ${getStatusColor(selectedDate.status)}`}>
-                {selectedDate.status === 'available' ? 'पूर्ण उपलब्ध' : selectedDate.status === 'booked' ? 'बुक्ड' : 'आंशिक उपलब्ध'}
+                {selectedDate.status === 'available' ? 'Available' : selectedDate.status === 'booked' ? 'Booked' : 'Partial'}
               </span>
             </div>
 
@@ -265,9 +264,9 @@ export default function DharmashalaBookingPage() {
               <div className="bg-white/60 p-3 rounded-xl border border-amber-200/50 flex items-start gap-2">
                 <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[12px] font-bold text-slate-800">यह तिथि आंशिक रूप से बुक है</p>
-                  <p className="text-[11px] font-medium text-slate-600 mt-0.5">पहले से बुक समय: <span className="font-bold text-amber-700">दोपहर 12:00 से शाम 05:00 तक</span></p>
-                  <p className="text-[10px] text-slate-500 mt-1">आप बचे हुए समय के लिए बुकिंग कर सकते हैं।</p>
+                  <p className="text-[12px] font-bold text-slate-800">This date is partially booked</p>
+                  <p className="text-[11px] font-medium text-slate-600 mt-0.5">Pre-booked slot: <span className="font-bold text-amber-700">12:00 PM to 05:00 PM</span></p>
+                  <p className="text-[10px] text-slate-500 mt-1">You can book the remaining available time slot.</p>
                 </div>
               </div>
             )}
@@ -275,7 +274,7 @@ export default function DharmashalaBookingPage() {
             {selectedDate.status !== 'booked' && (
               <div className="pt-3 border-t border-indigo-100 flex gap-3">
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">चेक-इन समय</label>
+                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-in Time</label>
                   <div className="relative">
                     <input 
                       type="time" 
@@ -286,7 +285,7 @@ export default function DharmashalaBookingPage() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">चेक-आउट समय</label>
+                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-out Time</label>
                   <div className="relative">
                     <input 
                       type="time" 
@@ -310,9 +309,9 @@ export default function DharmashalaBookingPage() {
               <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2">बुकिंग की पुष्टि करें</h3>
+              <h3 className="text-xl font-black text-slate-800 mb-2">Confirm Booking</h3>
               <p className="text-[13px] text-slate-500 leading-relaxed font-medium px-2 mb-4">
-                क्या आप {selectedDate?.day} {getMonthNameHindi(currentMonth)} {currentYear} को <strong className="text-slate-700">{checkInTime}</strong> से <strong className="text-slate-700">{checkOutTime}</strong> तक बुकिंग कन्फर्म करना चाहते हैं?
+                Do you want to confirm booking for {selectedDate?.day} {getMonthName(currentMonth)} {currentYear} from <strong className="text-slate-700">{checkInTime}</strong> to <strong className="text-slate-700">{checkOutTime}</strong>?
               </p>
             </div>
             
@@ -321,14 +320,14 @@ export default function DharmashalaBookingPage() {
                 onClick={() => setShowConfirmModal(false)}
                 className="flex-1 py-4 text-[14px] font-bold text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
               >
-                रद्द करें
+                Cancel
               </button>
               <div className="w-px bg-slate-100" />
               <button 
                 onClick={handleConfirmBooking}
                 className="flex-1 py-4 text-[14px] font-bold text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
               >
-                हाँ, कन्फर्म करें
+                Yes, Confirm
               </button>
             </div>
           </div>
@@ -343,7 +342,7 @@ export default function DharmashalaBookingPage() {
               <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                 <Clock size={32} />
               </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2">अनुरोध भेजा गया!</h3>
+              <h3 className="text-xl font-black text-slate-800 mb-2">Request Sent!</h3>
               <p className="text-[13px] text-slate-500 leading-relaxed font-semibold px-2 mb-4">
                 Your booking request has been successfully sent to the admin. Please wait until the admin reviews and approves your request.
               </p>
@@ -354,7 +353,7 @@ export default function DharmashalaBookingPage() {
                 onClick={() => navigate('/member/dharmashala/bookings')}
                 className="flex-1 py-4 text-[14px] font-black text-indigo-650 bg-indigo-50/30 hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
               >
-                मेरी बुकिंग्स देखें
+                View My Bookings
               </button>
             </div>
           </div>
@@ -368,7 +367,7 @@ export default function DharmashalaBookingPage() {
           disabled={!selectedDate || selectedDate.status === 'booked'}
           className={`w-full py-3.5 rounded-xl font-bold text-[14px] shadow-sm transition-all ${!selectedDate || selectedDate.status === 'booked' ? 'bg-slate-100 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98]'}`}
         >
-          {selectedDate?.status === 'booked' ? 'तिथि उपलब्ध नहीं' : 'बुकिंग करें'}
+          {selectedDate?.status === 'booked' ? 'Date Unavailable' : 'Book Room'}
         </button>
       </div>
     </div>

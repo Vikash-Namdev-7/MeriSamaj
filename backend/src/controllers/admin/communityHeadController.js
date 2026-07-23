@@ -296,3 +296,25 @@ exports.getActivityLogs = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Failed to fetch activity logs' });
   }
 };
+
+// @desc    Get sub-leaders created by a specific Community Head (Admin Oversight)
+// @route   GET /api/v1/admin/community-heads/:headId/sub-leaders
+// @access  Private/Admin
+exports.getHeadSubLeaders = async (req, res) => {
+  try {
+    const { headId } = req.params;
+    const subLeaders = await User.find({ parentHeadId: headId, role: 'sub_head' })
+      .select('name avatar designation department email phone headPermissions accountStatus joiningDate createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      status: 'success',
+      count: subLeaders.length,
+      data: subLeaders
+    });
+  } catch (error) {
+    console.error('Get Head Sub Leaders Error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch sub-leaders' });
+  }
+};

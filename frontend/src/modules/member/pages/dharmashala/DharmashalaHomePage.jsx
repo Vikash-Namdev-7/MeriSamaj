@@ -75,7 +75,7 @@ export default function DharmashalaHomePage() {
           >
             <Menu size={22} strokeWidth={2.5} />
           </button>
-          <h1 className="text-[17px] font-bold text-text-primary tracking-tight">धर्मशाला बुकिंग</h1>
+          <h1 className="text-[17px] font-bold text-text-primary tracking-tight">Dharmashala Booking</h1>
         </div>
         <button 
           onClick={handleOpenFilter}
@@ -91,7 +91,7 @@ export default function DharmashalaHomePage() {
           <div className="relative flex-1">
             <input 
               type="text" 
-              placeholder="धर्मशाला खोजें..." 
+              placeholder="Search Dharmashala..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-purple-100/30 rounded-2xl pl-11 pr-4 py-3.5 text-[14px] font-bold outline-none focus:border-brand-primary/45 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.08)] transition-all text-slate-800"
@@ -102,7 +102,7 @@ export default function DharmashalaHomePage() {
             onClick={() => navigate('/member/dharmashala/bookings')}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3.5 rounded-2xl font-bold text-[12.5px] shadow-sm shrink-0 transition-all press-scale"
           >
-            मेरी बुकिंग्स
+            My Bookings
           </button>
         </div>
 
@@ -114,7 +114,7 @@ export default function DharmashalaHomePage() {
             </div>
           ) : dharamshalas.length === 0 ? (
             <div className="card-neo p-8 text-center text-slate-500 font-bold">
-              कोई धर्मशाला नहीं मिली
+              No Dharmashala found
             </div>
           ) : (
             dharamshalas.map(d => (
@@ -135,8 +135,8 @@ export default function DharmashalaHomePage() {
                     </div>
                     
                     <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
-                      <div className="flex items-center gap-1"><span>स्वामित्व:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
-                      <div className="flex items-center gap-1"><span>स्थिति:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
+                      <div className="flex items-center gap-1"><span>Ownership:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
+                      <div className="flex items-center gap-1"><span>Status:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
                     </div>
                   </div>
                 </div>
@@ -146,7 +146,7 @@ export default function DharmashalaHomePage() {
                     onClick={() => navigate(`/member/dharmashala/${d._id}`)}
                     className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
                   >
-                    बुकिंग करें
+                    Book Now
                   </button>
                 </div>
               </div>
@@ -156,7 +156,6 @@ export default function DharmashalaHomePage() {
       </div>
       
 
-
       {/* Filter Modal */}
       {showFilterModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm sm:items-center">
@@ -164,48 +163,48 @@ export default function DharmashalaHomePage() {
             <div className="p-5 pb-0">
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[17px] font-black text-slate-800">फिल्टर करें</h3>
-                <button onClick={handleResetFilter} className="text-[13px] font-bold text-indigo-650">रीसेट</button>
+                <h3 className="text-[17px] font-black text-slate-800">Filter Search</h3>
+                <button onClick={handleResetFilter} className="text-[13px] font-bold text-indigo-650">Reset</button>
               </div>
               
               <div className="space-y-4 mb-6">
                 <div>
-                  <h4 className="text-[13px] font-bold text-slate-600 mb-2">स्थान (Location)</h4>
+                  <h4 className="text-[13px] font-bold text-slate-600 mb-2">Location</h4>
                   <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => handleToggleLocation('indore')}
                       className={`px-4 py-2 rounded-xl text-[12px] font-bold border transition-colors ${tempLocation === 'indore' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'}`}
                     >
-                      इन्दौर
+                      Indore
                     </button>
                     <button 
                       onClick={() => handleToggleLocation('ujjain')}
                       className={`px-4 py-2 rounded-xl text-[12px] font-bold border transition-colors ${tempLocation === 'ujjain' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'}`}
                     >
-                      उज्जैन
+                      Ujjain
                     </button>
                     <button 
                       onClick={() => handleToggleLocation('bhopal')}
                       className={`px-4 py-2 rounded-xl text-[12px] font-bold border transition-colors ${tempLocation === 'bhopal' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'}`}
                     >
-                      भोपाल
+                      Bhopal
                     </button>
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-[13px] font-bold text-slate-600 mb-2">सुविधाएं (Facilities)</h4>
+                  <h4 className="text-[13px] font-bold text-slate-600 mb-2">Facilities</h4>
                   <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => setTempFacilities(prev => ({ ...prev, ac: !prev.ac }))}
                       className={`px-4 py-2 rounded-xl text-[12px] font-bold border transition-colors ${tempFacilities.ac ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'}`}
                     >
-                      AC कमरे
+                      AC Rooms
                     </button>
                     <button 
                       onClick={() => setTempFacilities(prev => ({ ...prev, food: !prev.food }))}
                       className={`px-4 py-2 rounded-xl text-[12px] font-bold border transition-colors ${tempFacilities.food ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'}`}
                     >
-                      भोजन व्यवस्था
+                      Dining / Food
                     </button>
                   </div>
                 </div>
@@ -217,13 +216,13 @@ export default function DharmashalaHomePage() {
                 onClick={() => setShowFilterModal(false)}
                 className="flex-1 py-3.5 bg-slate-100 text-slate-700 text-[14px] font-bold rounded-xl hover:bg-slate-200 transition-colors"
               >
-                रद्द करें
+                Cancel
               </button>
               <button 
                 onClick={handleApplyFilter}
                 className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
               >
-                लागू करें
+                Apply Filters
               </button>
             </div>
           </div>

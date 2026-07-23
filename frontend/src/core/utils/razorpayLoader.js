@@ -15,3 +15,6 @@ export const loadRazorpayScript = () => {
     document.body.appendChild(script);
   });
 };
+
+export const loadRazorpay = loadRazorpayScript;
+

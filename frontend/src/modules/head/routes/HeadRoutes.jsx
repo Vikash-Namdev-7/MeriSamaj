@@ -22,6 +22,7 @@ import HeadLoginPage from '../pages/login/HeadLoginPage';
 import SocialCityFeed from '../pages/social/SocialCityFeed';
 import SocialCommunityFeed from '../pages/social/SocialCommunityFeed';
 import { HeadGroupsPage } from '../pages/groups/HeadGroupsPage';
+import HeadLeadershipManagement from '../pages/leadership/HeadLeadershipManagement';
 
 export const HeadRoutes = () => {
   return (
@@ -65,6 +66,7 @@ export const HeadRoutes = () => {
 
           <Route path="home-content" element={<HomepageContentManager />} />
           <Route path="engagement" element={<CommunityEngagement />} />
+          <Route path="leadership" element={<HeadLeadershipManagement />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/head/dashboard" replace />} />

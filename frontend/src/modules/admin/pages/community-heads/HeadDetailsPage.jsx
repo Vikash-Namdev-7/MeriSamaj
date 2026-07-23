@@ -12,18 +12,24 @@ const HeadDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
 
+  const [subLeaders, setSubLeaders] = useState([]);
+
   useEffect(() => {
-    const fetchHead = async () => {
+    const fetchHeadData = async () => {
       try {
-        const data = await communityHeadService.getHeadById(id);
+        const [data, subLeadersData] = await Promise.all([
+          communityHeadService.getHeadById(id),
+          communityHeadService.getHeadSubLeaders(id)
+        ]);
         setHead(data);
+        setSubLeaders(subLeadersData || []);
       } catch (error) {
         console.error("Error fetching head details", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchHead();
+    fetchHeadData();
   }, [id]);
 
   const handleUpdate = async (data) => {
@@ -131,6 +137,50 @@ const HeadDetailsPage = () => {
                 );
               })}
             </div>
+          </div>
+
+          {/* ADDENDUM 1: Read-Only Oversight Section - Team Members Created by this Head */}
+          <div className="pt-6 border-t border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+              <User size={20} className="text-brand-primary" /> Team Members Created by this Head ({subLeaders.length})
+            </h3>
+            {subLeaders.length === 0 ? (
+              <div className="p-6 text-center bg-gray-50 rounded-2xl border border-gray-100 text-gray-400 text-xs font-semibold">
+                No subordinate team members created by this Community Head yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-100 font-bold uppercase text-gray-400">
+                    <tr>
+                      <th className="p-3">Member</th>
+                      <th className="p-3">Designation</th>
+                      <th className="p-3">Contact</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Permissions Badge</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
+                    {subLeaders.map(sl => {
+                      const grantedCount = Object.values(sl.headPermissions || {}).filter(Boolean).length;
+                      return (
+                        <tr key={sl._id} className="hover:bg-gray-50/50">
+                          <td className="p-3 font-bold text-gray-900">{sl.name}</td>
+                          <td className="p-3"><span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg font-bold">{sl.designation || 'Sub-Leader'}</span></td>
+                          <td className="p-3">{sl.phone}<span className="block text-[10px] text-gray-400">{sl.email}</span></td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sl.accountStatus === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-500'}`}>
+                              {sl.accountStatus}
+                            </span>
+                          </td>
+                          <td className="p-3"><span className="px-2 py-1 bg-amber-50 text-amber-700 font-bold rounded-lg text-[10px]">{grantedCount} Modules Granted</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>

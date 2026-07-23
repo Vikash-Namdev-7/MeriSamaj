@@ -6,7 +6,10 @@ const dharmashalaController = require('../../controllers/member/dharmashalaContr
 router.get('/', dharmashalaController.getAllDharmashalas);
 router.post('/bookings', dharmashalaController.createBooking);
 router.get('/bookings', dharmashalaController.getBookingHistory);
+router.post('/bookings/create-order', dharmashalaController.createBookingRazorpayOrder);
+router.post('/bookings/verify-payment', dharmashalaController.verifyRazorpayBookingPayment);
 router.post('/bookings/:id/pay', dharmashalaController.payBooking);
+router.post('/bookings/:id/cancel', dharmashalaController.cancelBooking);
 router.get('/:id', dharmashalaController.getDharmashalaById);
 router.get('/:id/availability', dharmashalaController.getAvailability);
 
