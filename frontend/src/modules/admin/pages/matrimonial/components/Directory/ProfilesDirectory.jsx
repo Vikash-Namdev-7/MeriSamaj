@@ -20,26 +20,54 @@ const VERIFY_COLORS = {
 export const ProfilesDirectory = ({ data }) => {
   const { profiles = [], refreshProfiles } = data;
   const [search, setSearch]       = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [verifyFilter, setVerify] = useState('');
+  const [page, setPage]           = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 20;
+
   const [actionId, setActionId]   = useState(null);
   const [toast, setToast]         = useState('');
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  const filtered = profiles.filter(p => {
-    const name = p.personal?.fullName || p.userId?.name || '';
-    const matchSearch = name.toLowerCase().includes(search.toLowerCase()) ||
-      p.location?.city?.toLowerCase().includes(search.toLowerCase());
-    const matchVerify = !verifyFilter || p.verificationStatus === verifyFilter;
-    return matchSearch && matchVerify;
-  });
+  // Debounce search
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to page 1 on new search
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Fetch data when filters or page changes
+  React.useEffect(() => {
+    const fetchData = async () => {
+      const res = await refreshProfiles({ 
+        page, 
+        limit, 
+        search: debouncedSearch, 
+        verificationStatus: verifyFilter 
+      });
+      if (res) {
+        setTotalPages(res.pages || 1);
+        setTotalCount(res.total || 0);
+      }
+    };
+    fetchData();
+  }, [page, debouncedSearch, verifyFilter, refreshProfiles]);
 
   const handleVerify = async (id, status) => {
     setActionId(id);
     try {
       await matrimonialService.verifyProfile(id, { status, adminNote: '' });
       showToast(`Profile ${status} ✅`);
-      await refreshProfiles?.();
+      const res = await refreshProfiles({ page, limit, search: debouncedSearch, verificationStatus: verifyFilter });
+      if (res) {
+        setTotalPages(res.pages || 1);
+        setTotalCount(res.total || 0);
+      }
     } catch (err) {
       showToast(err?.message || 'Action failed');
     } finally {
@@ -65,7 +93,7 @@ export const ProfilesDirectory = ({ data }) => {
             className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-500/50"
           />
         </div>
-        <select value={verifyFilter} onChange={e => setVerify(e.target.value)}
+        <select value={verifyFilter} onChange={e => { setVerify(e.target.value); setPage(1); }}
           className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-rose-500/50">
           <option value="">All Verification</option>
           <option value="verified">Verified</option>
@@ -75,7 +103,7 @@ export const ProfilesDirectory = ({ data }) => {
         </select>
       </div>
 
-      <p className="text-xs text-gray-500 font-semibold">{filtered.length} profiles</p>
+      <p className="text-xs text-gray-500 font-semibold">{totalCount} profiles found</p>
 
       {/* Table */}
       <div className="card-neo overflow-hidden">
@@ -89,9 +117,9 @@ export const ProfilesDirectory = ({ data }) => {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {profiles.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-12 text-gray-600">No profiles found.</td></tr>
-              ) : filtered.map(p => {
+              ) : profiles.map(p => {
                 const name = p.personal?.fullName || p.userId?.name || 'Unknown';
                 const age  = p.age;
                 const photo = p.photos?.find(ph => ph.isPrimary)?.url;
@@ -163,7 +191,8 @@ export const ProfilesDirectory = ({ data }) => {
                             try {
                               await matrimonialService.closeProfile(p._id);
                               showToast('Profile Closed');
-                              refreshProfiles?.();
+                              const res = await refreshProfiles({ page, limit, search: debouncedSearch, verificationStatus: verifyFilter });
+                              if (res) { setTotalPages(res.pages || 1); setTotalCount(res.total || 0); }
                             } catch(e) { showToast('Action failed'); }
                             finally { setActionId(null); }
                           }} disabled={isLoading}
@@ -179,7 +208,8 @@ export const ProfilesDirectory = ({ data }) => {
                             try {
                               await matrimonialService.reopenProfile(p._id);
                               showToast('Profile Reopened (Pending)');
-                              refreshProfiles?.();
+                              const res = await refreshProfiles({ page, limit, search: debouncedSearch, verificationStatus: verifyFilter });
+                              if (res) { setTotalPages(res.pages || 1); setTotalCount(res.total || 0); }
                             } catch(e) { showToast('Action failed'); }
                             finally { setActionId(null); }
                           }} disabled={isLoading}
@@ -196,6 +226,29 @@ export const ProfilesDirectory = ({ data }) => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-white/5 flex items-center justify-between">
+            <button 
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="px-3 py-1.5 text-sm font-semibold text-gray-400 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <span className="text-xs font-bold text-gray-500">
+              Page {page} of {totalPages}
+            </span>
+            <button 
+              disabled={page === totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 text-sm font-semibold text-gray-400 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

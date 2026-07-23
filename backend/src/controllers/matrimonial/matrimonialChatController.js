@@ -18,7 +18,12 @@ exports.openConversation = async (req, res) => {
     }
 
     const MatrimonialProfile = require('../../models/MatrimonialProfile');
-    const profile = await MatrimonialProfile.findOne({ _id: profileId, isDeleted: false });
+    let profile = await MatrimonialProfile.findOne({ _id: profileId, isDeleted: false });
+    if (!profile) {
+      // It's possible the frontend passed the User ID instead of the MatrimonialProfile ID
+      profile = await MatrimonialProfile.findOne({ userId: profileId, isDeleted: false });
+    }
+    
     if (!profile) {
       return res.status(404).json({ status: 'error', message: 'Profile not found.' });
     }
@@ -66,7 +71,21 @@ exports.openConversation = async (req, res) => {
 exports.getConversations = async (req, res) => {
   try {
     const { getUserConversations } = require('../../services/conversationService');
-    const conversations = await getUserConversations(req.user._id, 'matrimonial', 50);
+    let conversations = await getUserConversations(req.user._id, 'matrimonial', 50);
+
+    // Inject partnerProfileId so the frontend can navigate to the partner's profile
+    const MatrimonialProfile = require('../../models/MatrimonialProfile');
+    conversations = await Promise.all(conversations.map(async (conv) => {
+      const convObj = conv.toObject ? conv.toObject() : conv;
+      const partner = convObj.participants?.find(p => p._id.toString() !== req.user._id.toString());
+      if (partner) {
+        const partnerProfile = await MatrimonialProfile.findOne({ userId: partner._id, isDeleted: false }).select('_id').lean();
+        if (partnerProfile) {
+          convObj.partnerProfileId = partnerProfile._id;
+        }
+      }
+      return convObj;
+    }));
 
     res.json({ status: 'success', data: { conversations } });
   } catch (err) {

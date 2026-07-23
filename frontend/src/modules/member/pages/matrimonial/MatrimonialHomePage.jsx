@@ -552,7 +552,7 @@ const MatrimonialHomePage = () => {
                     </p>
                   </div>
                   <button 
-                    onClick={() => navigate('/member/matrimonial/subscription')}
+                    onClick={() => navigate('/member/profile/upgrade')}
                     className="self-start px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10.5px] font-black shadow-sm active:scale-95 transition-all uppercase tracking-wider"
                   >
                     Upgrade Now
@@ -1765,7 +1765,7 @@ const MatrimonialHomePage = () => {
                   Plan: {isCurrentlySubscribed ? `${sub.plan} Membership` : 'Free Account'}
                 </p>
                 <button
-                  onClick={() => navigate('/member/matrimonial/subscription')}
+                  onClick={() => navigate('/member/profile/upgrade')}
                   className="mt-2.5 w-full py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-xs transition-colors active:scale-97"
                 >
                   Manage Subscription
@@ -2407,7 +2407,7 @@ const MatrimonialHomePage = () => {
           {/* Upgrade Tab */}
           <div className="flex-1 h-full flex items-center justify-center">
             <div 
-              onClick={() => navigate('/member/matrimonial/subscription')}
+              onClick={() => navigate('/member/profile/upgrade')}
               className="bg-rose-50 hover:bg-rose-100 border border-rose-250 rounded-xl px-2.5 py-1.5 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 transition-transform"
             >
               <span className="text-[9px] font-extrabold text-rose-600 bg-rose-200 px-1 rounded uppercase tracking-wider leading-none">Premium</span>

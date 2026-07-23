@@ -88,8 +88,8 @@ export const ReportsComplaints = ({ data }) => {
                   </div>
                   <p className="font-bold text-white mt-1.5 text-sm truncate">{report.reason}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Reported by: <span className="text-gray-400">{report.reporterName || '—'}</span> ·
-                    Reported: <span className="text-gray-400">{report.reportedProfileName || '—'}</span>
+                    Reported by: <span className="text-gray-400">{report.reporterId?.name || '—'}</span> ·
+                    Reported: <span className="text-gray-400">{report.reportedUserId?.name || '—'}</span>
                   </p>
                   <p className="text-[10px] text-gray-600 mt-0.5">
                     {new Date(report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}

@@ -11,7 +11,6 @@ import ProfilesDirectory  from './components/Directory/ProfilesDirectory';
 import ModerationQueue    from './components/Moderation/ModerationQueue';
 import ReportsComplaints  from './components/Reports/ReportsComplaints';
 import MatchAnalytics     from './components/Analytics/MatchAnalytics';
-import SubscriptionPlans  from './components/Plans/SubscriptionPlans';
 import MatrimonialSettings from './components/Settings/MatrimonialSettings';
 
 const TABS = [
@@ -20,7 +19,6 @@ const TABS = [
   { id: 'moderation',   label: 'Moderation',     icon: ImageIcon },
   { id: 'reports',      label: 'Reports',        icon: Flag },
   { id: 'analytics',    label: 'Analytics',      icon: BarChart2 },
-  { id: 'plans',        label: 'Plans',          icon: CreditCard },
   { id: 'settings',     label: 'Settings',       icon: Settings },
 ];
 
@@ -30,7 +28,6 @@ const COMPONENTS = {
   moderation: ModerationQueue,
   reports:    ReportsComplaints,
   analytics:  MatchAnalytics,
-  plans:      SubscriptionPlans,
   settings:   MatrimonialSettings,
 };
 

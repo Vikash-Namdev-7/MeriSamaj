@@ -9,6 +9,36 @@ const subscriptionPlanSchema = new mongoose.Schema(
     displayOrder:  { type: Number, default: 0 },               // For UI ordering
     isActive:      { type: Boolean, default: true },
     isFeatured:    { type: Boolean, default: false },          // Highlighted in UI
+    originalPrice: { 
+      type: Number, 
+      default: null,
+      validate: {
+        validator: function(v) {
+          if (v == null) return true;
+          // In an update query, `this` might not be the document. We skip validation if `this.price` is undefined.
+          if (this.price === undefined) return true;
+          return v >= this.price;
+        },
+        message: 'Original price must be greater than or equal to the current price.'
+      }
+    },
+    badge: { 
+      type: String, 
+      default: '', 
+      maxlength: [40, 'Badge text cannot exceed 40 characters'],
+      trim: true
+    },
+    themeColor: { 
+      type: String, 
+      default: '#f43f5e',
+      validate: {
+        validator: function(v) {
+          if (!v) return true;
+          return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
+        },
+        message: 'Theme color must be a valid HEX code (e.g., #f43f5e).'
+      }
+    },
 
     // ─── Numerical Feature Limits (-1 = unlimited) ─────────────────────────
     features: {

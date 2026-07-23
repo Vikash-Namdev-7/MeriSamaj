@@ -168,11 +168,12 @@ const MatrimonialProfilePage = () => {
     if (marriageLoading) return;
     setMarriageLoading(true);
     try {
-      await matrimonialMarriageService.sendRequest({ message: '' });
+      await matrimonialMarriageService.sendRequest({ partnerProfileId: profile._id, message: '' });
       showToast('Marriage confirmation sent! Waiting for partner\'s response. 💍');
       setMarriageModal(false);
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to send marriage request.');
+      setMarriageModal(false); // Close the modal so they aren't stuck on the error
     } finally {
       setMarriageLoading(false);
     }
@@ -431,7 +432,7 @@ const MatrimonialProfilePage = () => {
               These details unlock automatically if they accept your interest request, or you can view them instantly with a Premium Subscription.
             </p>
             <button 
-              onClick={() => navigate('/member/matrimonial/subscription')}
+              onClick={() => navigate('/member/profile/upgrade')}
               className="mt-4 bg-rose-50 text-rose-500 font-bold text-[12px] px-4 py-2 rounded-lg border border-rose-100 active:scale-95 transition-transform"
             >
               Get Premium Subscription

@@ -25,7 +25,11 @@ const { getIO } = require('../../services/socketRegistry');
 exports.sendMarriageRequest = async (req, res) => {
   try {
     const requesterId = req.user._id;
-    const { message }  = req.body;
+    const { partnerProfileId, message }  = req.body;
+
+    if (!partnerProfileId) {
+      return res.status(400).json({ status: 'error', message: 'Partner profile ID is required.' });
+    }
 
     // ─── Requester must have a matrimonial profile and be Connected ───────────
     const myProfile = await MatrimonialProfile.findOne({
@@ -42,21 +46,23 @@ exports.sendMarriageRequest = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Your profile is already closed.' });
     }
 
+    // Get partner's userId
+    const partnerProfile = await MatrimonialProfile.findOne({ _id: partnerProfileId, isDeleted: false });
+    if (!partnerProfile) {
+      return res.status(404).json({ status: 'error', message: 'Partner profile not found.' });
+    }
+    const receiverId = partnerProfile.userId;
+
     // ─── Find the accepted InterestRequest that links both users ─────────────
     const acceptedInterest = await InterestRequest.findOne({
       $or: [
-        { senderId: requesterId, status: 'accepted' },
-        { receiverId: requesterId, status: 'accepted' }
+        { senderId: requesterId, receiverId: receiverId, status: 'accepted' },
+        { senderId: receiverId, receiverId: requesterId, status: 'accepted' }
       ]
     });
     if (!acceptedInterest) {
-      return res.status(400).json({ status: 'error', message: 'No accepted interest found. Cannot send marriage request.' });
+      return res.status(400).json({ status: 'error', message: 'No accepted interest found with this user. Cannot send marriage request.' });
     }
-
-    // Determine the other user
-    const receiverId = acceptedInterest.senderId.equals(requesterId)
-      ? acceptedInterest.receiverId
-      : acceptedInterest.senderId;
 
     // ─── Block duplicate pending requests (Transaction for safety) ─────────────
     const mongoose = require('mongoose');
@@ -67,13 +73,13 @@ exports.sendMarriageRequest = async (req, res) => {
     try {
       const existing = await MarriageRequest.findOne({
         $or: [
-          { requesterId, receiverId, status: 'pending' },
-          { requesterId: receiverId, receiverId: requesterId, status: 'pending' }
+          { requesterId, status: 'pending' },
+          { receiverId: requesterId, status: 'pending' }
         ]
       }).session(session);
 
       if (existing) {
-        throw new Error('DUPLICATE_PENDING');
+        throw new Error('HAS_PENDING_REQUEST');
       }
 
       // ─── Receiver must also be Connected ──────────────────────────────────────
@@ -105,8 +111,8 @@ exports.sendMarriageRequest = async (req, res) => {
     } catch (txErr) {
       await session.abortTransaction();
       session.endSession();
-      if (txErr.message === 'DUPLICATE_PENDING') {
-        return res.status(400).json({ status: 'error', message: 'A marriage confirmation request is already pending between you two.' });
+      if (txErr.message === 'HAS_PENDING_REQUEST') {
+        return res.status(400).json({ status: 'error', message: 'You already have a pending marriage confirmation request. Please resolve it first.' });
       } else if (txErr.message === 'NOT_CONNECTED') {
         return res.status(400).json({ status: 'error', message: 'The other user is not in Connected status.' });
       } else if (txErr.message === 'ALREADY_CLOSED') {

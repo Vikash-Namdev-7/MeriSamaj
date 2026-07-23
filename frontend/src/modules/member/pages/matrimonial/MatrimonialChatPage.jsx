@@ -361,7 +361,11 @@ const MatrimonialChatPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90">
+          <button 
+            onClick={() => conversation?.partnerProfileId && navigate(`/member/matrimonial/${conversation.partnerProfileId}`)}
+            className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90"
+            title="View Profile"
+          >
             <MoreVertical size={18} />
           </button>
         </div>

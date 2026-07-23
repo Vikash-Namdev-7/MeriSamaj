@@ -36,6 +36,8 @@ const InterestCard = ({ interest, tab, onAccept, onReject, onCancel, onChat, tog
   const name       = otherProfile.personal?.fullName || 'Unknown';
   const photo      = otherProfile.photos?.find(p => p.isPrimary && p.status === 'approved')?.url
                   || otherProfile.photos?.[0]?.url
+                  || otherProfile.userId?.avatar
+                  || otherProfile.avatar
                   || null;
   const age        = otherProfile.age;
   const city       = otherProfile.location?.city;
@@ -226,12 +228,12 @@ const InterestsPage = ({ isHub = false }) => {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // Block married users
-  useEffect(() => {
-    if (matriCtx?.myProfile && (matriCtx.myProfile.isClosed || matriCtx.myProfile.status === 'married')) {
-      navigate('/member/matrimonial', { replace: true });
-    }
-  }, [matriCtx?.myProfile, navigate]);
+  // Block married users from sending/accepting, but let them view their history
+  // useEffect(() => {
+  //   if (matriCtx?.myProfile && (matriCtx.myProfile.isClosed || matriCtx.myProfile.status === 'married')) {
+  //     navigate('/member/matrimonial', { replace: true });
+  //   }
+  // }, [matriCtx?.myProfile, navigate]);
 
   // Derived lists by status
   const receivedPending  = received.filter(i => i.status === 'pending').map(i => ({ ...i, direction: 'received' }));
@@ -388,7 +390,16 @@ const InterestsPage = ({ isHub = false }) => {
                 {marriageRequests.received.map(req => (
                   <div key={req._id} className="bg-white rounded-2xl border border-pink-100 shadow-sm p-4 mb-3">
                     <div className="flex items-center gap-3 mb-3">
-                      <span style={{fontSize:'28px'}} role="img" aria-label="rings">💍</span>
+                      <div className="relative shrink-0">
+                        <img 
+                          src={req.requesterId?.avatar || `https://ui-avatars.com/api/?name=${req.requesterId?.name || 'P'}&background=random`} 
+                          alt="avatar" 
+                          className="w-14 h-14 rounded-full object-cover border-2 border-pink-100 shadow-sm" 
+                        />
+                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-pink-50">
+                          <span style={{fontSize:'14px'}} role="img" aria-label="rings">💍</span>
+                        </div>
+                      </div>
                       <div>
                         <p className="text-[14px] font-extrabold text-slate-800">
                           {req.requesterId?.name || 'Partner'}
@@ -432,7 +443,16 @@ const InterestsPage = ({ isHub = false }) => {
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Sent</p>
                 {marriageRequests.sent.map(req => (
                   <div key={req._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-3">
-                    <span style={{fontSize:'28px'}} role="img" aria-label="rings">💍</span>
+                    <div className="relative shrink-0">
+                      <img 
+                        src={req.receiverId?.avatar || `https://ui-avatars.com/api/?name=${req.receiverId?.name || 'P'}&background=random`} 
+                        alt="avatar" 
+                        className="w-12 h-12 rounded-full object-cover border-2 border-slate-100 shadow-sm" 
+                      />
+                      <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-slate-50">
+                        <span style={{fontSize:'12px'}} role="img" aria-label="rings">💍</span>
+                      </div>
+                    </div>
                     <div>
                       <p className="text-[13px] font-bold text-slate-800">
                         To: {req.receiverId?.name || 'Partner'}

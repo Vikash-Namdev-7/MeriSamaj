@@ -259,7 +259,7 @@ const NotificationsPage = () => {
               const cfg = getConfig(n.type);
               const Icon = cfg.icon;
               return (
-                <button
+                <div
                   key={n._id}
                   onClick={() => handleNotificationClick(n)}
                   className={`w-full flex items-start gap-4 px-5 py-4 border-b border-slate-100/50 text-left transition-colors ${
@@ -292,7 +292,7 @@ const NotificationsPage = () => {
                       <span className="text-[10px] text-slate-400 font-semibold">{timeAgo(n.createdAt)}</span>
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
