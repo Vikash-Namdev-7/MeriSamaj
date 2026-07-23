@@ -24,6 +24,11 @@ router.patch('/messages/:messageId/pin',                 groupChatCtrl.pinMessag
 router.patch('/messages/:messageId/unpin',               groupChatCtrl.unpinMessage);
 router.delete('/messages/:messageId',                    groupChatCtrl.deleteGroupMessage);
 
+// Group Invitations — static paths first
+router.get('/invitations/pending',                 groupCtrl.getPendingInvitations);
+router.patch('/invitations/:invitationId/accept',  groupCtrl.acceptInvitation);
+router.patch('/invitations/:invitationId/decline', groupCtrl.declineInvitation);
+
 // Static member routes
 router.get('/mine',   groupCtrl.getMyGroups);
 
@@ -37,13 +42,16 @@ router.delete('/:id', groupCtrl.deleteGroup);
 // ─── Approval (Head only) ─────────────────────────────────────────────────────
 router.patch('/:id/approve', groupCtrl.approveGroup);
 
-// ─── Join / Leave ─────────────────────────────────────────────────────────────
+// ─── Join / Leave / Requests ───────────────────────────────────────────────────
 router.post('/:id/join',  groupCtrl.joinGroup);
 router.post('/:id/leave', groupCtrl.leaveGroup);
+router.get('/:id/requests', groupCtrl.getJoinRequests);
+router.patch('/:id/requests/:requestId/approve', groupCtrl.approveJoinRequest);
+router.patch('/:id/requests/:requestId/reject', groupCtrl.rejectJoinRequest);
 
 // ─── Member Management ────────────────────────────────────────────────────────
 router.get('/:id/members',                   groupCtrl.getGroupMembers);   // NEW
-router.post('/:id/members',                  groupCtrl.addMember);
+router.post('/:id/members',                  groupCtrl.inviteMembers);
 router.delete('/:id/members/:userId',        groupCtrl.removeMember);
 router.patch('/:id/members/:userId/promote', groupCtrl.promoteToAdmin);
 router.patch('/:id/members/:userId/demote',  groupCtrl.demoteAdmin);

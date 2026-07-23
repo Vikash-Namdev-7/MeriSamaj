@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MemberRoutes } from './modules/member/routes/MemberRoutes';
 import AdminRoutes from './modules/admin/routes/AdminRoutes';
@@ -12,10 +12,20 @@ import { AdminAuthProvider } from './modules/admin/auth/AdminAuthContext';
 import { useAxiosPrivate } from './core/auth/useAxiosPrivate';
 import ScrollToTop from './components/ScrollToTop';
 
-const AppContent = () => {
-  // Initialize stateless private Axios interceptors globally
+const AxiosInterceptorProvider = ({ children }) => {
+  const [isReady, setIsReady] = useState(false);
   useAxiosPrivate();
+  
+  // Wait for the next tick so useAxiosPrivate's useEffect has run
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
 
+  if (!isReady) return null;
+  return <>{children}</>;
+};
+
+const AppContent = () => {
   return (
     <div className="desktop-wrapper">
       <div className="app-container bg-transparent">
@@ -47,11 +57,13 @@ const App = () => {
     <NotificationProvider>
     <HeadAuthProvider>
     <AdminAuthProvider>
-    <DataProvider>
-      <FundProvider>
-        <AppContent />
-      </FundProvider>
-    </DataProvider>
+    <AxiosInterceptorProvider>
+      <DataProvider>
+        <FundProvider>
+          <AppContent />
+        </FundProvider>
+      </DataProvider>
+    </AxiosInterceptorProvider>
     </AdminAuthProvider>
     </HeadAuthProvider>
     </NotificationProvider>

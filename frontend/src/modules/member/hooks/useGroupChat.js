@@ -58,11 +58,17 @@ export const useGroupChat = (conversationId, group) => {
 
     onNewMessage: (msg) => {
       if (msg.conversationId !== conversationId) return;
+
+      // Ignore messages sent by ourselves via socket. 
+      // The REST API response handles appending our own messages securely.
+      const senderIdStr = typeof msg.senderId === 'object' ? msg.senderId?._id : msg.senderId;
+      if (senderIdStr?.toString() === (user?.id || user?._id)?.toString()) return;
+
       setMessages(prev => {
         if (prev.some(m => m._id === msg._id)) return prev;
         return [...prev, msg];
       });
-      if (msg.senderId?._id !== user?._id) markSeen([msg._id]);
+      markSeen([msg._id]);
     },
 
     onUserTyping: ({ userId: typingUserId, conversationId: cId }) => {

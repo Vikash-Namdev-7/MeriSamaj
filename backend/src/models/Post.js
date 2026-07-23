@@ -43,8 +43,9 @@ const postSchema = new mongoose.Schema(
     // Category Scope
     category: {
       type: String,
+      enum: ['Normal', 'Announcement', 'Event', 'Blood Donation', 'Emergency'],
       index: true,
-      default: 'Notice'
+      default: 'Normal'
     },
 
     // Feed Visibility: city or community

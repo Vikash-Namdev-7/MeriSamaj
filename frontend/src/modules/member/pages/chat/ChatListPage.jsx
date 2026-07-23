@@ -1,154 +1,75 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, MoreVertical, MessageCircle, Users, Pin, BellOff,
-  Check, CheckCheck, Archive, PlusCircle, RefreshCcw, Loader2
+  Search, MoreVertical, MessageCircle, Users, Archive, PlusCircle, RefreshCcw, Loader2, Heart
 } from 'lucide-react';
-import { Avatar } from '../../components/common/Avatar';
-import { useMemberConversations } from '../../hooks/useMemberChat';
-import { useGroups } from '../../hooks/useGroups';
+import { useUnifiedConversations } from '../../hooks/useUnifiedConversations';
+import ConversationCard from '../../components/chat/ConversationCard';
 
-// ─── Formatting Helpers ───────────────────────────────────────────────────────
-const formatTime = (isoString) => {
-  if (!isoString) return '';
-  const date = new Date(isoString);
-  const now   = new Date();
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
-  return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
-};
-
-const MessageStatusIcon = ({ status }) => {
-  if (!status) return null;
-  switch (status) {
-    case 'sent':      return <Check size={14} className="text-gray-400" />;
-    case 'delivered': return <CheckCheck size={14} className="text-gray-400" />;
-    case 'read':      return <CheckCheck size={14} className="text-blue-500" />;
-    default: return null;
-  }
-};
-
-// ─── Conversation Item ────────────────────────────────────────────────────────
-const ConvItem = ({ conv, myId, onClick }) => {
-  const other   = conv.otherUser;
-  const name    = other?.name || conv.name || 'Unknown';
-  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  const preview = conv.lastMessagePreview || 'No messages yet';
-  const isGroup = conv.type === 'group';
-
-  return (
-    <div
-      onClick={onClick}
-      className="flex items-center gap-3.5 px-4 py-3.5 border-b border-gray-50 bg-white hover:bg-purple-50/20 active:bg-purple-100/20 cursor-pointer transition-colors"
-    >
-      <div className="relative shrink-0">
-        <Avatar
-          initials={initials}
-          src={other?.avatar || conv.avatar}
-          size="lg"
-          color={isGroup ? 'bg-violet-100 text-violet-600' : 'bg-orange-100 text-orange-600'}
-        />
-        {isGroup && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-brand-primary rounded-full flex items-center justify-center border-2 border-white">
-            <Users size={10} className="text-white" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <h3 className="text-[15.5px] font-semibold text-gray-900 truncate pr-2">{name}</h3>
-          <span className="text-[12px] whitespace-nowrap shrink-0 text-gray-400">
-            {formatTime(conv.lastMessageAt)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[13.5px] truncate text-gray-500 leading-snug">{preview}</p>
-          {conv.unreadCount > 0 && (
-            <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[11px] font-bold shadow-sm shrink-0">
-              {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Group Item ───────────────────────────────────────────────────────────────
-const GroupItem = ({ group, onClick }) => {
-  const initials = group.name.substring(0, 2).toUpperCase();
-  return (
-    <div
-      onClick={onClick}
-      className="flex items-center gap-3.5 px-4 py-3.5 border-b border-gray-50 bg-white hover:bg-purple-50/20 active:bg-purple-100/20 cursor-pointer transition-colors"
-    >
-      <div className="relative shrink-0">
-        <Avatar
-          initials={initials}
-          src={group.avatar}
-          size="lg"
-          color="bg-violet-100 text-violet-600"
-        />
-        <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-brand-primary rounded-full flex items-center justify-center border-2 border-white">
-          <Users size={10} className="text-white" />
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <h3 className="text-[15.5px] font-semibold text-gray-900 truncate pr-2">{group.name}</h3>
-          <span className="text-[12px] text-gray-400">{group.memberCount || group.members?.length || 0} members</span>
-        </div>
-        <p className="text-[13.5px] truncate text-gray-500">{group.description || `${group.category} · ${group.type}`}</p>
-      </div>
-    </div>
-  );
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 const ChatListPage = ({ isHub = false }) => {
-  const navigate  = useNavigate();
-  const [activeTab, setActiveTab] = useState('chats');  // 'chats' | 'groups'
+  const navigate = useNavigate();
+  
+  // Tab persistence
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('messagesHub_activeTab') || 'all';
+  });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Real API data
-  const { conversations, loading: convLoading, error: convError, refresh: refreshConvs } = useMemberConversations();
-  const { groups, loading: groupsLoading, refresh: refreshGroups } = useGroups({ myGroupsOnly: true });
+  const { conversations, loading, error, refreshConversations, markConversationRead } = useUnifiedConversations();
 
+  // Handle Tab Switch
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchQuery('');
+    localStorage.setItem('messagesHub_activeTab', tabId);
+  };
+
+  // Filter conversations based on tab and search
   const filteredConvs = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
-    const q = searchQuery.toLowerCase();
-    return conversations.filter(c => {
-      const name = c.otherUser?.name || c.name || '';
-      return name.toLowerCase().includes(q);
-    });
-  }, [conversations, searchQuery]);
+    let filtered = conversations;
 
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return groups;
-    const q = searchQuery.toLowerCase();
-    return groups.filter(g => g.name.toLowerCase().includes(q));
-  }, [groups, searchQuery]);
+    // 1. Filter by Tab
+    if (activeTab === 'direct') {
+      filtered = filtered.filter(c => c.type === 'direct');
+    } else if (activeTab === 'groups') {
+      filtered = filtered.filter(c => c.type === 'group');
+    } else if (activeTab === 'matrimonial') {
+      filtered = filtered.filter(c => c.type === 'matrimonial');
+    }
+
+    // 2. Filter by Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => (c.title || '').toLowerCase().includes(q));
+    }
+
+    return filtered;
+  }, [conversations, activeTab, searchQuery]);
 
   const tabs = [
-    { id: 'chats',  label: 'Chats',  count: conversations.length },
-    { id: 'groups', label: 'Groups', count: groups.length }
+    { id: 'all', label: 'All' },
+    { id: 'direct', label: 'Direct' },
+    { id: 'groups', label: 'Groups' },
+    { id: 'matrimonial', label: 'Matrimonial' }
   ];
 
-  const loading = activeTab === 'chats' ? convLoading : groupsLoading;
-  const error   = convError;
+  const handleCardClick = (conv) => {
+    markConversationRead(conv.conversationId);
+    navigate(conv.route);
+  };
 
-  const handleOpenMemberChat = useCallback(async (targetUserId) => {
-    // Navigate to member chat room — the page handles openConversation itself
-    navigate(`/member/chat/member/${targetUserId}`);
-  }, [navigate]);
+  const getEmptyState = () => {
+    if (searchQuery) return { icon: Search, title: 'No results found', desc: `No conversations match "${searchQuery}"` };
+    if (activeTab === 'direct') return { icon: MessageCircle, title: 'No direct chats', desc: 'Start a conversation with a community member.' };
+    if (activeTab === 'groups') return { icon: Users, title: 'No joined groups', desc: 'Discover and join community groups.' };
+    if (activeTab === 'matrimonial') return { icon: Heart, title: 'No matrimonial chats', desc: 'Chats will appear here when an interest is accepted.' };
+    return { icon: MessageCircle, title: 'No conversations yet', desc: 'Start chatting with members or join groups.' };
+  };
+
+  const emptyState = getEmptyState();
+  const EmptyIcon = emptyState.icon;
 
   return (
     <div className={`flex flex-col bg-white ${isHub ? 'h-full' : 'min-h-screen pb-20'}`}>
@@ -158,16 +79,11 @@ const ChatListPage = ({ isHub = false }) => {
         {!isHub && (
           <div className="flex items-center justify-between pt-4 mb-3">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Community Chat</h1>
-              {conversations.length > 0 && (
-                <p className="text-brand-primary text-[12px] font-semibold mt-0.5">
-                  {conversations.length} active conversations
-                </p>
-              )}
+              <h1 className="text-xl font-bold text-gray-900">Messages</h1>
             </div>
             <div className="flex items-center gap-2 relative">
               <button
-                onClick={() => activeTab === 'chats' ? refreshConvs() : refreshGroups()}
+                onClick={refreshConversations}
                 className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-purple-50 transition-colors"
                 title="Refresh"
               >
@@ -208,7 +124,7 @@ const ChatListPage = ({ isHub = false }) => {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder={activeTab === 'chats' ? 'Search conversations...' : 'Search joined groups...'}
+              placeholder={`Search ${activeTab === 'all' ? 'all conversations' : activeTab}...`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full rounded-2xl py-2.5 pl-10 pr-4 text-[13px] font-medium outline-none bg-gray-50 border border-gray-100 focus:border-brand-primary/40 focus:bg-white transition-all text-gray-800 placeholder:text-gray-400"
@@ -217,25 +133,18 @@ const ChatListPage = ({ isHub = false }) => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-gray-100 overflow-x-auto hide-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-[13.5px] font-semibold border-b-2 transition-colors ${
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex-1 whitespace-nowrap px-4 py-2.5 text-[13.5px] font-semibold border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-brand-primary text-brand-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               {tab.label}
-              {tab.count > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.id ? 'bg-brand-primary text-white' : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {tab.count}
-                </span>
-              )}
             </button>
           ))}
         </div>
@@ -252,7 +161,7 @@ const ChatListPage = ({ isHub = false }) => {
         )}
 
         {/* Loading skeleton */}
-        {loading && (
+        {loading && filteredConvs.length === 0 && !error && (
           <div className="space-y-0">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center gap-3.5 px-4 py-3.5 border-b border-gray-50 animate-pulse">
@@ -266,66 +175,53 @@ const ChatListPage = ({ isHub = false }) => {
           </div>
         )}
 
-        {/* Chats Tab */}
-        {!loading && activeTab === 'chats' && (
-          filteredConvs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-2">
-                <MessageCircle size={28} className="text-gray-400" />
-              </div>
-              <div>
-                <p className="text-gray-700 text-[16px] font-bold mb-2">No conversations yet</p>
-                <p className="text-gray-500 text-[13px] leading-relaxed mb-6">
-                  Start a conversation with any member of your community to see it here.
-                </p>
+        {/* Empty State */}
+        {!loading && filteredConvs.length === 0 && !error && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-2">
+              <EmptyIcon size={28} className={activeTab === 'matrimonial' ? 'text-pink-400' : 'text-gray-400'} />
+            </div>
+            <div>
+              <p className="text-gray-700 text-[16px] font-bold mb-2">{emptyState.title}</p>
+              <p className="text-gray-500 text-[13px] leading-relaxed mb-6">
+                {emptyState.desc}
+              </p>
+              {activeTab === 'direct' && (
                 <button
                   onClick={() => navigate('/member/directory')}
                   className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
                 >
                   Browse Directory
                 </button>
-              </div>
+              )}
+              {activeTab === 'groups' && (
+                <button
+                  onClick={() => navigate('/member/groups')}
+                  className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
+                >
+                  Discover Groups
+                </button>
+              )}
+              {activeTab === 'matrimonial' && (
+                <button
+                  onClick={() => navigate('/member/matrimony')}
+                  className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
+                >
+                  Find Matches
+                </button>
+              )}
             </div>
-          ) : (
-            filteredConvs.map(conv => (
-              <ConvItem
-                key={conv._id}
-                conv={conv}
-                myId={null}
-                onClick={() => navigate(`/member/chat/conv/${conv._id}`)}
-              />
-            ))
-          )
+          </div>
         )}
 
-        {/* Groups Tab (joined groups only) */}
-        {!loading && activeTab === 'groups' && (
-          filteredGroups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
-                <Users size={28} className="text-gray-400" />
-              </div>
-              <div>
-                <p className="text-gray-700 text-[15px] font-bold mb-1">No joined groups</p>
-                <p className="text-gray-400 text-[13px]">Discover and join community groups.</p>
-              </div>
-              <button
-                onClick={() => navigate('/member/groups')}
-                className="px-5 py-2.5 bg-brand-primary text-white text-[13px] font-bold rounded-xl shadow-sm hover:bg-brand-primary/90 transition-colors"
-              >
-                Discover Groups
-              </button>
-            </div>
-          ) : (
-            filteredGroups.map(group => (
-              <GroupItem
-                key={group._id}
-                group={group}
-                onClick={() => navigate(`/member/groups/${group._id}`)}
-              />
-            ))
-          )
-        )}
+        {/* Conversation List */}
+        {filteredConvs.map(conv => (
+          <ConversationCard
+            key={`${conv.type}_${conv.id}`}
+            conv={conv}
+            onClick={() => handleCardClick(conv)}
+          />
+        ))}
       </div>
 
       {/* FAB — New Chat */}

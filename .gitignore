@@ -143,3 +143,10 @@ Thumbs.db
 
 # Keep environment example files
 !.env.example
+
+# Test scripts directory
+/test_scripts/
+
+# AI Agent folders
+.antigravity/
+.agents/

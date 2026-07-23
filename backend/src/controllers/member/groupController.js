@@ -13,6 +13,7 @@ const Group        = require('../../models/Group');
 const Community    = require('../../models/Community');
 const User         = require('../../models/User');
 const Conversation = require('../../models/Conversation');
+const GroupJoinRequest = require('../../models/GroupJoinRequest');
 const {
   findOrCreateGroupConversation,
   addParticipant,
@@ -39,7 +40,7 @@ const getGroupAndVerifyMember = async (groupId, userId) => {
 // ─── Create Group ────────────────────────────────────────────────────────────
 exports.createGroup = async (req, res) => {
   try {
-    const { name, description, category, type, chatPermissions } = req.body;
+    const { name, description, category, type, chatPermissions, initialMembers } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ status: 'error', message: 'Group name is required.' });
     }
@@ -153,6 +154,47 @@ exports.createGroup = async (req, res) => {
       }
     }
 
+    // Process Initial Members
+    let memberIds = [];
+    if (initialMembers) {
+      try {
+        memberIds = typeof initialMembers === 'string' ? JSON.parse(initialMembers) : initialMembers;
+      } catch(e) {}
+    }
+
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      const validUsers = await User.find({ _id: { $in: memberIds }, communityId, accountStatus: 'active' }).select('_id');
+      const validIds = validUsers.map(u => u._id.toString());
+      
+      if (validIds.length > 0) {
+        if (group.type === 'public') {
+          // Add directly
+          validIds.forEach(id => {
+             group.members.push({ userId: id, role: 'member', joinedAt: new Date(), addedBy: userId });
+             // Notify
+             notifyGroupInvite(id, req.user.name, group._id, group.name);
+          });
+          await group.save();
+          await addParticipant(conversation._id, validIds);
+        } else {
+          // Private / Invite Only -> Create Invitations
+          const GroupInvitation = require('../../models/GroupInvitation');
+          const invitations = validIds.map(id => ({
+             group: group._id,
+             communityId,
+             user: id,
+             invitedBy: userId,
+             status: 'pending'
+          }));
+          await GroupInvitation.insertMany(invitations, { ordered: false }).catch(() => {});
+          
+          validIds.forEach(id => {
+            notifyGroupInvite(id, req.user.name, group._id, group.name);
+          });
+        }
+      }
+    }
+
     res.status(201).json({
       status: 'success',
       data: { group: { ...group.toObject(), memberCount: group.memberCount } }
@@ -219,12 +261,29 @@ exports.getMyGroups = async (req, res) => {
       .select('name description avatar category type members creator chatPermissions conversationId updatedAt')
       .populate('creator', 'name avatar');
 
-    const enriched = groups.map(g => ({
-      ...g.toObject(),
-      memberCount: g.members.length,
-      isJoined: true,
-      myRole: (g.members.find(m => m.userId.toString() === userId.toString()) || {}).role || 'member'
-    }));
+    const { getUserConversations } = require('../../services/conversationService');
+    const conversations = await getUserConversations(userId, 'group', 100);
+    const convMap = {};
+    conversations.forEach(c => {
+      convMap[c._id.toString()] = c;
+    });
+
+    const enriched = groups.map(g => {
+      const conv = convMap[g.conversationId?.toString()];
+      return {
+        ...g.toObject(),
+        memberCount: g.members.length,
+        isJoined: true,
+        myRole: (g.members.find(m => m.userId.toString() === userId.toString()) || {}).role || 'member',
+        
+        // Chat normalization fields
+        conversationId: g.conversationId,
+        lastMessageAt: conv ? conv.lastMessageAt : null,
+        lastMessagePreview: conv ? conv.lastMessagePreview : '',
+        unreadCount: conv ? conv.unreadCount : 0,
+        lastMessageSender: conv && conv.lastMessageId ? conv.lastMessageId.senderId : null,
+      };
+    });
 
     res.json({ status: 'success', data: { groups: enriched } });
   } catch (err) {
@@ -391,8 +450,31 @@ exports.joinGroup = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'You are already a member of this group.' });
     }
 
-    if (group.type !== 'public') {
-      return res.status(403).json({ status: 'error', message: 'This is a private group. You must be invited.' });
+    if (group.type === 'invite_only') {
+      return res.status(403).json({ status: 'error', message: 'This is an invite-only group. You must be added by an admin.' });
+    }
+
+    if (group.type === 'private') {
+      // Create Join Request
+      const existingRequest = await GroupJoinRequest.findOne({ group: group._id, user: userId, status: 'pending' });
+      if (existingRequest) {
+        return res.status(400).json({ status: 'error', message: 'You already have a pending join request for this group.' });
+      }
+
+      await GroupJoinRequest.create({
+        group: group._id,
+        communityId: group.communityId,
+        user: userId,
+        status: 'pending'
+      });
+
+      // Optionally notify admins
+      const adminIds = group.members.filter(m => ['admin', 'head'].includes(m.role)).map(m => m.userId);
+      adminIds.forEach(adminId => {
+        notifyGroupJoinRequest(adminId, req.user.name, group._id, group.name);
+      });
+
+      return res.json({ status: 'success', message: 'Join request sent successfully. Pending approval.', data: { status: 'pending' } });
     }
 
     group.members.push({ userId, role: 'member', joinedAt: new Date() });
@@ -477,14 +559,16 @@ exports.leaveGroup = async (req, res) => {
   }
 };
 
-// ─── Add Member ───────────────────────────────────────────────────────────────
-exports.addMember = async (req, res) => {
+// ─── Invite / Add Members ─────────────────────────────────────────────────────
+exports.inviteMembers = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId: targetUserId } = req.body;
+    const { userIds } = req.body;
     const requesterId = req.user._id;
 
-    if (!targetUserId) return res.status(400).json({ status: 'error', message: 'userId is required.' });
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'userIds array is required.' });
+    }
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
     if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
@@ -493,38 +577,144 @@ exports.addMember = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'You do not have permission to add members.' });
     }
 
-    // Verify target user is in same community
-    const targetUser = await User.findOne({
-      _id: targetUserId,
+    const validUsers = await User.find({
+      _id: { $in: userIds },
       communityId: req.user.communityId?._id || req.user.communityId,
       accountStatus: 'active'
-    }).select('name avatar communityId');
-    if (!targetUser) {
-      return res.status(404).json({ status: 'error', message: 'User not found or not in your community.' });
+    }).select('name avatar');
+
+    const validUserIds = validUsers.map(u => u._id.toString());
+    const newMembers = validUserIds.filter(uid => !group.isMember(uid));
+
+    if (newMembers.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'All selected users are already members or invalid.' });
     }
-
-    if (group.isMember(targetUserId)) {
-      return res.status(400).json({ status: 'error', message: 'User is already a member.' });
-    }
-
-    group.members.push({ userId: targetUserId, role: 'member', joinedAt: new Date(), addedBy: requesterId });
-    await group.save();
-
-    if (group.conversationId) {
-      await addParticipant(group.conversationId, targetUserId);
-    }
-
-    notifyGroupInvite(targetUserId, req.user.name, group._id, group.name);
 
     const io = req.app.get('io');
-    if (io && group.conversationId) {
-      io.to(`conv:${group.conversationId}`).emit('chat:member_added', {
-        groupId: group._id,
-        user: { _id: targetUser._id, name: targetUser.name, avatar: targetUser.avatar }
+    const { notifyGroupInvite } = require('../../services/notificationService');
+
+    if (group.type === 'public') {
+      // Add instantly
+      newMembers.forEach(uid => {
+        group.members.push({ userId: uid, role: 'member', joinedAt: new Date(), addedBy: requesterId });
+        notifyGroupInvite(uid, req.user.name, group._id, group.name);
       });
+      await group.save();
+
+      if (group.conversationId) {
+        await addParticipant(group.conversationId, newMembers);
+      }
+
+      if (io && group.conversationId) {
+        validUsers.forEach(u => {
+          if (newMembers.includes(u._id.toString())) {
+            io.to(`conv:${group.conversationId}`).emit('chat:member_added', {
+              groupId: group._id,
+              user: { _id: u._id, name: u.name, avatar: u.avatar }
+            });
+          }
+        });
+      }
+      return res.json({ status: 'success', message: `${newMembers.length} members added instantly.` });
+    } else {
+      // Create Invitations
+      const GroupInvitation = require('../../models/GroupInvitation');
+      const invitations = newMembers.map(uid => ({
+         group: group._id,
+         communityId: group.communityId,
+         user: uid,
+         invitedBy: requesterId,
+         status: 'pending'
+      }));
+      await GroupInvitation.insertMany(invitations, { ordered: false }).catch(() => {});
+      
+      newMembers.forEach(uid => {
+        notifyGroupInvite(uid, req.user.name, group._id, group.name);
+      });
+      return res.json({ status: 'success', message: `Invitations sent to ${newMembers.length} members.` });
+    }
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Get Pending Invitations ──────────────────────────────────────────────────
+exports.getPendingInvitations = async (req, res) => {
+  try {
+    const GroupInvitation = require('../../models/GroupInvitation');
+    const invitations = await GroupInvitation.find({ user: req.user._id, status: 'pending' })
+      .populate('group', 'name avatarUrl description type category')
+      .populate('invitedBy', 'name avatar')
+      .sort({ createdAt: -1 });
+    res.json({ status: 'success', data: invitations });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Accept Invitation ────────────────────────────────────────────────────────
+exports.acceptInvitation = async (req, res) => {
+  try {
+    const { invitationId } = req.params;
+    const userId = req.user._id;
+    const GroupInvitation = require('../../models/GroupInvitation');
+
+    const invitation = await GroupInvitation.findOne({ _id: invitationId, user: userId, status: 'pending' });
+    if (!invitation) return res.status(404).json({ status: 'error', message: 'Invitation not found or already processed.' });
+
+    const group = await Group.findOne({ _id: invitation.group, isDeleted: false });
+    if (!group) return res.status(404).json({ status: 'error', message: 'Group no longer exists.' });
+
+    invitation.status = 'accepted';
+    invitation.resolvedAt = new Date();
+    await invitation.save();
+
+    if (!group.isMember(userId)) {
+      group.members.push({ userId, role: 'member', joinedAt: new Date(), addedBy: invitation.invitedBy });
+      await group.save();
+
+      if (group.conversationId) {
+        await addParticipant(group.conversationId, userId);
+      }
+
+      const { notifyGroupInviteAccepted } = require('../../services/notificationService');
+      notifyGroupInviteAccepted(invitation.invitedBy, req.user.name, group.name);
+
+      const io = req.app.get('io');
+      if (io && group.conversationId) {
+        io.to(`conv:${group.conversationId}`).emit('chat:member_added', {
+          groupId: group._id,
+          user: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
+        });
+      }
     }
 
-    res.json({ status: 'success', message: `${targetUser.name} added to the group.` });
+    res.json({ status: 'success', message: 'Invitation accepted.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Decline Invitation ───────────────────────────────────────────────────────
+exports.declineInvitation = async (req, res) => {
+  try {
+    const { invitationId } = req.params;
+    const userId = req.user._id;
+    const GroupInvitation = require('../../models/GroupInvitation');
+
+    const invitation = await GroupInvitation.findOne({ _id: invitationId, user: userId, status: 'pending' }).populate('group');
+    if (!invitation) return res.status(404).json({ status: 'error', message: 'Invitation not found or already processed.' });
+
+    invitation.status = 'declined';
+    invitation.resolvedAt = new Date();
+    await invitation.save();
+
+    if (invitation.group) {
+      const { notifyGroupInviteDeclined } = require('../../services/notificationService');
+      notifyGroupInviteDeclined(invitation.invitedBy, req.user.name, invitation.group.name);
+    }
+
+    res.json({ status: 'success', message: 'Invitation declined.' });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -594,11 +784,12 @@ exports.promoteToAdmin = async (req, res) => {
     group.members[memberIndex].role = 'admin';
     await group.save();
 
-    // ── Notification: notify promoted member ───────────────────────────────────────
+    const { notifyGroupPromoted, notifyMemberPromoted } = require('../../services/notificationService');
     try {
+      notifyGroupPromoted(targetUserId, group.name);
       notifyMemberPromoted(targetUserId, group.name, group._id);
     } catch (notifErr) {
-      console.warn('[Notify] promoteToAdmin member_promoted failed:', notifErr.message);
+      console.warn('[Notify] promoteToAdmin notify failed:', notifErr.message);
     }
 
     const io = req.app.get('io');
@@ -631,11 +822,12 @@ exports.demoteAdmin = async (req, res) => {
     group.members[memberIndex].role = 'member';
     await group.save();
 
-    // ── Notification: notify demoted member ────────────────────────────────────────
+    const { notifyGroupDemoted, notifyMemberDemoted } = require('../../services/notificationService');
     try {
+      notifyGroupDemoted(targetUserId, group.name);
       notifyMemberDemoted(targetUserId, group.name, group._id);
     } catch (notifErr) {
-      console.warn('[Notify] demoteAdmin member_demoted failed:', notifErr.message);
+      console.warn('[Notify] demoteAdmin notify failed:', notifErr.message);
     }
 
     const io = req.app.get('io');
@@ -697,6 +889,112 @@ exports.approveGroup = async (req, res) => {
     }
 
     res.json({ status: 'success', message: `Group ${action}d.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Get Join Requests ────────────────────────────────────────────────────────
+exports.getJoinRequests = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const group = await Group.findOne({ _id: id, isDeleted: false });
+    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+
+    if (!group.canPerform(userId, 'canAddMembers')) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized.' });
+    }
+
+    const GroupJoinRequest = require('../../models/GroupJoinRequest');
+    const requests = await GroupJoinRequest.find({ group: id, status: 'pending' })
+      .populate('user', 'name avatar')
+      .sort({ createdAt: -1 });
+
+    res.json({ status: 'success', data: requests });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Approve Join Request ─────────────────────────────────────────────────────
+exports.approveJoinRequest = async (req, res) => {
+  try {
+    const { id, requestId } = req.params;
+    const userId = req.user._id;
+
+    const group = await Group.findOne({ _id: id, isDeleted: false });
+    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+
+    if (!group.canPerform(userId, 'canAddMembers')) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized.' });
+    }
+
+    const GroupJoinRequest = require('../../models/GroupJoinRequest');
+    const request = await GroupJoinRequest.findOne({ _id: requestId, group: id, status: 'pending' });
+    if (!request) return res.status(404).json({ status: 'error', message: 'Request not found.' });
+
+    request.status = 'approved';
+    request.resolvedAt = new Date();
+    await request.save();
+
+    if (!group.isMember(request.user)) {
+      group.members.push({ userId: request.user, role: 'member', joinedAt: new Date(), addedBy: userId });
+      await group.save();
+
+      if (group.conversationId) {
+        const { addParticipant } = require('../../services/conversationService');
+        await addParticipant(group.conversationId, request.user);
+      }
+
+      const { notifyGroupJoinApproved } = require('../../services/notificationService');
+      notifyGroupJoinApproved(request.user, group._id, group.name);
+
+      const io = req.app.get('io');
+      if (io && group.conversationId) {
+        const User = require('../../models/User');
+        const user = await User.findById(request.user).select('name avatar');
+        if (user) {
+          io.to(`conv:${group.conversationId}`).emit('chat:member_added', {
+            groupId: group._id,
+            user: { _id: user._id, name: user.name, avatar: user.avatar }
+          });
+        }
+      }
+    }
+
+    res.json({ status: 'success', message: 'Request approved.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Reject Join Request ──────────────────────────────────────────────────────
+exports.rejectJoinRequest = async (req, res) => {
+  try {
+    const { id, requestId } = req.params;
+    const userId = req.user._id;
+
+    const group = await Group.findOne({ _id: id, isDeleted: false });
+    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+
+    if (!group.canPerform(userId, 'canAddMembers')) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized.' });
+    }
+
+    const GroupJoinRequest = require('../../models/GroupJoinRequest');
+    const request = await GroupJoinRequest.findOne({ _id: requestId, group: id, status: 'pending' });
+    if (!request) return res.status(404).json({ status: 'error', message: 'Request not found.' });
+
+    request.status = 'rejected';
+    request.resolvedAt = new Date();
+    await request.save();
+
+    const { notifyGroupJoinRejected } = require('../../services/notificationService');
+    notifyGroupJoinRejected(request.user, group.name);
+
+    res.json({ status: 'success', message: 'Request rejected.' });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }

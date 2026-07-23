@@ -24,9 +24,7 @@ router.get('/dashboard/overview', adminController.getDashboardOverview);
 // All routes: /api/v1/admin/communities/*
 router.use('/communities', communityRoutes);
 
-// Announcement Channels (Global)
-const adminAnnouncementRoutes = require('./adminAnnouncementRoutes');
-router.use('/announcement-channels', adminAnnouncementRoutes);
+
 
 // City Management Routes
 router.use('/cities', cityRoutes);

@@ -63,7 +63,8 @@ const CreatePostPage = () => {
 
   // Input states
   const [caption, setCaption] = useState('');
-  const [category, setCategory] = useState('Notice');
+  const [category, setCategory] = useState('Normal');
+  const [isPinned, setIsPinned] = useState(false);
   const [feedType, setFeedType] = useState('city');
   const [locationInput, setLocationInput] = useState(currentUser?.city || '');
   
@@ -193,6 +194,7 @@ const CreatePostPage = () => {
         comments: [],
         images: mediaUrls, // arrays of images/videos/links are stored here
         feedType,
+        isPinned,
       };
 
       try {
@@ -224,7 +226,7 @@ const CreatePostPage = () => {
     return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
   };
 
-  const categories = ['Notice', 'Event', 'Matrimony', 'Business', 'Achievement', 'Women', 'Youth', 'Obituary'];
+  const categories = ['Normal', 'Announcement', 'Event', 'Blood Donation', 'Emergency'];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 select-none pb-8 md:pb-0">
@@ -341,6 +343,20 @@ const CreatePostPage = () => {
                   })}
                 </div>
               </div>
+
+              {/* Pin Options */}
+              {['Announcement', 'Emergency', 'Event'].includes(category) && (
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="pinPost" 
+                    checked={isPinned} 
+                    onChange={(e) => setIsPinned(e.target.checked)} 
+                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="pinPost" className="text-[11px] font-bold text-slate-700">Pin to top of feed</label>
+                </div>
+              )}
 
               {/* Feed Scope & Location details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

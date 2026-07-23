@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Bookmark, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal, User, Settings, LogOut } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, PlusCircle, Image as ImageIcon, Send, Search, Bell, Radio, Clock, Camera, Video, Calendar, Eye, Heart, Bookmark, Award, Sparkles, Smile, Phone, MapPin, Check, Gift, X, SlidersHorizontal, User, Settings, LogOut, Megaphone, HeartHandshake, AlertCircle } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 import { PostSkeleton } from '../../components/common/Skeleton';
@@ -15,20 +15,15 @@ const localT = {
     welcome: "Namaste",
     subGreeting: "Have a wonderful day!",
     all: "All",
-    Notice: "Notice",
+    Normal: "Normal",
+    Announcement: "Announcement",
     Event: "Event",
-    Matrimony: "Matrimony",
-    Achievement: "Achievement",
-    Obituary: "Obituary",
-    Business: "Business",
-    Women: "Women",
-    Youth: "Youth",
+    "Blood Donation": "Blood Donation",
+    Emergency: "Emergency",
     writeSomething: "Write Post",
     photo: "Add Photo",
     video: "Post Video",
     eventQuick: "Create Event",
-    obituaryQuick: "Obituary",
-    matrimonyQuick: "Matrimony",
     verifiedMember: "Verified Member",
     likes: "likes",
     comments: "comments",
@@ -48,20 +43,15 @@ const localT = {
     welcome: "Welcome",
     subGreeting: "Have a wonderful day!",
     all: "All",
-    Notice: "Notice",
+    Normal: "Normal",
+    Announcement: "Announcement",
     Event: "Event",
-    Matrimony: "Matrimony",
-    Achievement: "Achievement",
-    Obituary: "Obituary",
-    Business: "Business",
-    Women: "Women",
-    Youth: "Youth",
+    "Blood Donation": "Blood Donation",
+    Emergency: "Emergency",
     writeSomething: "Write Post",
     photo: "Add Photo",
     video: "Post Video",
     eventQuick: "Create Event",
-    obituaryQuick: "Obituary",
-    matrimonyQuick: "Matrimony",
     verifiedMember: "Verified Member",
     likes: "likes",
     comments: "comments",
@@ -81,36 +71,37 @@ const localT = {
 
 const categoryPills = [
   { id: 'all', key: 'all' },
-  { id: 'Notice', key: 'Notice' },
+  { id: 'Normal', key: 'Normal' },
+  { id: 'Announcement', key: 'Announcement' },
   { id: 'Event', key: 'Event' },
-  { id: 'Matrimony', key: 'Matrimony' },
-  { id: 'Achievement', key: 'Achievement' },
-  { id: 'Obituary', key: 'Obituary' },
-  { id: 'Business', key: 'Business' },
-  { id: 'Women', key: 'Women' },
-  { id: 'Youth', key: 'Youth' }
+  { id: 'Blood Donation', key: 'Blood Donation' },
+  { id: 'Emergency', key: 'Emergency' }
 ];
 
 const categoryIcons = {
   all: Sparkles,
-  Notice: Radio,
+  Normal: Radio,
+  Announcement: Megaphone,
   Event: Calendar,
-  Matrimony: Heart,
-  Achievement: Award,
-  Obituary: Clock,
-  Business: Gift,
-  Women: Smile,
-  Youth: PlusCircle
+  "Blood Donation": HeartHandshake,
+  Emergency: AlertCircle
 };
 
 const getCategoryStyles = (category, lang) => {
   const mapping = {
-    Notice: {
-      label: localT[lang].Notice,
-      bg: 'bg-emerald-50/70 border-emerald-100/50',
-      text: 'text-emerald-700',
-      accent: 'border-emerald-500',
-      badge: 'bg-emerald-500 text-white'
+    Normal: {
+      label: localT[lang].Normal,
+      bg: 'bg-slate-50/70 border-slate-100/50',
+      text: 'text-slate-700',
+      accent: 'border-slate-300',
+      badge: 'bg-slate-500 text-white'
+    },
+    Announcement: {
+      label: localT[lang].Announcement,
+      bg: 'bg-purple-50/70 border-purple-100/50',
+      text: 'text-purple-700',
+      accent: 'border-purple-500',
+      badge: 'bg-purple-600 text-white'
     },
     Event: {
       label: localT[lang].Event,
@@ -119,47 +110,19 @@ const getCategoryStyles = (category, lang) => {
       accent: 'border-blue-500',
       badge: 'bg-blue-500 text-white'
     },
-    Matrimony: {
-      label: localT[lang].Matrimony,
-      bg: 'bg-purple-50/70 border-purple-100/50',
-      text: 'text-purple-700',
-      accent: 'border-purple-500',
-      badge: 'bg-purple-500 text-white'
-    },
-    Business: {
-      label: localT[lang].Business,
-      bg: 'bg-amber-50/70 border-amber-100/50',
-      text: 'text-amber-700',
-      accent: 'border-amber-500',
-      badge: 'bg-amber-500 text-white'
-    },
-    Women: {
-      label: localT[lang].Women,
-      bg: 'bg-pink-50/70 border-pink-100/50',
-      text: 'text-pink-700',
-      accent: 'border-pink-500',
-      badge: 'bg-pink-500 text-white'
-    },
-    Obituary: {
-      label: localT[lang].Obituary,
+    "Blood Donation": {
+      label: localT[lang]["Blood Donation"],
       bg: 'bg-rose-50/70 border-rose-100/50',
       text: 'text-rose-700',
       accent: 'border-rose-500',
-      badge: 'bg-rose-500 text-white'
+      badge: 'bg-rose-500 text-white animate-pulse'
     },
-    Achievement: {
-      label: localT[lang].Achievement,
-      bg: 'bg-yellow-50/70 border-yellow-105/50',
-      text: 'text-yellow-750',
-      accent: 'border-yellow-550',
-      badge: 'bg-yellow-500 text-white'
-    },
-    Youth: {
-      label: localT[lang].Youth,
-      bg: 'bg-teal-50/70 border-teal-100/50',
-      text: 'text-teal-700',
-      accent: 'border-teal-500',
-      badge: 'bg-teal-500 text-white'
+    Emergency: {
+      label: localT[lang].Emergency,
+      bg: 'bg-red-100 border-red-200',
+      text: 'text-red-700 font-extrabold',
+      accent: 'border-red-600',
+      badge: 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]'
     }
   };
   return mapping[category] || {
@@ -335,9 +298,16 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
         </div>
         
         {/* Category Badge on right */}
-        <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-sm/5 ${styles.badge}`}>
-          {styles.label}
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-sm/5 ${styles.badge}`}>
+            {styles.label}
+          </span>
+          {post.isPinned && (
+            <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+              <AlertCircle size={10} /> PINNED
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Post Title & Content */}
@@ -575,6 +545,10 @@ const FeedPage = ({ isHub = false, feedType = 'city', searchQuery = '', isFilter
     }
 
     return matchesCategory && matchesSearch && matchesFeedType;
+  }).sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0; // maintain original date-based sort for the rest
   });
 
   return (

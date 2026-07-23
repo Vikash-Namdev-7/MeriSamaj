@@ -111,7 +111,7 @@ export const useMemberChat = (conversationId) => {
         return [...prev, msg];
       });
       // Auto mark as seen
-      if (msg.senderId?._id !== user?._id) {
+      if (msg.senderId?._id !== (user?.id || user?._id)) {
         markSeen([msg._id]);
       }
     },
@@ -160,10 +160,13 @@ export const useMemberChat = (conversationId) => {
 
     // Optimistic update
     const tempId = `temp_${Date.now()}`;
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+
     const optimistic = {
       _id: tempId,
       conversationId,
-      senderId: { _id: user._id, name: user.name, avatar: user.avatar },
+      senderId: { _id: userId, name: user.name, avatar: user.avatar },
       message: text || '',
       type: imageFile ? 'image' : 'text',
       mediaUrl: imageFile ? URL.createObjectURL(imageFile) : null,
