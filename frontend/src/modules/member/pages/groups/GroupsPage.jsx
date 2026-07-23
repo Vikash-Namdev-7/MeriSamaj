@@ -1,26 +1,15 @@
-<<<<<<< HEAD
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users, Plus, Search, Lock, Loader2, RefreshCcw,
-  Shield, X, Camera, ChevronRight, Check, AlertTriangle, Menu
-=======
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Users, Plus, Search, Lock, Loader2, RefreshCcw,
-  Shield, X, Camera, ChevronRight, Check, AlertTriangle, CheckCheck
->>>>>>> 97f9d480017a045ba5761239c8eb19c33474b8b7
+  Shield, X, Camera, ChevronRight, Check, AlertTriangle, Menu, CheckCheck
 } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useGroups } from '../../hooks/useGroups';
 import { useAuth } from '../../../../core/auth/useAuth';
-<<<<<<< HEAD
 import { useData } from '../../context/DataProvider';
-=======
 import { groupService } from '../../../../core/api/groupService';
 import { getMembers } from '../../services/directoryApi';
->>>>>>> 97f9d480017a045ba5761239c8eb19c33474b8b7
 
 const CATEGORIES = [
   { id: 'all',       label: 'All' },

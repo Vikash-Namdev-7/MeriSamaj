@@ -7,12 +7,18 @@ const Community = require('../../models/Community');
 // @access  Private/Admin
 exports.getCityFeedPosts = async (req, res) => {
   try {
-    const { city, search, page = 1, limit = 20 } = req.query;
+    const { city, status, search, page = 1, limit = 20 } = req.query;
 
-    const filter = { 
-      isDeleted: { $ne: true },
-      feedType: { $ne: 'community' }
-    };
+    const filter = {};
+    if (status === 'deleted') {
+      filter.isDeleted = true;
+    } else if (status === 'all') {
+      // return both active and deleted
+    } else {
+      filter.isDeleted = { $ne: true };
+    }
+    filter.feedType = { $ne: 'community' };
+
     if (search && search.trim()) {
       filter.content = new RegExp(search.trim(), 'i');
     }
@@ -71,12 +77,18 @@ exports.getCityFeedPosts = async (req, res) => {
 // @access  Private/Admin
 exports.getCommunityFeedPosts = async (req, res) => {
   try {
-    const { communityId, search, page = 1, limit = 20 } = req.query;
+    const { communityId, status, search, page = 1, limit = 20 } = req.query;
 
-    const filter = { 
-      isDeleted: { $ne: true },
-      feedType: 'community'
-    };
+    const filter = {};
+    if (status === 'deleted') {
+      filter.isDeleted = true;
+    } else if (status === 'all') {
+      // return both active and deleted
+    } else {
+      filter.isDeleted = { $ne: true };
+    }
+    filter.feedType = 'community';
+
     if (communityId && communityId.trim() && communityId !== 'undefined' && communityId !== 'all') {
       filter.communityId = communityId.trim();
     }

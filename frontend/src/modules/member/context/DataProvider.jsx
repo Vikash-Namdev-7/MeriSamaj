@@ -1060,27 +1060,48 @@ export const DataProvider = ({ children }) => {
   };
 
   const logoutUser = async () => {
-    // Clear localStorage keys
-    localStorage.removeItem('merisamaj_v6_currentUser');
-    localStorage.removeItem('merisamaj_v6_posts');
-    localStorage.removeItem('merisamaj_v6_followedAnnouncements');
-    localStorage.removeItem('merisamaj_v6_notifications');
-    localStorage.removeItem('merisamaj_v6_chats');
-    localStorage.removeItem('merisamaj_v6_chatMessages');
-    localStorage.removeItem('merisamaj_v6_eventReminders');
-    localStorage.removeItem('merisamaj_v6_eventRegistrations');
-    localStorage.removeItem('posts');
-    
-    // Reset state values
-    setCurrentUser(initialUser);
-    setPosts(initialPosts.map((p) => ({ ...p, commentsList: p.commentsList || [] })));
-    setEvents([]);
-    setObituaries([]);
-    setNotifications(initialNotifications);
-    setChats(initialChats);
-    setChatMessages(initialMessages);
-    
-    await logout();
+    try {
+      // 1. Clear all localStorage keys across Member, Admin, and Head panels
+      const keysToRemove = [
+        'merisamaj_user',
+        'merisamaj_token',
+        'merisamaj_has_session',
+        'merisamaj_v6_currentUser',
+        'merisamaj_v6_posts',
+        'merisamaj_v6_followedAnnouncements',
+        'merisamaj_v6_notifications',
+        'merisamaj_v6_chats',
+        'merisamaj_v6_chatMessages',
+        'merisamaj_v6_eventReminders',
+        'merisamaj_v6_eventRegistrations',
+        'posts',
+        'head_auth_token',
+        'head_auth_user',
+        'head_has_session',
+        'admin_auth_token',
+        'admin_auth_user',
+        'merisamaj_admin_token'
+      ];
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+
+      // 2. Clear state values
+      setCurrentUser(null);
+      setEvents([]);
+      setObituaries([]);
+      setNotifications([]);
+      setChats([]);
+      setChatMessages([]);
+
+      // 3. Trigger AuthContext logout (calls backend /api/auth/logout to clear HTTP-only cookies)
+      if (logout) {
+        await logout();
+      }
+    } catch (error) {
+      console.warn('[Logout] Logout warning:', error?.message);
+    } finally {
+      // 4. Force full page redirect to login page
+      window.location.replace('/auth/login');
+    }
   };
 
   const addFamilyMember = (newMember) => {

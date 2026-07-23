@@ -1,5 +1,8 @@
 const Campaign = require('../../models/Campaign');
 const Donation = require('../../models/Donation');
+const paymentService = require('../../services/paymentService');
+const { notifyDonationReceived, notifyDonationReceipt } = require('../../services/notificationService');
+const crypto = require('crypto');
 
 // Get all active campaigns — community-scoped
 exports.getCampaigns = async (req, res) => {
@@ -312,6 +315,323 @@ exports.createDonation = async (req, res) => {
   } catch (error) {
     console.error('Create Donation Error:', error);
     res.status(500).json({ success: false, status: 'error', message: error.message });
+  }
+};
+
+// ─── Razorpay Order Creation ──────────────────────────────────────────────────
+exports.createRazorpayOrder = async (req, res) => {
+  try {
+    const targetId = req.params.id || req.body.donationId || req.body.purposeId || req.body.campaignId;
+    const amount = Number(req.body.amount || 0);
+    const donorName = req.body.donorName || req.body.name || req.user?.name || 'Anonymous';
+    const type = req.body.type || 'One-time';
+
+    if (!targetId) {
+      return res.status(400).json({ success: false, status: 'error', message: 'Campaign ID is required' });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, status: 'error', message: 'Valid donation amount is required' });
+    }
+
+    let campaign = await Campaign.findById(targetId);
+    if (!campaign) {
+      campaign = await Donation.findById(targetId);
+    }
+    if (!campaign) {
+      return res.status(404).json({ success: false, status: 'error', message: 'Campaign not found' });
+    }
+
+    // Create order via Razorpay paymentService (receipt must be max 40 chars)
+    const receipt = `don_${campaign._id.toString().slice(-12)}_${Date.now().toString().slice(-8)}`;
+    const order = await paymentService.initiatePayment({
+      gateway: 'razorpay',
+      amount,
+      currency: 'INR',
+      receipt,
+      notes: {
+        campaignId: campaign._id.toString(),
+        userId: req.user?._id ? req.user._id.toString() : 'anonymous',
+        donorName
+      }
+    });
+
+    // Audit Trail: Create pending donation record in DB
+    const pendingDonation = new Donation({
+      user: req.user?._id,
+      campaign: campaign._id,
+      communityId: campaign.communityId || req.communityId,
+      amount,
+      currency: 'INR',
+      paymentMode: 'Razorpay',
+      paymentMethod: 'Razorpay',
+      orderId: order.id,
+      status: 'Pending',
+      donorName
+    });
+    await pendingDonation.save().catch(err => console.warn('Pending donation record notice:', err.message));
+
+    res.status(200).json({
+      success: true,
+      status: 'success',
+      data: {
+        order_id: order.id,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        key: process.env.RAZORPAY_KEY_ID
+      }
+    });
+  } catch (error) {
+    console.error('Create Razorpay Order Error:', error);
+    res.status(500).json({ success: false, status: 'error', message: error.message || 'Failed to create payment order' });
+  }
+};
+
+// ─── Razorpay Payment Verification & Fulfillment ─────────────────────────────
+exports.verifyRazorpayPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      donationId,
+      campaignId,
+      purposeId,
+      amount: reqAmount,
+      donorName: reqDonorName
+    } = req.body;
+
+    const paymentId = razorpay_payment_id;
+    const orderId = razorpay_order_id;
+    const signature = razorpay_signature;
+    const targetId = donationId || campaignId || purposeId;
+
+    if (!paymentId || !orderId || !signature) {
+      return res.status(400).json({ success: false, status: 'error', message: 'Missing Razorpay payment verification parameters' });
+    }
+
+    // 1. HMAC Signature Verification
+    const isValidSignature = paymentService.verifyPayment({
+      gateway: 'razorpay',
+      orderId,
+      paymentId,
+      signature
+    });
+
+    if (!isValidSignature) {
+      await Donation.findOneAndUpdate({ orderId }, { status: 'Failed' }).catch(() => {});
+      return res.status(400).json({ success: false, status: 'error', message: 'Invalid payment signature. Verification failed.' });
+    }
+
+    // 2. Idempotency Guard: Check if order/payment is already processed & approved
+    const existingApproved = await Donation.findOne({
+      $or: [{ orderId }, { paymentId }, { txnId: paymentId }],
+      status: { $in: ['Approved', 'Success', 'Active'] }
+    });
+
+    if (existingApproved) {
+      return res.status(200).json({
+        success: true,
+        status: 'success',
+        message: 'Payment already processed and verified.',
+        data: {
+          id: existingApproved.txnId || paymentId,
+          amount: existingApproved.amount,
+          status: 'Approved'
+        }
+      });
+    }
+
+    // 3. Razorpay Server API Fetch Verification (Double Check status)
+    try {
+      const paymentDetails = await paymentService.fetchRazorpayPaymentDetails(paymentId);
+      if (paymentDetails && paymentDetails.status && !['captured', 'authorized'].includes(paymentDetails.status)) {
+        await Donation.findOneAndUpdate({ orderId }, { status: 'Failed' }).catch(() => {});
+        return res.status(400).json({ success: false, status: 'error', message: `Payment status is ${paymentDetails.status}, expected captured.` });
+      }
+    } catch (apiErr) {
+      console.warn('Razorpay API direct fetch notice (proceeding with verified signature):', apiErr.message);
+    }
+
+    // 4. Find Campaign / Donation Target
+    let campaign = await Campaign.findById(targetId || existingApproved?.campaign);
+    let isDonationModel = false;
+    if (!campaign && targetId) {
+      campaign = await Donation.findById(targetId);
+      isDonationModel = true;
+    }
+
+    const finalAmount = Number(reqAmount) || 0;
+    const finalDonorName = reqDonorName || req.user?.name || 'Anonymous';
+
+    // 5. Update / Create Approved Donation Record
+    let donationRecord = await Donation.findOne({ orderId });
+    if (!donationRecord) {
+      donationRecord = new Donation({
+        user: req.user?._id,
+        campaign: campaign?._id,
+        communityId: campaign?.communityId || req.communityId,
+        amount: finalAmount,
+        currency: 'INR',
+        donorName: finalDonorName
+      });
+    }
+
+    donationRecord.status = 'Approved';
+    donationRecord.txnId = paymentId;
+    donationRecord.paymentId = paymentId;
+    donationRecord.orderId = orderId;
+    donationRecord.signature = signature;
+    donationRecord.paidAt = new Date();
+    donationRecord.paymentMode = 'Razorpay';
+    donationRecord.paymentMethod = 'Razorpay';
+    if (finalAmount > 0) donationRecord.amount = finalAmount;
+    await donationRecord.save();
+
+    // 6. Atomic Campaign Update
+    if (campaign && finalAmount > 0) {
+      if (isDonationModel) {
+        await Donation.findByIdAndUpdate(campaign._id, {
+          $inc: { raisedAmount: finalAmount, collectedAmount: finalAmount, donorCount: 1, contributorsCount: 1 },
+          $push: {
+            recentDonations: {
+              $each: [{ donorName: finalDonorName, amount: finalAmount, date: new Date(), paymentStatus: 'success' }],
+              $position: 0
+            }
+          }
+        });
+      } else {
+        await Campaign.findByIdAndUpdate(campaign._id, {
+          $inc: { collectedAmount: finalAmount, raisedAmount: finalAmount, donorCount: 1, contributorsCount: 1 },
+          $push: {
+            recentDonations: {
+              $each: [{ donorName: finalDonorName, amount: finalAmount, date: new Date(), paymentStatus: 'success' }],
+              $position: 0
+            }
+          }
+        });
+      }
+    }
+
+    // 7. Trigger Notifications
+    if (campaign && req.user) {
+      try {
+        notifyDonationReceived(campaign.headId, [], finalDonorName, finalAmount, campaign.title, campaign._id);
+        notifyDonationReceipt(req.user._id, finalAmount, campaign.title, campaign._id);
+      } catch (nErr) {
+        console.warn('Donation notification notice:', nErr.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      status: 'success',
+      message: 'Payment verified and donation updated successfully!',
+      data: {
+        id: paymentId,
+        txnId: paymentId,
+        orderId,
+        amount: donationRecord.amount,
+        status: 'Approved'
+      }
+    });
+  } catch (error) {
+    console.error('Verify Razorpay Payment Error:', error);
+    res.status(500).json({ success: false, status: 'error', message: error.message || 'Payment verification failed' });
+  }
+};
+
+// ─── Razorpay Webhook Listener ────────────────────────────────────────────────
+exports.handleRazorpayWebhook = async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+
+    if (secret && signature) {
+      const shasum = crypto.createHmac('sha256', secret);
+      shasum.update(JSON.stringify(req.body));
+      const digest = shasum.digest('hex');
+
+      if (digest !== signature) {
+        console.warn('Webhook signature mismatch');
+        return res.status(400).json({ status: 'error', message: 'Invalid webhook signature' });
+      }
+    }
+
+    const event = req.body?.event;
+    const payload = req.body?.payload?.payment?.entity;
+
+    if (event === 'payment.captured' && payload) {
+      const { id: paymentId, order_id: orderId, amount: amountPaise, notes } = payload;
+      const amount = (amountPaise || 0) / 100;
+
+      // Idempotency check
+      const existing = await Donation.findOne({
+        $or: [{ orderId }, { paymentId }, { txnId: paymentId }],
+        status: { $in: ['Approved', 'Success', 'Active'] }
+      });
+
+      if (!existing) {
+        let donationRecord = await Donation.findOne({ orderId });
+        const campaignId = notes?.campaignId || donationRecord?.campaign;
+
+        if (!donationRecord) {
+          donationRecord = new Donation({
+            campaign: campaignId,
+            amount,
+            currency: 'INR',
+            donorName: notes?.donorName || 'Anonymous'
+          });
+        }
+
+        donationRecord.status = 'Approved';
+        donationRecord.txnId = paymentId;
+        donationRecord.paymentId = paymentId;
+        donationRecord.orderId = orderId;
+        donationRecord.paidAt = new Date();
+        donationRecord.paymentMode = 'Razorpay';
+        donationRecord.paymentMethod = 'Razorpay';
+        if (amount > 0) donationRecord.amount = amount;
+        await donationRecord.save();
+
+        if (campaignId && amount > 0) {
+          let campaign = await Campaign.findById(campaignId);
+          if (campaign) {
+            await Campaign.findByIdAndUpdate(campaign._id, {
+              $inc: { collectedAmount: amount, raisedAmount: amount, donorCount: 1, contributorsCount: 1 },
+              $push: {
+                recentDonations: {
+                  $each: [{ donorName: notes?.donorName || 'Anonymous', amount, date: new Date(), paymentStatus: 'success' }],
+                  $position: 0
+                }
+              }
+            });
+          } else {
+            let donCam = await Donation.findById(campaignId);
+            if (donCam) {
+              await Donation.findByIdAndUpdate(donCam._id, {
+                $inc: { raisedAmount: amount, collectedAmount: amount, donorCount: 1, contributorsCount: 1 },
+                $push: {
+                  recentDonations: {
+                    $each: [{ donorName: notes?.donorName || 'Anonymous', amount, date: new Date(), paymentStatus: 'success' }],
+                    $position: 0
+                  }
+                }
+              });
+            }
+          }
+        }
+      }
+    } else if (event === 'payment.failed' && payload) {
+      const { order_id: orderId } = payload;
+      if (orderId) {
+        await Donation.findOneAndUpdate({ orderId }, { status: 'Failed' }).catch(() => {});
+      }
+    }
+
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('Razorpay Webhook Error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
   }
 };
 

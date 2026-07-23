@@ -1,8 +1,21 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const config = require('../config/config');
 const { notifyInvitationAccepted, notifyReferralBonusEarned } = require('../services/notificationService');
 
 const DEFAULT_REFERRAL_BONUS_AMOUNT = 100;
+
+// Centralized production-secure cookie helper
+const getCookieOptions = (maxAgeMs = 7 * 24 * 60 * 60 * 1000) => {
+  const isProd = config.nodeEnv === 'production';
+  return {
+    httpOnly: true, // Defense against XSS attacks
+    secure: isProd, // True in production (HTTPS required), false in dev HTTP
+    sameSite: isProd ? 'none' : 'lax', // 'none' for cross-domain prod cookies, 'lax' for dev
+    path: '/',
+    maxAge: maxAgeMs,
+  };
+};
 
 // Helper to generate stateless access and refresh tokens
 const generateTokens = (user) => {
@@ -10,14 +23,14 @@ const generateTokens = (user) => {
   
   const accessToken = jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET || 'fallback_secret',
-    { expiresIn: isPrivileged ? '1d' : '30m' }
+    config.jwtSecret,
+    { expiresIn: isPrivileged ? '1d' : config.jwtExpiresIn }
   );
 
   const refreshToken = jwt.sign(
     { id: user._id },
-    process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
-    { expiresIn: isPrivileged ? '1d' : '7d' }
+    config.jwtRefreshSecret,
+    { expiresIn: isPrivileged ? '1d' : config.jwtRefreshExpiresIn }
   );
 
   return { accessToken, refreshToken };
@@ -153,12 +166,7 @@ const registerUser = async (req, res) => {
       const { accessToken, refreshToken } = generateTokens(user);
       
       // Store Refresh Token in HttpOnly cookies
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      };
+      const cookieOptions = getCookieOptions(7 * 24 * 60 * 60 * 1000);
       res.cookie('member_jwt', refreshToken, cookieOptions);
       res.cookie('jwt', refreshToken, cookieOptions);
 
@@ -233,13 +241,7 @@ const loginUser = async (req, res) => {
       
       const isPrivileged = ['admin', 'head'].includes(user.role);
       const maxAge = isPrivileged ? 1 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
-      
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge
-      };
+      const cookieOptions = getCookieOptions(maxAge);
 
       if (user.role === 'admin') {
         res.cookie('admin_jwt', refreshToken, cookieOptions);
@@ -266,38 +268,24 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
-  res.cookie('member_jwt', '', {
-    httpOnly: true,
-    expires: new Date(0),
-    secure: true,
-    sameSite: 'none'
-  });
-  res.cookie('jwt', '', {
-    httpOnly: true,
-    expires: new Date(0),
-    secure: true,
-    sameSite: 'none'
-  });
+  const expiredOptions = getCookieOptions(0);
+  expiredOptions.expires = new Date(0);
+  res.cookie('member_jwt', '', expiredOptions);
+  res.cookie('jwt', '', expiredOptions);
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
 const logoutAdmin = (req, res) => {
-  res.cookie('admin_jwt', '', {
-    httpOnly: true,
-    expires: new Date(0),
-    secure: true,
-    sameSite: 'none'
-  });
+  const expiredOptions = getCookieOptions(0);
+  expiredOptions.expires = new Date(0);
+  res.cookie('admin_jwt', '', expiredOptions);
   res.status(200).json({ message: 'Admin logged out successfully' });
 };
 
 const logoutHead = (req, res) => {
-  res.cookie('head_jwt', '', {
-    httpOnly: true,
-    expires: new Date(0),
-    secure: true,
-    sameSite: 'none'
-  });
+  const expiredOptions = getCookieOptions(0);
+  expiredOptions.expires = new Date(0);
+  res.cookie('head_jwt', '', expiredOptions);
   res.status(200).json({ message: 'Head logged out successfully' });
 };
 
@@ -312,7 +300,7 @@ const refreshAuth = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
+    const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret);
     const user = await User.findById(decoded.id)
       .populate('communityId', 'name slug isActive settings logoUrl description city')
       .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
@@ -329,12 +317,7 @@ const refreshAuth = async (req, res) => {
     const tokens = generateTokens(user);
 
     // Rotate refresh token cookies
-    const cookieOptions = {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
+    const cookieOptions = getCookieOptions(7 * 24 * 60 * 60 * 1000);
     res.cookie('member_jwt', tokens.refreshToken, cookieOptions);
     res.cookie('jwt', tokens.refreshToken, cookieOptions);
 
@@ -356,7 +339,7 @@ const refreshAdmin = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
+    const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret);
     const user = await User.findById(decoded.id);
 
     if (!user || user.role !== 'admin') {
@@ -365,12 +348,8 @@ const refreshAdmin = async (req, res) => {
 
     const tokens = generateTokens(user);
 
-    res.cookie('admin_jwt', tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 1 * 24 * 60 * 60 * 1000,
-    });
+    const cookieOptions = getCookieOptions(1 * 24 * 60 * 60 * 1000);
+    res.cookie('admin_jwt', tokens.refreshToken, cookieOptions);
 
     res.json({
       user: getUserResponsePayload(user),
@@ -390,7 +369,7 @@ const refreshHead = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret');
+    const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret);
     const user = await User.findById(decoded.id)
       .populate('communityId', 'name slug isActive settings logoUrl description city')
       .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
@@ -405,12 +384,8 @@ const refreshHead = async (req, res) => {
 
     const tokens = generateTokens(user);
 
-    res.cookie('head_jwt', tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 1 * 24 * 60 * 60 * 1000,
-    });
+    const cookieOptions = getCookieOptions(1 * 24 * 60 * 60 * 1000);
+    res.cookie('head_jwt', tokens.refreshToken, cookieOptions);
 
     res.json({
       user: getUserResponsePayload(user),

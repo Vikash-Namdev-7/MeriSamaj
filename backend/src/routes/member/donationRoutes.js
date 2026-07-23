@@ -12,6 +12,12 @@ router.post('/donate', donationController.createDonation);
 router.post('/:id/donate', donationController.createDonation);
 router.get('/stats', donationController.getStats);
 
+// Razorpay Gateway Endpoints
+router.post('/create-order', donationController.createRazorpayOrder);
+router.post('/:id/create-order', donationController.createRazorpayOrder);
+router.post('/verify-payment', donationController.verifyRazorpayPayment);
+router.post('/webhook', donationController.handleRazorpayWebhook);
+
 // Aliases for root endpoint compatibility
 router.get('/', donationController.getCampaigns);
 router.get('/:id', donationController.getCampaignById);

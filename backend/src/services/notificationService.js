@@ -326,6 +326,9 @@ const notifyOfficialPost = (memberIds, category, authorName, messagePreview, pos
   return Promise.allSettled(promises);
 };
 
+const notifyAnnouncement = (memberIds, authorName, messagePreview, postId) =>
+  notifyOfficialPost(memberIds, 'Announcement', authorName, messagePreview, postId);
+
 /**
  * Notify a user they were @mentioned in a message.
  */

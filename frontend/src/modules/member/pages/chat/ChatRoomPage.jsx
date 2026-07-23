@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send, Paperclip, Mic,
   Smile, Camera, CheckCheck, Search, X, FileText, Check,
@@ -56,7 +56,18 @@ const MessageStatusIcon = ({ status, seenBy, myId, participants }) => {
 const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
   const params   = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  const handleBack = () => {
+    if (location.state?.from) {
+      navigate(location.state.from, { state: { tab: location.state.tab || 'chat' } });
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/member/social', { state: { tab: 'chat' } });
+    }
+  };
 
   const [conversationId, setConversationId] = useState(params.conversationId || null);
   const [otherUser, setOtherUser]           = useState(null);
@@ -298,7 +309,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white gap-4 p-8 text-center">
         <AlertTriangle size={40} className="text-red-400" />
         <p className="text-gray-800 font-bold text-lg">{initError}</p>
-        <button onClick={() => navigate(-1)} className="px-5 py-2.5 bg-brand-primary text-white rounded-xl font-semibold">
+        <button onClick={handleBack} className="px-5 py-2.5 bg-brand-primary text-white rounded-xl font-semibold">
           Go Back
         </button>
       </div>
@@ -310,7 +321,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white gap-4">
         <MessageCircle size={40} className="text-gray-300" />
         <p className="text-gray-500">Conversation not found.</p>
-        <button onClick={() => navigate(-1)} className="px-4 py-2 text-brand-primary font-semibold">Go Back</button>
+        <button onClick={handleBack} className="px-4 py-2 text-brand-primary font-semibold">Go Back</button>
       </div>
     );
   }
@@ -363,7 +374,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
         <div className="bg-brand-primary text-white pb-3 px-3 flex items-center justify-between shrink-0 shadow-md z-30"
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 12px, 12px)' }}>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2 shrink-0">
+            <button onClick={handleBack} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2 shrink-0">
               <ArrowLeft size={22} />
             </button>
             <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 hover:bg-white/5 p-1 rounded-xl transition-colors">

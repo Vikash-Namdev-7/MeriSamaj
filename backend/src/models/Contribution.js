@@ -1,12 +1,25 @@
 const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
-  txnId: { type: String, required: true },
-  amount: { type: Number, required: true },
-  paymentMode: { type: String, default: 'Online' },
-  status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Approved' },
-  date: { type: Date, default: Date.now }
+  txnId:         { type: String, required: true },
+  amount:        { type: Number, required: true },
+  paymentMode:   { type: String, default: 'Online' },
+  // ── Razorpay Audit Fields ──────────────────────────────────────────────────
+  orderId:       { type: String, default: null },   // Razorpay order_id
+  paymentId:     { type: String, default: null },   // Razorpay payment_id
+  signature:     { type: String, default: null },   // HMAC signature
+  currency:      { type: String, default: 'INR' },
+  paymentMethod: { type: String, default: 'Online' },
+  paidAt:        { type: Date,   default: null },
+  // ── Status ────────────────────────────────────────────────────────────────
+  // 'Pending'  → Order created, payment not yet verified
+  // 'Approved' → Payment verified & captured
+  // 'Failed'   → Payment failed or signature mismatch
+  // 'Cancelled'→ User dismissed Razorpay popup
+  status:        { type: String, enum: ['Pending', 'Approved', 'Failed', 'Cancelled'], default: 'Approved' },
+  date:          { type: Date,   default: Date.now }
 });
+
 
 const contributionSchema = new mongoose.Schema({
   fundId: {

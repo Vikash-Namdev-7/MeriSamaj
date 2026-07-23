@@ -32,12 +32,24 @@ const getStats = async () => {
   return response.data;
 };
 
+const createOrder = async (orderData) => {
+  const response = await axiosPrivate.post(`${API_URL}/create-order`, orderData);
+  return response.data;
+};
+
+const verifyPayment = async (paymentData) => {
+  const response = await axiosPrivate.post(`${API_URL}/verify-payment`, paymentData);
+  return response.data;
+};
+
 const donationService = {
   getCampaigns,
   getCampaignById,
   getRecentDonors,
   getHistory,
   createDonation,
+  createOrder,
+  verifyPayment,
   getStats
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Send, Image as ImageIcon, Smile, Loader2,
   Check, CheckCheck, Clock, MoreVertical, Phone, Video,
@@ -341,7 +341,7 @@ const MatrimonialChatPage = () => {
 
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center gap-3 sticky top-0 z-30 shadow-sm shrink-0">
-        <button onClick={() => navigate(-1)} className="p-1 active:opacity-60">
+        <button onClick={handleBack} className="p-1 active:opacity-60">
           <ArrowLeft size={22} className="text-slate-800" />
         </button>
         <div

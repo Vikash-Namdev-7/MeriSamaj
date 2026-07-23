@@ -17,6 +17,16 @@ export const memberDonationApi = {
   handleDonationPayment: async (id, donationPayload) => {
     const res = await axiosPrivate.post(`${API_BASE}/${id}/donate`, donationPayload);
     return res.data;
+  },
+
+  createRazorpayOrder: async (id, payload) => {
+    const res = await axiosPrivate.post(`${API_BASE}/${id}/create-order`, payload);
+    return res.data;
+  },
+
+  verifyRazorpayPayment: async (payload) => {
+    const res = await axiosPrivate.post(`${API_BASE}/verify-payment`, payload);
+    return res.data;
   }
 };
 

@@ -57,7 +57,7 @@ const ChatListPage = ({ isHub = false }) => {
 
   const handleCardClick = (conv) => {
     markConversationRead(conv.conversationId);
-    navigate(conv.route);
+    navigate(conv.route, { state: { from: '/member/social', tab: 'chat' } });
   };
 
   const getEmptyState = () => {

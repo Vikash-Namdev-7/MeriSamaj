@@ -1,7 +1,10 @@
-const Fund = require('../../models/Fund');
+const mongoose = require('mongoose');
+const crypto   = require('crypto');
+const Fund         = require('../../models/Fund');
 const Contribution = require('../../models/Contribution');
-const FundExpense = require('../../models/FundExpense');
-const User = require('../../models/User');
+const FundExpense  = require('../../models/FundExpense');
+const User         = require('../../models/User');
+const paymentService = require('../../services/paymentService');
 const { notifyContributionRecorded } = require('../../services/notificationService');
 
 // Helper: Format Date as DD MMM YYYY (e.g. "12 Jun 2024")
@@ -130,6 +133,8 @@ exports.getFundsData = async (req, res) => {
 };
 
 // 2. Submit a payment/contribution
+// ⚠️  DEPRECATED: This route now only handles legacy / manual payments.
+// All Razorpay-backed contributions go through createFundOrder → verifyFundPayment.
 exports.makePayment = async (req, res) => {
   try {
     const { fundId } = req.params;
@@ -341,5 +346,350 @@ exports.getHistory = async (req, res) => {
   } catch (error) {
     console.error('getHistory error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ─── Razorpay Order Creation ──────────────────────────────────────────────────
+exports.createFundOrder = async (req, res) => {
+  try {
+    const { fundId, amount: rawAmount } = req.body;
+    const amount = Number(rawAmount || 0);
+    const myId   = req.user._id;
+
+    // ── Server-side validation ─────────────────────────────────────────────
+    if (!fundId) {
+      return res.status(400).json({ success: false, message: 'Fund ID is required.' });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid contribution amount is required.' });
+    }
+
+    const fund = await Fund.findById(fundId);
+    if (!fund) {
+      return res.status(404).json({ success: false, message: 'Fund not found.' });
+    }
+    if (!['Active'].includes(fund.status)) {
+      return res.status(400).json({ success: false, message: `Fund is ${fund.status} and cannot accept contributions.` });
+    }
+
+    // Find the member's contribution ledger for remaining-amount validation
+    const contribution = await Contribution.findOne({ fundId, memberId: myId });
+    if (contribution) {
+      const remaining = contribution.assignedAmount - contribution.paidAmount;
+      if (amount > remaining + 0.01) { // +0.01 float guard
+        return res.status(400).json({
+          success: false,
+          message: `Amount cannot exceed remaining due amount of ₹${remaining}.`
+        });
+      }
+    }
+
+    // ── Create Razorpay Order ──────────────────────────────────────────────
+    const receipt = `fund_${fund._id.toString().slice(-12)}_${Date.now().toString().slice(-8)}`;
+    const order = await paymentService.initiatePayment({
+      gateway: 'razorpay',
+      amount,
+      currency: 'INR',
+      receipt,
+      notes: {
+        fundId:     fund._id.toString(),
+        userId:     myId.toString(),
+        memberName: req.user.name || 'Member'
+      }
+    });
+
+    // ── Pending Audit Record ───────────────────────────────────────────────
+    // Create a Pending transaction inside the Contribution ledger.
+    // This gives a full audit trail even if frontend disconnects.
+    let ledger = await Contribution.findOne({ fundId, memberId: myId });
+    if (!ledger) {
+      ledger = new Contribution({
+        fundId,
+        memberId:       myId,
+        communityId:    req.communityId,
+        assignedAmount: fund.contributionPerMember,
+        paidAmount:     0,
+        transactions:   []
+      });
+    }
+    const pendingTxnId = `PENDING_${order.id}`;
+    const alreadyPending = ledger.transactions.some(t => t.orderId === order.id && t.status === 'Pending');
+    if (!alreadyPending) {
+      ledger.transactions.push({
+        txnId:         pendingTxnId,
+        amount,
+        paymentMode:   'Razorpay',
+        paymentMethod: 'Razorpay',
+        orderId:       order.id,
+        currency:      'INR',
+        status:        'Pending',
+        date:          new Date()
+      });
+      await ledger.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        order_id: order.id,
+        amount:   order.amount,
+        currency: order.currency || 'INR',
+        key:      process.env.RAZORPAY_KEY_ID
+      }
+    });
+  } catch (error) {
+    console.error('[Fund] createFundOrder error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to create payment order.' });
+  }
+};
+
+// ─── Razorpay Payment Verification & Fulfillment ─────────────────────────────
+exports.verifyFundPayment = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      fundId,
+      amount: reqAmount
+    } = req.body;
+
+    const paymentId = razorpay_payment_id;
+    const orderId   = razorpay_order_id;
+    const signature = razorpay_signature;
+    const amount    = Number(reqAmount || 0);
+    const myId      = req.user._id;
+
+    if (!paymentId || !orderId || !signature) {
+      return res.status(400).json({ success: false, message: 'Missing Razorpay payment verification parameters.' });
+    }
+    if (!fundId) {
+      return res.status(400).json({ success: false, message: 'Fund ID is required.' });
+    }
+
+    // ── 1. HMAC Signature Verification ────────────────────────────────────
+    const isValidSignature = paymentService.verifyPayment({
+      gateway: 'razorpay',
+      orderId,
+      paymentId,
+      signature
+    });
+    if (!isValidSignature) {
+      // Mark pending txn as Failed
+      await Contribution.findOneAndUpdate(
+        { fundId, memberId: myId, 'transactions.orderId': orderId },
+        { $set: { 'transactions.$.status': 'Failed' } }
+      );
+      return res.status(400).json({ success: false, message: 'Invalid payment signature. Verification failed.' });
+    }
+
+    // ── 2. Idempotency Guard ───────────────────────────────────────────────
+    const ledger = await Contribution.findOne({ fundId, memberId: myId });
+    if (ledger) {
+      const alreadyApproved = ledger.transactions.some(
+        t => (t.orderId === orderId || t.paymentId === paymentId) && t.status === 'Approved'
+      );
+      if (alreadyApproved) {
+        return res.status(200).json({
+          success: true,
+          message: 'Payment already processed and verified.',
+          data: { paymentId, orderId, status: 'Approved' }
+        });
+      }
+    }
+
+    // ── 3. Razorpay API Double-Verification (status must be captured) ──────
+    try {
+      const paymentDetails = await paymentService.fetchRazorpayPaymentDetails(paymentId);
+      if (paymentDetails && paymentDetails.status && !['captured', 'authorized'].includes(paymentDetails.status)) {
+        await Contribution.findOneAndUpdate(
+          { fundId, memberId: myId, 'transactions.orderId': orderId },
+          { $set: { 'transactions.$.status': 'Failed' } }
+        );
+        return res.status(400).json({
+          success: false,
+          message: `Payment status is "${paymentDetails.status}", expected "captured". Please retry.`
+        });
+      }
+    } catch (apiErr) {
+      console.warn('[Fund] Razorpay API direct fetch notice (proceeding with verified signature):', apiErr.message);
+    }
+
+    // ── 4. MongoDB Transaction: All-or-nothing DB updates ─────────────────
+    const fund = await Fund.findById(fundId);
+    if (!fund) {
+      return res.status(404).json({ success: false, message: 'Fund not found.' });
+    }
+
+    let finalPaidAmount = 0;
+    let resultData;
+
+    session.startTransaction();
+    try {
+      // 4a. Find or create contribution ledger
+      let contrib = await Contribution.findOne({ fundId, memberId: myId }).session(session);
+      if (!contrib) {
+        contrib = new Contribution({
+          fundId,
+          memberId:       myId,
+          communityId:    req.communityId,
+          assignedAmount: fund.contributionPerMember,
+          paidAmount:     0,
+          transactions:   []
+        });
+      }
+
+      // 4b. Update or create the transaction record
+      const pendingIdx = contrib.transactions.findIndex(
+        t => t.orderId === orderId && t.status === 'Pending'
+      );
+      const txnId = paymentId;
+      const now   = new Date();
+
+      if (pendingIdx !== -1) {
+        // Upgrade the pending record to Approved
+        contrib.transactions[pendingIdx].txnId         = txnId;
+        contrib.transactions[pendingIdx].paymentId     = paymentId;
+        contrib.transactions[pendingIdx].signature     = signature;
+        contrib.transactions[pendingIdx].paymentMode   = 'Razorpay';
+        contrib.transactions[pendingIdx].paymentMethod = 'Razorpay';
+        contrib.transactions[pendingIdx].status        = 'Approved';
+        contrib.transactions[pendingIdx].paidAt        = now;
+        contrib.transactions[pendingIdx].date          = now;
+        if (amount > 0) contrib.transactions[pendingIdx].amount = amount;
+      } else {
+        // No pending record found — create a fresh Approved transaction
+        contrib.transactions.push({
+          txnId,
+          amount:        amount,
+          paymentMode:   'Razorpay',
+          paymentMethod: 'Razorpay',
+          orderId,
+          paymentId,
+          signature,
+          currency:      'INR',
+          status:        'Approved',
+          paidAt:        now,
+          date:          now
+        });
+      }
+
+      // 4c. Recompute paidAmount from all Approved transactions
+      finalPaidAmount = contrib.transactions
+        .filter(t => t.status === 'Approved')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      contrib.paidAmount         = finalPaidAmount;
+      contrib.lastPaymentDate    = now;
+      await contrib.save({ session });
+
+      await session.commitTransaction();
+
+      resultData = {
+        paymentId,
+        orderId,
+        txnId,
+        amount,
+        paidAmount:  finalPaidAmount,
+        status:      'Approved',
+        paidAt:      now
+      };
+    } catch (txnError) {
+      await session.abortTransaction();
+      throw txnError;
+    } finally {
+      session.endSession();
+    }
+
+    // ── 5. Notifications (outside transaction — non-critical) ──────────────
+    try {
+      const Community = require('../../models/Community');
+      const comm      = await Community.findById(fund.communityId || req.communityId).select('headId adminId createdBy').lean();
+      const recipientId = comm?.headId || fund.createdBy || null;
+      if (recipientId) {
+        const memberName = req.user.name || 'A member';
+        const txnIdStr   = resultData.txnId;
+        const paidAt     = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        notifyContributionRecorded(recipientId, memberName, amount, fund.name, fund._id);
+      }
+    } catch (notifErr) {
+      console.warn('[Fund] Notification dispatch warning:', notifErr.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment verified and contribution recorded successfully!',
+      data:    resultData
+    });
+
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error('[Fund] verifyFundPayment error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Payment verification failed.' });
+  }
+};
+
+// ─── Razorpay Webhook Listener (Fallback path) ────────────────────────────────
+exports.handleFundWebhook = async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const secret    = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+
+    // Validate webhook signature
+    if (secret && signature) {
+      const digest = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body)).digest('hex');
+      if (digest !== signature) {
+        console.warn('[Fund] Webhook signature mismatch');
+        return res.status(400).json({ status: 'error', message: 'Invalid webhook signature.' });
+      }
+    }
+
+    const event = req.body?.event;
+    if (event === 'payment.captured') {
+      const payment = req.body?.payload?.payment?.entity;
+      if (payment) {
+        const orderId   = payment.order_id;
+        const paymentId = payment.id;
+        const amount    = payment.amount / 100; // paise → ₹
+
+        // Find the contribution ledger that has a Pending txn for this orderId
+        const ledger = await Contribution.findOne({ 'transactions.orderId': orderId, 'transactions.status': 'Pending' });
+        if (ledger) {
+          const pendingIdx = ledger.transactions.findIndex(
+            t => t.orderId === orderId && t.status === 'Pending'
+          );
+          if (pendingIdx !== -1) {
+            const alreadyApproved = ledger.transactions.some(
+              t => (t.orderId === orderId || t.paymentId === paymentId) && t.status === 'Approved'
+            );
+            if (!alreadyApproved) {
+              const now = new Date();
+              ledger.transactions[pendingIdx].txnId         = paymentId;
+              ledger.transactions[pendingIdx].paymentId     = paymentId;
+              ledger.transactions[pendingIdx].paymentMode   = 'Razorpay';
+              ledger.transactions[pendingIdx].paymentMethod = 'Razorpay';
+              ledger.transactions[pendingIdx].status        = 'Approved';
+              ledger.transactions[pendingIdx].paidAt        = now;
+              if (amount > 0) ledger.transactions[pendingIdx].amount = amount;
+
+              ledger.paidAmount = ledger.transactions
+                .filter(t => t.status === 'Approved')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+              ledger.lastPaymentDate = now;
+              await ledger.save();
+              console.log(`[Fund] Webhook: Contribution approved for orderId=${orderId}, paymentId=${paymentId}`);
+            }
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('[Fund] handleFundWebhook error:', error);
+    res.status(500).json({ status: 'error', message: 'Webhook processing failed.' });
   }
 };

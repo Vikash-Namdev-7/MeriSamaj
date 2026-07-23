@@ -3,10 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Users, Calendar, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import memberDonationApi from '../../api/memberDonationApi';
 import DonateModal from '../../components/member/DonateModal';
+import { useData } from '../../modules/member/context/DataProvider';
+import { useAuth } from '../../core/auth/useAuth';
+import { loadRazorpayScript } from '../../core/utils/razorpayLoader';
 
 export const DonationDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useData();
+  const { user: authUser } = useAuth();
+  const activeUser = currentUser || authUser;
 
   const [donation, setDonation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,16 +44,83 @@ export const DonationDetails = () => {
   const handleConfirmDonation = async (donationId, payload) => {
     try {
       setIsSubmitting(true);
-      const res = await memberDonationApi.handleDonationPayment(donationId, payload);
-      if (res.success || res.status === 'success') {
-        setIsDonateModalOpen(false);
-        setSuccessToast(`Thank you! Your donation of ₹${payload.amount} was processed successfully.`);
-        setTimeout(() => setSuccessToast(null), 5000);
-        await fetchDetails();
+
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        alert('Razorpay Payment Gateway SDK failed to load. Please check your internet connection.');
+        setIsSubmitting(false);
+        return;
       }
+
+      const targetId = donationId || id;
+      const orderRes = await memberDonationApi.createRazorpayOrder(targetId, {
+        amount: payload.amount,
+        donorName: payload.donorName
+      });
+
+      if (!orderRes.success || !orderRes.data) {
+        throw new Error(orderRes.message || 'Failed to create payment order.');
+      }
+
+      const { order_id, amount, currency, key } = orderRes.data;
+
+      const options = {
+        key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: amount,
+        currency: currency || 'INR',
+        name: 'Meri Samaj Donation',
+        description: `Donation for ${donation?.title || 'Noble Cause'}`,
+        order_id: order_id,
+        prefill: {
+          name: payload.donorName || activeUser?.name || '',
+          email: activeUser?.email || '',
+          contact: activeUser?.phone || activeUser?.mobile || ''
+        },
+        theme: {
+          color: '#4F46E5'
+        },
+        handler: async (response) => {
+          try {
+            const verifyRes = await memberDonationApi.verifyRazorpayPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              donationId: targetId,
+              amount: payload.amount,
+              donorName: payload.donorName
+            });
+
+            if (verifyRes.success || verifyRes.status === 'success') {
+              setIsDonateModalOpen(false);
+              setSuccessToast(`Thank you! Your donation of ₹${payload.amount.toLocaleString()} was processed successfully.`);
+              setTimeout(() => setSuccessToast(null), 5000);
+              await fetchDetails();
+            } else {
+              alert(verifyRes.message || 'Payment verification failed.');
+            }
+          } catch (verifyErr) {
+            alert(verifyErr.response?.data?.message || verifyErr.message || 'Payment verification failed.');
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            setSuccessToast(null);
+            alert('Payment cancelled.');
+          }
+        }
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', (response) => {
+        setIsSubmitting(false);
+        alert(response.error?.description || 'Payment failed. Please try again.');
+      });
+      razorpayInstance.open();
     } catch (err) {
-      alert(err.message || 'Payment simulation failed');
-    } finally {
+      alert(err.response?.data?.message || err.message || 'Payment initiation failed.');
       setIsSubmitting(false);
     }
   };
@@ -141,14 +214,14 @@ export const DonationDetails = () => {
 
           {/* Fundraising Progress Box */}
           <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-4">
-            <div className="flex justify-between items-end">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Raised Amount</span>
-                <span className="text-3xl font-black text-indigo-600">₹{raised.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Raised Amount</span>
+                <span className="text-xl sm:text-2xl font-black text-indigo-600">₹{raised.toLocaleString()}</span>
               </div>
               <div className="text-right">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Target Goal</span>
-                <span className="text-lg font-bold text-slate-700">₹{target.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Goal</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-600">₹{target.toLocaleString()}</span>
               </div>
             </div>
 

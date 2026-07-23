@@ -157,14 +157,22 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
     { id: 'discover', label: 'Discover', icon: DiscoverIcon, component: DiscoverContent }
   ];
 
-  // Set initial scroll position based on route state or initialTab
+  // Persist active tab to sessionStorage whenever activeTab changes
   useEffect(() => {
-    let passedTabId = location.state?.tab || initialTab;
+    if (tabs[activeTab]) {
+      sessionStorage.setItem('socialHub_activeTab', tabs[activeTab].id);
+    }
+  }, [activeTab]);
+
+  // Set initial scroll position based on route state, sessionStorage, or initialTab
+  useEffect(() => {
+    let passedTabId = location.state?.tab || sessionStorage.getItem('socialHub_activeTab') || initialTab;
     if (passedTabId === 'feed') passedTabId = 'city-feed';
     if (passedTabId === 'connect') passedTabId = 'community-feed';
     const tabIndex = tabs.findIndex(t => t.id === passedTabId);
     if (tabIndex !== -1 && scrollContainerRef.current) {
       setActiveTab(tabIndex);
+      sessionStorage.setItem('socialHub_activeTab', tabs[tabIndex].id);
       // Use setTimeout to ensure the DOM is fully rendered and clientWidth is available
       setTimeout(() => {
         if (scrollContainerRef.current) {

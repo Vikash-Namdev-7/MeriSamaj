@@ -7,6 +7,7 @@ import {
 import axios from 'axios';
 import PostDetailDrawer from './PostDetailDrawer';
 import { socialFeedService } from '../../../services/socialFeedService';
+import { cityService } from '../../../services/cityService';
 
 const getAuthHeaders = () => {
   const token = document.cookie.split('; ').find(row => row.startsWith('admin_jwt='))?.split('=')[1] || '';
@@ -20,8 +21,6 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
   const [scopesList, setScopesList] = useState([]); // Cities or Communities
   const [selectedScope, setSelectedScope] = useState(''); // Scope ID or City Name
   const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'deleted' | 'all'
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -52,10 +51,8 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
     const fetchScopes = async () => {
       try {
         if (isCityFeed) {
-          const res = await axios.get('/api/v1/admin/cities', getAuthHeaders());
-          if (res.data.status === 'success' || res.data.success) {
-            setScopesList(res.data.data || []);
-          }
+          const cities = await cityService.fetchCities();
+          setScopesList(cities || []);
         } else {
           const comms = await socialFeedService.fetchCommunitiesForFilter();
           setScopesList(comms || []);
@@ -74,6 +71,7 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
       if (isCityFeed) {
         const result = await socialFeedService.fetchCityFeed({
           city: selectedScope,
+          status: statusFilter,
           search: debouncedSearch,
           page,
           limit,
@@ -88,6 +86,7 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
       } else {
         const result = await socialFeedService.fetchCommunityFeed({
           communityId: selectedScope,
+          status: statusFilter,
           search: debouncedSearch,
           page,
           limit,
@@ -105,7 +104,7 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
     } finally {
       setLoading(false);
     }
-  }, [isCityFeed, page, limit, selectedScope, debouncedSearch]);
+  }, [isCityFeed, page, limit, selectedScope, statusFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchPosts();
@@ -119,8 +118,6 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
   const handleResetFilters = () => {
     setSelectedScope('');
     setStatusFilter('active');
-    setStartDate('');
-    setEndDate('');
     setSearchQuery('');
     setPage(1);
   };
@@ -240,7 +237,7 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Scope Dropdown (City or Community) */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
@@ -252,11 +249,15 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
               className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">{isCityFeed ? 'All Cities' : 'All Communities'}</option>
-              {scopesList.map((item) => (
-                <option key={item._id} value={item._id}>
-                  {item.name}
-                </option>
-              ))}
+              {scopesList.map((item) => {
+                const val = isCityFeed ? item.name : (item._id || item.id);
+                const label = item.name + (isCityFeed && item.state ? ` (${item.state})` : '');
+                return (
+                  <option key={item.id || item._id || item.name} value={val}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -274,32 +275,6 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
               <option value="deleted">Deleted Posts (Soft Deleted)</option>
               <option value="all">All Posts (Active & Deleted)</option>
             </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
           </div>
 
           {/* Search Box */}

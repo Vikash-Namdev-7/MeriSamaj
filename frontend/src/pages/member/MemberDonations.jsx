@@ -5,10 +5,14 @@ import memberDonationApi from '../../api/memberDonationApi';
 import DonationCard from '../../components/member/DonationCard';
 import DonateModal from '../../components/member/DonateModal';
 import { useData } from '../../modules/member/context/DataProvider';
+import { useAuth } from '../../core/auth/useAuth';
+import { loadRazorpayScript } from '../../core/utils/razorpayLoader';
 
 export const MemberDonations = () => {
   const navigate = useNavigate();
-  const { setMobileMenuOpen } = useData();
+  const { setMobileMenuOpen, currentUser } = useData();
+  const { user: authUser } = useAuth();
+  const activeUser = currentUser || authUser;
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,17 +56,83 @@ export const MemberDonations = () => {
   const handleConfirmDonation = async (donationId, payload) => {
     try {
       setIsSubmitting(true);
-      const res = await memberDonationApi.handleDonationPayment(donationId, payload);
-      if (res.success || res.status === 'success') {
-        setIsDonateModalOpen(false);
-        setSelectedDonation(null);
-        setSuccessToast(`Thank you! Your donation of ₹${payload.amount} was processed successfully.`);
-        setTimeout(() => setSuccessToast(null), 5000);
-        await fetchActiveDonations();
+
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        alert('Razorpay Payment Gateway SDK failed to load. Please check your internet connection.');
+        setIsSubmitting(false);
+        return;
       }
+
+      const orderRes = await memberDonationApi.createRazorpayOrder(donationId, {
+        amount: payload.amount,
+        donorName: payload.donorName
+      });
+
+      if (!orderRes.success || !orderRes.data) {
+        throw new Error(orderRes.message || 'Failed to create payment order.');
+      }
+
+      const { order_id, amount, currency, key } = orderRes.data;
+
+      const options = {
+        key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: amount,
+        currency: currency || 'INR',
+        name: 'Meri Samaj Donation',
+        description: `Donation for ${selectedDonation?.title || 'Noble Cause'}`,
+        order_id: order_id,
+        prefill: {
+          name: payload.donorName || activeUser?.name || '',
+          email: activeUser?.email || '',
+          contact: activeUser?.phone || activeUser?.mobile || ''
+        },
+        theme: {
+          color: '#4F46E5'
+        },
+        handler: async (response) => {
+          try {
+            const verifyRes = await memberDonationApi.verifyRazorpayPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              donationId,
+              amount: payload.amount,
+              donorName: payload.donorName
+            });
+
+            if (verifyRes.success || verifyRes.status === 'success') {
+              setIsDonateModalOpen(false);
+              setSelectedDonation(null);
+              setSuccessToast(`Thank you! Your donation of ₹${payload.amount.toLocaleString()} was processed successfully.`);
+              setTimeout(() => setSuccessToast(null), 5000);
+              await fetchActiveDonations();
+            } else {
+              alert(verifyRes.message || 'Payment verification failed.');
+            }
+          } catch (verifyErr) {
+            alert(verifyErr.response?.data?.message || verifyErr.message || 'Payment verification failed.');
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            setSuccessToast(null);
+            alert('Payment cancelled.');
+          }
+        }
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', (response) => {
+        setIsSubmitting(false);
+        alert(response.error?.description || 'Payment failed. Please try again.');
+      });
+      razorpayInstance.open();
     } catch (err) {
-      alert(err.message || 'Payment simulation failed');
-    } finally {
+      alert(err.response?.data?.message || err.message || 'Payment initiation failed.');
       setIsSubmitting(false);
     }
   };

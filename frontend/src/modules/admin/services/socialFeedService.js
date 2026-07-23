@@ -34,10 +34,11 @@ const mapPost = (post) => ({
 
 export const socialFeedService = {
   // City Feed — platform-wide posts, optionally filtered by author's city
-  fetchCityFeed: async ({ city = '', search = '', page = 1, limit = 20 } = {}) => {
+  fetchCityFeed: async ({ city = '', status = 'active', search = '', page = 1, limit = 20 } = {}) => {
     try {
       const params = new URLSearchParams();
       if (city) params.append('city', city);
+      if (status) params.append('status', status);
       if (search) params.append('search', search);
       params.append('page', page);
       params.append('limit', limit);
@@ -55,10 +56,11 @@ export const socialFeedService = {
   },
 
   // Community Feed — platform-wide posts, optionally filtered by communityId
-  fetchCommunityFeed: async ({ communityId = '', search = '', page = 1, limit = 20 } = {}) => {
+  fetchCommunityFeed: async ({ communityId = '', status = 'active', search = '', page = 1, limit = 20 } = {}) => {
     try {
       const params = new URLSearchParams();
       if (communityId) params.append('communityId', communityId);
+      if (status) params.append('status', status);
       if (search) params.append('search', search);
       params.append('page', page);
       params.append('limit', limit);

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const config = require('../config/config');
 
 // JWT authentication middleware for route protection
 const protect = async (req, res, next) => {
@@ -32,7 +33,7 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    const decoded = jwt.verify(token, config.jwtSecret);
 
     /**
      * Populate communityId from Community model so:
