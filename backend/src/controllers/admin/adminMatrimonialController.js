@@ -8,6 +8,7 @@ const UserSubscription    = require('../../models/UserSubscription');
 const ProfileReport       = require('../../models/ProfileReport');
 const MatrimonialSettings = require('../../models/MatrimonialSettings');
 const InterestRequest     = require('../../models/InterestRequest');
+const MarriageRequest     = require('../../models/MarriageRequest');
 const { createNotification, notifyReportActioned, notifyProfileSuspended } = require('../../services/notificationService');
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
@@ -19,8 +20,8 @@ exports.getStats = async (req, res) => {
     const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1);
 
     const [
-      totalProfiles, pendingProfiles, activeProfiles, hiddenProfiles,
-      pendingPhotos, pendingReports,
+      totalProfiles, pendingProfiles, activeProfiles, hiddenProfiles, marriedProfiles,
+      pendingPhotos, pendingReports, pendingMarriageRequests,
       totalSubscriptions, activeSubscriptions,
       connectedMembers,
       dailyRegistrations, weeklyRegistrations, monthlyRegistrations,
@@ -30,8 +31,10 @@ exports.getStats = async (req, res) => {
       MatrimonialProfile.countDocuments({ isDeleted: false, status: 'pending' }),
       MatrimonialProfile.countDocuments({ isDeleted: false, status: 'active' }),
       MatrimonialProfile.countDocuments({ isDeleted: false, status: 'hidden' }),
+      MatrimonialProfile.countDocuments({ isDeleted: false, status: 'married' }),
       MatrimonialProfile.countDocuments({ 'photos.status': 'pending', isDeleted: false }),
       ProfileReport.countDocuments({ status: 'pending' }),
+      MarriageRequest.countDocuments({ status: 'pending' }),
       UserSubscription.countDocuments(),
       UserSubscription.countDocuments({ status: 'active' }),
       MatrimonialProfile.countDocuments({ isDeleted: false, maritalLifecycle: 'connected' }),
@@ -49,8 +52,10 @@ exports.getStats = async (req, res) => {
         pendingProfiles,
         activeProfiles,
         hiddenProfiles,
+        marriedProfiles,
         pendingPhotos,
         pendingReports,
+        pendingMarriageRequests,
         totalSubscriptions,
         activeSubscriptions,
         connectedMembers,
@@ -138,6 +143,102 @@ exports.verifyProfile = async (req, res) => {
     });
 
     res.json({ status: 'success', message: `Profile ${status} successfully.` });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Force Close Profile ──────────────────────────────────────────────────────
+exports.adminCloseProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const profile = await MatrimonialProfile.findById(id);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    profile.status = 'married';
+    profile.isClosed = true;
+    profile.closedAt = new Date();
+    profile.maritalLifecycle = 'married';
+    await profile.save();
+
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     'matrimonial_profile_closed',
+      title:    'Profile Closed 💍',
+      message:  'Your matrimonial profile has been closed by an admin and marked as married.',
+      icon:     '💍',
+      priority: 'high',
+      actionUrl:'/member/matrimonial/profile'
+    });
+
+    const socketRegistry = require('../../services/socketRegistry');
+    const io = socketRegistry.getIO();
+    if (io) {
+      io.to(profile.userId.toString()).emit('matrimonial:profileClosed', { profileId: profile._id });
+    }
+
+    res.json({ status: 'success', message: 'Profile force closed successfully.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Reopen Profile ───────────────────────────────────────────────────────────
+exports.adminReopenProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const profile = await MatrimonialProfile.findById(id);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    profile.status = 'pending';
+    profile.isClosed = false;
+    profile.closedAt = null;
+    profile.maritalLifecycle = 'active';
+    profile.verificationStatus = 'pending';
+    await profile.save();
+
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     'matrimonial_profile_reopened',
+      title:    'Profile Reopened 🔄',
+      message:  'Your matrimonial profile has been reopened by an admin. It requires re-verification before appearing in search.',
+      icon:     '🔄',
+      priority: 'high',
+      actionUrl:'/member/matrimonial/profile'
+    });
+
+    res.json({ status: 'success', message: 'Profile reopened successfully (pending verification).' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+
+// ─── List Marriage Requests ─────────────────────────────────────────────────────
+exports.listMarriageRequests = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+    const query = {};
+    if (status) query.status = status;
+
+    const total = await MarriageRequest.countDocuments(query);
+    const requests = await MarriageRequest.find(query)
+      .populate({
+        path: 'senderId',
+        select: 'name phone email'
+      })
+      .populate({
+        path: 'receiverId',
+        select: 'name phone email'
+      })
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
+
+    res.json({ status: 'success', data: { requests, total, page: Number(page), pages: Math.ceil(total / Number(limit)) } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -433,3 +534,100 @@ exports.grantSubscription = async (req, res) => {
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
+
+// ─── List All Marriage Requests ───────────────────────────────────────────────
+exports.listMarriageRequests = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+    const query = {};
+    if (status) query.status = status;
+
+    const total = await MarriageRequest.countDocuments(query);
+    const requests = await MarriageRequest.find(query)
+      .populate('requesterId', 'name phone email')
+      .populate('receiverId', 'name phone email')
+      .populate('interestRequestId', 'status acceptedAt')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
+
+    res.json({ status: 'success', data: { requests, total, page: Number(page), pages: Math.ceil(total / Number(limit)) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Admin Force-Close Profile ────────────────────────────────────────────────
+// Admin can close a profile manually (e.g., after confirming a marriage offline)
+exports.adminCloseProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNote } = req.body;
+
+    const profile = await MatrimonialProfile.findById(id);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    profile.status           = 'married';
+    profile.maritalLifecycle = 'married';
+    profile.isClosed         = true;
+    profile.closedAt         = new Date();
+    await profile.save();
+
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     'matrimonial_profile_closed',
+      title:    'Profile Closed by Admin',
+      message:  adminNote || 'Your matrimonial profile has been closed by the administrator.',
+      icon:     '🔒',
+      priority: 'high',
+      actionUrl:'/member/matrimonial'
+    });
+
+    res.json({ status: 'success', message: 'Profile force-closed by admin.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Admin Reopen Closed Profile → Returns to Pending for Re-verification ─────
+exports.adminReopenProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNote } = req.body;
+
+    const profile = await MatrimonialProfile.findById(id);
+    if (!profile) return res.status(404).json({ status: 'error', message: 'Profile not found.' });
+
+    if (!profile.isClosed) {
+      return res.status(400).json({ status: 'error', message: 'Profile is not currently closed.' });
+    }
+
+    // Reopen to PENDING — requires standard re-verification before becoming active
+    profile.status                = 'pending';
+    profile.maritalLifecycle      = 'single';
+    profile.isClosed              = false;
+    profile.closedAt              = undefined;
+    profile.marriageConfirmedWith = undefined;
+    profile.marriageRequestId     = undefined;
+    profile.verificationStatus    = 'pending'; // Reset verification — must go through Head/Admin again
+    await profile.save();
+
+    await createNotification({
+      userId:   profile.userId,
+      module:   'matrimonial',
+      type:     'matrimonial_profile_reopened',
+      title:    'Profile Reopened',
+      message:  adminNote || 'Your matrimonial profile has been reopened. It will go through verification before becoming visible again.',
+      icon:     '🔓',
+      priority: 'high',
+      actionUrl:'/member/matrimonial'
+    });
+
+    res.json({ status: 'success', message: 'Profile reopened. Status set to pending for re-verification.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+

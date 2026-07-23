@@ -29,4 +29,9 @@ router.delete('/plans/:id',    adminMatCtrl.deletePlan);
 router.get('/settings',        adminMatCtrl.getSettings);
 router.put('/settings',        adminMatCtrl.updateSettings);
 
+// ─── Marriage Lifecycle ────────────────────────────────────────────────────────
+router.get('/marriage-requests',            adminMatCtrl.listMarriageRequests);
+router.put('/profiles/:id/close',           adminMatCtrl.adminCloseProfile);
+router.put('/profiles/:id/reopen',          adminMatCtrl.adminReopenProfile);
+
 module.exports = router;

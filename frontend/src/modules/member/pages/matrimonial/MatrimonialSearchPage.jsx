@@ -132,6 +132,13 @@ const MatrimonialSearchPage = () => {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
+  // Block married users
+  useEffect(() => {
+    if (matriCtx?.myProfile && (matriCtx.myProfile.isClosed || matriCtx.myProfile.status === 'married')) {
+      navigate('/member/matrimonial', { replace: true });
+    }
+  }, [matriCtx?.myProfile, navigate]);
+
   // ─── Search API ─────────────────────────────────────────────────────────────
   const searchProfiles = useCallback(async (resetPage = false) => {
     if (loading) return;

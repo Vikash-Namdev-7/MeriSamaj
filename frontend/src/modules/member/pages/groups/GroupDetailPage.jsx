@@ -555,7 +555,7 @@ const GroupDetailPage = () => {
                           Group Info
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowChatMenu(false); setShowMediaModal(true); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors leading-tight">
-                          Media, links, and docs
+                          Shared Media
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setIsSearchingChat(true); setShowChatMenu(false); }} className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 active:bg-purple-50 transition-colors">
                           Search
@@ -718,7 +718,7 @@ const GroupDetailPage = () => {
 
                       {/* Image Attachment */}
                       {msg.attachment && msg.attachment.type === 'image' && (
-                        <img src={msg.attachment.url} alt="Attachment" className="rounded-xl max-w-full mb-1 max-h-64 object-cover" />
+                        <img src={msg.attachment.url} alt="Attachment" className="rounded-xl max-w-[220px] max-h-[220px] mb-1 object-cover" />
                       )}
 
                       {/* Text */}
@@ -992,85 +992,29 @@ const GroupDetailPage = () => {
               )}
             </div>
 
-            {/* MEDIA, LINKS, DOCS */}
+        {/* MEDIA */}
             <div className="bg-white shadow-sm mb-2 text-left">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50" onClick={() => setShowMediaModal(true)}>
-                <p className="text-[15px] font-bold text-gray-900">Media, links, and docs</p>
+                <p className="text-[15px] font-bold text-gray-900">Shared Media</p>
                 <div className="flex items-center gap-1 text-gray-400">
-                  <span className="text-[14px]">6</span>
+                  <span className="text-[14px]">
+                    {messages.filter(msg => msg.attachment && msg.attachment.type === 'image').length}
+                  </span>
                   <ChevronRight size={20} />
                 </div>
               </div>
               <div className="p-4">
-                <div className="flex gap-2 mb-4">
-                  {['media', 'docs', 'links'].map(tab => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setInfoActiveTab(tab)}
-                      className={`px-4 py-1.5 rounded-full text-[13px] font-bold capitalize transition-colors ${
-                        infoActiveTab === tab ? 'bg-brand-primary/10 text-brand-primary' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                {infoActiveTab === 'media' && (
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {[
-                      'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=120',
-                      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=120',
-                      'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=120',
-                      'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=120',
-                      'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=120',
-                      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=120'
-                    ].map((url, i) => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {messages.filter(msg => msg.attachment && msg.attachment.type === 'image').length > 0 ? (
+                    messages.filter(msg => msg.attachment && msg.attachment.type === 'image').map((msg, i) => (
                       <div key={i} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
-                        <img src={url} alt="media" className="w-full h-full object-cover" />
+                        <img src={msg.attachment.url} alt="media" className="w-full h-full object-cover" />
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {infoActiveTab === 'docs' && (
-                  <div className="space-y-3">
-                    {[
-                      { name: 'Samaj_Executive_List_2026.pdf', size: '1.4 MB', date: 'Yesterday' },
-                      { name: 'Diwali_Milan_Sammelan_Form.pdf', size: '840 KB', date: '12 May' }
-                    ].map((doc, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-                          <FileText size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-semibold text-gray-900 truncate">{doc.name}</p>
-                          <p className="text-[12px] text-gray-500">{doc.size} • {doc.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {infoActiveTab === 'links' && (
-                  <div className="space-y-3">
-                    {[
-                      { url: 'https://merisamaj.com/announcements', title: 'Community Updates and Portal', domain: 'merisamaj.com' },
-                      { url: 'https://youtube.com/watch?v=s83nJ', title: 'Dharmashala Opening Highlights', domain: 'youtube.com' }
-                    ].map((link, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                          <Link2 size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0 text-left">
-                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-brand-primary hover:underline block truncate">{link.title}</a>
-                          <p className="text-[12px] text-gray-500 truncate">{link.domain}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <div className="col-span-4 text-center py-6 text-[13px] text-gray-400 font-semibold">No media shared yet</div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1675,49 +1619,24 @@ const GroupDetailPage = () => {
           <div className="bg-white rounded-t-[28px] max-w-lg w-full h-[65vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 shrink-0" />
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
-              <h3 className="text-[15.5px] font-black text-gray-900">Media, Links & Docs</h3>
+              <h3 className="text-[15.5px] font-black text-gray-900">Shared Media</h3>
               <button onClick={() => setShowMediaModal(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
                 <X size={16} />
               </button>
             </div>
             
-            {/* Simple Grid */}
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               <div>
-                <h4 className="text-[11.5px] font-extrabold text-gray-400 uppercase tracking-wider mb-2.5">Shared Media</h4>
                 <div className="grid grid-cols-3 gap-2">
-                  {[
-                    'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=120',
-                    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=120',
-                    'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=120',
-                    'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=120',
-                    'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=120',
-                    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=120'
-                  ].map((url, i) => (
-                    <div key={i} className="aspect-square rounded-xl overflow-hidden border border-gray-100 bg-slate-50 shadow-sm">
-                      <img src={url} alt="Media" className="w-full h-full object-cover hover:scale-105 transition-transform duration-200" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-[11.5px] font-extrabold text-gray-400 uppercase tracking-wider mb-2.5">Documents & Files</h4>
-                <div className="space-y-2">
-                  {[
-                    { name: 'Samaj_Executive_List_2026.pdf', size: '1.4 MB' },
-                    { name: 'Diwali_Milan_Sammelan_Form.pdf', size: '840 KB' }
-                  ].map((doc, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-gray-150 rounded-xl hover:bg-slate-100/50 cursor-pointer">
-                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                        <FileText size={16} />
+                  {messages.filter(msg => msg.attachment && msg.attachment.type === 'image').length > 0 ? (
+                    messages.filter(msg => msg.attachment && msg.attachment.type === 'image').map((msg, i) => (
+                      <div key={i} className="aspect-square rounded-xl overflow-hidden border border-gray-100 bg-slate-50 shadow-sm">
+                        <img src={msg.attachment.url} alt="Media" className="w-full h-full object-cover hover:scale-105 transition-transform duration-200" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-bold text-gray-800 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{doc.size}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-6 text-[13px] text-gray-400 font-semibold">No media shared yet</div>
+                  )}
                 </div>
               </div>
             </div>

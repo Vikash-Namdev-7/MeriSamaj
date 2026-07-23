@@ -29,7 +29,7 @@ exports.getGroups = async (req, res) => {
     const groups = await Group.find(filter)
       .select('name description avatar category type approvalStatus chatPermissions isArchived createdAt members communityId')
       .populate('communityId', 'name')
-      .populate('creator', 'name avatar')
+      .populate('creator', 'name avatar role')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));

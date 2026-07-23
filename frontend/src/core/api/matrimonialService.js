@@ -92,3 +92,12 @@ export const notificationService = {
   deleteOne:    (id)     => axiosPrivate.delete(`${NOTIF}/${id}`),
   clearAll:     (data)   => axiosPrivate.delete(NOTIF, { data }),
 };
+
+// ─── Marriage Lifecycle ───────────────────────────────────────────────────────
+export const matrimonialMarriageService = {
+  sendRequest:    (data) => axiosPrivate.post(`${BASE}/marriage/request`, data),
+  respond:        (id, data) => axiosPrivate.post(`${BASE}/marriage/respond/${id}`, data),
+  getRequests:    () => axiosPrivate.get(`${BASE}/marriage/requests`),
+  getStatus:      () => axiosPrivate.get(`${BASE}/marriage/status`),
+};
+

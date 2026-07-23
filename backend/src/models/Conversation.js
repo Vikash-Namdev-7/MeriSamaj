@@ -38,8 +38,11 @@ const conversationSchema = new mongoose.Schema(
     lastMessagePreview: { type: String, default: '' }, // Plain text preview
 
     // ─── State ───────────────────────────────────────────────────────────────
-    isActive: { type: Boolean, default: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isActive:   { type: Boolean, default: true },
+    isArchived: { type: Boolean, default: false },  // Read-only after marriage confirmed
+    isReadOnly: { type: Boolean, default: false },  // Blocks new messages when true
+    archivedAt: { type: Date },
+    createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     // ─── Soft Delete ─────────────────────────────────────────────────────────
     isDeleted:  { type: Boolean, default: false },

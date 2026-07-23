@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { useInterests } from '../../../../hooks/useInterests';
 import { useMatrimonial } from './MatrimonialContext';
-import { matrimonialChatService } from '../../../../core/api/matrimonialService';
+import { matrimonialChatService, matrimonialMarriageService } from '../../../../core/api/matrimonialService';
+import MarriageSuccessScreen from './components/MarriageSuccessScreen';
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ value, label, color, bgColor, icon: Icon }) => (
@@ -25,10 +26,9 @@ const StatCard = ({ value, label, color, bgColor, icon: Icon }) => (
 const InterestCard = ({ interest, tab, onAccept, onReject, onCancel, onChat, toggleShortlist, isShortlisted, actionLoading }) => {
   const navigate = useNavigate();
 
-  // The "other" profile depends on tab
-  const otherProfile = tab === 'Received'
-    ? interest.senderProfile
-    : interest.receiverProfile;
+  // The "other" profile depends on whether we received or sent the interest
+  const isReceived = interest.direction === 'received' || tab === 'Received' || tab === 'Declined';
+  const otherProfile = isReceived ? interest.senderProfile : interest.receiverProfile;
 
   if (!otherProfile) return null;
 
@@ -207,22 +207,39 @@ const InterestsPage = ({ isHub = false }) => {
   const [activeTab, setActiveTab] = useState('Received');
   const [toast, setToast] = useState('');
 
+  // ─── Marriage Request State ─────────────────────────────────────────────────
+  const [marriageRequests, setMarriageRequests]       = useState({ sent: [], received: [] });
+  const [marriageLoading, setMarriageLoading]         = useState(false);
+  const [marriageActionLoading, setMarriageActionLoading] = useState(false);
+  const [showMarriageSuccess, setShowMarriageSuccess] = useState(false);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const loadAll = useCallback(() => {
     fetchReceivedInterests();
     fetchSentInterests();
+    // Also load marriage requests
+    matrimonialMarriageService.getRequests()
+      .then(res => setMarriageRequests(res.data.data))
+      .catch(() => {});
   }, [fetchReceivedInterests, fetchSentInterests]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // Block married users
+  useEffect(() => {
+    if (matriCtx?.myProfile && (matriCtx.myProfile.isClosed || matriCtx.myProfile.status === 'married')) {
+      navigate('/member/matrimonial', { replace: true });
+    }
+  }, [matriCtx?.myProfile, navigate]);
+
   // Derived lists by status
-  const receivedPending  = received.filter(i => i.status === 'pending');
-  const receivedAccepted = received.filter(i => i.status === 'accepted');
-  const receivedRejected = received.filter(i => i.status === 'rejected');
-  const sentPending      = sent.filter(i => i.status === 'pending');
-  const sentAccepted     = sent.filter(i => i.status === 'accepted');
-  const sentCancelled    = sent.filter(i => i.status === 'cancelled');
+  const receivedPending  = received.filter(i => i.status === 'pending').map(i => ({ ...i, direction: 'received' }));
+  const receivedAccepted = received.filter(i => i.status === 'accepted').map(i => ({ ...i, direction: 'received' }));
+  const receivedRejected = received.filter(i => i.status === 'rejected').map(i => ({ ...i, direction: 'received' }));
+  const sentPending      = sent.filter(i => i.status === 'pending').map(i => ({ ...i, direction: 'sent' }));
+  const sentAccepted     = sent.filter(i => i.status === 'accepted').map(i => ({ ...i, direction: 'sent' }));
+  const sentCancelled    = sent.filter(i => i.status === 'cancelled').map(i => ({ ...i, direction: 'sent' }));
 
   // Unified accepted list
   const allAccepted = [...receivedAccepted, ...sentAccepted];
@@ -241,11 +258,12 @@ const InterestsPage = ({ isHub = false }) => {
   };
 
   const tabs = [
-    { id: 'Received', label: `Received`, count: receivedPending.length,  icon: Mail,         color: 'text-rose-500' },
-    { id: 'Accepted', label: `Connected`,count: allAccepted.length,       icon: CheckCircle2, color: 'text-emerald-500' },
-    { id: 'Sent',     label: `Sent`,      count: sentPending.length,       icon: TrendingUp,   color: 'text-blue-500' },
-    { id: 'Declined', label: `Declined`,  count: allDeclined.length,       icon: XCircle,      color: 'text-slate-400' },
-    { id: 'Withdrawn',label: `Withdrawn`, count: allWithdrawn.length,      icon: XCircle,      color: 'text-slate-300' },
+    { id: 'Received',  label: `Received`,  count: receivedPending.length,                    icon: Mail,         color: 'text-rose-500' },
+    { id: 'Accepted',  label: `Connected`, count: allAccepted.length,                         icon: CheckCircle2, color: 'text-emerald-500' },
+    { id: 'Sent',      label: `Sent`,      count: sentPending.length,                          icon: TrendingUp,   color: 'text-blue-500' },
+    { id: 'Marriage',  label: `Marriage`,  count: marriageRequests.received?.filter(r => r.status === 'pending').length || 0, icon: () => <span style={{fontSize:'13px'}}>💍</span>, color: 'text-pink-500' },
+    { id: 'Declined',  label: `Declined`,  count: allDeclined.length,                         icon: XCircle,      color: 'text-slate-400' },
+    { id: 'Withdrawn', label: `Withdrawn`, count: allWithdrawn.length,                        icon: XCircle,      color: 'text-slate-300' },
   ];
 
   const handleAccept = async (id) => {
@@ -281,8 +299,36 @@ const InterestsPage = ({ isHub = false }) => {
     }
   };
 
+  // ─── Marriage Request Actions ────────────────────────────────────────────────
+  const handleRespondMarriage = async (requestId, action) => {
+    setMarriageActionLoading(true);
+    try {
+      await matrimonialMarriageService.respond(requestId, { action });
+      if (action === 'accept') {
+        setShowMarriageSuccess(true);
+        showToast('Marriage confirmed! 🎊 Both profiles are now closed.');
+      } else {
+        showToast('Marriage request declined. You remain connected.');
+      }
+      // Refresh marriage requests
+      const res = await matrimonialMarriageService.getRequests();
+      setMarriageRequests(res.data.data);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to respond to marriage request.');
+    } finally {
+      setMarriageActionLoading(false);
+    }
+  };
+
   return (
     <div className={isHub ? 'bg-slate-50 min-h-full pb-20' : 'min-h-screen bg-slate-50 pb-24'}>
+
+      {/* Marriage Success Screen */}
+      {showMarriageSuccess && (
+        <MarriageSuccessScreen
+          onDismiss={() => { setShowMarriageSuccess(false); navigate('/member/matrimonial'); }}
+        />
+      )}
       {/* Header */}
       {!isHub && (
         <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
@@ -332,7 +378,85 @@ const InterestsPage = ({ isHub = false }) => {
 
       {/* Content */}
       <div className="px-4 pt-2">
-        {loading ? (
+        {activeTab === 'Marriage' ? (
+          // ─── MARRIAGE REQUESTS TAB ────────────────────────────────────────────
+          <div>
+            {/* Incoming */}
+            {marriageRequests.received?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Received</p>
+                {marriageRequests.received.map(req => (
+                  <div key={req._id} className="bg-white rounded-2xl border border-pink-100 shadow-sm p-4 mb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span style={{fontSize:'28px'}} role="img" aria-label="rings">💍</span>
+                      <div>
+                        <p className="text-[14px] font-extrabold text-slate-800">
+                          {req.requesterId?.name || 'Partner'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Sent a marriage confirmation request
+                        </p>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full mt-1 inline-block ${
+                          req.status === 'pending'  ? 'bg-amber-50 text-amber-600' :
+                          req.status === 'accepted' ? 'bg-emerald-50 text-emerald-600' :
+                          'bg-slate-50 text-slate-500'
+                        }`}>{req.status.toUpperCase()}</span>
+                      </div>
+                    </div>
+                    {req.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRespondMarriage(req._id, 'reject')}
+                          disabled={marriageActionLoading}
+                          className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
+                        >
+                          <X size={13} /> Decline
+                        </button>
+                        <button
+                          onClick={() => handleRespondMarriage(req._id, 'accept')}
+                          disabled={marriageActionLoading}
+                          className="flex-1 py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
+                          style={{background:'linear-gradient(135deg,#f093fb 0%,#f5576c 100%)'}}
+                        >
+                          {marriageActionLoading ? <Loader2 size={13} className="animate-spin" /> : <span>💍</span>} Confirm Marriage
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Outgoing */}
+            {marriageRequests.sent?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Sent</p>
+                {marriageRequests.sent.map(req => (
+                  <div key={req._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-3">
+                    <span style={{fontSize:'28px'}} role="img" aria-label="rings">💍</span>
+                    <div>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        To: {req.receiverId?.name || 'Partner'}
+                      </p>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full mt-1 inline-block ${
+                        req.status === 'pending'  ? 'bg-amber-50 text-amber-600' :
+                        req.status === 'accepted' ? 'bg-emerald-50 text-emerald-600' :
+                        'bg-red-50 text-red-500'
+                      }`}>{req.status.toUpperCase()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Empty */}
+            {(!marriageRequests.received?.length && !marriageRequests.sent?.length) && (
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-center bg-white rounded-2xl border border-slate-100">
+                <span style={{fontSize:'48px'}} className="mb-3" role="img" aria-label="ring">💍</span>
+                <p className="text-[13px] font-bold text-slate-700">No marriage requests yet</p>
+                <p className="text-[11px] text-slate-400 mt-1">When you or your partner sends a marriage confirmation, it will appear here.</p>
+              </div>
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex justify-center py-16">
             <Loader2 size={32} className="text-rose-400 animate-spin" />
           </div>

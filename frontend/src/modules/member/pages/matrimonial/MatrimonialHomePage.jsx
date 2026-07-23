@@ -499,7 +499,44 @@ const MatrimonialHomePage = () => {
               })}
             </div>
 
+            {/* ─── MARRIED / CLOSED PROFILE BANNER ─── */}
+            {myProfile?.isClosed && (
+              <div
+                className="mx-4 mt-4 mb-2 rounded-3xl p-6 text-white relative overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                  <span style={{ fontSize: '180px', lineHeight: 1 }}>💍</span>
+                </div>
+                <div className="relative z-10 text-center">
+                  <span style={{ fontSize: '40px', lineHeight: 1, display: 'block', marginBottom: '8px' }}>💍🎊</span>
+                  <h2 className="text-[18px] font-black mb-1">Congratulations!</h2>
+                  <p className="text-white/80 text-[12px] font-semibold leading-relaxed">
+                    Your matrimonial profile is now <strong className="text-yellow-200">closed</strong>. You have been removed from matchmaking. We wish you a happy married life!
+                  </p>
+                  <button
+                    onClick={() => navigate('/member/matrimonial/interests')}
+                    className="mt-4 px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-[12px] font-bold border border-white/30 active:scale-95 transition-all"
+                    id="married-view-history-btn"
+                  >
+                    View Your Journey 💑
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="p-4 space-y-5 flex-1 max-w-md mx-auto w-full">
+              {/* Hide matchmaking feed for married users */}
+              {myProfile?.isClosed ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <span style={{ fontSize: '60px', lineHeight: 1 }} className="mb-4">🎊</span>
+                  <h3 className="text-[16px] font-black text-slate-800 mb-2">You're Married! 💑</h3>
+                  <p className="text-[12px] text-slate-400 font-semibold max-w-[240px] leading-relaxed">
+                    Your profile is closed. You no longer appear in matchmaking or search results.
+                  </p>
+                </div>
+              ) : (
+              <>
               {!isCurrentlySubscribed && (
                 <div className="p-5 bg-gradient-to-r from-rose-50 to-pink-50 rounded-3xl text-slate-800 shadow-[0_4px_18px_rgba(244,63,94,0.06)] flex flex-col gap-3 relative overflow-hidden border border-rose-100">
                   <div className="absolute -right-6 -bottom-6 opacity-5 text-rose-500">
@@ -564,7 +601,7 @@ const MatrimonialHomePage = () => {
                         onClick={handleCardClick}
                       >
                         <img
-                          src={profile.avatar}
+                          src={profile.photos?.[0]?.url || profile.userId?.avatar || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.personal?.fullName || profile.name || 'User')}&background=0f172a&color=fff&size=400`}
                           alt={profile.name}
                           className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
                             !hasAccess ? 'blur-2xl brightness-75 scale-105' : ''
@@ -720,6 +757,8 @@ const MatrimonialHomePage = () => {
                   </p>
                 </div>
               )}
+              </>
+              )}
             </div>
           </div>
         </>
@@ -831,8 +870,8 @@ const MatrimonialHomePage = () => {
                     
                     const profileData = otherProfile || item;
                     const profileId = otherProfile?._id || item._id || item.id;
-                    const avatar = profileData.photos?.[0] || profileData.avatar || 'https://via.placeholder.com/150';
                     const name = profileData.personal?.fullName || profileData.name || 'Member';
+                    const avatar = profileData.photos?.[0]?.url || profileData.userId?.avatar || profileData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f87171&color=fff&size=150`;
                     const age = profileData.age || '';
                     const height = profileData.height || '';
                     const gotra = profileData.gotra || '';
@@ -1001,7 +1040,7 @@ const MatrimonialHomePage = () => {
                     <div className="relative aspect-[3/4.5] overflow-hidden bg-slate-900 cursor-pointer flex flex-col justify-end" style={{ minHeight: '480px' }}>
                       {/* Photo base */}
                       <img
-                        src={visitor.avatar}
+                        src={visitor.photos?.[0]?.url || visitor.userId?.avatar || visitor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(visitor.name || 'User')}&background=0f172a&color=fff&size=400`}
                         alt={visitor.name}
                         className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
                           visitor.requiresUpgrade ? 'blur-2xl brightness-75 scale-105' : ''
@@ -1125,7 +1164,7 @@ const MatrimonialHomePage = () => {
                         
                         {/* Dynamic background photo */}
                         <img
-                          src={visited.avatar}
+                          src={visited.photos?.[0]?.url || visited.userId?.avatar || visited.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(visited.name || 'User')}&background=0f172a&color=fff&size=400`}
                           alt={visited.name}
                           className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -1698,11 +1737,7 @@ const MatrimonialHomePage = () => {
             <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col items-center text-center">
               <div className="relative mb-3">
                 <div className="w-20 h-20 rounded-full bg-slate-200 border-4 border-rose-500/20 flex items-center justify-center text-slate-500 text-[26px] font-black shadow-md overflow-hidden">
-                  {currentUser?.avatar ? (
-                    <img src={currentUser.avatar} alt="Me" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[22px] font-black text-rose-500">{currentUser?.initials || 'RA'}</span>
-                  )}
+                  <img src={myProfile?.photos?.[0]?.url || currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=0f172a&color=fff&size=400`} alt="Me" className="w-full h-full object-cover" />
                 </div>
                 <div className="absolute -bottom-1.5 -right-1.5 bg-rose-500 text-white rounded-full px-2 py-0.5 text-[8px] font-black border-2 border-white uppercase tracking-wider shadow-sm">
                   {isCurrentlySubscribed ? `${sub.plan} Plan` : 'Normal'}
@@ -1770,49 +1805,43 @@ const MatrimonialHomePage = () => {
               </div>
             )}
 
-            {/* Photo Upload Manager Simulation */}
-            <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-              <h4 className="text-[13.5px] font-black text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
-                <Image size={15} className="text-rose-500" /> Manage My Photos
-              </h4>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {/* Simulated photo slots */}
-                <div className="aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/50 flex items-center justify-center">
-                  <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150" alt="Self" className="w-full h-full object-cover" />
-                </div>
-                {Array.from({ length: Math.min(3, Math.max(0, myPhotosCount - 1)) }).map((_, i) => (
-                  <div key={i} className="aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/50 flex items-center justify-center animate-fade-in">
-                    <img src={`https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&q=80`} alt="Uploaded" className="w-full h-full object-cover" />
+            {/* Photo Upload Manager */}
+            {isCurrentlySubscribed && (
+              <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+                <h4 className="text-[13.5px] font-black text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
+                  <Image size={15} className="text-rose-500" /> Manage My Photos
+                </h4>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {(myProfile?.photos || []).map((photo, i) => (
+                    <div key={photo._id || i} className="aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/50 flex items-center justify-center animate-fade-in">
+                      <img src={photo.url} alt={`Uploaded ${i}`} className="w-full h-full object-cover" />
+                      <button 
+                        onClick={() => {
+                          showToast('Photo removal requires opening full manage screen.');
+                          navigate('/member/matrimonial/manage');
+                        }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  {(myProfile?.photos || []).length < 4 && (
                     <button 
                       onClick={() => {
-                        const nextCount = Math.max(1, myPhotosCount - 1);
-                        setMyPhotosCount(nextCount);
-                        handleSaveDetails({ photosCount: nextCount });
-                        showToast('Photo removed.');
+                        showToast('Navigating to full profile manager to upload real photos... 📸');
+                        navigate('/member/matrimonial/manage');
                       }}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                      className="aspect-[3/4] border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl flex flex-col items-center justify-center text-slate-400 active:scale-95 transition-transform"
                     >
-                      <X size={10} />
+                      <Plus size={16} />
+                      <span className="text-[9px] font-bold mt-1">Add Photo</span>
                     </button>
-                  </div>
-                ))}
-                {myPhotosCount < 4 && (
-                  <button 
-                    onClick={() => {
-                      const nextCount = Math.min(4, myPhotosCount + 1);
-                      setMyPhotosCount(nextCount);
-                      handleSaveDetails({ photosCount: nextCount });
-                      showToast('Photo uploaded successfully! 📸');
-                    }}
-                    className="aspect-[3/4] border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl flex flex-col items-center justify-center text-slate-400 active:scale-95 transition-transform"
-                  >
-                    <Plus size={16} />
-                    <span className="text-[9px] font-bold mt-1">Add Photo</span>
-                  </button>
-                )}
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">Currently showing {(myProfile?.photos || []).length} profile photos. Uploaded photos are visible to matched members.</p>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium">Currently showing {myPhotosCount} profile photos. Uploaded photos are visible to matched members.</p>
-            </div>
+            )}
 
             {/* Profile Bio Config */}
             <div className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">

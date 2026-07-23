@@ -12,9 +12,11 @@ import { useInterests } from '../../../../hooks/useInterests';
 import {
   matrimonialProfileService,
   matrimonialModerationService,
-  matrimonialChatService
+  matrimonialChatService,
+  matrimonialMarriageService
 } from '../../../../core/api/matrimonialService';
 import MatchScoreBadge from './components/MatchScoreBadge';
+import MarriageSuccessScreen from './components/MarriageSuccessScreen';
 
 // ─── Info Row ──────────────────────────────────────────────────────────────────
 const InfoRow = ({ label, value, icon: Icon }) => (
@@ -54,9 +56,15 @@ const MatrimonialProfilePage = () => {
   const [toast, setToast]             = useState('');
   const [interestStatus, setInterestStatus] = useState(null); // null | 'sent' | 'accepted'
   const [myInterestId, setMyInterestId] = useState(null);
-  const [reportModal, setReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
+  const [reportModal, setReportModal]     = useState(false);
+  const [reportReason, setReportReason]   = useState('');
   const [reportSending, setReportSending] = useState(false);
+
+  // ─── Marriage Lifecycle State ─────────────────────────────────────────────
+  const [marriageModal, setMarriageModal]       = useState(false);
+  const [marriageLoading, setMarriageLoading]   = useState(false);
+  const [showMarriageSuccess, setShowMarriageSuccess] = useState(false);
+  const [pendingMarriageRequestId, setPendingMarriageRequestId] = useState(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2800); };
 
@@ -155,6 +163,21 @@ const MatrimonialProfilePage = () => {
     }
   };
 
+  // ─── Send Marriage Request ────────────────────────────────────────────────
+  const handleMarkAsMarried = async () => {
+    if (marriageLoading) return;
+    setMarriageLoading(true);
+    try {
+      await matrimonialMarriageService.sendRequest({ message: '' });
+      showToast('Marriage confirmation sent! Waiting for partner\'s response. 💍');
+      setMarriageModal(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to send marriage request.');
+    } finally {
+      setMarriageLoading(false);
+    }
+  };
+
   const handleToggleShortlist = async () => {
     const res = await matriCtx.toggleShortlist(profile._id);
     showToast(isShortlisted ? 'Removed from shortlist' : 'Shortlisted ⭐');
@@ -188,6 +211,14 @@ const MatrimonialProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28">
+
+      {/* ─── MARRIAGE SUCCESS SCREEN ─── */}
+      {showMarriageSuccess && (
+        <MarriageSuccessScreen
+          partnerName={profile?.personal?.fullName}
+          onDismiss={() => { setShowMarriageSuccess(false); navigate('/member/matrimonial'); }}
+        />
+      )}
 
       {/* ─── PHOTO GALLERY ─── */}
       <div className="relative bg-zinc-900">
@@ -336,7 +367,7 @@ const MatrimonialProfilePage = () => {
         </SectionCard>
 
         {/* Locked gate or full details */}
-        {isConnected || profile.visibility === 'public' ? (
+        {!profile.isRestricted || isConnected ? (
           <>
             <SectionCard title="Religious Background" icon={Moon}>
               <div className="grid grid-cols-2 gap-x-4">
@@ -397,8 +428,14 @@ const MatrimonialProfilePage = () => {
             <Lock size={20} className="text-slate-400 mx-auto mb-2" />
             <p className="text-[13px] font-black text-slate-800">Additional Details Locked</p>
             <p className="text-[11.5px] text-slate-400 mt-1 font-semibold leading-relaxed">
-              Religious, family, and career details unlock automatically once your interest is accepted.
+              These details unlock automatically if they accept your interest request, or you can view them instantly with a Premium Subscription.
             </p>
+            <button 
+              onClick={() => navigate('/member/matrimonial/subscription')}
+              className="mt-4 bg-rose-50 text-rose-500 font-bold text-[12px] px-4 py-2 rounded-lg border border-rose-100 active:scale-95 transition-transform"
+            >
+              Get Premium Subscription
+            </button>
           </div>
         )}
       </div>
@@ -442,6 +479,18 @@ const MatrimonialProfilePage = () => {
               className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-500 active:scale-90">
               <Phone size={21} />
             </a>
+          )}
+
+          {/* Mark as Married — only for connected, non-closed profiles */}
+          {isConnected && !profile.isClosed && (
+            <button
+              id="mark-as-married-btn"
+              onClick={() => setMarriageModal(true)}
+              className="w-12 h-12 rounded-xl bg-pink-50 border border-pink-200 flex items-center justify-center active:scale-90 shrink-0"
+              title="Mark as Married"
+            >
+              <span style={{ fontSize: '20px', lineHeight: 1 }} role="img" aria-label="ring">💍</span>
+            </button>
           )}
         </div>
       </div>
@@ -502,6 +551,44 @@ const MatrimonialProfilePage = () => {
               Submit Report
             </button>
             <button onClick={() => setReportModal(false)} className="w-full py-3 text-slate-400 text-[12px] font-bold mt-2">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MARRIAGE CONFIRMATION MODAL ─── */}
+      {marriageModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMarriageModal(false)} />
+          <div className="bg-white w-full rounded-t-[28px] p-6 z-50 relative shadow-2xl max-w-md">
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+            <div className="text-center mb-5">
+              <span style={{ fontSize: '48px', lineHeight: 1, display: 'block', marginBottom: '12px' }} role="img" aria-label="rings">💍🥚</span>
+              <h3 className="text-[17px] font-black text-slate-800 mb-2">Confirm Marriage?</h3>
+              <p className="text-[13px] text-slate-500 font-semibold leading-relaxed">
+                You are about to send a marriage confirmation request to <strong className="text-slate-800">{profile?.personal?.fullName || 'this person'}</strong>.
+              </p>
+              <p className="text-[12px] text-rose-500 font-bold mt-3 bg-rose-50 rounded-xl px-4 py-2">
+                Once both parties confirm, both profiles will be permanently closed and removed from matchmaking.
+              </p>
+            </div>
+            <button
+              id="confirm-marriage-request-btn"
+              onClick={handleMarkAsMarried}
+              disabled={marriageLoading}
+              className="w-full py-3.5 rounded-xl text-[14px] font-extrabold text-white flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60 mb-3"
+              style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}
+            >
+              {marriageLoading
+                ? <Loader2 size={16} className="animate-spin" />
+                : <span role="img" aria-label="ring">💍</span>}
+              Send Marriage Confirmation
+            </button>
+            <button
+              onClick={() => setMarriageModal(false)}
+              className="w-full py-3 text-slate-400 text-[12px] font-bold"
+            >
               Cancel
             </button>
           </div>

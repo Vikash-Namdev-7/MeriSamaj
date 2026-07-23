@@ -152,6 +152,10 @@ const MatrimonialChatPage = () => {
   const navigate = useNavigate();
   const currentUserId = getCurrentUserId();
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   const {
     messages, loading, sending,
     fetchMessages, sendMessage, deleteMessage,
@@ -358,9 +362,6 @@ const MatrimonialChatPage = () => {
         </div>
         <div className="flex items-center gap-1.5">
           <button className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90">
-            <Phone size={18} />
-          </button>
-          <button className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90">
             <MoreVertical size={18} />
           </button>
         </div>
@@ -433,51 +434,59 @@ const MatrimonialChatPage = () => {
         </div>
       )}
 
-      {/* Input Bar */}
-      <div className="bg-white border-t border-slate-100 px-3 py-2.5 shrink-0"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}>
-        
-        {/* Upload Progress Banner */}
-        {sending && imgFile && (
-          <div className="absolute bottom-full left-0 right-0 bg-slate-800 text-white text-[12px] font-bold px-4 py-2 flex items-center justify-between z-10 animate-fade-in-up">
-            <span className="flex items-center gap-2">
-              <Loader2 size={14} className="animate-spin" />
-              Uploading image...
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-end gap-2">
-          <button onClick={() => fileInputRef.current?.click()}
-            disabled={sending}
-            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 shrink-0 disabled:opacity-40 disabled:active:scale-100">
-            <ImageIcon size={18} />
-          </button>
-          <input ref={fileInputRef} type="file" accept="image/jpeg, image/jpg, image/png, image/webp" className="hidden" onChange={handleImageSelect} disabled={sending} />
-
-          <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 flex items-end gap-2 min-h-[44px]">
-            <textarea
-              ref={inputRef}
-              value={text}
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              disabled={sending && imgFile}
-              placeholder={sending && imgFile ? "Uploading..." : "Type a message..."}
-              rows={1}
-              className="flex-1 bg-transparent text-[13.5px] font-semibold text-slate-800 resize-none outline-none max-h-24 placeholder-slate-400 leading-relaxed disabled:opacity-50"
-              style={{ minHeight: '20px' }}
-            />
-          </div>
-
-          <button
-            onClick={handleSend}
-            disabled={(!text.trim() && !imgFile) || sending}
-            className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-200 active:scale-90 transition-all disabled:opacity-40 shrink-0"
-          >
-            {sending && !imgFile ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
-          </button>
+      {/* Input Bar or Read-Only Banner */}
+      {conversation?.isReadOnly ? (
+        <div className="bg-slate-100 border-t border-slate-200 px-4 py-4 text-center shrink-0">
+          <p className="text-[13px] font-bold text-slate-500 flex items-center justify-center gap-2">
+            <Info size={16} /> This conversation has been archived after marriage confirmation.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white border-t border-slate-100 px-3 py-2.5 shrink-0"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}>
+          
+          {/* Upload Progress Banner */}
+          {sending && imgFile && (
+            <div className="absolute bottom-full left-0 right-0 bg-slate-800 text-white text-[12px] font-bold px-4 py-2 flex items-center justify-between z-10 animate-fade-in-up">
+              <span className="flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Uploading image...
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <button onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+              className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-90 shrink-0 disabled:opacity-40 disabled:active:scale-100">
+              <ImageIcon size={18} />
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/jpeg, image/jpg, image/png, image/webp" className="hidden" onChange={handleImageSelect} disabled={sending} />
+
+            <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 flex items-end gap-2 min-h-[44px]">
+              <textarea
+                ref={inputRef}
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                disabled={sending && imgFile}
+                placeholder={sending && imgFile ? "Uploading..." : "Type a message..."}
+                rows={1}
+                className="flex-1 bg-transparent text-[13.5px] font-semibold text-slate-800 resize-none outline-none max-h-24 placeholder-slate-400 leading-relaxed disabled:opacity-50"
+                style={{ minHeight: '20px' }}
+              />
+            </div>
+
+            <button
+              onClick={handleSend}
+              disabled={(!text.trim() && !imgFile) || sending}
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-200 active:scale-90 transition-all disabled:opacity-40 shrink-0"
+            >
+              {sending && !imgFile ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

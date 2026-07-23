@@ -11,7 +11,9 @@ const ChatListPage = ({ isHub = false }) => {
   
   // Tab persistence
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('messagesHub_activeTab') || 'all';
+    let saved = localStorage.getItem('messagesHub_activeTab') || 'all';
+    if (saved === 'groups') saved = 'all';
+    return saved;
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,13 +30,11 @@ const ChatListPage = ({ isHub = false }) => {
 
   // Filter conversations based on tab and search
   const filteredConvs = useMemo(() => {
-    let filtered = conversations;
+    let filtered = conversations.filter(c => c.type !== 'group');
 
     // 1. Filter by Tab
     if (activeTab === 'direct') {
       filtered = filtered.filter(c => c.type === 'direct');
-    } else if (activeTab === 'groups') {
-      filtered = filtered.filter(c => c.type === 'group');
     } else if (activeTab === 'matrimonial') {
       filtered = filtered.filter(c => c.type === 'matrimonial');
     }
@@ -51,7 +51,6 @@ const ChatListPage = ({ isHub = false }) => {
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'direct', label: 'Direct' },
-    { id: 'groups', label: 'Groups' },
     { id: 'matrimonial', label: 'Matrimonial' }
   ];
 
@@ -63,9 +62,8 @@ const ChatListPage = ({ isHub = false }) => {
   const getEmptyState = () => {
     if (searchQuery) return { icon: Search, title: 'No results found', desc: `No conversations match "${searchQuery}"` };
     if (activeTab === 'direct') return { icon: MessageCircle, title: 'No direct chats', desc: 'Start a conversation with a community member.' };
-    if (activeTab === 'groups') return { icon: Users, title: 'No joined groups', desc: 'Discover and join community groups.' };
     if (activeTab === 'matrimonial') return { icon: Heart, title: 'No matrimonial chats', desc: 'Chats will appear here when an interest is accepted.' };
-    return { icon: MessageCircle, title: 'No conversations yet', desc: 'Start chatting with members or join groups.' };
+    return { icon: MessageCircle, title: 'No conversations yet', desc: 'Start chatting with members.' };
   };
 
   const emptyState = getEmptyState();
@@ -192,14 +190,6 @@ const ChatListPage = ({ isHub = false }) => {
                   className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
                 >
                   Browse Directory
-                </button>
-              )}
-              {activeTab === 'groups' && (
-                <button
-                  onClick={() => navigate('/member/groups')}
-                  className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
-                >
-                  Discover Groups
                 </button>
               )}
               {activeTab === 'matrimonial' && (

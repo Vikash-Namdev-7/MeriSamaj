@@ -591,7 +591,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
 
                   {/* Media */}
                   {msg.mediaUrl && msg.type === 'image' && (
-                    <img src={msg.mediaUrl} alt="img" className="rounded-xl max-w-full mb-1 max-h-64 object-cover" />
+                    <img src={msg.mediaUrl} alt="img" className="rounded-xl max-w-[220px] max-h-[220px] mb-1 object-cover" />
                   )}
 
                   {/* Text */}

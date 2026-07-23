@@ -6,6 +6,7 @@ const MatrimonialProfile = require('../../models/MatrimonialProfile');
 const ProfileReport      = require('../../models/ProfileReport');
 const InterestRequest    = require('../../models/InterestRequest');
 const UserSubscription   = require('../../models/UserSubscription');
+const MarriageRequest    = require('../../models/MarriageRequest');
 const { createNotification } = require('../../services/notificationService');
 
 // ─── Community Dashboard (─────────────────────────────────────────────────────────
@@ -22,8 +23,8 @@ exports.getCommunityStats = async (req, res) => {
     const communityUserIds = await User.find({ communityId }).distinct('_id');
 
     const [
-      total, active, pending, hidden, connected, verified,
-      weekly, monthly, recentInterests
+      total, active, pending, hidden, connected, verified, married,
+      weekly, monthly, recentInterests, pendingMarriageRequests
     ] = await Promise.all([
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'active' }),
@@ -31,6 +32,7 @@ exports.getCommunityStats = async (req, res) => {
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'hidden' }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, maritalLifecycle: 'connected' }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, verificationStatus: 'verified' }),
+      MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'married' }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, createdAt: { $gte: weekAgo } }),
       MatrimonialProfile.countDocuments({ communityId, isDeleted: false, createdAt: { $gte: monthAgo } }),
       InterestRequest.countDocuments({
@@ -39,16 +41,18 @@ exports.getCommunityStats = async (req, res) => {
           { senderId: { $in: communityUserIds } },
           { receiverId: { $in: communityUserIds } }
         ]
-      })
+      }),
+      MarriageRequest.countDocuments({ status: 'pending', requesterId: { $in: communityUserIds } })
     ]);
 
     res.json({
       status: 'success',
       data: {
-        total, active, pending, hidden, connected, verified,
+        total, active, pending, hidden, connected, verified, married,
         weeklyRegistrations: weekly,
         monthlyRegistrations: monthly,
-        recentInterests
+        recentInterests,
+        pendingMarriageRequests
       }
     });
   } catch (err) {
@@ -256,3 +260,52 @@ exports.resolveReport = async (req, res) => {
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
+
+// ─── Married Members (Community-scoped) ──────────────────────────────────────
+exports.getMarriedMembers = async (req, res) => {
+  try {
+    const communityId = req.communityId;
+    const { page = 1, limit = 20 } = req.query;
+
+    const total    = await MatrimonialProfile.countDocuments({ communityId, isDeleted: false, status: 'married' });
+    const profiles = await MatrimonialProfile.find({ communityId, isDeleted: false, status: 'married' })
+      .populate('userId', 'name phone')
+      .populate('marriageConfirmedWith', 'name')
+      .sort({ closedAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean({ virtuals: true });
+
+    res.json({ status: 'success', data: { profiles, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Community Marriage Requests ──────────────────────────────────────────────
+exports.getCommunityMarriageRequests = async (req, res) => {
+  try {
+    const communityId = req.communityId;
+    const { page = 1, limit = 20, status } = req.query;
+
+    const User = require('../../models/User');
+    const communityUserIds = await User.find({ communityId }).distinct('_id');
+
+    const query = { requesterId: { $in: communityUserIds } };
+    if (status) query.status = status;
+
+    const total = await MarriageRequest.countDocuments(query);
+    const requests = await MarriageRequest.find(query)
+      .populate('requesterId', 'name phone')
+      .populate('receiverId', 'name phone')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
+
+    res.json({ status: 'success', data: { requests, total, page: Number(page) } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+

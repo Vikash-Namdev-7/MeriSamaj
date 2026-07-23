@@ -31,7 +31,7 @@ export const OverviewDashboard = ({ data }) => {
     { title: 'Pending Photos',    value: stats.pendingPhotos?.toLocaleString(),   icon: Image,        color: 'text-amber-400' },
     { title: 'Open Reports',      value: stats.pendingReports?.toLocaleString(),  icon: Flag,         color: 'text-red-400' },
     { title: 'Total Subscriptions',value: stats.totalSubscriptions?.toLocaleString(), icon: Crown,   color: 'text-purple-400' },
-    { title: 'Active Subscriptions',value:stats.activeSubscriptions?.toLocaleString(), icon: Heart,  color: 'text-rose-400' },
+    { title: 'Total Marriages',   value: stats.totalMarriages?.toLocaleString(),  icon: Heart,        color: 'text-pink-400' },
   ];
 
   return (

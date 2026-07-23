@@ -137,7 +137,16 @@ exports.sendMessage = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Access denied.' });
     }
 
-    // ─── Verify accepted interest ─────────────────────────────────────────────
+    // ─── Block messages in archived (post-marriage) conversations ─────────────────
+    if (conversation.isReadOnly) {
+      return res.status(403).json({
+        status:  'error',
+        message: 'This matrimonial conversation has been archived after marriage confirmation. Messages are read-only.',
+        code:    'CONVERSATION_ARCHIVED'
+      });
+    }
+
+    // ─── Verify accepted interest ──────────────────────────────────────────────────────
     const interest = await InterestRequest.findOne({ _id: conversation.referenceId, status: 'accepted' });
     if (!interest) {
       return res.status(403).json({ status: 'error', message: 'Chat requires an accepted interest request.' });

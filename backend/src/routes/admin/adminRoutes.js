@@ -41,6 +41,10 @@ router.use('/professional', adminProfessionalRoutes);
 const adminMatrimonialRoutes = require('./adminMatrimonialRoutes');
 router.use('/matrimonial', adminMatrimonialRoutes);
 
+// Group Management Routes
+const adminGroupRoutes = require('./adminGroupRoutes');
+router.use('/groups', adminGroupRoutes);
+
 // Social / Feed Management Routes
 const adminSocialRoutes = require('./adminSocialRoutes');
 router.use('/social', adminSocialRoutes);

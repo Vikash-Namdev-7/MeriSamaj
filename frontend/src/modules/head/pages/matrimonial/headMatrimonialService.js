@@ -16,4 +16,8 @@ export const headMatrimonialService = {
   // Reports from community
   getCommunityReports:  (params) => axiosPrivate.get(`${BASE}/reports`, { params }),
   resolveReport:        (id, body) => axiosPrivate.put(`${BASE}/reports/${id}`, body),
+
+  // Marriages
+  getMarriedMembers:    (params) => axiosPrivate.get(`${BASE}/marriages/members`, { params }),
+  getCommunityMarriageRequests: (params) => axiosPrivate.get(`${BASE}/marriages/requests`, { params }),
 };

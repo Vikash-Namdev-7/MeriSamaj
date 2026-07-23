@@ -28,7 +28,7 @@ const matrimonialProfileSchema = new mongoose.Schema(
     // ─── Profile Status & Visibility ──────────────────────────────────────────
     status: {
       type: String,
-      enum: ['draft', 'pending', 'active', 'hidden', 'deleted'],
+      enum: ['draft', 'pending', 'active', 'hidden', 'suspended', 'married', 'deleted'],
       default: 'draft',
       index: true
     },
@@ -151,13 +151,25 @@ const matrimonialProfileSchema = new mongoose.Schema(
     monthlyProfileViews: { type: Number, default: 0 },
     weeklyProfileViews:  { type: Number, default: 0 },
 
-    // ─── Marital Lifecycle ───────────────────────────────────────────────────────────
-    // Tracks progress: single → connected (interest accepted) → engaged → married (future)
+    // ─── Marital Lifecycle ────────────────────────────────────────────────────────
+    // Tracks progress: single → connected → married
     maritalLifecycle: {
       type: String,
-      enum: ['single', 'connected'],
+      enum: ['single', 'connected', 'married'],
       default: 'single',
       index: true
+    },
+
+    // ─── Marriage / Closure Fields ────────────────────────────────────────────
+    isClosed: { type: Boolean, default: false, index: true },   // Removed from all matchmaking
+    closedAt: { type: Date },
+    marriageConfirmedWith: {                                     // Partner's userId
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    marriageRequestId: {                                         // The MarriageRequest that closed this profile
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MarriageRequest'
     },
 
     // ─── Soft Delete ─────────────────────────────────────────────────────────

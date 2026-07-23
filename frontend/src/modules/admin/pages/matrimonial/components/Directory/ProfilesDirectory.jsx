@@ -7,6 +7,7 @@ const STATUS_COLORS = {
   inactive: 'bg-gray-500/20 text-gray-400',
   hidden:   'bg-amber-500/20 text-amber-400',
   banned:   'bg-red-500/20 text-red-400',
+  married:  'bg-pink-500/20 text-pink-400',
 };
 
 const VERIFY_COLORS = {
@@ -119,6 +120,11 @@ export const ProfilesDirectory = ({ data }) => {
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[p.status] || STATUS_COLORS.inactive}`}>
                         {p.status}
                       </span>
+                      {p.isClosed && (
+                        <span className="ml-2 px-2 py-0.5 rounded text-[9px] font-bold bg-pink-500/10 text-pink-400 uppercase border border-pink-500/20">
+                          Closed
+                        </span>
+                      )}
                     </td>
                     {/* Verification */}
                     <td className="px-4 py-3">
@@ -136,16 +142,50 @@ export const ProfilesDirectory = ({ data }) => {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        {p.verificationStatus !== 'verified' && (
+                        {p.verificationStatus !== 'verified' && !p.isClosed && (
                           <button onClick={() => handleVerify(p._id, 'verified')} disabled={isLoading}
-                            className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 disabled:opacity-40 transition-colors">
+                            className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 disabled:opacity-40 transition-colors"
+                            title="Verify Profile">
                             {isLoading ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
                           </button>
                         )}
-                        {p.verificationStatus !== 'rejected' && (
+                        {p.verificationStatus !== 'rejected' && !p.isClosed && (
                           <button onClick={() => handleVerify(p._id, 'rejected')} disabled={isLoading}
-                            className="p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 disabled:opacity-40 transition-colors">
+                            className="p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 disabled:opacity-40 transition-colors"
+                            title="Reject Profile">
                             <XCircle size={13} />
+                          </button>
+                        )}
+                        {!p.isClosed && (
+                          <button onClick={async () => {
+                            if (!window.confirm('Force close this profile as married?')) return;
+                            setActionId(p._id);
+                            try {
+                              await matrimonialService.closeProfile(p._id);
+                              showToast('Profile Closed');
+                              refreshProfiles?.();
+                            } catch(e) { showToast('Action failed'); }
+                            finally { setActionId(null); }
+                          }} disabled={isLoading}
+                            className="p-1.5 bg-pink-500/10 text-pink-400 rounded-lg hover:bg-pink-500/20 disabled:opacity-40 transition-colors"
+                            title="Force Close Profile (Married)">
+                            <span style={{fontSize:'12px'}}>💍</span>
+                          </button>
+                        )}
+                        {p.isClosed && (
+                          <button onClick={async () => {
+                            if (!window.confirm('Reopen this profile to Pending status?')) return;
+                            setActionId(p._id);
+                            try {
+                              await matrimonialService.reopenProfile(p._id);
+                              showToast('Profile Reopened (Pending)');
+                              refreshProfiles?.();
+                            } catch(e) { showToast('Action failed'); }
+                            finally { setActionId(null); }
+                          }} disabled={isLoading}
+                            className="px-2 py-1 bg-amber-500/10 text-amber-400 rounded-lg text-[10px] font-bold hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
+                            title="Reopen Profile">
+                            Reopen
                           </button>
                         )}
                       </div>

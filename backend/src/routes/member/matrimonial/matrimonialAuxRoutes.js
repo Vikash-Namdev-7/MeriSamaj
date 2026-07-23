@@ -2,7 +2,8 @@ const express = require('express');
 const router  = express.Router();
 
 const dashboardCtrl = require('../../../controllers/matrimonial/matrimonialDashboardController');
-const modCtrl = require('../../../controllers/matrimonial/matrimonialModerationController');
+const modCtrl        = require('../../../controllers/matrimonial/matrimonialModerationController');
+const marriageCtrl   = require('../../../controllers/matrimonial/matrimonialMarriageController');
 const { checkFeature, attachSubscription } = require('../../../middleware/subscriptionMiddleware');
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -23,5 +24,11 @@ router.get('/blocked',           modCtrl.getBlockedUsers);
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 router.post('/report', modCtrl.reportProfile);
+
+// ─── Marriage Lifecycle ─────────────────────────────────────────────────────────
+router.post('/marriage/request',          marriageCtrl.sendMarriageRequest);
+router.post('/marriage/respond/:id',      marriageCtrl.respondToMarriageRequest);
+router.get('/marriage/requests',          marriageCtrl.getMyMarriageRequests);
+router.get('/marriage/status',            marriageCtrl.getMarriageStatus);
 
 module.exports = router;
