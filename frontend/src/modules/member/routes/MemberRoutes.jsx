@@ -41,6 +41,7 @@ import InterestsPage from '../pages/matrimonial/InterestsPage';
 import MatrimonialSearchPage from '../pages/matrimonial/MatrimonialSearchPage';
 import MatrimonialShortlistPage from '../pages/matrimonial/MatrimonialShortlistPage';
 import MatrimonialSuccessStories from '../pages/matrimonial/MatrimonialSuccessStories';
+import SuccessStoryDetails from '../pages/matrimonial/SuccessStoryDetails';
 import { MatrimonialProvider } from '../pages/matrimonial/MatrimonialContext';
 import MatrimonialChatPage from '../pages/matrimonial/MatrimonialChatPage';
 import MatrimonialSubscriptionPage from '../pages/matrimonial/MatrimonialSubscriptionPage';
@@ -140,6 +141,7 @@ export const MemberRoutes = () => {
               <Route path="search" element={<AnimatedPage><MatrimonialSearchPage /></AnimatedPage>} />
               <Route path="shortlist" element={<AnimatedPage><MatrimonialShortlistPage /></AnimatedPage>} />
               <Route path="stories" element={<AnimatedPage><MatrimonialSuccessStories /></AnimatedPage>} />
+              <Route path="success-stories/:id" element={<AnimatedPage><SuccessStoryDetails /></AnimatedPage>} />
               <Route path=":profileId" element={<AnimatedPage><MatrimonialProfilePage /></AnimatedPage>} />
               <Route path="chat/:conversationId" element={<AnimatedPage><MatrimonialChatPage /></AnimatedPage>} />
               <Route path="subscription" element={<AnimatedPage><MatrimonialSubscriptionPage /></AnimatedPage>} />

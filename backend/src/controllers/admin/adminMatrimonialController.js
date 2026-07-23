@@ -9,6 +9,7 @@ const ProfileReport       = require('../../models/ProfileReport');
 const MatrimonialSettings = require('../../models/MatrimonialSettings');
 const InterestRequest     = require('../../models/InterestRequest');
 const MarriageRequest     = require('../../models/MarriageRequest');
+const SuccessStory        = require('../../models/SuccessStory');
 const { createNotification, notifyReportActioned, notifyProfileSuspended } = require('../../services/notificationService');
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
@@ -25,7 +26,8 @@ exports.getStats = async (req, res) => {
       totalSubscriptions, activeSubscriptions,
       connectedMembers,
       dailyRegistrations, weeklyRegistrations, monthlyRegistrations,
-      totalInterests, acceptedInterests
+      totalInterests, acceptedInterests,
+      publishedStories, eligibleForStories
     ] = await Promise.all([
       MatrimonialProfile.countDocuments({ isDeleted: false }),
       MatrimonialProfile.countDocuments({ isDeleted: false, status: 'pending' }),
@@ -42,7 +44,9 @@ exports.getStats = async (req, res) => {
       MatrimonialProfile.countDocuments({ isDeleted: false, createdAt: { $gte: weekAgo } }),
       MatrimonialProfile.countDocuments({ isDeleted: false, createdAt: { $gte: monthAgo } }),
       InterestRequest.countDocuments(),
-      InterestRequest.countDocuments({ status: 'accepted' })
+      InterestRequest.countDocuments({ status: 'accepted' }),
+      SuccessStory.countDocuments({ status: 'published' }),
+      SuccessStory.countDocuments({ status: 'eligible' })
     ]);
 
     res.json({
@@ -65,7 +69,9 @@ exports.getStats = async (req, res) => {
         totalInterests,
         acceptedInterests,
         interestAcceptanceRate: totalInterests > 0
-          ? Math.round((acceptedInterests / totalInterests) * 100) : 0
+          ? Math.round((acceptedInterests / totalInterests) * 100) : 0,
+        publishedStories,
+        eligibleForStories
       }
     });
   } catch (err) {

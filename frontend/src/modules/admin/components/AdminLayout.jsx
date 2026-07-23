@@ -73,6 +73,7 @@ export const AdminLayout = () => {
             { name: 'Moderation Queue', path: '/admin/matrimonial', search: '?tab=moderation' },
             { name: 'Reports & Complaints', path: '/admin/matrimonial', search: '?tab=reports' },
             { name: 'Match Analytics', path: '/admin/matrimonial', search: '?tab=analytics' },
+            { name: 'Success Stories', path: '/admin/marketing/success-stories' },
             { name: 'Settings', path: '/admin/matrimonial', search: '?tab=settings' }
           ]
         },

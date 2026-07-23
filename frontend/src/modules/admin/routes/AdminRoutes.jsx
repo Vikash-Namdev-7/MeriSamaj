@@ -27,6 +27,7 @@ import CityFeedManagement from '../pages/social/CityFeedManagement';
 import CommunityFeedManagement from '../pages/social/CommunityFeedManagement';
 import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
 import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
+import SuccessStoriesManagement from '../pages/matrimonial/SuccessStoriesManagement';
 import AdminDharmashalaManagement from '../pages/dharmashala/AdminDharmashalaManagement';
 
 export const AdminRoutes = () => {
@@ -46,6 +47,7 @@ export const AdminRoutes = () => {
         {/* Other Admin views */}
         <Route path="users" element={<UserManagement />} />
         <Route path="matrimonial" element={<PlatformMatrimonialManagement />} />
+        <Route path="marketing/success-stories" element={<SuccessStoriesManagement />} />
         <Route path="events" element={<EventsDesk />} />
         <Route path="cities" element={<CityManagement />} />
         {/* Community Head Management */}

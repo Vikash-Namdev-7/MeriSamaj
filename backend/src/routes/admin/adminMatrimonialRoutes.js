@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const adminMatCtrl = require('../../controllers/admin/adminMatrimonialController');
+const adminSuccessStoryCtrl = require('../../controllers/admin/adminSuccessStoryController');
 
 // ─── Stats & Analytics ────────────────────────────────────────────────────────
 router.get('/stats',      adminMatCtrl.getStats);
@@ -28,6 +29,16 @@ router.delete('/plans/:id',    adminMatCtrl.deletePlan);
 // ─── Settings ─────────────────────────────────────────────────────────────────
 router.get('/settings',        adminMatCtrl.getSettings);
 router.put('/settings',        adminMatCtrl.updateSettings);
+
+// ─── Success Stories ──────────────────────────────────────────────────────────
+router.get('/success-stories',              adminSuccessStoryCtrl.getAllStories);
+router.get('/success-stories/eligible',     adminSuccessStoryCtrl.getEligibleCouples);
+router.post('/success-stories',             adminSuccessStoryCtrl.createStory);
+router.put('/success-stories/:id',          adminSuccessStoryCtrl.updateStory);
+router.delete('/success-stories/:id',       adminSuccessStoryCtrl.deleteStory);
+router.put('/success-stories/:id/publish',  adminSuccessStoryCtrl.publishStory);
+router.put('/success-stories/:id/archive',  adminSuccessStoryCtrl.archiveStory);
+router.put('/success-stories/:id/feature',  adminSuccessStoryCtrl.toggleFeature);
 
 // ─── Marriage Lifecycle ────────────────────────────────────────────────────────
 router.get('/marriage-requests',            adminMatCtrl.listMarriageRequests);

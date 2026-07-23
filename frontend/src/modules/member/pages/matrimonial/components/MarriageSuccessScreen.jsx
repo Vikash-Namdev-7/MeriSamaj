@@ -6,7 +6,8 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Home, CheckCircle2 } from 'lucide-react';
+import { Heart, Home, CheckCircle2, Sparkles } from 'lucide-react';
+import { successStoryService } from '../../../../../core/api/matrimonialService';
 
 // ─── Confetti Particle ────────────────────────────────────────────────────────
 const CONFETTI_COLORS = [
@@ -26,6 +27,10 @@ const MarriageSuccessScreen = ({ partnerName, onDismiss }) => {
   const navigate = useNavigate();
   const [particles, setParticles] = useState([]);
   const [visible, setVisible]     = useState(true);
+  
+  // Consent State
+  const [showConsent, setShowConsent] = useState(false);
+  const [consentUpdating, setConsentUpdating] = useState(false);
 
   // Generate confetti particles
   useEffect(() => {
@@ -39,12 +44,24 @@ const MarriageSuccessScreen = ({ partnerName, onDismiss }) => {
     }));
     setParticles(generated);
 
-    // Auto-dismiss after 8 seconds
+    // Instead of auto-dismissing to home, auto-transition to consent prompt after 8 seconds
     const timer = setTimeout(() => {
-      handleDismiss();
+      setShowConsent(true);
     }, 8000);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleUpdateConsent = async (allowPublicStory) => {
+    try {
+      setConsentUpdating(true);
+      await successStoryService.updateConsent({ allowPublicStory });
+    } catch (err) {
+      console.error('Failed to update consent:', err);
+    } finally {
+      setConsentUpdating(false);
+      handleDismiss();
+    }
+  };
 
   const handleDismiss = () => {
     setVisible(false);
@@ -119,37 +136,72 @@ const MarriageSuccessScreen = ({ partnerName, onDismiss }) => {
           </p>
         )}
 
-        {/* Info box */}
-        <div
-          className="rounded-2xl px-5 py-4 mb-8 text-left"
-          style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
-        >
-          <div className="flex items-start gap-3 mb-3">
-            <CheckCircle2 size={18} className="text-green-300 mt-0.5 shrink-0" />
-            <p className="text-white/90 text-sm">Your matrimonial profile has been successfully <strong>closed</strong>.</p>
-          </div>
-          <div className="flex items-start gap-3 mb-3">
-            <CheckCircle2 size={18} className="text-green-300 mt-0.5 shrink-0" />
-            <p className="text-white/90 text-sm">You have been <strong>removed from matchmaking</strong>, search, and recommendations.</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <Heart size={18} className="text-pink-300 mt-0.5 shrink-0" />
-            <p className="text-white/90 text-sm">Your matrimonial chat history is preserved as a <strong>read-only archive</strong>.</p>
-          </div>
-        </div>
+        {/* Dynamic Content: Celebration or Consent */}
+        {!showConsent ? (
+          <>
+            {/* Info box */}
+            <div
+              className="rounded-2xl px-5 py-4 mb-8 text-left"
+              style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <CheckCircle2 size={18} className="text-green-300 mt-0.5 shrink-0" />
+                <p className="text-white/90 text-sm">Your matrimonial profile has been successfully <strong>closed</strong>.</p>
+              </div>
+              <div className="flex items-start gap-3 mb-3">
+                <CheckCircle2 size={18} className="text-green-300 mt-0.5 shrink-0" />
+                <p className="text-white/90 text-sm">You have been <strong>removed from matchmaking</strong>, search, and recommendations.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Heart size={18} className="text-pink-300 mt-0.5 shrink-0" />
+                <p className="text-white/90 text-sm">Your matrimonial chat history is preserved as a <strong>read-only archive</strong>.</p>
+              </div>
+            </div>
 
-        {/* CTA Button */}
-        <button
-          onClick={handleDismiss}
-          className="w-full py-3.5 rounded-2xl font-bold text-purple-700 shadow-xl transition-all duration-200 active:scale-95 hover:shadow-2xl"
-          style={{ background: 'white' }}
-          id="marriage-success-dismiss-btn"
-        >
-          <span className="flex items-center justify-center gap-2">
-            <Home size={18} />
-            Go to Home
-          </span>
-        </button>
+            {/* CTA Button */}
+            <button
+              onClick={() => setShowConsent(true)}
+              className="w-full py-3.5 rounded-2xl font-bold text-purple-700 shadow-xl transition-all duration-200 active:scale-95 hover:shadow-2xl"
+              style={{ background: 'white' }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                Continue
+              </span>
+            </button>
+          </>
+        ) : (
+          <div className="animate-in fade-in zoom-in duration-300">
+            <div className="bg-white/20 p-6 rounded-2xl mb-8 backdrop-blur-md">
+              <Sparkles size={32} className="text-yellow-300 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white mb-2">Share Your Story!</h3>
+              <p className="text-white/90 text-sm leading-relaxed mb-4">
+                Would you like to inspire other families by sharing your success story on our platform?
+              </p>
+              <p className="text-white/70 text-xs italic">
+                (Both partners must agree before your story can be published by the admin.)
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => handleUpdateConsent(true)}
+                disabled={consentUpdating}
+                className="w-full py-3.5 rounded-2xl font-bold text-purple-700 shadow-xl transition-all duration-200 active:scale-95 hover:shadow-2xl disabled:opacity-50"
+                style={{ background: 'white' }}
+              >
+                {consentUpdating ? 'Saving...' : 'Yes, Share My Story! 💖'}
+              </button>
+              
+              <button
+                onClick={() => handleUpdateConsent(false)}
+                disabled={consentUpdating}
+                className="w-full py-3.5 rounded-2xl font-bold text-white shadow-xl transition-all duration-200 active:scale-95 hover:bg-white/20 border border-white/40 disabled:opacity-50"
+              >
+                No Thanks / Maybe Later
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CSS Keyframes */}
