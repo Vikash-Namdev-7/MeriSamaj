@@ -134,7 +134,7 @@ const getCategoryStyles = (category, lang) => {
   };
 };
 
-const RenderMedia = ({ url, onClick }) => {
+const RenderMedia = ({ url, onClick, isSingle = true }) => {
   const placeholders = {
     women_workshop_1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800',
     women_workshop_2: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600',
@@ -165,15 +165,17 @@ const RenderMedia = ({ url, onClick }) => {
     }
     const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : '';
     return embedUrl ? (
-      <iframe src={embedUrl} className="w-full h-full border-0 aspect-video bg-black" allowFullScreen title="YouTube Video" />
+      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm">
+        <iframe src={embedUrl} className="w-full h-full border-0" allowFullScreen title="YouTube Video" />
+      </div>
     ) : (
-      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-400">Invalid YouTube Link</div>
+      <div className="w-full h-36 bg-slate-900 flex items-center justify-center text-[10px] text-slate-400 rounded-2xl">Invalid YouTube Link</div>
     );
   }
 
   if (isInstagram) {
     return (
-      <div className="w-full h-full bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800" onClick={onClick}>
+      <div className="w-full h-36 bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800 rounded-2xl" onClick={onClick}>
         <span className="text-[12px] font-bold text-pink-500">Instagram Embed</span>
         <span className="text-[9px] text-slate-500 truncate max-w-full mt-1">{cleanUrl}</span>
       </div>
@@ -182,12 +184,28 @@ const RenderMedia = ({ url, onClick }) => {
 
   if (isVideo) {
     return (
-      <video src={cleanUrl} controls muted loop className="w-full h-full object-cover hover:scale-102 transition-transform duration-300 bg-black" />
+      <div className={isSingle ? "w-full rounded-2xl overflow-hidden" : "w-full h-full bg-black flex items-center justify-center"}>
+        <video 
+          src={cleanUrl} 
+          controls 
+          muted 
+          loop 
+          playsInline
+          className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl block" : "w-full h-full object-cover"} 
+        />
+      </div>
     );
   }
 
   return (
-    <img src={cleanUrl} alt="Post Attachment" className="w-full h-full object-cover hover:scale-102 transition-transform duration-300 cursor-pointer" onClick={onClick} />
+    <div className={isSingle ? "w-full rounded-2xl overflow-hidden" : "w-full h-full bg-slate-100 flex items-center justify-center"}>
+      <img 
+        src={cleanUrl} 
+        alt="Post Attachment" 
+        className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl block cursor-pointer hover:scale-[1.005] transition-transform duration-300" : "w-full h-full object-cover cursor-pointer"} 
+        onClick={onClick} 
+      />
+    </div>
   );
 };
 
@@ -196,30 +214,36 @@ const MultiImageGrid = ({ images, onClick }) => {
 
   if (images.length === 1) {
     return (
-      <div className="w-full mb-3 h-64 overflow-hidden rounded-none">
-        <RenderMedia url={images[0]} onClick={onClick} />
+      <div className="w-full mb-3 rounded-2xl overflow-hidden bg-slate-950/5 flex items-center justify-center">
+        <RenderMedia url={images[0]} onClick={onClick} isSingle={true} />
       </div>
     );
   }
 
   if (images.length === 2) {
     return (
-      <div className="w-full mb-3 h-48 grid grid-cols-2 gap-1.5 overflow-hidden rounded-none">
-        <RenderMedia url={images[0]} onClick={onClick} />
-        <RenderMedia url={images[1]} onClick={onClick} />
+      <div className="w-full mb-3 grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden min-h-[200px] max-h-[400px]">
+        <div className="w-full h-full bg-slate-900/5 rounded-xl overflow-hidden">
+          <RenderMedia url={images[0]} onClick={onClick} isSingle={false} />
+        </div>
+        <div className="w-full h-full bg-slate-900/5 rounded-xl overflow-hidden">
+          <RenderMedia url={images[1]} onClick={onClick} isSingle={false} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full mb-3 h-56 grid grid-cols-3 gap-1.5 overflow-hidden rounded-none">
-      <div className="col-span-2 h-full">
-        <RenderMedia url={images[0]} onClick={onClick} />
+    <div className="w-full mb-3 grid grid-cols-3 gap-1.5 rounded-2xl overflow-hidden min-h-[220px] max-h-[450px]">
+      <div className="col-span-2 h-full rounded-xl overflow-hidden">
+        <RenderMedia url={images[0]} onClick={onClick} isSingle={false} />
       </div>
       <div className="grid grid-rows-2 gap-1.5 h-full">
-        <RenderMedia url={images[1]} onClick={onClick} />
-        <div className="relative w-full h-full">
-          <RenderMedia url={images[2]} onClick={onClick} />
+        <div className="rounded-xl overflow-hidden h-full">
+          <RenderMedia url={images[1]} onClick={onClick} isSingle={false} />
+        </div>
+        <div className="relative w-full h-full rounded-xl overflow-hidden">
+          <RenderMedia url={images[2]} onClick={onClick} isSingle={false} />
           {images.length > 3 && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center text-white font-extrabold text-sm.5 pointer-events-none">
               +{images.length - 3}
@@ -379,8 +403,8 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
           </div>
         ) : (
           post.image && (
-            <div className="mb-3 h-64 bg-slate-50 flex items-center justify-center cursor-pointer overflow-hidden relative rounded-none" onClick={() => navigate(`/member/social/${post.id}`)}>
-              <img src={getSingleImageUrl(post.image)} alt="Post Banner" className="w-full h-full object-cover hover:scale-103 transition-transform duration-500" />
+            <div className="mb-3 bg-slate-950/5 flex items-center justify-center cursor-pointer overflow-hidden relative rounded-2xl" onClick={() => navigate(`/member/social/${post.id}`)}>
+              <RenderMedia url={post.image} onClick={() => navigate(`/member/social/${post.id}`)} isSingle={true} />
             </div>
           )
         )}

@@ -23,7 +23,7 @@ const getCategoryLabel = (category, lang) => {
   return labels[lang]?.[category] || category;
 };
 
-const RenderMedia = ({ url }) => {
+const RenderMedia = ({ url, isSingle = true }) => {
   const placeholders = {
     women_workshop_1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800',
     women_workshop_2: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600',
@@ -54,15 +54,17 @@ const RenderMedia = ({ url }) => {
     }
     const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : '';
     return embedUrl ? (
-      <iframe src={embedUrl} className="w-full h-full border-0 aspect-video bg-black" allowFullScreen title="YouTube Video" />
+      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm">
+        <iframe src={embedUrl} className="w-full h-full border-0" allowFullScreen title="YouTube Video" />
+      </div>
     ) : (
-      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-400">Invalid YouTube Link</div>
+      <div className="w-full h-36 bg-slate-900 flex items-center justify-center text-[10px] text-slate-400 rounded-2xl">Invalid YouTube Link</div>
     );
   }
 
   if (isInstagram) {
     return (
-      <div className="w-full h-full bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800">
+      <div className="w-full h-36 bg-[#121212] flex flex-col items-center justify-center p-3 text-center border border-slate-800 rounded-2xl">
         <span className="text-[12px] font-bold text-pink-500">Instagram Embed</span>
         <span className="text-[9px] text-slate-500 truncate max-w-full mt-1">{cleanUrl}</span>
       </div>
@@ -71,12 +73,27 @@ const RenderMedia = ({ url }) => {
 
   if (isVideo) {
     return (
-      <video src={cleanUrl} controls muted loop className="w-full h-full object-cover rounded-2xl bg-black animate-fade-in" />
+      <div className={isSingle ? "w-full rounded-2xl overflow-hidden" : "w-full h-full bg-black flex items-center justify-center"}>
+        <video 
+          src={cleanUrl} 
+          controls 
+          muted 
+          loop 
+          playsInline
+          className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl animate-fade-in block" : "w-full h-full object-cover"} 
+        />
+      </div>
     );
   }
 
   return (
-    <img src={cleanUrl} alt="Post Attachment" className="w-full h-full object-cover rounded-2xl animate-fade-in" />
+    <div className={isSingle ? "w-full rounded-2xl overflow-hidden" : "w-full h-full bg-slate-100 flex items-center justify-center"}>
+      <img 
+        src={cleanUrl} 
+        alt="Post Attachment" 
+        className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl animate-fade-in block" : "w-full h-full object-cover"} 
+      />
+    </div>
   );
 };
 
@@ -301,8 +318,8 @@ const PostDetailPage = () => {
             </div>
           ) : (
             post.image && (
-              <div className="mx-5 mb-3.5 h-64 bg-slate-50 flex items-center justify-center overflow-hidden relative rounded-2xl border border-slate-100">
-                <img src={imagePlaceholders[post.image] || post.image} alt="Post Attachment" className="w-full h-full object-cover hover:scale-103 transition-transform duration-500" />
+              <div className="mx-5 mb-3.5 bg-slate-950/5 flex items-center justify-center overflow-hidden relative rounded-2xl border border-slate-100">
+                <RenderMedia url={post.image} isSingle={true} />
               </div>
             )
           )}
