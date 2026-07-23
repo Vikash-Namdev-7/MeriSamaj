@@ -101,3 +101,11 @@ export const matrimonialMarriageService = {
   getStatus:      () => axiosPrivate.get(`${BASE}/marriage/status`),
 };
 
+// ─── Success Stories ──────────────────────────────────────────────────────────
+export const successStoryService = {
+  getPublishedStories: ()     => axiosPrivate.get(`${BASE}/success-stories`),
+  getStoryDetails:     (id)   => axiosPrivate.get(`${BASE}/success-stories/${id}`),
+  updateConsent:       (data) => axiosPrivate.put(`${BASE}/success-stories/request`, data),
+};
+
+

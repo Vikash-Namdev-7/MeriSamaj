@@ -3,6 +3,7 @@ const router  = express.Router();
 
 const dashboardCtrl = require('../../../controllers/matrimonial/matrimonialDashboardController');
 const modCtrl        = require('../../../controllers/matrimonial/matrimonialModerationController');
+const successStoryCtrl   = require('../../../controllers/matrimonial/successStoryController');
 const marriageCtrl   = require('../../../controllers/matrimonial/matrimonialMarriageController');
 const { checkFeature, attachSubscription } = require('../../../middleware/subscriptionMiddleware');
 
@@ -30,5 +31,10 @@ router.post('/marriage/request',          marriageCtrl.sendMarriageRequest);
 router.post('/marriage/respond/:id',      marriageCtrl.respondToMarriageRequest);
 router.get('/marriage/requests',          marriageCtrl.getMyMarriageRequests);
 router.get('/marriage/status',            marriageCtrl.getMarriageStatus);
+
+// ─── Success Stories ────────────────────────────────────────────────────────
+router.get('/success-stories',              successStoryCtrl.getPublishedStories);
+router.get('/success-stories/:id',          successStoryCtrl.getStoryDetails);
+router.put('/success-stories/request',      successStoryCtrl.updateConsent);
 
 module.exports = router;

@@ -171,6 +171,7 @@ const matrimonialProfileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'MarriageRequest'
     },
+    allowPublicStory: { type: Boolean, default: false, index: true },
 
     // ─── Soft Delete ─────────────────────────────────────────────────────────
     isDeleted:  { type: Boolean, default: false, index: true },

@@ -27,6 +27,7 @@ const mockTopDonors = [
 ];
 import ReferAndEarnBanner from './ReferAndEarnBanner';
 import donationService from '../../../../core/api/donationService';
+import { successStoryService } from '../../../../core/api/matrimonialService';
 
 
 
@@ -121,6 +122,7 @@ const HomePage = () => {
   const updatesScrollRef = useDraggableScroll();
   
   const [liveTopDonors, setLiveTopDonors] = useState([]);
+  const [liveSuccessStories, setLiveSuccessStories] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -131,6 +133,15 @@ const HomePage = () => {
         }
       })
       .catch(() => {});
+      
+    successStoryService.getPublishedStories()
+      .then(res => {
+        if (isMounted && res.status === 200 && res.data?.status === 'success' && Array.isArray(res.data?.data?.stories)) {
+          setLiveSuccessStories(res.data.data.stories);
+        }
+      })
+      .catch(() => {});
+      
     return () => { isMounted = false; };
   }, []);
 
@@ -255,13 +266,15 @@ const HomePage = () => {
     return 'Agrawal';
   };
 
-  const personalizedSuccessStories = mockSuccessStories.map(story => {
-    const surname = getCommunitySurnameLocal(userCommunity);
-    return {
-      ...story,
-      groomName: story.groomName.replaceAll('Agrawal', surname).replaceAll('Jain', surname).replaceAll('Mali', surname).replaceAll('Gupta', surname).replaceAll('Sharma', surname).replaceAll('Patel', surname).replaceAll('Verma', surname)
-    };
-  });
+  const displaySuccessStories = liveSuccessStories.length > 0 
+    ? liveSuccessStories 
+    : mockSuccessStories.map(story => {
+        const surname = getCommunitySurnameLocal(userCommunity);
+        return {
+          ...story,
+          groomName: story.groomName.replaceAll('Agrawal', surname).replaceAll('Jain', surname).replaceAll('Mali', surname).replaceAll('Gupta', surname).replaceAll('Sharma', surname).replaceAll('Patel', surname).replaceAll('Verma', surname)
+        };
+      });
 
   const getSamajImage = (community) => {
     const c = community.toLowerCase();
@@ -971,27 +984,54 @@ const HomePage = () => {
           </button>
         </div>
         
-        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-3">
-          {personalizedSuccessStories.map((story, idx) => (
+        {/* Featured Story */}
+        {displaySuccessStories.length > 0 && displaySuccessStories[0].featured && (
+          <div className="px-3 mb-4">
             <div 
-              key={story.id || `story-${idx}`} 
-              onClick={() => navigate('/member/matrimonial')}
+              onClick={() => navigate(displaySuccessStories[0]._id ? `/member/matrimonial/success-stories/${displaySuccessStories[0]._id}` : '/member/matrimonial')}
+              className="w-full h-[220px] rounded-[24px] relative overflow-hidden shadow-lg shadow-purple-500/15 cursor-pointer active:scale-[0.98] transition-transform border border-purple-100/20"
+            >
+              <img src={displaySuccessStories[0].coverImage || displaySuccessStories[0].avatar} alt={displaySuccessStories[0].title || displaySuccessStories[0].groomName} className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+              <div className="absolute inset-0 p-5 flex flex-col justify-end">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="bg-amber-400 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1"><LucideIcons.Star size={12} fill="currentColor" /> Featured Match</span>
+                </div>
+                <h4 className="text-white text-[24px] font-serif font-bold leading-tight drop-shadow-md">
+                  {displaySuccessStories[0].title || displaySuccessStories[0].groomName}
+                </h4>
+                <p className="text-white/80 text-[13px] font-medium mt-1">
+                  {displaySuccessStories[0].shortDescription || `Married in ${displaySuccessStories[0].marriageDate}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-3">
+          {displaySuccessStories.filter(s => !s.featured).map((story, idx) => (
+            <div 
+              key={story.id || story._id || `story-${idx}`} 
+              onClick={() => navigate(story._id ? `/member/matrimonial/success-stories/${story._id}` : '/member/matrimonial')}
               className="snap-center shrink-0 w-[275px] h-[340px] rounded-[28px] relative overflow-hidden shadow-lg shadow-purple-500/10 active:scale-[0.98] transition-transform cursor-pointer border border-white/10"
             >
-              <img src={story.avatar} alt={story.groomName} className="absolute inset-0 w-full h-full object-cover" />
+              <img src={story.coverImage || story.avatar} alt={story.title || story.groomName} className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
               
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <div className="bg-pink-500/85 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest inline-flex self-start mb-3 shadow-sm border border-pink-400/40">
                   Met through Samaj Matrimony
                 </div>
-                <h4 className="text-white text-[21px] font-serif font-bold leading-tight drop-shadow-md">{story.groomName}</h4>
+                <h4 className="text-white text-[21px] font-serif font-bold leading-tight drop-shadow-md">
+                  {story.groomId && story.brideId ? `${story.groomId.name} & ${story.brideId.name}` : story.groomName}
+                </h4>
                 <p className="text-white/75 text-[12px] font-medium mt-1 drop-shadow-sm flex items-center gap-1.5">
-                  <Heart size={12} className="text-pink-400" fill="currentColor" /> Married in {story.marriageDate}
+                  <Heart size={12} className="text-pink-400" fill="currentColor" /> 
+                  Married in {story.weddingDate ? new Date(story.weddingDate).toLocaleDateString() : story.marriageDate}
                 </p>
                 <div className="mt-3 pt-3 border-t border-white/15">
-                  <p className="text-white/85 text-[13px] italic font-medium leading-snug drop-shadow-sm">
-                    "{story.quote}"
+                  <p className="text-white/85 text-[13px] italic font-medium leading-snug drop-shadow-sm line-clamp-3">
+                    "{story.shortDescription || story.quote}"
                   </p>
                 </div>
               </div>
