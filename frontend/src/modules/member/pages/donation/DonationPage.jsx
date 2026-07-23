@@ -30,13 +30,16 @@ const DonationPage = () => {
   const [showAllTopDonors, setShowAllTopDonors] = useState(false);
 
   // Extract unique cities from all purposes for the dropdown
-  const availableCities = [...new Set(purposes.map(p => p.city).filter(Boolean))];
+  const availableCities = ['All Cities', ...new Set(purposes.map(p => p.city).filter(Boolean))];
 
-  // Filter purposes by selected city, but always include global campaigns
+  // Filter purposes by selected city, but always include global/community campaigns
   const filteredPurposes = purposes.filter(p => 
-    p.city === selectedCity || 
+    selectedCity === 'All Cities' ||
+    !selectedCity ||
     !p.city || 
-    ['All Members', 'All Locations', 'Entire Community'].includes(p.visibility)
+    p.city === selectedCity || 
+    !p.visibility ||
+    ['All Members', 'All Locations', 'Entire Community', 'COMMUNITY', 'GLOBAL', 'Global', 'Community', 'All'].includes(p.visibility)
   );
 
   // Sort top donors by highest amount
@@ -215,8 +218,8 @@ const DonationPage = () => {
 
                     <div className="space-y-1.5 pt-2">
                       <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs font-bold text-text-primary">₹{formatCurrency(purpose.raised)} <span className="text-[10px] font-normal text-text-secondary">Raised</span></span>
-                        <span className="text-[10px] font-medium text-text-secondary">Goal: ₹{formatCurrency(purpose.target)}</span>
+                        <span className="text-xs font-bold text-text-primary">₹{formatCurrency(purpose.raisedAmount ?? purpose.raised ?? purpose.collectedAmount)} <span className="text-[10px] font-normal text-text-secondary">Raised</span></span>
+                        <span className="text-[10px] font-medium text-text-secondary">Goal: ₹{formatCurrency(purpose.targetAmount ?? purpose.target)}</span>
                       </div>
                       {/* Progress bar */}
                       <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">

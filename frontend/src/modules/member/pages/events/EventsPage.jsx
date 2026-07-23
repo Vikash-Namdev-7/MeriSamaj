@@ -425,7 +425,7 @@ const EventsPage = () => {
           </div>
         ) : filteredEvents.length > 0 ? (
           filteredEvents.map((event, i) => (
-            <EventCard key={event.id} event={event} index={i} />
+            <EventCard key={event.id || event._id || `event-${i}`} event={event} index={i} />
           ))
         ) : (
           <div className="text-center py-16">

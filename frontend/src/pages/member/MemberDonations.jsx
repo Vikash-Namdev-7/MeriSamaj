@@ -30,7 +30,7 @@ export const MemberDonations = () => {
       if (search.trim()) params.search = search.trim();
 
       const res = await memberDonationApi.getActiveDonations(params);
-      if (res.success) {
+      if (res.success || res.status === 'success') {
         setDonations(res.data || []);
       }
     } catch (err) {
@@ -53,12 +53,12 @@ export const MemberDonations = () => {
     try {
       setIsSubmitting(true);
       const res = await memberDonationApi.handleDonationPayment(donationId, payload);
-      if (res.success) {
+      if (res.success || res.status === 'success') {
         setIsDonateModalOpen(false);
         setSelectedDonation(null);
         setSuccessToast(`Thank you! Your donation of ₹${payload.amount} was processed successfully.`);
         setTimeout(() => setSuccessToast(null), 5000);
-        fetchActiveDonations();
+        await fetchActiveDonations();
       }
     } catch (err) {
       alert(err.message || 'Payment simulation failed');

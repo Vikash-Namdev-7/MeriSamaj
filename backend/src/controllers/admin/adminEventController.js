@@ -336,7 +336,7 @@ exports.createEvent = async (req, res) => {
     }
 
     try {
-      const memberQuery = { role: 'user', accountStatus: 'active' };
+      const memberQuery = { accountStatus: { $ne: 'blocked' } };
       if (validCommunityId) { memberQuery.communityId = validCommunityId; }
       const memberIds = await User.find(memberQuery).distinct('_id');
       await notifyEventCreated(memberIds, event.title, event._id);

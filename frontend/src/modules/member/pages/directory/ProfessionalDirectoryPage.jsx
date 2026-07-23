@@ -1,24 +1,32 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Search, Star, CheckCircle, X,
-  SlidersHorizontal, MapPin, AlertCircle
-} from 'lucide-react';
-import * as Icons from 'lucide-react';
+import { SlidersHorizontal, MapPin, X, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useProfessionalDirectory from '../../hooks/useProfessionalDirectory';
 import { useData } from '../../context/DataProvider';
 
+import DirectoryHeader from './components/DirectoryHeader';
+import SearchSection from './components/SearchSection';
+import CategoryCard from './components/CategoryCard';
+import BusinessCard from './components/BusinessCard';
+import EmptyState from './components/EmptyState';
+
+// Skeleton Loader
 const SkeletonCard = () => (
-  <div className="bg-card rounded-2xl p-4 border border-gray-100 flex items-center justify-between shadow-sm animate-pulse">
-    <div className="flex items-center gap-3">
-      <div className="w-11 h-11 rounded-xl bg-gray-200 shrink-0" />
+  <div className="w-full rounded-2xl bg-white border border-slate-200/80 p-4 sm:p-5 shadow-xs animate-pulse flex items-center justify-between gap-4">
+    <div className="flex items-center gap-3.5">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-200 shrink-0" />
       <div className="space-y-2">
-        <div className="h-3 w-32 bg-gray-200 rounded-full" />
-        <div className="h-2 w-20 bg-gray-100 rounded-full" />
-        <div className="h-2 w-14 bg-gray-100 rounded-full" />
+        <div className="h-4 w-36 bg-slate-200 rounded-md" />
+        <div className="h-3 w-24 bg-slate-100 rounded-md" />
+        <div className="h-3 w-16 bg-slate-100 rounded-md" />
       </div>
     </div>
-    <div className="h-7 w-16 bg-gray-200 rounded-full" />
+    <div className="flex gap-1.5 shrink-0">
+      <div className="w-9 h-9 rounded-xl bg-slate-200" />
+      <div className="w-9 h-9 rounded-xl bg-slate-200" />
+      <div className="w-9 h-9 rounded-xl bg-slate-200" />
+    </div>
   </div>
 );
 
@@ -26,10 +34,12 @@ const ProfessionalDirectoryPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useData();
 
+  // Custom hook logic (100% preserved)
   const { listings, categories, cities, isLoading, error } = useProfessionalDirectory(
     currentUser?.communityId || 'default'
   );
 
+  // State (100% preserved)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedCity, setSelectedCity] = useState('All Cities');
@@ -38,6 +48,7 @@ const ProfessionalDirectoryPage = () => {
   const [tempCategory, setTempCategory] = useState('All');
   const [tempCity, setTempCity] = useState('All Cities');
 
+  // Filter handlers
   const openFilter = () => {
     setTempCategory(selectedCategory);
     setTempCity(selectedCity);
@@ -58,12 +69,14 @@ const ProfessionalDirectoryPage = () => {
   const clearAllApplied = () => {
     setSelectedCategory('All');
     setSelectedCity('All Cities');
+    setSearchQuery('');
   };
 
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
     (selectedCity !== 'All Cities' ? 1 : 0);
 
+  // Preserved filtering logic
   const filteredListings = useMemo(() => {
     return listings.filter(item => {
       if (searchQuery.trim()) {
@@ -81,93 +94,47 @@ const ProfessionalDirectoryPage = () => {
     });
   }, [listings, searchQuery, selectedCategory, selectedCity]);
 
+  // Categories with "All" option
+  const allCategoriesOption = useMemo(() => {
+    const allCat = {
+      id: 'All',
+      name: 'All Categories',
+      categoryKey: 'all',
+      iconName: 'LayoutGrid',
+    };
+    return [allCat, ...categories];
+  }, [categories]);
+
   return (
-    <div className="min-h-screen bg-surface pb-16">
+    <div className="min-h-screen bg-[#F6F8FC] text-slate-900 pb-16">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-5 pt-2">
+        {/* Directory Header */}
+        <DirectoryHeader
+          onBack={() => navigate(-1)}
+          onAddBusiness={() => navigate('/member/professional/apply')}
+        />
 
-      {/* Header */}
-      <div className="bg-card border-b border-gray-100 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 rounded-full hover:bg-gray-100 press-scale transition-colors">
-            <ArrowLeft size={22} className="text-gray-800" />
-          </button>
-          <h1 className="text-[17px] font-black text-gray-900 tracking-tight leading-none">Professional Directory</h1>
-        </div>
-        <button
-          onClick={() => navigate('/member/professional/apply')}
-          className="text-[11px] font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-3.5 py-1.5 rounded-full press-scale shadow-sm"
-        >
-          Add Business
-        </button>
-      </div>
-
-      <div className="px-4 pt-5 max-w-4xl mx-auto space-y-6">
-
-        {/* Search + Filter */}
-        <div className="flex gap-2">
-          <div className="flex-1 flex items-center bg-white rounded-2xl px-4 py-3.5 gap-2.5 border border-gray-100 shadow-sm focus-within:border-indigo-600 transition-colors">
-            <Search size={18} className="text-gray-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search business or category..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-gray-800 flex-1 outline-none placeholder-gray-400"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')}>
-                <X size={16} className="text-gray-400 hover:text-gray-600" />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={openFilter}
-            disabled={isLoading}
-            className={`relative p-3.5 rounded-2xl border flex items-center justify-center press-scale shadow-sm transition-all ${
-              activeFilterCount > 0
-                ? 'bg-indigo-600 border-indigo-600 text-white shadow-indigo-600/20'
-                : 'bg-white border-gray-100 text-gray-700 hover:bg-gray-50'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <SlidersHorizontal size={18} />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Active Filter Chips */}
-        {activeFilterCount > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {selectedCategory !== 'All' && (
-              <span className="flex items-center gap-1.5 text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm">
-                {categories.find(c => c.id === selectedCategory)?.name || selectedCategory}
-                <button onClick={() => setSelectedCategory('All')} className="hover:text-indigo-900 transition-colors">
-                  <X size={12} />
-                </button>
-              </span>
-            )}
-            {selectedCity !== 'All Cities' && (
-              <span className="flex items-center gap-1.5 text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm">
-                <MapPin size={11} /> {selectedCity}
-                <button onClick={() => setSelectedCity('All Cities')} className="hover:text-indigo-900 transition-colors">
-                  <X size={12} />
-                </button>
-              </span>
-            )}
-            <button onClick={clearAllApplied} className="text-[11px] font-black text-red-500 hover:text-red-600 px-2">
-              Clear All
-            </button>
-          </div>
-        )}
+        {/* Search Section */}
+        <SearchSection
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          openFilter={openFilter}
+          activeFilterCount={activeFilterCount}
+          selectedCategory={selectedCategory}
+          selectedCity={selectedCity}
+          categories={categories}
+          setSelectedCategory={setSelectedCategory}
+          setSelectedCity={setSelectedCity}
+          clearAllApplied={clearAllApplied}
+          isLoading={isLoading}
+        />
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
-            <AlertCircle size={20} className="text-red-500 shrink-0" />
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
             <div>
-              <p className="text-sm font-black text-red-700">Failed to load data</p>
+              <p className="text-sm font-bold text-red-700">Failed to load data</p>
               <p className="text-xs font-semibold text-red-500 mt-0.5">{error}</p>
             </div>
           </div>
@@ -175,38 +142,40 @@ const ProfessionalDirectoryPage = () => {
 
         {/* Categories Section */}
         {!error && (
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider block ml-1">Categories</label>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Categories
+              </span>
+              {selectedCategory !== 'All' && (
+                <button
+                  onClick={() => setSelectedCategory('All')}
+                  className="text-xs font-bold text-indigo-600 hover:underline"
+                >
+                  Reset Category
+                </button>
+              )}
+            </div>
+
             {isLoading ? (
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {[1,2,3,4,5,6].map(i => (
-                  <div key={i} className="h-[76px] bg-gray-100 rounded-2xl animate-pulse" />
+              <div className="flex gap-3 overflow-hidden py-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="w-[155px] h-[98px] bg-slate-200/60 rounded-2xl animate-pulse shrink-0"
+                  />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {categories.map(cat => {
-                  const IconComp = Icons[cat.iconName] || Icons.Briefcase;
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(isSelected ? 'All' : cat.id)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all press-scale ${
-                        isSelected
-                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                          : `${cat.color} hover:shadow-sm`
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1.5 ${isSelected ? 'bg-white/20' : 'bg-white shadow-sm'}`}>
-                        <IconComp size={16} />
-                      </div>
-                      <span className={`text-[10px] font-black truncate w-full text-center ${isSelected ? 'text-white' : 'text-gray-800'}`}>
-                        {cat.name}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide py-1.5 px-0.5 -mx-0.5">
+                {allCategoriesOption.map((cat) => (
+                  <CategoryCard
+                    key={cat.id}
+                    category={cat}
+                    isSelected={selectedCategory === cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -214,183 +183,180 @@ const ProfessionalDirectoryPage = () => {
 
         {/* Listings Section */}
         {!error && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between ml-1 mr-1">
-              <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">
-                {isLoading ? 'Loading...' : `${filteredListings.length} Businesses Found`}
-              </label>
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {isLoading
+                  ? 'Loading Professionals...'
+                  : `${filteredListings.length} ${
+                      filteredListings.length === 1 ? 'Business' : 'Businesses'
+                    } Found`}
+              </span>
               {activeFilterCount > 0 && !isLoading && (
-                <button onClick={clearAllApplied} className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition-colors">
-                  View All →
+                <button
+                  onClick={clearAllApplied}
+                  className="text-xs font-bold text-indigo-600 hover:underline"
+                >
+                  Clear All Filters →
                 </button>
               )}
             </div>
 
-            <div className="space-y-3">
-              {isLoading ? (
-                [1, 2, 3].map(i => <SkeletonCard key={i} />)
-              ) : filteredListings.length > 0 ? (
-                filteredListings.map(biz => (
-                  <div
-                    key={biz.id}
-                    onClick={() => navigate(`/member/professional/${biz.id}`)}
-                    className="bg-white rounded-2xl p-4 border border-gray-100 hover:border-indigo-200 transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center justify-between group active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-3">
-                      {biz.logo ? (
-                        <img
-                          src={biz.logo}
-                          alt={biz.title}
-                          className="w-14 h-14 rounded-xl object-cover border border-gray-100 shadow-sm shrink-0"
-                        />
-                      ) : (
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-black text-lg shadow-sm shrink-0 ${biz.color}`}>
-                          {biz.initials}
-                        </div>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[14px] font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{biz.title}</span>
-                          {biz.verified && (
-                            <CheckCircle size={14} className="text-emerald-500 fill-emerald-50" />
-                          )}
-                        </div>
-                        <p className="text-[11px] font-bold text-gray-500 mt-0.5">
-                          {biz.category} · {biz.city}
-                        </p>
-                        <div className="flex items-center gap-1 text-amber-500 mt-1.5 bg-amber-50 w-fit px-1.5 py-0.5 rounded-md border border-amber-100">
-                          <Star size={10} fill="currentColor" />
-                          <span className="text-[10px] font-black text-amber-700">{biz.rating}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors shrink-0">
-                      <ArrowLeft size={16} className="rotate-135" style={{ transform: 'rotate(135deg)' }} />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="bg-white rounded-3xl py-12 px-4 text-center border border-gray-100 shadow-sm">
-                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Search size={24} className="text-gray-300" />
-                  </div>
-                  <p className="text-sm text-gray-800 font-black">No Businesses Found</p>
-                  <p className="text-xs text-gray-500 font-semibold mt-1">Try adjusting your filters</p>
-                  <button
-                    onClick={clearAllApplied}
-                    className="mt-4 text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-5 py-2.5 rounded-full press-scale"
-                  >
-                    View All
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Business List or Empty State */}
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : filteredListings.length > 0 ? (
+              <div className="space-y-3">
+                <AnimatePresence mode="popLayout">
+                  {filteredListings.map((biz) => (
+                    <BusinessCard
+                      key={biz.id}
+                      business={biz}
+                      onClick={() => navigate(`/member/professional/${biz.id}`)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <EmptyState
+                onReset={clearAllApplied}
+                onAddBusiness={() => navigate('/member/professional/apply')}
+              />
+            )}
           </div>
         )}
       </div>
 
-      {/* ─── FILTER BOTTOM SHEET ─────────────────────────────────────────────── */}
-      {showFilterPanel && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center animate-fade-in backdrop-blur-sm"
-          onClick={() => setShowFilterPanel(false)}
-        >
-          <div
-            className="bg-white rounded-t-[32px] max-w-lg w-full shadow-2xl animate-slide-up"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mt-4" />
+      {/* ─── FILTER BOTTOM SHEET MODAL ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showFilterPanel && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFilterPanel(false)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+            />
 
-            <div className="px-6 py-5 flex items-center justify-between border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center">
-                  <SlidersHorizontal size={16} className="text-indigo-600" />
+            {/* Modal Sheet Container */}
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden z-10 border border-slate-100"
+            >
+              {/* Handle Bar */}
+              <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mt-3 sm:hidden" />
+
+              {/* Modal Header */}
+              <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">Filters</h3>
                 </div>
-                <h3 className="text-[17px] font-black text-gray-900">Filters</h3>
-              </div>
-              <div className="flex items-center gap-4">
-                <button onClick={clearFilters} className="text-[12px] font-black text-red-500 hover:text-red-600 transition-colors">
-                  Clear
-                </button>
-                <button
-                  onClick={() => setShowFilterPanel(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                >
-                  <X size={16} className="text-gray-500" />
-                </button>
-              </div>
-            </div>
-
-            <div className="px-6 py-5 space-y-6 max-h-[60vh] overflow-y-auto">
-
-              {/* Category Filter */}
-              <div>
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">Category</p>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setTempCategory('All')}
-                    className={`px-4 py-2.5 rounded-xl text-[13px] font-black border transition-all shadow-sm ${
-                      tempCategory === 'All'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/20'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
+                    onClick={clearFilters}
+                    className="text-xs font-bold text-red-500 hover:underline"
                   >
-                    All Categories
+                    Clear
                   </button>
-                  {categories.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setTempCategory(tempCategory === cat.id ? 'All' : cat.id)}
-                      className={`px-4 py-2.5 rounded-xl text-[13px] font-black border transition-all shadow-sm ${
-                        tempCategory === cat.id
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/20'
-                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setShowFilterPanel(false)}
+                    className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* City Filter */}
-              <div>
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <MapPin size={12} /> City
-                </p>
-                <div className="flex flex-wrap gap-2.5">
-                  {cities.map(city => (
+              {/* Modal Body */}
+              <div className="px-6 py-4 space-y-5 max-h-[60vh] overflow-y-auto">
+                {/* Category Filter */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 block">
+                    Category
+                  </label>
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      key={city}
-                      onClick={() => setTempCity(city)}
-                      className={`px-4 py-2.5 rounded-xl text-[13px] font-black border transition-all shadow-sm ${
-                        tempCity === city
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/20'
-                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      onClick={() => setTempCategory('All')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        tempCategory === 'All'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
-                      {city}
+                      All Categories
                     </button>
-                  ))}
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setTempCategory(tempCategory === cat.id ? 'All' : cat.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                          tempCategory === cat.id
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* City Filter */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600" /> City
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {cities.map((city) => (
+                      <button
+                        key={city}
+                        onClick={() => setTempCity(city)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                          tempCity === city
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="px-6 py-5 border-t border-gray-100 pb-safe">
-              <button
-                onClick={applyFilters}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[15px] font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-transform flex justify-center items-center gap-2"
-              >
-                Apply Filters {(tempCategory !== 'All' || tempCity !== 'All Cities') ? <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{(tempCategory !== 'All' ? 1 : 0) + (tempCity !== 'All Cities' ? 1 : 0)}</span> : ''}
-              </button>
-            </div>
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                <button
+                  onClick={applyFilters}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors flex justify-center items-center gap-2"
+                >
+                  <span>Apply Filters</span>
+                  {tempCategory !== 'All' || tempCity !== 'All Cities' ? (
+                    <span className="bg-white/20 text-white px-2 py-0.5 rounded-md text-xs font-bold">
+                      {(tempCategory !== 'All' ? 1 : 0) + (tempCity !== 'All Cities' ? 1 : 0)}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default ProfessionalDirectoryPage;
-

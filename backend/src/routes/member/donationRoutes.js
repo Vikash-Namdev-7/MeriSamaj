@@ -8,10 +8,13 @@ router.get('/campaigns/:id', donationController.getCampaignById);
 router.get('/campaigns/:id/donors', donationController.getRecentDonors);
 router.get('/history', donationController.getHistory);
 router.post('/submit', donationController.createDonation);
+router.post('/donate', donationController.createDonation);
+router.post('/:id/donate', donationController.createDonation);
 router.get('/stats', donationController.getStats);
 
 // Aliases for root endpoint compatibility
 router.get('/', donationController.getCampaigns);
 router.get('/:id', donationController.getCampaignById);
+router.post('/', donationController.createDonation);
 
 module.exports = router;

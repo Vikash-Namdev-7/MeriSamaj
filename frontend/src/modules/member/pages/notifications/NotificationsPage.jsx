@@ -61,15 +61,33 @@ const timeAgo = (date) => {
   return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
+const MODULE_ALIASES = {
+  home: 'all',
+  nimantran: 'announcement',
+  shradhanjali: 'community',
+  donation: 'community',
+  voting: 'community',
+  events: 'event',
+  groups: 'group',
+  announcements: 'announcement'
+};
+
 const NotificationsPage = () => {
   const navigate     = useNavigate();
   const [searchParams] = useSearchParams();
-  const moduleFilter   = searchParams.get('module') || 'all';
+  const rawModuleFilter = searchParams.get('module') || 'all';
+  const initialTab = MODULE_ALIASES[rawModuleFilter] || (TABS.includes(rawModuleFilter) ? rawModuleFilter : 'all');
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [loading,       setLoading]       = useState(true);
-  const [activeTab,     setActiveTab]     = useState(moduleFilter !== 'all' ? moduleFilter : 'all');
+  const [activeTab,     setActiveTab]     = useState(initialTab);
+
+  useEffect(() => {
+    const raw = searchParams.get('module') || 'all';
+    const resolved = MODULE_ALIASES[raw] || (TABS.includes(raw) ? raw : 'all');
+    setActiveTab(resolved);
+  }, [searchParams]);
 
   const { latestNotification, resetUnreadCount } = useNotifications();
 

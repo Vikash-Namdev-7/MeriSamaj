@@ -11,6 +11,14 @@ const connectDB = async () => {
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 
+    // Clean up stale legacy unique index on donations collection if present
+    try {
+      await conn.connection.collection('donations').dropIndex('txnId_1');
+      console.log('Cleaned up legacy txnId_1 index on donations collection.');
+    } catch (indexErr) {
+      // Index not found or already dropped, ignore
+    }
+
     // Seed default users for testing if they don't exist
     const User = require('../models/User');
 

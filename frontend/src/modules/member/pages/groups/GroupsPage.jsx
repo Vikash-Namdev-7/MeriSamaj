@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users, Plus, Search, Lock, Loader2, RefreshCcw,
-  Shield, X, Camera, ChevronRight, Check, AlertTriangle
+  Shield, X, Camera, ChevronRight, Check, AlertTriangle, Menu
 } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useGroups } from '../../hooks/useGroups';
 import { useAuth } from '../../../../core/auth/useAuth';
+import { useData } from '../../context/DataProvider';
 
 const CATEGORIES = [
   { id: 'all',       label: 'All' },
@@ -289,7 +290,9 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
 // ─── Main GroupsPage ──────────────────────────────────────────────────────────
 const GroupsPage = ({ isHub = false }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const { setMobileMenuOpen } = useData();
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchText, setSearchText]         = useState('');
@@ -345,9 +348,18 @@ const GroupsPage = ({ isHub = false }) => {
       <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-0 sticky top-0 z-20 shadow-sm">
         {!isHub && (
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Groups</h1>
-              {total > 0 && <p className="text-[12px] text-gray-400 font-medium mt-0.5">{total} groups in your community</p>}
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setMobileMenuOpen && setMobileMenuOpen(true)}
+                className="p-1 -ml-1 text-gray-800 hover:text-brand-primary press-scale transition-colors"
+                aria-label="Open Menu"
+              >
+                <Menu size={22} />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Groups</h1>
+                {total > 0 && <p className="text-[12px] text-gray-400 font-medium mt-0.5">{total} groups in your community</p>}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={refresh} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-purple-50 transition-colors">
@@ -428,7 +440,7 @@ const GroupsPage = ({ isHub = false }) => {
                 group={group}
                 onJoin={handleJoin}
                 onLeave={leaveGroup}
-                onOpen={id => navigate(`/member/groups/${id}`)}
+                onOpen={id => navigate(`/member/groups/${id}`, { state: { from: location.pathname === '/member/groups' ? '/member/groups' : '/member/social', tab: 'groups' } })}
                 joiningId={joiningId}
               />
             ))}

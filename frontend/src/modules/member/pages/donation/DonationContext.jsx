@@ -25,15 +25,15 @@ export const DonationProvider = ({ children }) => {
         donationService.getStats()
       ]);
 
-      if (campaignsRes.status === 'success') {
+      if (campaignsRes.status === 'success' || campaignsRes.success) {
         setPurposes(campaignsRes.data);
       }
-      if (historyRes.status === 'success') {
+      if (historyRes.status === 'success' || historyRes.success) {
         setDonationHistory(historyRes.data);
       }
-      if (statsRes.status === 'success') {
-        setTopDonors(statsRes.data.topDonors);
-        setImpactStats(statsRes.data.impactStats);
+      if (statsRes.status === 'success' || statsRes.success) {
+        setTopDonors(statsRes.data?.topDonors || []);
+        setImpactStats(statsRes.data?.impactStats || []);
       }
     } catch (error) {
       console.error("Failed to fetch donation data:", error);
@@ -56,7 +56,7 @@ export const DonationProvider = ({ children }) => {
         type
       });
 
-      if (response.status === 'success') {
+      if (response.status === 'success' || response.success) {
         // Refresh data after successful donation
         await fetchDonationData();
         return response.data;

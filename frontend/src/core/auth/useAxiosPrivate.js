@@ -14,25 +14,31 @@ export const useAxiosPrivate = () => {
     const requestIntercept = axiosPrivate.interceptors.request.use(
       config => {
         if (!config.headers['Authorization']) {
-          // Route the correct token based on the current context (URL path)
-          const isHeadPanel = window.location.pathname.startsWith('/head');
-          const isAdminPanel = window.location.pathname.startsWith('/admin');
-          
-          if (isHeadPanel) {
-            const headToken = localStorage.getItem('head_auth_token');
-            if (headToken) {
-              config.headers['Authorization'] = `Bearer ${headToken}`;
-            }
-          } else if (isAdminPanel) {
-            const adminToken = localStorage.getItem('admin_auth_token');
-            if (adminToken) {
-              config.headers['Authorization'] = `Bearer ${adminToken}`;
-            }
+          const url = config.url || '';
+          const isHeadApi = url.includes('/head/') || url.includes('/head');
+          const isAdminApi = url.includes('/admin/') || url.includes('/admin');
+          const isMemberApi = url.includes('/member/') || url.includes('/auth/');
+
+          let token = null;
+          if (isHeadApi) {
+            token = localStorage.getItem('head_auth_token');
+          } else if (isAdminApi) {
+            token = localStorage.getItem('admin_auth_token');
+          } else if (isMemberApi) {
+            token = localStorage.getItem('merisamaj_token');
           } else {
-            const memberToken = localStorage.getItem('merisamaj_token');
-            if (memberToken) {
-              config.headers['Authorization'] = `Bearer ${memberToken}`;
+            // Fallback for non-prefixed generic URLs
+            if (window.location.pathname.startsWith('/head')) {
+              token = localStorage.getItem('head_auth_token');
+            } else if (window.location.pathname.startsWith('/admin')) {
+              token = localStorage.getItem('admin_auth_token');
+            } else {
+              token = localStorage.getItem('merisamaj_token');
             }
+          }
+
+          if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
           }
         }
         return config;
@@ -44,20 +50,21 @@ export const useAxiosPrivate = () => {
       response => response,
       async (error) => {
         const prevRequest = error?.config;
-        const isHeadPanel = window.location.pathname.startsWith('/head');
-        const isAdminPanel = window.location.pathname.startsWith('/admin');
+        const requestUrl = prevRequest?.url || '';
+        const isHeadTarget = requestUrl.includes('/head/') || (!requestUrl.includes('/member/') && !requestUrl.includes('/admin/') && window.location.pathname.startsWith('/head'));
+        const isAdminTarget = requestUrl.includes('/admin/') || (!requestUrl.includes('/member/') && !requestUrl.includes('/head/') && window.location.pathname.startsWith('/admin'));
 
         if (error?.response?.status === 401 && !prevRequest?.sent) {
           prevRequest.sent = true;
           try {
-            if (isHeadPanel) {
+            if (isHeadTarget) {
               // Attempt to get a new access token using the Head HTTP-only refresh token cookie
               const response = await authService.refreshHead();
               const newAccessToken = response.accessToken;
               localStorage.setItem('head_auth_token', newAccessToken);
               prevRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
               return axiosPrivate(prevRequest);
-            } else if (isAdminPanel) {
+            } else if (isAdminTarget) {
               // Attempt to get a new access token using the Admin HTTP-only refresh token cookie
               const response = await authService.refreshAdmin();
               const newAccessToken = response.accessToken;

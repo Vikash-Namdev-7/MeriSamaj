@@ -8,9 +8,9 @@ export const DonationCard = ({
 }) => {
   if (!donation) return null;
 
-  const raised = donation.raisedAmount || 0;
-  const target = donation.targetAmount || 1;
-  const percentage = Math.min(100, Math.round((raised / target) * 100));
+  const raised = donation.raisedAmount ?? donation.raised ?? donation.collectedAmount ?? 0;
+  const target = donation.targetAmount ?? donation.target ?? 1;
+  const percentage = donation.percentage ?? (target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : 0);
 
   return (
     <div

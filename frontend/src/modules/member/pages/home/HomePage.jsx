@@ -26,6 +26,7 @@ const mockTopDonors = [
   { id: 5, name: 'Pankaj Mittal', amount: 10000, purpose: 'General Relief', paymentMode: 'Online (UPI)' }
 ];
 import ReferAndEarnBanner from './ReferAndEarnBanner';
+import donationService from '../../../../core/api/donationService';
 
 
 
@@ -68,7 +69,8 @@ const quickActions = [
   { 
     icon: Users, 
     label: 'Groups', 
-    path: '/member/groups', 
+    path: '/member/social', 
+    state: { tab: 'groups' },
     iconBg: 'bg-gradient-to-br from-[#E91E63] to-[#9C27B0]', 
     hoverBorder: 'hover:border-[#E91E63]/40',
     hoverText: 'group-hover:text-[#E91E63]',
@@ -118,13 +120,29 @@ const HomePage = () => {
   const subHeadsRef = useDraggableScroll();
   const updatesScrollRef = useDraggableScroll();
   
+  const [liveTopDonors, setLiveTopDonors] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    donationService.getStats()
+      .then(res => {
+        if (isMounted && (res.success || res.status === 'success') && Array.isArray(res.data?.topDonors) && res.data.topDonors.length > 0) {
+          setLiveTopDonors(res.data.topDonors);
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const displayTopDonors = liveTopDonors.length > 0 ? liveTopDonors : mockTopDonors;
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
 
-  // Dynamic counts for quick actions (with fallbacks for UI demonstration)
-  const invitationCount = getUnreadCountForModule('nimantran') || 3;
-  const donationCount = getUnreadCountForModule('donation') || 5;
-  const shradhanjaliCount = getUnreadCountForModule('shradhanjali') || 2;
+  // Dynamic counts for quick actions (with 0 default if no unread)
+  const invitationCount = getUnreadCountForModule('nimantran') || 0;
+  const donationCount = getUnreadCountForModule('donation') || 0;
+  const shradhanjaliCount = getUnreadCountForModule('shradhanjali') || 0;
 
   // Dynamic counts for summary cards
   const newDonationsCount = notifications?.filter(n => n.type === 'donation' && !n.isRead)?.length || 0;
@@ -202,10 +220,12 @@ const HomePage = () => {
       .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99))
       .map(f => {
         const matchedStatic = quickActions.find(qa => qa.path === f.path || qa.label.toLowerCase().includes(f.label.toLowerCase().substring(0, 4)));
+        const isGroupFeature = f.path === '/member/groups' || f.label?.toLowerCase() === 'groups';
         return {
           label: f.label,
           desc: f.desc,
-          path: f.path,
+          path: isGroupFeature ? '/member/social' : f.path,
+          state: isGroupFeature ? { tab: 'groups' } : (f.state || matchedStatic?.state),
           icon: LucideIcons[f.icon] || Briefcase,
           bgImage: f.bgImage || matchedStatic?.bgImage || 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=400&q=80'
         };
@@ -540,20 +560,22 @@ const HomePage = () => {
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-purple-300/35 to-transparent" />
           
           <div className="flex flex-col gap-3.5">
-            {[...mockTopDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
+            {[...displayTopDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
               // Select color themes and icons for purposes
+              const purposeStr = (donor.purpose || '').toLowerCase();
+              const paymentModeStr = (donor.paymentMode || 'Online (UPI)').toLowerCase();
               let purposeIcon = <Home size={11} className="text-amber-500" />;
               let purposeBg = 'bg-amber-50';
-              if (donor.purpose.toLowerCase().includes('schola') || donor.purpose.toLowerCase().includes('chhatra')) {
+              if (purposeStr.includes('schola') || purposeStr.includes('chhatra')) {
                 purposeIcon = <GraduationCap size={11} className="text-purple-500" />;
                 purposeBg = 'bg-purple-50';
-              } else if (donor.purpose.toLowerCase().includes('gaushala') || donor.purpose.toLowerCase().includes('cow')) {
+              } else if (purposeStr.includes('gaushala') || purposeStr.includes('cow')) {
                 purposeIcon = <span className="text-[10px] leading-none">🐄</span>;
                 purposeBg = 'bg-orange-50';
-              } else if (donor.purpose.toLowerCase().includes('vivah') || donor.purpose.toLowerCase().includes('marri')) {
+              } else if (purposeStr.includes('vivah') || purposeStr.includes('marri')) {
                 purposeIcon = <Heart size={10} className="text-rose-500" fill="currentColor" />;
                 purposeBg = 'bg-rose-50';
-              } else if (donor.purpose.toLowerCase().includes('shiksha') || donor.purpose.toLowerCase().includes('edu')) {
+              } else if (purposeStr.includes('shiksha') || purposeStr.includes('edu')) {
                 purposeIcon = <BookOpen size={11} className="text-blue-500" />;
                 purposeBg = 'bg-blue-50';
               }
@@ -564,13 +586,13 @@ const HomePage = () => {
                   <span>Online (UPI)</span>
                 </div>
               );
-              if (donor.paymentMode.toLowerCase().includes('bank')) {
+              if (paymentModeStr.includes('bank')) {
                 paymentBadge = (
                   <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50">
                     <span>Bank Transfer</span>
                   </div>
                 );
-              } else if (donor.paymentMode.toLowerCase().includes('cash')) {
+              } else if (paymentModeStr.includes('cash')) {
                 paymentBadge = (
                   <div className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100/50">
                     <span>Cash</span>
@@ -590,7 +612,7 @@ const HomePage = () => {
 
               return (
                 <motion.div
-                  key={donor.id}
+                  key={donor.id || `donor-${idx}`}
                   whileHover={{ y: -2, scale: 1.01, boxShadow: '0 6px 20px rgba(124,58,237,0.04)' }}
                   className="flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-100/60 shadow-sm transition-all duration-300"
                 >
@@ -714,7 +736,7 @@ const HomePage = () => {
               <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.15)' }}>
                 <Heart className="text-rose-500" size={14} strokeWidth={2.5} />
               </div>
-              <span className="text-[14px] font-black text-text-primary leading-none">{newDonationsCount > 0 ? newDonationsCount : '5'}</span>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newDonationsCount}</span>
               <span className="text-[8px] font-semibold text-text-muted leading-tight">Donations</span>
             </div>
 
@@ -726,7 +748,7 @@ const HomePage = () => {
               <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.15)' }}>
                 <Megaphone className="text-amber-500" size={14} strokeWidth={2.5} />
               </div>
-              <span className="text-[14px] font-black text-text-primary leading-none">{newNoticesCount > 0 ? newNoticesCount : '1'}</span>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newNoticesCount}</span>
               <span className="text-[8px] font-semibold text-text-muted leading-tight">Notices</span>
             </div>
 
@@ -738,7 +760,7 @@ const HomePage = () => {
               <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.15)' }}>
                 <Calendar className="text-blue-500" size={14} strokeWidth={2.5} />
               </div>
-              <span className="text-[14px] font-black text-text-primary leading-none">{newEventsCount > 0 ? newEventsCount : '3'}</span>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newEventsCount}</span>
               <span className="text-[8px] font-semibold text-text-muted leading-tight">Events</span>
             </div>
           </div>
@@ -879,7 +901,13 @@ const HomePage = () => {
           {mergedFeatures.map((action, idx) => (
             <motion.button
               key={action.label}
-              onClick={() => navigate(action.path)}
+              onClick={() => {
+                if (action.path === '/member/groups' || action.state?.tab === 'groups' || action.label?.toLowerCase() === 'groups') {
+                  navigate('/member/social', { state: { tab: 'groups' } });
+                } else {
+                  navigate(action.path, action.state ? { state: action.state } : undefined);
+                }
+              }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 + (idx * 0.05), type: 'spring', stiffness: 300, damping: 25 }}
@@ -944,9 +972,9 @@ const HomePage = () => {
         </div>
         
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-4 px-3">
-          {personalizedSuccessStories.map((story) => (
+          {personalizedSuccessStories.map((story, idx) => (
             <div 
-              key={story.id} 
+              key={story.id || `story-${idx}`} 
               onClick={() => navigate('/member/matrimonial')}
               className="snap-center shrink-0 w-[275px] h-[340px] rounded-[28px] relative overflow-hidden shadow-lg shadow-purple-500/10 active:scale-[0.98] transition-transform cursor-pointer border border-white/10"
             >
@@ -1063,7 +1091,7 @@ const HomePage = () => {
               </div>
                 
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-3 px-3">
-                {coreCommittee.map(member => {
+                {coreCommittee.map((member, idx) => {
                     const badgeColor = member.role === 'Vice President' 
                       ? 'bg-[#7c3aed]' 
                       : member.role === 'Secretary' 
@@ -1093,7 +1121,7 @@ const HomePage = () => {
 
                     return (
                       <div 
-                        key={member.id} 
+                        key={member.id || `core-${idx}`} 
                         onClick={() => navigate('/member/leadership', { state: { selectedId: member.id } })}
                         className={`shrink-0 w-[calc((100vw-56px)/3.1)] max-w-[130px] bg-white rounded-3xl flex flex-col items-center cursor-pointer transition-all duration-300 pb-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] border border-purple-50 hover:border-purple-200 overflow-hidden`}
                       >
@@ -1151,7 +1179,7 @@ const HomePage = () => {
           </button>
         </div>
         <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 pb-3 px-3">
-          {personalizedEvents.slice(0, 4).map((event) => {
+          {personalizedEvents.slice(0, 4).map((event, idx) => {
             const gradients = {
               Cultural: 'from-purple-500 to-violet-600',
               Education: 'from-blue-500 to-cyan-600',
@@ -1162,7 +1190,7 @@ const HomePage = () => {
             const catGradient = gradients[event.category] || gradients.Cultural;
             return (
               <div
-                key={event.id}
+                key={event.id || event._id || `event-${idx}`}
                 className="snap-center shrink-0 w-[260px] card-neo overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
                 onClick={() => navigate(`/member/events/${event.id}`)}
               >

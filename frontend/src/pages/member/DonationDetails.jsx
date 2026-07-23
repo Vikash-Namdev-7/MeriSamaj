@@ -21,7 +21,7 @@ export const DonationDetails = () => {
       setLoading(true);
       setError(null);
       const res = await memberDonationApi.getDonationById(id);
-      if (res.success) {
+      if (res.success || res.status === 'success') {
         setDonation(res.data);
       }
     } catch (err) {
@@ -39,11 +39,11 @@ export const DonationDetails = () => {
     try {
       setIsSubmitting(true);
       const res = await memberDonationApi.handleDonationPayment(donationId, payload);
-      if (res.success) {
+      if (res.success || res.status === 'success') {
         setIsDonateModalOpen(false);
         setSuccessToast(`Thank you! Your donation of ₹${payload.amount} was processed successfully.`);
         setTimeout(() => setSuccessToast(null), 5000);
-        fetchDetails();
+        await fetchDetails();
       }
     } catch (err) {
       alert(err.message || 'Payment simulation failed');

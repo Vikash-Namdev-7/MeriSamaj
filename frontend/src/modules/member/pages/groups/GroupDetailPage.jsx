@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MoreVertical, Send, Paperclip, Image as ImageIcon, X, FileText, Link2, Phone, Info, Users, Bell, BellOff, Settings, Search, Check, CheckCheck, Shield, Mic, Plus, LogOut, Star, ChevronRight, Video, Trash, Camera, Edit, Smile, Square, MapPin, UserSquare, Headphones, Copy, Forward, Trash2, CornerUpLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
@@ -41,6 +41,7 @@ const getSenderColor = (senderName, role) => {
 const GroupDetailPage = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: currentUser } = useAuth();
 
   // ─── Real data from backend ────────────────────────────────────────────────
@@ -484,7 +485,18 @@ const GroupDetailPage = () => {
           ) : (
           <div className="bg-brand-primary text-white pb-3 px-3 flex items-center justify-between shrink-0 shadow-md z-30 transition-all sticky top-0" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 12px, 12px)' }}>
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <button onClick={() => navigate('/member/groups')} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2 shrink-0">
+              <button 
+                onClick={() => {
+                  if (location.state?.from) {
+                    navigate(location.state.from, { state: { tab: location.state.tab || 'groups' } });
+                  } else if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate('/member/social', { state: { tab: 'groups' } });
+                  }
+                }} 
+                className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2 shrink-0"
+              >
                 <ArrowLeft size={22} className="text-white" />
               </button>
               <div 

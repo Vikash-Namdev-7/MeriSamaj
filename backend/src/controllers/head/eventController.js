@@ -278,7 +278,7 @@ exports.createEvent = async (req, res) => {
     }
 
     try {
-      const memberIds = await User.find({ communityId: event.communityId, role: 'user', accountStatus: 'active' }).distinct('_id');
+      const memberIds = await User.find({ communityId: event.communityId, accountStatus: { $ne: 'blocked' } }).distinct('_id');
       await notifyEventCreated(memberIds, event.title, event._id);
     } catch (notifyErr) {
       console.warn('[Notify] notifyEventCreated failed:', notifyErr.message);

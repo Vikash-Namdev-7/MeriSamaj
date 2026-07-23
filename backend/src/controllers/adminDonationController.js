@@ -39,6 +39,7 @@ exports.createDonation = async (req, res) => {
     }
 
     const donation = new Donation({
+      txnId: `CAMP_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
       title,
       description,
       targetAmount: Number(targetAmount),
@@ -50,7 +51,20 @@ exports.createDonation = async (req, res) => {
       recentDonations: []
     });
 
-    await donation.save();
+    try {
+      await donation.save();
+    } catch (saveErr) {
+      if (saveErr.code === 11000 && saveErr.message?.includes('txnId')) {
+        try {
+          await Donation.collection.dropIndex('txnId_1');
+          await donation.save();
+        } catch (retryErr) {
+          throw saveErr;
+        }
+      } else {
+        throw saveErr;
+      }
+    }
 
     res.status(201).json({
       success: true,

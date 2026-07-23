@@ -72,6 +72,7 @@ const formatMemberEvents = async (events, userId) => {
 
     return {
       id: event._id,
+      _id: event._id,
       title: event.title,
       titleEn: event.titleEn,
       date: event.date,
@@ -139,13 +140,12 @@ exports.getEvents = async (req, res) => {
         { visibility: 'GLOBAL' },
         { isGlobal: true },
         { communityId: communityId },
-        { communityId: null }
-      ];
-    } else {
-      query.$or = [
-        { visibility: 'GLOBAL' },
-        { isGlobal: true },
-        { communityId: null }
+        { communityId: rawCommunityId },
+        { communityId: null },
+        { communityId: { $exists: false } },
+        { visibility: 'COMMUNITY' },
+        { visibility: 'Entire Community' },
+        { visibility: 'All Members' }
       ];
     }
 
