@@ -62,13 +62,9 @@ export const HeadLayout = () => {
           ]
         },
         {
-          name: 'Matrimonial',
-          icon: Heart,
-          children: [
-            { name: 'Overview', path: '/head/matrimonial', search: '?tab=overview' },
-            { name: 'Moderation Queue', path: '/head/matrimonial', search: '?tab=moderation' },
-            { name: 'Analytics', path: '/head/matrimonial', search: '?tab=analytics' }
-          ]
+          name: 'Matrimonial Management',
+          path: '/head/matrimonial',
+          icon: Heart
         }
       ]
     },

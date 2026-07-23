@@ -73,8 +73,7 @@ export const AdminLayout = () => {
             { name: 'Moderation Queue', path: '/admin/matrimonial', search: '?tab=moderation' },
             { name: 'Reports & Complaints', path: '/admin/matrimonial', search: '?tab=reports' },
             { name: 'Match Analytics', path: '/admin/matrimonial', search: '?tab=analytics' },
-            { name: 'Community Comparison', path: '/admin/matrimonial', search: '?tab=comparison' },
-            { name: 'Audit Logs', path: '/admin/matrimonial', search: '?tab=audit' }
+            { name: 'Settings', path: '/admin/matrimonial', search: '?tab=settings' }
           ]
         },
         { 
@@ -118,7 +117,7 @@ export const AdminLayout = () => {
           children: [
             { name: 'City Feed', path: '/admin/social/city-feed' },
             { name: 'Community Feed', path: '/admin/social/community-feed' },
-            { name: 'Community Groups', path: '/admin/groups' }
+            { name: 'User Groups', path: '/admin/groups' }
           ]
         }
       ]

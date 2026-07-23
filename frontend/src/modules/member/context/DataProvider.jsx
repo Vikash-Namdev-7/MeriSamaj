@@ -105,7 +105,7 @@ const mapBackendProfileToFrontend = (p) => {
     initials: (p.personal?.fullName || 'A').substring(0, 2).toUpperCase(),
     gender: p.personal?.gender || 'Female',
     age: age,
-    height: p.personal?.height ? `${Math.floor(p.personal.height/12)}'${p.personal.height%12}"` : "5'5\"",
+    height: p.personal?.height ? `${Math.floor(p.personal.height / 12)}'${p.personal.height % 12}"` : "5'5\"",
     weight: p.personal?.weight ? `${p.personal.weight} kg` : '60 kg',
     bodyType: p.personal?.bodyType || 'Average',
     complexion: p.personal?.complexion || 'Fair',
@@ -510,9 +510,9 @@ const adaptMatrimonial = (profilesList, currentUser) => {
   if (!currentUser) return profilesList;
   const community = currentUser.community;
   const surname = getCommunitySurname(community);
-  
+
   let oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
-  
+
   if (currentUser.matrimonySubscription && currentUser.matrimonySubscription.status === 'active') {
     const sub = currentUser.matrimonySubscription;
     if (sub.plan === 'Groom') {
@@ -571,7 +571,7 @@ const defaultGranularPrivacy = {
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-  const { auth, logout } = useAuth();
+  const { auth, setAuth, logout } = useAuth();
   const { headAuth } = useHeadAuth();
   // Helpers for localStorage
   const loadState = (key, defaultState) => {
@@ -690,7 +690,7 @@ export const DataProvider = ({ children }) => {
         const res = await eventService.getEvents();
         setEvents(res.data || []);
       }
-      
+
       if (headAuth?.isAuthenticated) {
         try {
           const res = await headEventService.getEvents();
@@ -716,7 +716,7 @@ export const DataProvider = ({ children }) => {
   const [obituaries, setObituaries] = useState([]);
   const [obituariesLoading, setObituariesLoading] = useState(false);
   const [obituariesError, setObituariesError] = useState(null);
-  
+
   // Dynamic Configuration for Invitation Form Fields
   const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig_v2', {
     formFields: [
@@ -750,7 +750,7 @@ export const DataProvider = ({ children }) => {
       else if (p.id === 'p3') communityId = 'c4';
       else if (p.id === 'p6') communityId = 'c5';
       else if (p.id === 'p7') communityId = 'c6';
-      
+
       return {
         ...p,
         communityId,
@@ -1032,8 +1032,8 @@ export const DataProvider = ({ children }) => {
       return [...prev, { blockerId: myId, blockedId: targetUserId }];
     });
     // Remove any follow relationships
-    setFollowRelations(prev => prev.filter(r => 
-      !( (r.followerId === myId && r.followingId === targetUserId) || (r.followerId === targetUserId && r.followingId === myId) )
+    setFollowRelations(prev => prev.filter(r =>
+      !((r.followerId === myId && r.followingId === targetUserId) || (r.followerId === targetUserId && r.followingId === myId))
     ));
   };
 
@@ -1060,48 +1060,27 @@ export const DataProvider = ({ children }) => {
   };
 
   const logoutUser = async () => {
-    try {
-      // 1. Clear all localStorage keys across Member, Admin, and Head panels
-      const keysToRemove = [
-        'merisamaj_user',
-        'merisamaj_token',
-        'merisamaj_has_session',
-        'merisamaj_v6_currentUser',
-        'merisamaj_v6_posts',
-        'merisamaj_v6_followedAnnouncements',
-        'merisamaj_v6_notifications',
-        'merisamaj_v6_chats',
-        'merisamaj_v6_chatMessages',
-        'merisamaj_v6_eventReminders',
-        'merisamaj_v6_eventRegistrations',
-        'posts',
-        'head_auth_token',
-        'head_auth_user',
-        'head_has_session',
-        'admin_auth_token',
-        'admin_auth_user',
-        'merisamaj_admin_token'
-      ];
-      keysToRemove.forEach(k => localStorage.removeItem(k));
+    // Clear localStorage keys
+    localStorage.removeItem('merisamaj_v6_currentUser');
+    localStorage.removeItem('merisamaj_v6_posts');
+    localStorage.removeItem('merisamaj_v6_followedAnnouncements');
+    localStorage.removeItem('merisamaj_v6_notifications');
+    localStorage.removeItem('merisamaj_v6_chats');
+    localStorage.removeItem('merisamaj_v6_chatMessages');
+    localStorage.removeItem('merisamaj_v6_eventReminders');
+    localStorage.removeItem('merisamaj_v6_eventRegistrations');
+    localStorage.removeItem('posts');
 
-      // 2. Clear state values
-      setCurrentUser(null);
-      setEvents([]);
-      setObituaries([]);
-      setNotifications([]);
-      setChats([]);
-      setChatMessages([]);
+    // Reset state values
+    setCurrentUser(initialUser);
+    setPosts(initialPosts.map((p) => ({ ...p, commentsList: p.commentsList || [] })));
+    setEvents([]);
+    setObituaries([]);
+    setNotifications(initialNotifications);
+    setChats([]);
+    setChatMessages({});
 
-      // 3. Trigger AuthContext logout (calls backend /api/auth/logout to clear HTTP-only cookies)
-      if (logout) {
-        await logout();
-      }
-    } catch (error) {
-      console.warn('[Logout] Logout warning:', error?.message);
-    } finally {
-      // 4. Force full page redirect to login page
-      window.location.replace('/auth/login');
-    }
+    await logout();
   };
 
   const addFamilyMember = (newMember) => {
@@ -1225,7 +1204,7 @@ export const DataProvider = ({ children }) => {
         location: options.city,
         feedType: options.feedType || 'city'
       });
-      
+
       const postData = (res && res.data) ? res.data : res;
 
       const formatted = {
@@ -1238,8 +1217,8 @@ export const DataProvider = ({ children }) => {
           id: postData.userId?._id || postData.userId?.id || currentUser?.id,
           name: postData.userId?.name || currentUser?.name || 'Member',
           avatar: postData.userId?.avatar || currentUser?.avatar,
-          initials: postData.userId?.name 
-            ? postData.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+          initials: postData.userId?.name
+            ? postData.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
             : (currentUser?.initials || 'U')
         },
         images: postData.media?.map(m => m.url) || images || [],
@@ -1294,7 +1273,7 @@ export const DataProvider = ({ children }) => {
       const res = await socialService.getComments(postId);
       const commentsData = res.data || [];
       const currentUserId = currentUser?.id || currentUser?._id;
-      
+
       const allFormatted = commentsData.map(c => {
         const likesArr = c.likes || [];
         const isLiked = currentUserId ? likesArr.some(id => (id._id || id).toString() === currentUserId.toString()) : false;
@@ -1350,8 +1329,8 @@ export const DataProvider = ({ children }) => {
           id: commentDoc.userId?._id || commentDoc.userId?.id || currentUser?.id,
           name: commentDoc.userId?.name || currentUser?.name || 'Member',
           avatar: commentDoc.userId?.avatar || currentUser?.avatar,
-          initials: commentDoc.userId?.name 
-            ? commentDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+          initials: commentDoc.userId?.name
+            ? commentDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
             : (currentUser?.initials || 'M')
         },
         text: commentDoc.text || commentText,
@@ -1362,11 +1341,11 @@ export const DataProvider = ({ children }) => {
       };
 
       const updateFn = p => (p._id === postId || p.id === postId)
-        ? { 
-            ...p, 
-            comments: (p.comments || 0) + 1, 
-            commentsList: [...(p.commentsList || []), formattedComment] 
-          }
+        ? {
+          ...p,
+          comments: (p.comments || 0) + 1,
+          commentsList: [...(p.commentsList || []), formattedComment]
+        }
         : p;
       setPosts(prev => prev.map(updateFn));
       setCityPosts(prev => prev.map(updateFn));
@@ -1387,8 +1366,8 @@ export const DataProvider = ({ children }) => {
           id: replyDoc.userId?._id || replyDoc.userId?.id || currentUser?.id,
           name: replyDoc.userId?.name || currentUser?.name || 'Member',
           avatar: replyDoc.userId?.avatar || currentUser?.avatar,
-          initials: replyDoc.userId?.name 
-            ? replyDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+          initials: replyDoc.userId?.name
+            ? replyDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
             : (currentUser?.initials || 'M'),
           isVerified: true
         },
@@ -1498,9 +1477,9 @@ export const DataProvider = ({ children }) => {
       return existing.id;
     }
 
-    const recipient = members.find(m => m.id === memberId) || 
-                      matrimonialProfiles.find(p => p.id === memberId) || 
-                      { name: 'Samaj Member', initials: 'SM' };
+    const recipient = members.find(m => m.id === memberId) ||
+      matrimonialProfiles.find(p => p.id === memberId) ||
+      { name: 'Samaj Member', initials: 'SM' };
 
     const myId = currentUser?.id || currentUser?._id || 'u1';
     const newChat = {
@@ -1607,7 +1586,7 @@ export const DataProvider = ({ children }) => {
         });
       }, 1500);
     }
-    
+
     // Simulate Reply for Matrimonial Chats
     if (chatId.startsWith('matrimonial_')) {
       setTimeout(() => {
@@ -1662,7 +1641,7 @@ export const DataProvider = ({ children }) => {
           if (parsed.shradhanjali?.requireApproval) {
             status = 'Pending';
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       if (obituaryData instanceof FormData) {
@@ -2067,7 +2046,7 @@ export const DataProvider = ({ children }) => {
             [groupId]: [...currentList, replyMsg]
           };
         });
-        
+
         // Also add a group notification!
         const newNotification = {
           id: `ng-${Date.now()}`,
@@ -2561,10 +2540,10 @@ export const DataProvider = ({ children }) => {
   const retryFailedNotification = (logId) => {
     setSentNotifications(prev => prev.map(log => {
       if (log.id === logId) {
-        return { 
-          ...log, 
-          status: 'Delivered', 
-          stats: { ...log.stats, sentCount: log.stats.sentCount || 120, openCount: Math.floor((log.stats.sentCount || 120) * 0.8) } 
+        return {
+          ...log,
+          status: 'Delivered',
+          stats: { ...log.stats, sentCount: log.stats.sentCount || 120, openCount: Math.floor((log.stats.sentCount || 120) * 0.8) }
         };
       }
       return log;
@@ -2816,7 +2795,7 @@ export const DataProvider = ({ children }) => {
     clearChatMessages,
     stories: adaptedStoriesList,
     addStory,
-    
+
     // Follow System & Privacy Exports
     profilePrivacy,
     followRelations,

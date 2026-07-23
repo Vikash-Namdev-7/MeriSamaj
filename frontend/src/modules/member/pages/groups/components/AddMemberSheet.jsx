@@ -14,7 +14,7 @@ const AddMemberSheet = ({ onClose, onAddMembers, groupId }) => {
   useEffect(() => {
     setLoading(true);
     getMembers({ search, limit: 15, page: 1 })
-      .then(res => setMembersList(res.data?.members || []))
+      .then(res => setMembersList(res.data || []))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, [search]);

@@ -4,6 +4,7 @@
  */
 const MatrimonialProfile  = require('../../models/MatrimonialProfile');
 const MatrimonialSettings = require('../../models/MatrimonialSettings');
+const User                = require('../../models/User');
 const InterestRequest     = require('../../models/InterestRequest');
 const UserBlock           = require('../../models/UserBlock');
 const ProfileVisitor      = require('../../models/ProfileVisitor');
@@ -170,15 +171,23 @@ exports.getUserProfile = async (req, res) => {
 
     const profile = await MatrimonialProfile.findOne({
       _id: id,
-      status: 'active',
+      status: { $in: ['active', 'married'] },
       isDeleted: false
-    }).populate('userId', 'name phone email');
+    }).populate('userId', 'name phone email avatar');
 
     if (!profile) {
       return res.status(404).json({ status: 'error', message: 'Profile not found or not available.' });
     }
 
     const profileOwnerUserId = profile.userId._id || profile.userId;
+
+    // If profile is married, restrict viewing to the owner or their confirmed partner
+    if (profile.status === 'married' && !profileOwnerUserId.equals(viewerId)) {
+      const viewerProfile = await MatrimonialProfile.findOne({ userId: viewerId, isDeleted: false });
+      if (!viewerProfile || !viewerProfile.marriageConfirmedWith || !viewerProfile.marriageConfirmedWith.equals(profile._id)) {
+        return res.status(404).json({ status: 'error', message: 'Profile not found or not available.' });
+      }
+    }
 
     // ─── Block Check ────────────────────────────────────────────────────────
     const isBlocked = await UserBlock.findOne({
@@ -267,7 +276,10 @@ exports.getUserProfile = async (req, res) => {
 
     // ─── Build Response based on Privacy Rules ───────────────────────────────
     let profileData;
-    if (profile.visibility === 'public' || acceptedInterest) {
+    const { subscription } = await getEffectiveFeatures(viewerId);
+    const hasPremium = !!subscription;
+
+    if (hasPremium || acceptedInterest || profileOwnerUserId.equals(viewerId)) {
       profileData = buildFullProfile(profile, features);
     } else {
       profileData = buildRestrictedProfile(profile);
@@ -284,7 +296,7 @@ exports.getUserProfile = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    res.status(500).json({ status: 'error', message: err.message, stack: err.stack });
   }
 };
 
@@ -307,11 +319,25 @@ exports.searchProfiles = async (req, res) => {
     // ─── Min Completion (env-driven) ─────────────────────────────────────────
     const completionRequired = await getMinCompletion();
 
+    // ─── Get Current User's Profile early to enforce gender opposite filtering ────
+    const myProfile = await MatrimonialProfile.findOne({ userId: req.user._id, isDeleted: false }).lean({ virtuals: true });
+    
+    // Block search if user is married or profile is closed
+    if (myProfile && (myProfile.isClosed || myProfile.status === 'married')) {
+      return res.status(403).json({ status: 'error', message: 'Married profiles cannot search for new matches.' });
+    }
+
+    const userDoc = await User.findById(req.user._id).select('gender').lean();
+
+    const mongoose = require('mongoose');
+    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+
     const query = {
       isDeleted:  false,
-      status:     'active',
+      status:     'active',         // Only active (not married/hidden/suspended) profiles
+      isClosed:   { $ne: true },    // Exclude married/closed profiles from matchmaking
       // ─── Exclude current user from their own search results ───────────────
-      userId:     { $ne: req.user._id },
+      userId:     { $ne: userObjectId },
       'profileCompletion.percentage': { $gte: completionRequired }
     };
 
@@ -321,7 +347,7 @@ exports.searchProfiles = async (req, res) => {
     const excludeUsers = [...blockedByMe, ...whoBlockedMe];
     // userId.$ne is already set — merge with $nin if blocks exist
     if (excludeUsers.length > 0) {
-      query.userId = { $ne: req.user._id, $nin: excludeUsers };
+      query.userId = { $ne: userObjectId, $nin: excludeUsers };
     }
 
     // ─── Name Search ─────────────────────────────────────────────────────────
@@ -329,8 +355,26 @@ exports.searchProfiles = async (req, res) => {
       query['personal.fullName'] = new RegExp(name.trim(), 'i');
     }
 
-    // ─── Gender Filter ───────────────────────────────────────────────────────
-    if (gender) query['personal.gender'] = gender;
+    // ─── Gender Filter (Strictly Enforce Opposite Gender) ────────────────────
+    let myGender = null;
+    if (myProfile && myProfile.personal && myProfile.personal.gender) {
+      myGender = myProfile.personal.gender.toLowerCase();
+    } else if (userDoc && userDoc.gender) {
+      myGender = userDoc.gender.toLowerCase();
+    }
+
+    if (myGender === 'male') {
+      query['personal.gender'] = 'female';
+    } else if (myGender === 'female') {
+      query['personal.gender'] = 'male';
+    } else if (gender) {
+      query['personal.gender'] = gender;
+    }
+
+    console.log('[searchProfiles Debug] user ID:', req.user._id);
+    console.log('[searchProfiles Debug] myGender resolved to:', myGender);
+    console.log('[searchProfiles Debug] Query Gender set to:', query['personal.gender']);
+    console.log('[searchProfiles Debug] Exclude userId:', query.userId);
 
     // ─── Age Filter (calculated via DOB) ─────────────────────────────────────
     if (ageMin || ageMax) {
@@ -391,7 +435,6 @@ exports.searchProfiles = async (req, res) => {
       .lean({ virtuals: true });
 
     // ─── Enrich with Match % and Privacy-Aware Preview ───────────────────────
-    const myProfile = await MatrimonialProfile.findOne({ userId: req.user._id, isDeleted: false }).lean({ virtuals: true });
 
     // Pre-load accepted interests for batch check
     const profileUserIds = profiles.map(p => p.userId);

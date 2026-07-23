@@ -69,7 +69,7 @@ exports.initiatePurchase = async (req, res) => {
       gateway,
       amount:  plan.price,
       currency:'INR',
-      receipt: `sub_${req.user._id}_${Date.now()}`,
+      receipt: `rct_${req.user._id.toString().slice(-6)}_${Date.now()}`,
       notes:   { userId: req.user._id.toString(), planId: plan._id.toString() }
     });
 
@@ -78,7 +78,8 @@ exports.initiatePurchase = async (req, res) => {
       data:   { order, plan: { name: plan.name, price: plan.price }, gateway }
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    const errorMsg = err.error ? (err.error.description || err.error.message) : err.message;
+    res.status(400).json({ status: 'error', message: errorMsg || 'Payment initiation failed.' });
   }
 };
 

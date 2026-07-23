@@ -129,7 +129,7 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
     if (step === 3) {
       setLoadingMembers(true);
       getMembers({ search, limit: 10, page: 1 })
-        .then(res => setMembersList(res.data?.members || []))
+        .then(res => setMembersList(res.data || []))
         .catch(err => console.error(err))
         .finally(() => setLoadingMembers(false));
     }

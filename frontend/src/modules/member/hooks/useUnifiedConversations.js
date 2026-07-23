@@ -38,7 +38,7 @@ export const useUnifiedConversations = () => {
             lastMessagePreview: c.lastMessagePreview || c.lastMessageId?.message || '',
             lastMessageAt: c.lastMessageAt || c.createdAt,
             unreadCount: c.unreadCount || 0,
-            route: `/member/chat/member/${c._id}`,
+            route: `/member/chat/conv/${c._id}`,
             isOnline: false, // Updated by socket if needed
             isPinned: false,
             metadata: {

@@ -93,7 +93,7 @@ export const useAxiosPrivate = () => {
             }
           } catch (refreshError) {
             // Refresh token expired or invalid, clear only the current panel's session
-            if (isHeadPanel) {
+            if (isHeadTarget) {
               localStorage.removeItem('head_auth_user');
               localStorage.removeItem('head_auth_token');
               localStorage.removeItem('head_has_session');
@@ -103,7 +103,7 @@ export const useAxiosPrivate = () => {
                 isAuthenticated: false,
                 isInitialized: true,
               });
-            } else if (isAdminPanel) {
+            } else if (isAdminTarget) {
               localStorage.removeItem('admin_auth_user');
               localStorage.removeItem('admin_auth_token');
               localStorage.removeItem('admin_has_session');

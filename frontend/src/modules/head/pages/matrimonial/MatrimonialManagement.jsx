@@ -241,6 +241,27 @@ export default function MatrimonialManagement() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // ─── Socket.IO Auto-Refresh ───────────────────────────────────────────────
+  useEffect(() => {
+    import('socket.io-client').then(({ io }) => {
+      const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+        || (import.meta.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, ''))
+        || 'http://localhost:5000';
+      const token = localStorage.getItem('head_auth_token');
+      
+      const socket = io(SOCKET_URL, {
+        auth: { token, role: 'head' },
+        transports: ['websocket']
+      });
+
+      socket.on('head:matrimonial_update', () => {
+        loadAll(); // Auto refresh all stats and lists
+      });
+
+      return () => socket.disconnect();
+    }).catch(err => console.error('Failed to load socket client', err));
+  }, [loadAll]);
+
   // Derived stats
   const derivedStats = useMemo(() => {
     const total      = profiles.length;
@@ -248,7 +269,8 @@ export default function MatrimonialManagement() {
     const brides     = profiles.filter(p => p.personal?.gender === 'female').length;
     const pendingVer = profiles.filter(p => p.verificationStatus === 'pending' || p.verificationStatus === 'unverified').length;
     const reported   = reports.filter(r => r.status === 'pending').length;
-    return { total, grooms, brides, pendingVer, reported };
+    const married    = profiles.filter(p => p.status === 'married' || p.isClosed).length;
+    return { total, grooms, brides, pendingVer, reported, married };
   }, [profiles, reports]);
 
   // Filter pipeline
@@ -337,11 +359,12 @@ export default function MatrimonialManagement() {
       </header>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard title="Total Profiles"   val={derivedStats.total}    sub={`${derivedStats.grooms} Grooms · ${derivedStats.brides} Brides`} icon={Users}       color="from-purple-500/20 to-indigo-500/20" />
         <StatCard title="Pending Verify"   val={derivedStats.pendingVer} sub="Needs verification"     icon={FileSearch} color="from-sky-500/20 to-blue-500/20" />
         <StatCard title="Open Reports"     val={derivedStats.reported} sub="Pending resolution"       icon={AlertTriangle} color="from-rose-500/20 to-red-500/20" />
         <StatCard title="Community Subs"   val={stats?.activeSubscriptions ?? '—'} sub="Active memberships" icon={Sparkles} color="from-amber-500/20 to-orange-500/20" />
+        <StatCard title="Total Marriages"  val={derivedStats.married} sub="Closed profiles"          icon={Heart} color="from-pink-500/20 to-rose-500/20" />
       </div>
 
       {/* Filters */}
@@ -402,7 +425,14 @@ export default function MatrimonialManagement() {
                     }`}>{p.verificationStatus || 'unverified'}</span>
                   </div>
                 </div>
-                <div className="p-3">
+                <div className="p-3 bg-white/2">
+                  {p.isClosed && (
+                    <div className="mb-2 w-full text-center">
+                      <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-pink-500/20 text-pink-400 border border-pink-500/30">
+                        Closed (Married)
+                      </span>
+                    </div>
+                  )}
                   <button onClick={() => setSelectedProfile(p)}
                     className="w-full py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1.5">
                     <Eye size={12} /> Review
@@ -443,7 +473,14 @@ export default function MatrimonialManagement() {
                     </td>
                     <td className="px-4 py-3 text-white/50">{p.location?.city || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-white/5 text-white/60">{p.status}</span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-white/5 text-white/60">{p.status}</span>
+                        {p.isClosed && (
+                          <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-pink-500/20 text-pink-400 border border-pink-500/30">
+                            Closed
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${

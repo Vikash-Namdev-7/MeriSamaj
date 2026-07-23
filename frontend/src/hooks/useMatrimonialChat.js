@@ -84,15 +84,16 @@ export const useMatrimonialChat = (userId) => {
         return prev.map(c => {
           if (c._id !== conversationId) return c;
           
-          // Re-evaluate the last message preview logic if this was the last message
-          // The socket payload doesn't provide the entire conversation list of messages, 
-          // so we'll just set it to 'This message was deleted' if it was the last message.
           if (c.lastMessageId === messageId || c.lastMessageId?._id === messageId) {
             return { ...c, lastMessagePreview: 'This message was deleted' };
           }
           return c;
         });
       });
+    });
+
+    socket.on('matrimonial:marriageAccepted', () => {
+      setConversations(prev => prev.map(c => ({ ...c, isReadOnly: true, isArchived: true })));
     });
 
     return () => socket.disconnect();

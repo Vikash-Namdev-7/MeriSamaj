@@ -29,6 +29,11 @@ exports.sendInterest = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Profile not found or not available.' });
     }
 
+    // ─── Block interests to married/closed profiles ───────────────────────────
+    if (receiverProfile.isClosed || receiverProfile.status === 'married') {
+      return res.status(400).json({ status: 'error', message: 'This profile is no longer accepting interests. The user is married.' });
+    }
+
     const receiverId = receiverProfile.userId;
 
     // ─── Self-send check ─────────────────────────────────────────────────────

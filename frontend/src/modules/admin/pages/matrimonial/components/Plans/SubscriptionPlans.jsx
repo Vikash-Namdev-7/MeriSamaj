@@ -5,6 +5,7 @@ import { matrimonialService } from '../../services/matrimonialService';
 const EMPTY_PLAN = {
   name: '', price: 0, originalPrice: 0, durationInDays: 30,
   description: '', isActive: true, isMostPopular: false,
+  badge: '', themeColor: '#f43f5e',
   features: { interestsPerDay: 10, photoUploadLimit: 3, contactsPerMonth: 10, canChat: true, profileBoost: false }
 };
 
@@ -61,6 +62,20 @@ const PlanModal = ({ plan, onClose, onSaved }) => {
             <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Duration (days)</label>
             <input type="number" value={form.durationInDays} onChange={e => set('durationInDays', Number(e.target.value))}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500/50" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Badge</label>
+            <input type="text" placeholder="e.g. Most Popular" value={form.badge || ''} onChange={e => set('badge', e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500/50" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Theme Color</label>
+            <div className="flex gap-2">
+              <input type="color" value={form.themeColor || '#f43f5e'} onChange={e => set('themeColor', e.target.value)}
+                className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border-0 p-0" />
+              <input type="text" value={form.themeColor || '#f43f5e'} onChange={e => set('themeColor', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500/50" />
+            </div>
           </div>
           <div className="col-span-2">
             <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Description</label>

@@ -10,6 +10,7 @@ const Conversation        = require('../../models/Conversation');
 const MatrimonialSettings = require('../../models/MatrimonialSettings');
 const UserSubscription    = require('../../models/UserSubscription');
 const UserBlock           = require('../../models/UserBlock');
+const User                = require('../../models/User');
 const { calculateMatchPercentage }          = require('../../services/matchService');
 const { buildRestrictedProfile, buildFullProfile } = require('../../middleware/matrimonialPrivacy');
 
@@ -90,7 +91,13 @@ exports.getDashboard = async (req, res) => {
 
 // ─── Recommendation Engine ────────────────────────────────────────────────────
 const getRecommendations = async (userId, myProfile, subscription) => {
+  // ─── If married/closed, return empty recommendations ──────────────────────
+  if (myProfile && (myProfile.isClosed || myProfile.status === 'married')) {
+    return { recommendedMatches: [], newMembers: [], recentlyActive: [], premiumMembers: [], nearYou: [] };
+  }
+
   const settings = await MatrimonialSettings.findOne().lean();
+  const userDoc  = await User.findById(userId).select('gender').lean();
   const limit    = settings?.maxRecommendationsPerCategory || 10;
 
   // ─── Completion threshold (env-driven) ───────────────────────────────────
@@ -102,21 +109,33 @@ const getRecommendations = async (userId, myProfile, subscription) => {
   const whoBlockedMe = await UserBlock.find({ blockedUserId: userId }).distinct('userId');
   const excludeUsers = [...blockedByMe, ...whoBlockedMe];
 
+  const mongoose = require('mongoose');
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
   const userExclusion = excludeUsers.length > 0
-    ? { $ne: userId, $nin: excludeUsers }
-    : { $ne: userId };
+    ? { $ne: userObjectId, $nin: excludeUsers }
+    : { $ne: userObjectId };
 
   const baseQuery = {
     userId:   userExclusion,
-    status:   'active',
+    status:   'active',      // Only active profiles appear in matchmaking
+    isClosed: { $ne: true }, // Exclude married/closed profiles
     isDeleted: false,
     'profileCompletion.percentage': { $gte: completionRequired }
   };
 
-  // Apply opposite gender filter if available
+  // ─── Apply opposite gender filter (Strictly Enforce) ────────────────────
+  let myGender = null;
   if (myProfile?.personal?.gender) {
-    const oppositeGender = myProfile.personal.gender === 'male' ? 'female' : 'male';
-    baseQuery['personal.gender'] = oppositeGender;
+    myGender = myProfile.personal.gender.toLowerCase();
+  } else if (userDoc?.gender) {
+    myGender = userDoc.gender.toLowerCase();
+  }
+
+  if (myGender === 'male') {
+    baseQuery['personal.gender'] = 'female';
+  } else if (myGender === 'female') {
+    baseQuery['personal.gender'] = 'male';
   }
 
   const [recommendedMatches, newMembers, recentlyActive, premiumMembers, nearYou] = await Promise.all([
@@ -124,17 +143,17 @@ const getRecommendations = async (userId, myProfile, subscription) => {
     MatrimonialProfile.find({
       ...baseQuery,
       'personal.community': myProfile?.personal?.community || { $exists: true }
-    }).sort({ createdAt: -1 }).limit(limit).lean({ virtuals: true }),
+    }).sort({ createdAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true }),
 
     // New Members
-    MatrimonialProfile.find(baseQuery).sort({ createdAt: -1 }).limit(limit).lean({ virtuals: true }),
+    MatrimonialProfile.find(baseQuery).sort({ createdAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true }),
 
     // Recently Active
-    MatrimonialProfile.find(baseQuery).sort({ lastActiveAt: -1 }).limit(limit).lean({ virtuals: true }),
+    MatrimonialProfile.find(baseQuery).sort({ lastActiveAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true }),
 
     // Verified Members first
     MatrimonialProfile.find({ ...baseQuery, verificationStatus: 'verified' })
-      .sort({ createdAt: -1 }).limit(limit).lean({ virtuals: true }),
+      .sort({ createdAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true }),
 
     // Near You (same city or state)
     MatrimonialProfile.find({
@@ -143,7 +162,7 @@ const getRecommendations = async (userId, myProfile, subscription) => {
         { 'location.city':  myProfile?.location?.city  || '__none__' },
         { 'location.state': myProfile?.location?.state || '__none__' }
       ]
-    }).limit(limit).lean({ virtuals: true })
+    }).sort({ createdAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true })
   ]);
 
   // Enrich recommended matches with match %

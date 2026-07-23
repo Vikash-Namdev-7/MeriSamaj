@@ -100,71 +100,23 @@ const ChatInfoPage = () => {
           )}
         </div>
 
-        {/* MEDIA, LINKS, DOCS */}
+        {/* MEDIA */}
         <div className="bg-white shadow-sm mb-2">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer active:bg-gray-50">
-            <p className="text-[15px] font-bold text-gray-900">Media, links, and docs</p>
+            <p className="text-[15px] font-bold text-gray-900">Shared Media</p>
             <div className="flex items-center gap-1 text-gray-400">
-              <span className="text-[14px]">17</span>
+              <span className="text-[14px]">{mockMedia.length}</span>
               <ChevronRight size={20} />
             </div>
           </div>
           <div className="p-4">
-            <div className="flex gap-2 mb-4">
-              {['media', 'docs', 'links'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-1.5 rounded-full text-[13px] font-bold capitalize transition-colors ${
-                    activeTab === tab ? 'bg-brand-primary/10 text-brand-primary' : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {tab}
-                </button>
+            <div className="grid grid-cols-4 gap-1.5">
+              {mockMedia.map((url, i) => (
+                <div key={i} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
+                  <img src={url} alt="media" className="w-full h-full object-cover" />
+                </div>
               ))}
             </div>
-
-            {activeTab === 'media' && (
-              <div className="grid grid-cols-4 gap-1.5">
-                {mockMedia.map((url, i) => (
-                  <div key={i} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
-                    <img src={url} alt="media" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'docs' && (
-              <div className="space-y-3">
-                {mockDocs.map((doc, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-                      <FileText size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-gray-900 truncate">{doc.name}</p>
-                      <p className="text-[12px] text-gray-500">{doc.size} • {doc.date}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'links' && (
-              <div className="space-y-3">
-                {mockLinks.map((link, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                      <Link2 size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-blue-600 truncate">{link.url}</p>
-                      <p className="text-[12px] text-gray-500">{link.domain}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 

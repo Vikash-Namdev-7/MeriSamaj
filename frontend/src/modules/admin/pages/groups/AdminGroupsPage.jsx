@@ -18,7 +18,7 @@ export const AdminGroupsPage = () => {
   const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, archived: 0 });
   const [viewMode, setViewMode] = useState('table');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ status: 'all', category: 'all', community: 'all' });
+  const [filters, setFilters] = useState({ status: 'all', category: 'all', community: 'all', groupType: 'all' });
 
   const showToast = (msg) => {
     setToast(msg);
@@ -61,7 +61,18 @@ export const AdminGroupsPage = () => {
       const matchSearch = !searchQuery || g.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchStatus = filters.status === 'all' || g.approvalStatus === filters.status;
       const matchCategory = filters.category === 'all' || g.category === filters.category;
-      return matchSearch && matchStatus && matchCategory;
+      
+      let matchGroupType = true;
+      if (filters.groupType !== 'all') {
+        const creatorRole = g.creator?.role || 'user';
+        if (filters.groupType === 'community') {
+          matchGroupType = ['admin', 'head'].includes(creatorRole);
+        } else if (filters.groupType === 'personal') {
+          matchGroupType = creatorRole === 'user';
+        }
+      }
+
+      return matchSearch && matchStatus && matchCategory && matchGroupType;
     });
   }, [groups, searchQuery, filters]);
 
@@ -102,9 +113,9 @@ export const AdminGroupsPage = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                Global Groups Governance
+                User Groups Management
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Master moderation across all communities</p>
+              <p className="text-xs text-slate-400 mt-0.5">Monitor and manage user-created chat groups</p>
             </div>
           </div>
 
@@ -160,6 +171,15 @@ export const AdminGroupsPage = () => {
           </div>
           <div className="flex gap-3">
             <select 
+              value={filters.groupType}
+              onChange={(e) => setFilters({...filters, groupType: e.target.value})}
+              className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="all">All Group Types</option>
+              <option value="community">Community Group</option>
+              <option value="personal">Personal Group</option>
+            </select>
+            <select 
               value={filters.community}
               onChange={(e) => setFilters({...filters, community: e.target.value})}
               className="bg-slate-50/50 border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-100"
@@ -203,7 +223,9 @@ export const AdminGroupsPage = () => {
                     <Avatar initials={group.name?.substring(0,2).toUpperCase()} size="sm" />
                     <div>
                       <p className="font-bold text-slate-800">{group.name}</p>
-                      <p className="text-[10px] text-slate-400">{group.type === 'invite_only' ? 'Private' : 'Public'} • {group.category}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {['admin', 'head'].includes(group.creator?.role) ? 'Community Group' : 'Personal Group'} • {group.type === 'invite_only' ? 'Private' : 'Public'} • {group.category}
+                      </p>
                     </div>
                   </td>
                   <td className="p-3.5 font-semibold text-indigo-600">{group.communityId?.name || 'Unknown'}</td>
@@ -241,7 +263,9 @@ export const AdminGroupsPage = () => {
               <div>
                 <h4 className="font-bold text-slate-800">{group.name}</h4>
                 <p className="text-xs text-indigo-600 font-semibold">{group.communityId?.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{group.memberCount} Members • {group.type}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {['admin', 'head'].includes(group.creator?.role) ? 'Community Group' : 'Personal Group'} • {group.memberCount} Members
+                </p>
               </div>
               <div className="mt-auto pt-3 border-t border-slate-50 flex gap-2">
                 <button onClick={() => navigate(`/admin/groups/${group._id}`)} className="flex-1 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-100">Manage</button>

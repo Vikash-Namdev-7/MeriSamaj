@@ -14,6 +14,8 @@ export const matrimonialService = {
   // Profiles
   getProfiles:        (params)     => axiosPrivate.get(`${BASE}/profiles`, { params }).then(r => r.data.data),
   verifyProfile:      (id, body)   => axiosPrivate.put(`${BASE}/profiles/${id}/verify`, body).then(r => r.data),
+  closeProfile:       (id)         => axiosPrivate.put(`${BASE}/profiles/${id}/close`).then(r => r.data),
+  reopenProfile:      (id)         => axiosPrivate.put(`${BASE}/profiles/${id}/reopen`).then(r => r.data),
 
   // Photo Moderation
   getPendingPhotos:   ()           => axiosPrivate.get(`${BASE}/photos/pending`).then(r => r.data.data),

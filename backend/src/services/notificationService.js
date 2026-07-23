@@ -893,6 +893,57 @@ const notifyReferralBonusEarned = (memberId, bonusAmount) =>
     priority:      'high'
   });
 
+// ─── Marriage Lifecycle Notification Helpers ─────────────────────────────────────────
+const notifyMarriageRequestReceived = (receiverId, senderName, requestId) =>
+  createNotification({
+    userId:        receiverId,
+    module:        'matrimonial',
+    type:          'matrimonial_marriage_request_received',
+    title:         'Marriage Confirmation Request 💍',
+    message:       `${senderName} has sent you a marriage confirmation request. Please review and respond.`,
+    icon:          '💍',
+    priority:      'urgent',
+    actionUrl:     '/member/matrimonial/interests',
+    referenceId:   requestId,
+    referenceType: 'MarriageRequest'
+  });
+
+const notifyMarriageAccepted = (requesterId, partnerName) =>
+  createNotification({
+    userId:        requesterId,
+    module:        'matrimonial',
+    type:          'matrimonial_marriage_accepted',
+    title:         'Marriage Confirmed! 🎊❤️',
+    message:       `${partnerName} has confirmed the marriage! Your matrimonial profile has been successfully closed.`,
+    icon:          '🎊',
+    priority:      'urgent',
+    actionUrl:     '/member/matrimonial'
+  });
+
+const notifyMarriageRejected = (requesterId, partnerName) =>
+  createNotification({
+    userId:        requesterId,
+    module:        'matrimonial',
+    type:          'matrimonial_marriage_rejected',
+    title:         'Marriage Request Declined',
+    message:       `${partnerName} has declined the marriage confirmation request. Your connection remains active.`,
+    icon:          '💔',
+    priority:      'high',
+    actionUrl:     '/member/matrimonial'
+  });
+
+const notifyProfileClosed = (userId) =>
+  createNotification({
+    userId,
+    module:   'matrimonial',
+    type:     'matrimonial_profile_closed',
+    title:    'Congratulations! Profile Closed 🎉',
+    message:  'Your matrimonial profile has been successfully closed. We wish you a happy married life!',
+    icon:     '🎉',
+    priority: 'high',
+    actionUrl:'/member/matrimonial'
+  });
+
 module.exports = {
 
   createNotification,
@@ -915,7 +966,6 @@ module.exports = {
   notifyGroupInviteAccepted,
   notifyGroupInviteDeclined,
   notifyOfficialPost,
-  notifyAnnouncement,
   notifyMention,
   // ─── Events ──────────────────────────────────────────────────────────────────
   notifyEventCreated,
@@ -947,6 +997,12 @@ module.exports = {
   notifyProfileSubmittedToAdmin,
   notifyProfileSuspended,
   notifyReportActioned,
+  // ─── Marriage Lifecycle ────────────────────────────────────────────────────
+  notifyMarriageRequestReceived,
+  notifyMarriageAccepted,
+  notifyMarriageRejected,
+  notifyProfileClosed,
+  notifyProfileViewed,
   // ─── Groups & Chat Extras ─────────────────────────────────────────────────────
   notifyGroupCreatedToHead,
   notifyGroupCreatedInstant,

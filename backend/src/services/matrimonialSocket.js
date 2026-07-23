@@ -61,6 +61,10 @@ const matrimonialSocket = (io) => {
         });
         if (!conversation) return socket.emit('error', { message: 'Conversation not found.' });
 
+        if (conversation.isReadOnly) {
+          return socket.emit('error', { message: 'This matrimonial conversation has been archived after marriage confirmation. Messages are read-only.', code: 'CONVERSATION_ARCHIVED' });
+        }
+
         const newMsg = await Message.create({
           conversationId,
           senderId:    userId,
