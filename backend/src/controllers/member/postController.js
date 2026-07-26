@@ -2,9 +2,20 @@ const Post = require('../../models/Post');
 const Community = require('../../models/Community');
 const User = require('../../models/User');
 const { notifyOfficialPost } = require('../../services/notificationService');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
+
+// Helper to verify post community ownership for non-admin actions
+const verifyPostCommunityAccess = (req, post) => {
+  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
+    return true;
+  }
+  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+  const postCommId = (post?.communityId?._id || post?.communityId || '').toString();
+  return !!(userCommId && postCommId && userCommId === postCommId);
+};
 
 // ─────────────────────────────────────────────
-// @desc    Get all posts for user's community
+// @desc    Get all posts for user's community (2-Level Scope: Mandatory Community + Optional City)
 // @route   GET /api/v1/member/posts
 // @access  Private
 // ─────────────────────────────────────────────
@@ -13,46 +24,24 @@ exports.getPosts = async (req, res) => {
     const { feed, feedType } = req.query;
     const requestedFeed = feed || feedType;
 
-    const filter = { isDeleted: false };
-    
-    // Resolve user community IDs
-    const commIds = [];
-    let primaryId = req.communityId || req.user?.communityId?._id || req.user?.communityId;
-    if (primaryId) commIds.push(primaryId);
-
-    if (req.user?.assignedCommunityIds && Array.isArray(req.user.assignedCommunityIds)) {
-      req.user.assignedCommunityIds.forEach(item => {
-        const id = item._id ? item._id : item;
-        if (id && !commIds.some(existing => existing.toString() === id.toString())) {
-          commIds.push(id);
-        }
-      });
-    }
-
-    if (commIds.length === 0 && req.user?.community) {
-      const commDoc = await Community.findOne({ name: new RegExp('^' + req.user.community.trim() + '$', 'i') });
-      if (commDoc) commIds.push(commDoc._id);
-    }
-
-    if (requestedFeed === 'community') {
-      filter.feedType = 'community';
-      if (commIds.length > 0) {
-        filter.communityId = commIds.length === 1 ? commIds[0] : { $in: commIds };
-      }
-    } else if (requestedFeed === 'city') {
-      filter.feedType = { $ne: 'community' };
-      if (commIds.length > 0) {
-        filter.$or = [
-          { feedType: { $ne: 'community' } },
-          { communityId: commIds.length === 1 ? commIds[0] : { $in: commIds } }
-        ];
-      }
-    } else if (commIds.length > 0) {
-      filter.communityId = commIds.length === 1 ? commIds[0] : { $in: commIds };
-    }
+    let baseFilter = { isDeleted: false };
 
     if (req.user?.role === 'user' || req.user?.role === 'member') {
-      filter.status = 'published';
+      baseFilter.status = 'published';
+    }
+
+    let cityFilter = req.query.city;
+    if (requestedFeed === 'city' && !cityFilter) {
+      cityFilter = req.user?.city;
+    }
+
+    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
+    const filter = applyScopeFilter(req, baseFilter, { overrideCity: cityFilter });
+
+    if (requestedFeed === 'community') {
+      filter.feedType = { $in: ['community', 'both'] };
+    } else if (requestedFeed === 'city') {
+      filter.feedType = { $in: ['city', 'both'] };
     }
 
     const posts = await Post.find(filter)
@@ -85,6 +74,10 @@ exports.getPostById = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
     }
 
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ status: 'error', message: 'Access denied: post belongs to another community' });
+    }
+
     res.json({ success: true, data: post });
   } catch (error) {
     console.error('getPostById error:', error);
@@ -113,11 +106,53 @@ exports.createPost = async (req, res) => {
 
     const formattedMedia = images.map(img => ({ type: 'image', url: img, provider: 'upload' }));
 
-    let targetCommunityId = req.communityId || req.user?.communityId?._id || req.user?.communityId;
-    if (!targetCommunityId) {
-      const Community = require('../../models/Community');
-      const defaultComm = await Community.findOne({});
-      if (defaultComm) targetCommunityId = defaultComm._id;
+    const tenantPayload = inheritTenantPayload(req, {
+      content: content.trim(),
+      feedType: req.body.feedType || 'city',
+      status: 'published'
+    });
+
+    if (!tenantPayload.communityId) {
+      return res.status(400).json({ status: 'error', message: 'User is not assigned to any community' });
+    }
+    const targetCommunityId = tenantPayload.communityId;
+
+    const requestedFeedType = req.body.feedType;
+
+    if (requestedFeedType === 'both') {
+      const cityPost = await Post.create({
+        content: content.trim(),
+        images,
+        media: formattedMedia,
+        userId: req.user._id,
+        authorId: req.user._id,
+        communityId: targetCommunityId,
+        feedType: 'city',
+        status: 'published',
+      });
+
+      const communityPost = await Post.create({
+        content: content.trim(),
+        images,
+        media: formattedMedia,
+        userId: req.user._id,
+        authorId: req.user._id,
+        communityId: targetCommunityId,
+        feedType: 'community',
+        status: 'published',
+      });
+
+      const populatedCity = await Post.findById(cityPost._id)
+        .populate('userId', 'name avatar community city')
+        .populate('authorId', 'name avatar community city')
+        .populate('communityId', 'name slug city');
+
+      const populatedCommunity = await Post.findById(communityPost._id)
+        .populate('userId', 'name avatar community city')
+        .populate('authorId', 'name avatar community city')
+        .populate('communityId', 'name slug city');
+
+      return res.json({ success: true, data: populatedCity, posts: [populatedCity, populatedCommunity] });
     }
 
     const post = await Post.create({
@@ -127,7 +162,7 @@ exports.createPost = async (req, res) => {
       userId: req.user._id,
       authorId: req.user._id,
       communityId: targetCommunityId,
-      feedType: req.body.feedType || 'city',
+      feedType: requestedFeedType || 'city',
       status: 'published',
     });
 
@@ -170,6 +205,10 @@ exports.updatePost = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
     }
 
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ status: 'error', message: 'Access denied: post belongs to another community' });
+    }
+
     // Only author can edit their own post
     if (post.authorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ status: 'error', message: 'Not authorized to edit this post' });
@@ -204,6 +243,10 @@ exports.deletePost = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
     }
 
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ status: 'error', message: 'Access denied: post belongs to another community' });
+    }
+
     const isAuthor = post.authorId.toString() === req.user._id.toString();
     const isHeadOrAdmin = ['head', 'admin'].includes(req.user.role);
 
@@ -229,6 +272,10 @@ exports.toggleLike = async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
+    }
+
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ status: 'error', message: 'Access denied: post belongs to another community' });
     }
 
     const userId = req.user._id;
@@ -263,6 +310,10 @@ exports.addComment = async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ status: 'error', message: 'Post not found' });
+    }
+
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ status: 'error', message: 'Access denied: post belongs to another community' });
     }
 
     post.comments.push({ userId: req.user._id, text: text.trim() });

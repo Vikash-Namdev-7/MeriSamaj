@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Phone, ArrowRight, Bell, Eye, EyeOff, Lock, Check, AlertCircle, Gift, CheckCircle2, Loader2
@@ -7,11 +7,21 @@ import { useData } from '../../context/DataProvider';
 import { useReferral } from '../referral/ReferralContext';
 import { authService } from '../../../../core/auth/authService';
 import { useAuth } from '../../../../core/auth/useAuth';
+import {
+  validateName,
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+  validatePhone,
+  validateAlphanumeric,
+  validatePastedValue,
+  getPasswordStrength,
+} from '../../../../core/utils/validators';
 
 // ─── SLIDE WRAPPER ────────────────────────────────────────────────────────────
 const SlideIn = ({ children, dir = 'right' }) => {
   const [visible, setVisible] = useState(false);
-  useEffect(() => {
+  React.useEffect(() => {
     const t = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(t);
   }, []);
@@ -44,8 +54,11 @@ const RegisterScreen = () => {
   const [showRegConfirmPass, setShowRegConfirmPass] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
-  const [otpError, setOtpError] = useState('');
-  const [toastMessage, setToastMessage] = useState('');
+  // Field-level validation errors
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Password strength
+  const passwordStrength = getPasswordStrength(registerPassword);
 
   // Referral State
   const { validateReferralCode } = useReferral();
@@ -53,14 +66,21 @@ const RegisterScreen = () => {
   const [referralStatus, setReferralStatus] = useState(null); // null, 'loading', 'success', 'error'
   const [referralMessage, setReferralMessage] = useState('');
 
+  const [otpError, setOtpError] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
+
   const isRegOtpComplete = registerOtp.every(d => d !== '');
 
   const handleRegisterSendOtp = async () => {
-    if (!registerPhone || registerPhone.length !== 10) return;
+    const phoneResult = validatePhone(registerPhone);
+    if (!phoneResult.valid) {
+      setFieldErrors(prev => ({ ...prev, phone: phoneResult.error }));
+      return;
+    }
+    setFieldErrors(prev => ({ ...prev, phone: '' }));
     setIsLoading(true);
     setOtpError('');
     try {
-      // TODO: Integrate Production SMS Provider here (Twilio/Fast2SMS)
       await authService.sendOtp({ phone: registerPhone, type: 'register' });
       setOtpSent(true);
       setToastMessage('OTP sent successfully');
@@ -82,45 +102,62 @@ const RegisterScreen = () => {
       setToastMessage('Mobile number verified successfully!');
       setTimeout(() => setToastMessage(''), 3000);
     } catch (error) {
-      setOtpError(error?.response?.data?.message || 'Invalid OTP');
+      setOtpError(error?.response?.data?.message || 'Invalid OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRegisterNext = async () => {
-    if (!registerName || !registerName.trim()) {
-      setToastMessage('Full Name is required');
-      setTimeout(() => setToastMessage(''), 3000);
+    const errors = {};
+    const nameResult = validateName(registerName);
+    if (!nameResult.valid) errors.name = nameResult.error;
+    const passResult = validatePassword(registerPassword);
+    if (!passResult.valid) errors.password = passResult.error;
+    const confirmResult = validateConfirmPassword(registerPassword, registerConfirmPassword);
+    if (!confirmResult.valid) errors.confirmPassword = confirmResult.error;
+    if (registerEmail && registerEmail.trim()) {
+      const emailResult = validateEmail(registerEmail, false);
+      if (!emailResult.valid) errors.email = emailResult.error;
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
 
-    if (registerPassword !== registerConfirmPassword) {
-      setToastMessage('Passwords do not match');
-      setTimeout(() => setToastMessage(''), 3000);
-      return;
-    }
-    
     setIsLoading(true);
     try {
       await register({
-        name: registerName,
+        name: registerName.trim(),
         phone: registerPhone,
-        email: registerEmail,
+        email: registerEmail ? registerEmail.trim().toLowerCase() : undefined,
         password: registerPassword,
-        referralCode: referralCodeInput
+        referralCode: referralCodeInput || undefined,
       });
-      
+      localStorage.setItem('merisamaj_just_registered', 'true');
+      localStorage.removeItem('merisamaj_onboarding_from_home');
       localStorage.setItem('merisamaj_register_phone', registerPhone);
-      localStorage.setItem('merisamaj_register_email', registerEmail);
-      
+      if (registerEmail) localStorage.setItem('merisamaj_register_email', registerEmail.trim().toLowerCase());
       setToastMessage('Registration successful! Launching profile setup.');
       setTimeout(() => {
         loginUser({ name: registerName, mobile: registerPhone, email: registerEmail, isVerified: true });
         navigate('/member/onboarding');
-      }, 1000);
+      }, 500);
     } catch (error) {
-      setToastMessage(error?.response?.data?.message || 'Registration error');
+      localStorage.removeItem('merisamaj_just_registered');
+      const apiErrors = error?.response?.data?.errors;
+      const apiMessage = error?.response?.data?.message;
+      if (apiErrors) {
+        setFieldErrors(apiErrors);
+        const firstKey = Object.keys(apiErrors)[0];
+        const msg = apiErrors[firstKey] || 'Registration error. Please check inputs.';
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(''), 4000);
+      } else {
+        setToastMessage(apiMessage || 'Registration error. Please try again.');
+        setTimeout(() => setToastMessage(''), 4000);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +165,11 @@ const RegisterScreen = () => {
 
   const handleValidateReferral = async () => {
     if (!referralCodeInput.trim()) return;
+    const alphaResult = validateAlphanumeric(referralCodeInput);
+    if (!alphaResult.valid) {
+      setFieldErrors(prev => ({ ...prev, referral: alphaResult.error }));
+      return;
+    }
     setReferralStatus('loading');
     const result = await validateReferralCode(referralCodeInput);
     if (result.valid) {
@@ -185,16 +227,20 @@ const RegisterScreen = () => {
             <p className="text-[10px] text-brand-primary font-black uppercase tracking-wider">Registration Step 1: Mobile Verification</p>
             
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Mobile Number</label>
-              <div className="flex items-center gap-2.5 mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+              <label htmlFor="register-phone" className="text-[11px] font-bold text-slate-400 uppercase">Mobile Number</label>
+              <div className={`flex items-center gap-2.5 mt-1 bg-slate-50 border rounded-xl px-3 py-2 ${fieldErrors.phone ? 'border-red-400' : 'border-slate-200'}`}>
                 <span className="text-xs text-slate-500 font-black">+91</span>
                 <input 
+                  id="register-phone"
                   type="tel" 
                   maxLength={10} 
+                  autoComplete="tel"
                   placeholder="Mobile Number" 
                   value={registerPhone} 
-                  onChange={(e) => setRegisterPhone(e.target.value.replace(/\D/g, ''))} 
+                  onChange={(e) => { setRegisterPhone(e.target.value.replace(/\D/g, '')); setFieldErrors(prev => ({ ...prev, phone: '' })); }} 
                   disabled={isRegMobileVerified}
+                  aria-invalid={!!fieldErrors.phone}
+                  aria-describedby="register-phone-error"
                   className="flex-1 text-xs text-slate-800 outline-none bg-transparent placeholder-slate-400 font-semibold" 
                 />
                 {!isRegMobileVerified && (
@@ -208,6 +254,7 @@ const RegisterScreen = () => {
                   </button>
                 )}
               </div>
+              {fieldErrors.phone && <p id="register-phone-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.phone}</p>}
             </div>
 
             {!isRegMobileVerified && otpSent && (
@@ -255,59 +302,118 @@ const RegisterScreen = () => {
           {/* Step 2: Account credentials */}
           <div className={`p-4 bg-white/95 rounded-[22px] border border-purple-100/30 shadow-xs space-y-4 transition-all duration-300 ${!isRegMobileVerified ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
             <p className="text-[10px] text-brand-primary font-black uppercase tracking-wider">Registration Step 2: Account Credentials</p>
-            
+
+            {/* Full Name */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Full Name</label>
-              <input 
-                type="text" 
-                placeholder="Enter full name" 
-                value={registerName} 
-                onChange={(e) => setRegisterName(e.target.value)} 
-                className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none" 
+              <label htmlFor="register-name" className="text-[11px] font-bold text-slate-400 uppercase">Full Name</label>
+              <input
+                id="register-name"
+                type="text"
+                autoComplete="name"
+                placeholder="Enter full name"
+                value={registerName}
+                onChange={(e) => { setRegisterName(e.target.value); setFieldErrors(prev => ({ ...prev, name: '' })); }}
+                onKeyPress={(e) => { if (!/[a-zA-Z\u0900-\u097F ]/.test(e.key)) e.preventDefault(); }}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text');
+                  const res = validatePastedValue(pasted, 'name');
+                  if (!res.valid) { e.preventDefault(); setFieldErrors(prev => ({ ...prev, name: res.error })); }
+                }}
+                onBlur={() => { const r = validateName(registerName); if (!r.valid) setFieldErrors(prev => ({ ...prev, name: r.error })); }}
+                aria-invalid={!!fieldErrors.name}
+                aria-describedby="register-name-error"
+                className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`}
               />
+              {fieldErrors.name && <p id="register-name-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.name}</p>}
             </div>
 
+            {/* Email (Optional) */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Email Address <span className="normal-case text-slate-300">(Optional)</span></label>
-              <input 
-                type="email" 
-                placeholder="Enter email address" 
-                value={registerEmail} 
-                onChange={(e) => setRegisterEmail(e.target.value)} 
-                className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none" 
+              <label htmlFor="register-email" className="text-[11px] font-bold text-slate-400 uppercase">Email Address <span className="normal-case text-slate-300">(Optional)</span></label>
+              <input
+                id="register-email"
+                type="email"
+                autoComplete="email"
+                placeholder="Enter email address"
+                value={registerEmail}
+                onChange={(e) => { setRegisterEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: '' })); }}
+                onBlur={() => { if (registerEmail.trim()) { const r = validateEmail(registerEmail); if (!r.valid) setFieldErrors(prev => ({ ...prev, email: r.error })); } }}
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby="register-email-error"
+                className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none ${fieldErrors.email ? 'border-red-400' : 'border-slate-200'}`}
               />
+              {fieldErrors.email && <p id="register-email-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.email}</p>}
             </div>
 
+            {/* Password with strength indicator */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Password</label>
-              <div className="flex items-center mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                <input 
-                  type={showRegPass ? 'text' : 'password'} 
-                  placeholder="Create password" 
-                  value={registerPassword} 
-                  onChange={(e) => setRegisterPassword(e.target.value)} 
-                  className="flex-1 text-xs font-semibold text-slate-800 outline-none bg-transparent" 
+              <label htmlFor="register-password" className="text-[11px] font-bold text-slate-400 uppercase">Password</label>
+              <div className={`flex items-center mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 ${fieldErrors.password ? 'border-red-400' : 'border-slate-200'}`}>
+                <input
+                  id="register-password"
+                  type={showRegPass ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Create password (min 6 characters)"
+                  value={registerPassword}
+                  onChange={(e) => { setRegisterPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); }}
+                  onBlur={() => { const r = validatePassword(registerPassword); if (!r.valid) setFieldErrors(prev => ({ ...prev, password: r.error })); }}
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby="register-password-error"
+                  className="flex-1 text-xs font-semibold text-slate-800 outline-none bg-transparent"
                 />
-                <button type="button" onClick={() => setShowRegPass(!showRegPass)} className="text-slate-400 hover:text-slate-650 shrink-0 ml-1">
+                <button type="button" onClick={() => setShowRegPass(!showRegPass)} className="text-slate-400 hover:text-slate-650 shrink-0 ml-1" aria-label={showRegPass ? 'Hide password' : 'Show password'}>
                   {showRegPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+              {/* Password Strength Indicator */}
+              {registerPassword && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="flex gap-1 flex-1">
+                    {['weak', 'medium', 'strong'].map((level, idx) => (
+                      <div key={level} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                        (passwordStrength === 'weak' && idx === 0) ? 'bg-red-400' :
+                        (passwordStrength === 'medium' && idx <= 1) ? 'bg-amber-400' :
+                        (passwordStrength === 'strong') ? 'bg-emerald-500' : 'bg-slate-200'
+                      }`} />
+                    ))}
+                  </div>
+                  <span className={`text-[9px] font-black uppercase shrink-0 ${passwordStrength === 'strong' ? 'text-emerald-600' : passwordStrength === 'medium' ? 'text-amber-500' : 'text-red-500'}`}>
+                    {passwordStrength}
+                  </span>
+                </div>
+              )}
+              {fieldErrors.password && <p id="register-password-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.password}</p>}
             </div>
 
+            {/* Confirm Password with match indicator */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase">Confirm Password</label>
-              <div className="flex items-center mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                <input 
-                  type={showRegConfirmPass ? 'text' : 'password'} 
-                  placeholder="Re-enter password" 
-                  value={registerConfirmPassword} 
-                  onChange={(e) => setRegisterConfirmPassword(e.target.value)} 
-                  className="flex-1 text-xs font-semibold text-slate-800 outline-none bg-transparent" 
+              <label htmlFor="register-confirm-password" className="text-[11px] font-bold text-slate-400 uppercase">Confirm Password</label>
+              <div className={`flex items-center mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 ${fieldErrors.confirmPassword ? 'border-red-400' : 'border-slate-200'}`}>
+                <input
+                  id="register-confirm-password"
+                  type={showRegConfirmPass ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Re-enter password"
+                  value={registerConfirmPassword}
+                  onChange={(e) => { setRegisterConfirmPassword(e.target.value); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+                  onBlur={() => { const r = validateConfirmPassword(registerPassword, registerConfirmPassword); if (!r.valid) setFieldErrors(prev => ({ ...prev, confirmPassword: r.error })); }}
+                  aria-invalid={!!fieldErrors.confirmPassword}
+                  aria-describedby="register-confirm-error"
+                  className="flex-1 text-xs font-semibold text-slate-800 outline-none bg-transparent"
                 />
-                <button type="button" onClick={() => setShowRegConfirmPass(!showRegConfirmPass)} className="text-slate-400 hover:text-slate-650 shrink-0 ml-1">
+                {/* Real-time match indicator */}
+                {registerConfirmPassword && (
+                  <span className="shrink-0 ml-1">
+                    {registerPassword === registerConfirmPassword
+                      ? <Check size={14} className="text-emerald-500" />
+                      : <AlertCircle size={14} className="text-red-400" />}
+                  </span>
+                )}
+                <button type="button" onClick={() => setShowRegConfirmPass(!showRegConfirmPass)} className="text-slate-400 hover:text-slate-650 shrink-0 ml-1" aria-label={showRegConfirmPass ? 'Hide password' : 'Show password'}>
                   {showRegConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+              {fieldErrors.confirmPassword && <p id="register-confirm-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.confirmPassword}</p>}
             </div>
 
             {/* Referral Code (Optional) */}

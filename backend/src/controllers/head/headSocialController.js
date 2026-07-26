@@ -4,6 +4,7 @@ const Comment = require('../../models/Comment');
 const Community = require('../../models/Community');
 const City = require('../../models/City');
 const User = require('../../models/User');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 /**
  * Helper to resolve the assigned Community and associated Cities for the logged-in Head.
@@ -109,37 +110,12 @@ exports.getCityFeed = async (req, res) => {
     // Enforce feedType = "city"
     filter.feedType = { $ne: 'community' };
 
-    // Scope to Head's assigned community or city (if not master admin)
-    if (req.user.role !== 'admin') {
-      const scopeConditions = [];
-      if (communityIds && communityIds.length > 0) {
-        scopeConditions.push({ communityId: { $in: communityIds } });
-      } else if (communityId) {
-        scopeConditions.push({ communityId });
-      }
-      if (cityIds.length > 0) {
-        scopeConditions.push({ cityId: { $in: cityIds } });
-      }
+    // Apply Centralized 2-Level Scope: Mandatory Community + Nested Optional City Filter
+    const cityOverride = req.query.cityId || req.query.city;
+    const scopedFilter = applyScopeFilter(req, filter, { overrideCity: cityOverride });
 
-      if (scopeConditions.length > 0) {
-        if (filter.$or) {
-          filter.$and = [
-            { $or: filter.$or },
-            { $or: scopeConditions }
-          ];
-          delete filter.$or;
-        } else {
-          filter.$or = scopeConditions;
-        }
-      }
-    } else if (req.query.communityId || req.query.cityId) {
-      if (req.query.communityId) filter.communityId = req.query.communityId;
-      if (req.query.cityId) filter.cityId = req.query.cityId;
-    }
-
-    // Apply specific city filter if requested
-    if (req.query.cityId && req.query.cityId !== 'all') {
-      filter.cityId = req.query.cityId;
+    if (req.user.role !== 'admin' && cityIds && cityIds.length > 0 && !cityOverride) {
+      scopedFilter.cityId = { $in: cityIds };
     }
 
     const pageNum = parseInt(req.query.page, 10) || 1;

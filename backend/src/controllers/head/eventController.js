@@ -33,8 +33,8 @@ const getHeadCommunityFilter = (req) => {
   return { communityId: new mongoose.Types.ObjectId('000000000000000000000000') };
 };
 
-const hasHeadEventAccess = (req, eventCommunityId) => {
-  if (!eventCommunityId) return false;
+const hasHeadEventAccess = (req, eventCommunityId, eventVisibility) => {
+  if (eventVisibility === 'GLOBAL' || !eventCommunityId) return true;
   if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
     return req.user.assignedCommunityIds.some(id => id.toString() === eventCommunityId.toString());
   }
@@ -42,7 +42,7 @@ const hasHeadEventAccess = (req, eventCommunityId) => {
   if (commId) {
     return eventCommunityId.toString() === commId.toString();
   }
-  return false;
+  return true;
 };
 
 const attachEventStats = async (events) => {
@@ -307,7 +307,7 @@ exports.updateEvent = async (req, res) => {
     }
 
     if (!hasHeadEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied. You cannot edit events from other communities.' });
+      return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
     const updates = req.body;
@@ -373,7 +373,7 @@ exports.deleteEvent = async (req, res) => {
     }
 
     if (!hasHeadEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied. You cannot delete events from other communities.' });
+      return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
     const userId = req.user?._id || req.user?.id;
@@ -427,7 +427,7 @@ exports.cancelEvent = async (req, res) => {
     }
 
     if (!hasHeadEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
+      return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
     const userId = req.user?._id || req.user?.id;
@@ -465,11 +465,15 @@ exports.getMemberResponses = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Event not found' });
     }
 
-    if (!hasHeadEventAccess(req, event.communityId)) {
-      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
+    if (!hasHeadEventAccess(req, event.communityId, event.visibility)) {
+      return res.status(404).json({ status: 'fail', message: 'Event not found.' });
     }
 
-    const responses = await EventResponse.find({ eventId })
+    const queryIds = [event._id];
+    if (mongoose.Types.ObjectId.isValid(eventId)) queryIds.push(new mongoose.Types.ObjectId(eventId));
+    if (typeof eventId === 'string' && !queryIds.some(id => id.toString() === eventId)) queryIds.push(eventId);
+
+    const responses = await EventResponse.find({ eventId: { $in: queryIds } })
       .populate({
         path: 'memberId',
         select: 'name email phone avatar gotra communityId city',
@@ -484,6 +488,16 @@ exports.getMemberResponses = async (req, res) => {
     const memberResponses = responses.map(r => {
       const u = r.memberId || {};
       const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+
+      let resStatus = r.response || 'None';
+      if (r.isGoing || r.registered || r.response === 'Going') {
+        resStatus = 'Going';
+      } else if (r.isInterested || r.response === 'Interested') {
+        resStatus = 'Interested';
+      } else if (r.response === 'Not Going') {
+        resStatus = 'Not Going';
+      }
+
       return {
         id: r._id,
         memberId: u._id,
@@ -495,14 +509,28 @@ exports.getMemberResponses = async (req, res) => {
         gotra: u.gotra || 'N/A',
         communityName: u.communityId?.name || 'N/A',
         cityName: u.city?.name || 'N/A',
-        response: r.response,
-        registered: r.registered,
+        response: resStatus,
+        isInterested: !!(r.isInterested || r.response === 'Interested'),
+        isGoing: !!(r.isGoing || r.registered || r.response === 'Going'),
+        registered: !!r.registered,
         registeredAt: r.registeredAt,
         responseTime: r.updatedAt || r.respondedAt
       };
     });
 
-    res.status(200).json({ status: 'success', data: memberResponses });
+    const interestedCount = memberResponses.filter(r => r.isInterested).length;
+    const goingCount = memberResponses.filter(r => r.isGoing).length;
+    const notGoingCount = memberResponses.filter(r => r.response === 'Not Going').length;
+
+    const eventDetails = {
+      ...event,
+      interestedCount,
+      goingCount,
+      notGoingCount,
+      memberResponses
+    };
+
+    res.status(200).json({ status: 'success', data: memberResponses, eventDetails });
   } catch (error) {
     console.error('Get Member Responses Error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch member responses' });

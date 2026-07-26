@@ -2,10 +2,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import votingService from '../../../../core/api/votingService';
+import { useAuth } from '../../../../core/auth/useAuth';
 
 const VotingContext = createContext(null);
 
 export const VotingProvider = ({ children }) => {
+  const { auth } = useAuth();
+  const userId = auth.user?._id || auth.user?.id;
   const [elections, setElections] = useState([]);
   const [votedElections, setVotedElections] = useState({}); // { electionId: candidateId }
   const [loading, setLoading] = useState(true);
@@ -35,8 +38,13 @@ export const VotingProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    fetchVotings();
-  }, [fetchVotings]);
+    if (auth.isAuthenticated && userId) {
+      fetchVotings();
+    } else {
+      setElections([]);
+      setVotedElections({});
+    }
+  }, [auth.isAuthenticated, userId, fetchVotings]);
 
   const castVote = async (electionId, candidateId) => {
     // Prevent double voting early in UI

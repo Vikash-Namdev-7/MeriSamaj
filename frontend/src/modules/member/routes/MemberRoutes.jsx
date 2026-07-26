@@ -42,6 +42,7 @@ import MatrimonialSearchPage from '../pages/matrimonial/MatrimonialSearchPage';
 import MatrimonialShortlistPage from '../pages/matrimonial/MatrimonialShortlistPage';
 import MatrimonialSuccessStories from '../pages/matrimonial/MatrimonialSuccessStories';
 import SuccessStoryDetails from '../pages/matrimonial/SuccessStoryDetails';
+import AllDonorsPage from '../pages/donation/AllDonorsPage';
 import { MatrimonialProvider } from '../pages/matrimonial/MatrimonialContext';
 import MatrimonialChatPage from '../pages/matrimonial/MatrimonialChatPage';
 import MatrimonialSubscriptionPage from '../pages/matrimonial/MatrimonialSubscriptionPage';
@@ -181,6 +182,7 @@ export const MemberRoutes = () => {
 
             <Route path="donation" element={<Outlet />}>
               <Route index element={<AnimatedPage><MemberDonations /></AnimatedPage>} />
+              <Route path="donors" element={<AnimatedPage><AllDonorsPage /></AnimatedPage>} />
               <Route path=":id" element={<AnimatedPage><DonationDetails /></AnimatedPage>} />
             </Route>
 

@@ -2,6 +2,13 @@ import { axiosPublic } from '../api/axiosConfig';
 import { axiosPrivate } from '../api/axiosPrivate';
 
 export const authService = {
+  getMe: async () => {
+    const response = await axiosPrivate.get('/auth/me', {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
   login: async (credentials) => {
     const response = await axiosPublic.post('/auth/login', credentials, {
       withCredentials: true
@@ -86,3 +93,38 @@ export const authService = {
     return response.data;
   }
 };
+
+/**
+ * Clear all persisted client-side user state & caches to prevent stale data when switching accounts
+ */
+export const clearAllUserData = (preserveRegistrationKeys = false) => {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('merisamaj_') || 
+        key.startsWith('messagesHub_') || 
+        key.startsWith('community_') ||
+        key.startsWith('matrimonial_') ||
+        key.startsWith('theme')
+      )) {
+        if (preserveRegistrationKeys && (
+          key === 'merisamaj_just_registered' || 
+          key === 'merisamaj_register_phone' || 
+          key === 'merisamaj_register_email'
+        )) {
+          continue;
+        }
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+  } catch (err) {
+    console.warn('Error clearing user storage data:', err);
+  }
+};
+

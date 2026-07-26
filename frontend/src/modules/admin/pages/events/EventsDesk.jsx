@@ -35,6 +35,7 @@ export const EventsDesk = () => {
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [eventDetails, setEventDetails] = useState(null);
+  const [responseFilterTab, setResponseFilterTab] = useState('ALL'); // 'ALL' | 'INTERESTED' | 'GOING' | 'NOT_GOING'
 
   // Form State
   const [formValues, setFormValues] = useState({
@@ -217,14 +218,38 @@ export const EventsDesk = () => {
   };
 
   const handleViewDetails = async (id) => {
-    setSelectedEventId(id);
+    if (!id) return;
+    const strId = id.toString();
+    setSelectedEventId(strId);
     setDetailDrawerOpen(true);
     setEventDetails(null);
+    setResponseFilterTab('ALL');
+
+    const matched = events.find(e => (e._id?.toString() || e.id?.toString()) === strId);
     try {
-      const res = await adminEventService.getEventById(id);
-      setEventDetails(res.data);
+      const res = await adminEventService.getEventById(strId);
+      const data = res.data || matched || { _id: strId, title: 'Event Details' };
+      const responsesList = data?.memberResponses || [];
+      const calcInterested = responsesList.filter(r => r.isInterested || r.response === 'Interested').length;
+      const calcGoing = responsesList.filter(r => r.isGoing || r.registered || r.response === 'Going').length;
+
+      setEventDetails({
+        ...data,
+        interestedCount: calcInterested,
+        goingCount: calcGoing,
+        memberResponses: responsesList
+      });
     } catch (err) {
+      console.error('Failed to load event details:', err);
       showToast('Failed to load event details.', 'error');
+      if (matched) {
+        setEventDetails({
+          ...matched,
+          interestedCount: matched.interestedCount || 0,
+          goingCount: matched.goingCount || matched.attendees || 0,
+          memberResponses: []
+        });
+      }
     }
   };
 
@@ -592,54 +617,190 @@ export const EventsDesk = () => {
                 <button onClick={() => setDetailDrawerOpen(false)} className="p-1 text-slate-400 hover:text-slate-600"><X size={20} /></button>
               </div>
               {eventDetails ? (
-                <div className="p-6 space-y-6 flex-1">
+                <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                  {/* Banner Image */}
                   {eventDetails.image && (
-                    <img src={eventDetails.image} alt={eventDetails.title} className="w-full h-48 object-cover rounded-2xl border border-slate-200" />
+                    <img src={eventDetails.image} alt={eventDetails.title} className="w-full h-52 object-cover rounded-2xl border border-slate-200 shadow-xs" />
                   )}
-                  <div>
-                    <h2 className="text-xl font-black text-slate-800">{eventDetails.title}</h2>
-                    <p className="text-sm text-slate-500 mt-1">{eventDetails.venue} • {eventDetails.date}</p>
+                  
+                  {/* Header Title & Badges */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-bold text-xs">
+                        🏷️ {eventDetails.category || 'Cultural'}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full font-bold text-xs ${
+                        eventDetails.status === 'Draft' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                      }`}>
+                        ● {eventDetails.status || 'Published'}
+                      </span>
+                      {eventDetails.isFeatured && (
+                        <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 rounded-full font-bold text-xs">
+                          ⭐ Featured
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900">{eventDetails.title}</h2>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 bg-purple-50 rounded-xl text-center">
-                      <p className="text-xs text-purple-600 font-bold">Interested</p>
-                      <p className="text-lg font-black text-purple-800 mt-0.5">{eventDetails.interestedCount || 0}</p>
+
+                  {/* Metadata Grid (Venue, Date, Time, Contact) */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5 text-xs text-slate-700">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span><strong>Date & Time:</strong> {eventDetails.startDate || eventDetails.date} {eventDetails.startTime || eventDetails.time ? `at ${eventDetails.startTime || eventDetails.time}` : ''}</span>
                     </div>
-                    <div className="p-3 bg-emerald-50 rounded-xl text-center">
-                      <p className="text-xs text-emerald-600 font-bold">Going</p>
-                      <p className="text-lg font-black text-emerald-800 mt-0.5">{eventDetails.goingCount || 0}</p>
+                    <div className="flex items-center gap-2.5">
+                      <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span><strong>Venue:</strong> {eventDetails.venue || 'N/A'} {eventDetails.address ? `(${eventDetails.address})` : ''}</span>
                     </div>
-                    <div className="p-3 bg-blue-50 rounded-xl text-center">
-                      <p className="text-xs text-blue-600 font-bold">Not Going</p>
-                      <p className="text-lg font-black text-blue-800 mt-0.5">{eventDetails.notGoingCount || 0}</p>
+                    <div className="flex items-center gap-2.5">
+                      <Users className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span><strong>Entry Fee:</strong> {eventDetails.entryFee || 'Free'} {eventDetails.capacity ? `• Capacity: ${eventDetails.capacity}` : ''}</span>
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm mb-3">Member Responses</h4>
-                    {!eventDetails.memberResponses || eventDetails.memberResponses.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">No responses recorded yet.</p>
-                    ) : (
-                      <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
-                        {eventDetails.memberResponses.map((mr) => (
-                          <div key={mr.id} className="p-3 flex items-center justify-between text-xs">
-                            <div>
-                              <p className="font-bold text-slate-800">{mr.name}</p>
-                              <p className="text-slate-400">{mr.communityName} • {mr.cityName}</p>
-                            </div>
-                            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                              mr.response === 'Going' ? 'bg-emerald-100 text-emerald-800' :
-                              mr.response === 'Interested' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {mr.response}
-                            </span>
-                          </div>
-                        ))}
+                    {eventDetails.contact && (
+                      <div className="flex items-center gap-2.5">
+                        <UserCheck className="w-4 h-4 text-purple-500 shrink-0" />
+                        <span><strong>Contact Person:</strong> {eventDetails.contact}</span>
                       </div>
                     )}
                   </div>
+
+                  {/* Event Description */}
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2">About Event</h4>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
+                      {eventDetails.description || 'No detailed description provided for this event.'}
+                    </div>
+                  </div>
+
+                  {/* Live Engagement Counters & Clickable Filters */}
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2">Participation Stats (Click to Filter)</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setResponseFilterTab(responseFilterTab === 'INTERESTED' ? 'ALL' : 'INTERESTED')}
+                        className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                          responseFilterTab === 'INTERESTED'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-md scale-[1.02]'
+                            : 'bg-purple-50/70 border-purple-100 text-purple-900 hover:bg-purple-100/70'
+                        }`}
+                      >
+                        <p className={`text-[11px] font-bold ${responseFilterTab === 'INTERESTED' ? 'text-purple-100' : 'text-purple-600'}`}>Interested</p>
+                        <p className="text-xl font-black mt-0.5">{eventDetails.interestedCount || 0}</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setResponseFilterTab(responseFilterTab === 'GOING' ? 'ALL' : 'GOING')}
+                        className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                          responseFilterTab === 'GOING'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
+                            : 'bg-emerald-50/70 border-emerald-100 text-emerald-900 hover:bg-emerald-100/70'
+                        }`}
+                      >
+                        <p className={`text-[11px] font-bold ${responseFilterTab === 'GOING' ? 'text-emerald-100' : 'text-emerald-600'}`}>Going / Joined</p>
+                        <p className="text-xl font-black mt-0.5">{eventDetails.goingCount || 0}</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Member Responses List */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                      <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                        Member List ({eventDetails.memberResponses?.filter(mr => {
+                          if (responseFilterTab === 'INTERESTED') return mr.isInterested || mr.response === 'Interested';
+                          if (responseFilterTab === 'GOING') return mr.isGoing || mr.response === 'Going';
+                          return true;
+                        }).length || 0})
+                      </h4>
+                      {responseFilterTab !== 'ALL' && (
+                        <button
+                          type="button"
+                          onClick={() => setResponseFilterTab('ALL')}
+                          className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                        >
+                          Clear Filter (Show All)
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Responses List */}
+                    {(() => {
+                      const filtered = (eventDetails.memberResponses || []).filter(mr => {
+                        if (responseFilterTab === 'INTERESTED') return mr.isInterested || mr.response === 'Interested';
+                        if (responseFilterTab === 'GOING') return mr.isGoing || mr.response === 'Going';
+                        return true;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="p-8 bg-slate-50/60 rounded-2xl border border-slate-100 text-center space-y-1">
+                            <p className="text-xs font-bold text-slate-600">No members found for this response status</p>
+                            <p className="text-[11px] text-slate-400">
+                              {responseFilterTab === 'INTERESTED' ? 'No members have marked Interested yet.' :
+                               responseFilterTab === 'GOING' ? 'No members have Joined/Going yet.' : 'No member responses recorded.'}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2.5">
+                          {filtered.map((mr) => (
+                            <div 
+                              key={mr.id} 
+                              className="p-3.5 rounded-2xl border border-slate-100 bg-white shadow-2xs hover:border-indigo-100 transition-all flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-3">
+                                {mr.avatar ? (
+                                  <img src={mr.avatar} alt={mr.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                                ) : (
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs text-white ${
+                                    mr.response === 'Going' ? 'bg-emerald-600' :
+                                    mr.response === 'Interested' ? 'bg-purple-600' : 'bg-slate-600'
+                                  }`}>
+                                    {mr.initials || mr.name?.charAt(0) || 'M'}
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                                    {mr.name}
+                                    {mr.gotra && mr.gotra !== 'N/A' && (
+                                      <span className="text-[10px] font-semibold text-slate-400">({mr.gotra})</span>
+                                    )}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                    {mr.communityName !== 'N/A' ? mr.communityName : ''} {mr.cityName !== 'N/A' ? `• ${mr.cityName}` : ''}
+                                  </p>
+                                  {(mr.phone !== 'N/A' || mr.email !== 'N/A') && (
+                                    <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-semibold mt-1">
+                                      {mr.phone !== 'N/A' && <span>📞 {mr.phone}</span>}
+                                      {mr.email !== 'N/A' && <span>• ✉️ {mr.email}</span>}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className={`px-3 py-1 rounded-full font-extrabold text-[10.5px] inline-block ${
+                                  mr.response === 'Going' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/50' :
+                                  mr.response === 'Interested' ? 'bg-purple-100 text-purple-800 border border-purple-200/50' :
+                                  'bg-slate-100 text-slate-600 border border-slate-200/50'
+                                }`}>
+                                  {mr.response === 'Going' ? '✓ Joined / Going' : mr.response === 'Interested' ? '⭐ Interested' : mr.response}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-slate-400">Loading details...</div>
+                <div className="p-12 text-center text-slate-400 font-semibold">Loading complete event details...</div>
               )}
             </motion.div>
           </div>

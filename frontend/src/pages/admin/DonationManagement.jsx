@@ -10,16 +10,33 @@ export const DonationManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Communities list for filter
+  const [communities, setCommunities] = useState([]);
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [communityFilter, setCommunityFilter] = useState('all');
 
   // Modals
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch available communities list on mount
+  useEffect(() => {
+    adminDonationApi.getCommunities()
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setCommunities(res.data);
+        } else if (Array.isArray(res)) {
+          setCommunities(res);
+        }
+      })
+      .catch(err => console.warn('Failed to load communities:', err));
+  }, []);
 
   const fetchDonations = useCallback(async () => {
     try {
@@ -28,6 +45,7 @@ export const DonationManagement = () => {
       const params = {};
       if (statusFilter !== 'all') params.status = statusFilter;
       if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (communityFilter !== 'all') params.communityId = communityFilter;
 
       const res = await adminDonationApi.getAllDonations(params);
       if (res.success) {
@@ -38,7 +56,7 @@ export const DonationManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, categoryFilter]);
+  }, [statusFilter, categoryFilter, communityFilter]);
 
   useEffect(() => {
     fetchDonations();
@@ -48,7 +66,7 @@ export const DonationManagement = () => {
     try {
       setIsSubmitting(true);
       if (selectedDonation) {
-        await adminDonationApi.updateDonation(selectedDonation._id, formData);
+        await adminDonationApi.updateDonation(selectedDonation._id, formData, selectedDonation.source);
       } else {
         await adminDonationApi.createDonation(formData);
       }
@@ -62,20 +80,20 @@ export const DonationManagement = () => {
     }
   };
 
-  const handleClose = async (id) => {
+  const handleClose = async (id, source) => {
     if (!window.confirm('Are you sure you want to close this donation drive? Members will no longer be able to donate.')) return;
     try {
-      await adminDonationApi.closeDonation(id);
+      await adminDonationApi.closeDonation(id, source);
       fetchDonations();
     } catch (err) {
       alert(err.message || 'Failed to close donation');
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, source) => {
     if (!window.confirm('Are you sure you want to delete this donation record?')) return;
     try {
-      await adminDonationApi.deleteDonation(id);
+      await adminDonationApi.deleteDonation(id, source);
       fetchDonations();
     } catch (err) {
       alert(err.message || 'Failed to delete donation');
@@ -102,15 +120,16 @@ export const DonationManagement = () => {
     if (!search.trim()) return true;
     const matchText = search.trim().toLowerCase();
     return (
-      d.title.toLowerCase().includes(matchText) ||
-      (d.category && d.category.toLowerCase().includes(matchText))
+      (d.title && d.title.toLowerCase().includes(matchText)) ||
+      (d.category && d.category.toLowerCase().includes(matchText)) ||
+      (d.description && d.description.toLowerCase().includes(matchText))
     );
   });
 
   // Calculate top-level stats
   const totalRaised = donations.reduce((sum, d) => sum + (d.raisedAmount || 0), 0);
   const totalDonors = donations.reduce((sum, d) => sum + (d.donorCount || 0), 0);
-  const activeCount = donations.filter(d => d.status === 'Active').length;
+  const activeCount = donations.filter(d => d.status === 'Active' || d.status === 'Published').length;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto font-sans">
@@ -157,17 +176,37 @@ export const DonationManagement = () => {
       {/* Filter Toolbar */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-          <div className="md:col-span-6 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          {/* Search Box with explicit padding fix */}
+          <div className="md:col-span-3 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
             <input
               type="text"
-              placeholder="Search by title or category..."
+              placeholder="Search by title..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              style={{ paddingLeft: '2.5rem' }}
+              className="w-full pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
 
+          {/* Community Filter */}
+          <div className="md:col-span-3">
+            <select
+              value={communityFilter}
+              onChange={(e) => setCommunityFilter(e.target.value)}
+              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">All Communities</option>
+              <option value="global">Global Only (All Members)</option>
+              {communities.map((c) => (
+                <option key={c._id || c.id} value={c._id || c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
           <div className="md:col-span-3">
             <select
               value={statusFilter}
@@ -180,6 +219,7 @@ export const DonationManagement = () => {
             </select>
           </div>
 
+          {/* Category Filter */}
           <div className="md:col-span-3">
             <select
               value={categoryFilter}

@@ -18,13 +18,6 @@ const mockSuccessStories = [
   { id: 'ss3', groomName: 'Amit & Kavita Gupta', location: 'Delhi', marriageDate: 'Jun 2026', avatar: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80', quote: 'Our families connected through MeriSamaj. Grateful!' },
 ];
 
-const mockTopDonors = [
-  { id: 1, name: 'Suresh Agrawal', amount: 51000, purpose: 'Chhatrawas Fund', paymentMode: 'Online (UPI)' },
-  { id: 2, name: 'Ramesh Gupta', amount: 25000, purpose: 'Gaushala Seva', paymentMode: 'Bank Transfer' },
-  { id: 3, name: 'Vikram Sharma', amount: 21000, purpose: 'Vivah Sahayata', paymentMode: 'Online (UPI)' },
-  { id: 4, name: 'Anand Verma', amount: 11000, purpose: 'Shiksha Sahayog', paymentMode: 'Cash' },
-  { id: 5, name: 'Pankaj Mittal', amount: 10000, purpose: 'General Relief', paymentMode: 'Online (UPI)' }
-];
 import ReferAndEarnBanner from './ReferAndEarnBanner';
 import donationService from '../../../../core/api/donationService';
 import { successStoryService } from '../../../../core/api/matrimonialService';
@@ -145,7 +138,7 @@ const HomePage = () => {
     return () => { isMounted = false; };
   }, []);
 
-  const displayTopDonors = liveTopDonors.length > 0 ? liveTopDonors : mockTopDonors;
+  const displayTopDonors = liveTopDonors;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
@@ -162,7 +155,7 @@ const HomePage = () => {
   const totalUpdatesCount = newDonationsCount + newNoticesCount + newEventsCount + 2; // +2 for bookings & funds mockup
 
   const unreadCount = getUnreadCountForModule('home');
-  const userCommunity = currentUser?.community || 'Agrawal Samaj';
+  const userCommunity = currentUser?.community || '';
 
   // Deriving isolated community ID
   const communityId = useMemo(() => {
@@ -348,7 +341,7 @@ const HomePage = () => {
             </div>
             <div className="text-left">
               <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{greeting}</p>
-              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{(currentUser?.name || 'Member').split(' ')[0]}</h1>
+              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{currentUser?.name || 'Member'}</h1>
               {currentUser?.community && (
                 <p className="text-[10.5px] font-bold text-purple-200 mt-0.5 leading-tight select-none">
                   {currentUser.community}{currentUser.city ? ` · ${currentUser.city}` : ''}
@@ -408,9 +401,9 @@ const HomePage = () => {
           const remaining = [];
           if (!user.qualification && !user.school) remaining.push({ name: 'Education Details', step: 'onboarding-4' });
           if (!user.profession && !user.company) remaining.push({ name: 'Profession Details', step: 'onboarding-5' });
-          if (!user.detailedAddress && !user.houseNumber) remaining.push({ name: 'Address Details', step: 'onboarding-6' });
+          if (!user.detailedAddress && !user.houseNumber && !user.address && !user.streetAddress && !user.city) remaining.push({ name: 'Address Details', step: 'onboarding-6' });
           if (!user.isAadharVerified && !user.isFaceVerified) remaining.push({ name: 'Verification', step: 'onboarding-9' });
-          if (!user.prefEducation && !user.prefAge) remaining.push({ name: 'Partner Preferences', step: 'onboarding-10' });
+          if (!user.prefEducation && !user.prefAge && !user.prefOccupation) remaining.push({ name: 'Partner Preferences', step: 'onboarding-10' });
           return remaining;
         };
 
@@ -418,13 +411,13 @@ const HomePage = () => {
           if (!user) return 0;
           let pct = 0;
           pct += 15; // Mobile verified
-          if (user.community && user.subCommunity && user.pincode) pct += 15;
-          if (user.name && user.gender) pct += 20;
+          if (user.community || user.communityId) pct += 15;
+          if (user.name && (user.gender || user.dob)) pct += 20;
           if (user.qualification || user.school) pct += 10;
           if (user.profession || user.company) pct += 10;
-          if (user.houseNumber || user.detailedAddress || user.alternatePhone) pct += 10;
+          if (user.houseNumber || user.detailedAddress || user.address || user.streetAddress || user.alternatePhone || user.city) pct += 10;
           if (user.familyMembers && user.familyMembers.length > 0) pct += 10;
-          if (user.isAadharVerified || user.isFaceVerified || user.prefEducation || user.prefAge) pct += 10;
+          if (user.isAadharVerified || user.isFaceVerified || user.prefEducation || user.prefAge || user.prefOccupation) pct += 10;
           return Math.min(pct, 100);
         };
 
@@ -460,8 +453,8 @@ const HomePage = () => {
 
                 <button
                   onClick={() => {
-                    const firstRemainingStep = remainingSections[0].step;
-                    localStorage.setItem('merisamaj_onboarding_resume_step', firstRemainingStep);
+                    localStorage.setItem('merisamaj_onboarding_from_home', 'true');
+                    localStorage.setItem('merisamaj_onboarding_resume_step', 'onboarding-1');
                     navigate('/member/onboarding');
                   }}
                   className="bg-white hover:bg-slate-50 text-brand-primary text-[11px] font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1 shrink-0 transition-all press-scale shadow-sm"
@@ -553,7 +546,7 @@ const HomePage = () => {
             <h3 className="text-[15px] font-extrabold text-text-primary tracking-tight">Top 5 Recent Donors</h3>
           </div>
           <button 
-            onClick={() => navigate('/member/donation')} 
+            onClick={() => navigate('/member/donation/donors')} 
             className="text-[11px] font-bold text-[#FF2162] flex items-center gap-0.5 hover:underline press-scale"
           >
             View All <ChevronRight size={13} strokeWidth={2.5} />
@@ -572,125 +565,145 @@ const HomePage = () => {
           {/* Subtle 3D Depth Card Overlay */}
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-purple-300/35 to-transparent" />
           
-          <div className="flex flex-col gap-3.5">
-            {[...displayTopDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
-              // Select color themes and icons for purposes
-              const purposeStr = (donor.purpose || '').toLowerCase();
-              const paymentModeStr = (donor.paymentMode || 'Online (UPI)').toLowerCase();
-              let purposeIcon = <Home size={11} className="text-amber-500" />;
-              let purposeBg = 'bg-amber-50';
-              if (purposeStr.includes('schola') || purposeStr.includes('chhatra')) {
-                purposeIcon = <GraduationCap size={11} className="text-purple-500" />;
-                purposeBg = 'bg-purple-50';
-              } else if (purposeStr.includes('gaushala') || purposeStr.includes('cow')) {
-                purposeIcon = <span className="text-[10px] leading-none">🐄</span>;
-                purposeBg = 'bg-orange-50';
-              } else if (purposeStr.includes('vivah') || purposeStr.includes('marri')) {
-                purposeIcon = <Heart size={10} className="text-rose-500" fill="currentColor" />;
-                purposeBg = 'bg-rose-50';
-              } else if (purposeStr.includes('shiksha') || purposeStr.includes('edu')) {
-                purposeIcon = <BookOpen size={11} className="text-blue-500" />;
-                purposeBg = 'bg-blue-50';
-              }
+          {displayTopDonors.length === 0 ? (
+            <div className="py-6 px-3 text-center">
+              <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-2">
+                <Heart size={18} className="text-[#FF2162]" fill="currentColor" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">No Donors Yet</p>
+              <p className="text-[10px] font-medium text-slate-400 mt-0.5 max-w-[220px] mx-auto">
+                No donations recorded yet in your community. Be the first to contribute!
+              </p>
+              <button
+                onClick={() => navigate('/member/donation')}
+                className="mt-3 px-4 py-2 bg-[#FF2162] hover:bg-[#E0144C] text-white text-[11px] font-bold rounded-xl press-scale shadow-sm"
+              >
+                Explore Campaigns
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3.5">
+              {[...displayTopDonors].sort((a, b) => b.amount - a.amount).slice(0, 5).map((donor, idx) => {
+                // Select color themes and icons for purposes
+                const purposeStr = (donor.purpose || '').toLowerCase();
+                const paymentModeStr = (donor.paymentMode || 'Online (UPI)').toLowerCase();
+                let purposeIcon = <Home size={11} className="text-amber-500" />;
+                let purposeBg = 'bg-amber-50';
+                if (purposeStr.includes('schola') || purposeStr.includes('chhatra')) {
+                  purposeIcon = <GraduationCap size={11} className="text-purple-500" />;
+                  purposeBg = 'bg-purple-50';
+                } else if (purposeStr.includes('gaushala') || purposeStr.includes('cow')) {
+                  purposeIcon = <span className="text-[10px] leading-none">🐄</span>;
+                  purposeBg = 'bg-orange-50';
+                } else if (purposeStr.includes('vivah') || purposeStr.includes('marri')) {
+                  purposeIcon = <Heart size={10} className="text-rose-500" fill="currentColor" />;
+                  purposeBg = 'bg-rose-50';
+                } else if (purposeStr.includes('shiksha') || purposeStr.includes('edu')) {
+                  purposeIcon = <BookOpen size={11} className="text-blue-500" />;
+                  purposeBg = 'bg-blue-50';
+                }
 
-              // Badges for payments
-              let paymentBadge = (
-                <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">
-                  <span>Online (UPI)</span>
-                </div>
-              );
-              if (paymentModeStr.includes('bank')) {
-                paymentBadge = (
-                  <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50">
-                    <span>Bank Transfer</span>
+                // Badges for payments
+                let paymentBadge = (
+                  <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">
+                    <span>Online (UPI)</span>
                   </div>
                 );
-              } else if (paymentModeStr.includes('cash')) {
-                paymentBadge = (
-                  <div className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100/50">
-                    <span>Cash</span>
-                  </div>
-                );
-              }
-
-              // Rank Badge color & 3D styling
-              const rankGradients = [
-                'from-[#FF2162] to-[#FF4D85] shadow-[0_3px_8px_rgba(255,33,98,0.25)]',
-                'from-[#A78BFA] to-[#C4B5FD] shadow-[0_3px_8px_rgba(167,139,250,0.2)]',
-                'from-[#F59E0B] to-[#FBBF24] shadow-[0_3px_8px_rgba(245,158,11,0.2)]',
-                'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]',
-                'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]'
-              ];
-              const rankGrad = rankGradients[idx] || rankGradients[4];
-
-              return (
-                <motion.div
-                  key={donor.id || `donor-${idx}`}
-                  whileHover={{ y: -2, scale: 1.01, boxShadow: '0 6px 20px rgba(124,58,237,0.04)' }}
-                  className="flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-100/60 shadow-sm transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* 3D Rank Badge */}
-                    <div className={`w-[22px] h-[22px] rounded-lg bg-gradient-to-br ${rankGrad} text-white flex items-center justify-center text-[10px] font-black tracking-tight border border-white/20 select-none shrink-0`}>
-                      {idx + 1}
+                if (paymentModeStr.includes('bank')) {
+                  paymentBadge = (
+                    <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50">
+                      <span>Bank Transfer</span>
                     </div>
+                  );
+                } else if (paymentModeStr.includes('cash')) {
+                  paymentBadge = (
+                    <div className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100/50">
+                      <span>Cash</span>
+                    </div>
+                  );
+                }
 
-                    {/* Avatar with Glow Rings */}
-                    <div className="relative shrink-0">
-                      <div className="w-[42px] h-[42px] rounded-full overflow-hidden border border-purple-100/80 p-[1.5px] bg-white">
-                        {donor.avatar ? (
-                          <img src={donor.avatar} alt={donor.name} className="w-full h-full object-cover rounded-full" />
-                        ) : (
-                          <div className="w-full h-full rounded-full bg-purple-50 text-brand-primary flex items-center justify-center text-[11px] font-black uppercase">
-                            {donor.initials}
+                // Rank Badge color & 3D styling
+                const rankGradients = [
+                  'from-[#FF2162] to-[#FF4D85] shadow-[0_3px_8px_rgba(255,33,98,0.25)]',
+                  'from-[#A78BFA] to-[#C4B5FD] shadow-[0_3px_8px_rgba(167,139,250,0.2)]',
+                  'from-[#F59E0B] to-[#FBBF24] shadow-[0_3px_8px_rgba(245,158,11,0.2)]',
+                  'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]',
+                  'from-[#94A3B8] to-[#CBD5E1] shadow-[0_3px_6px_rgba(148,163,184,0.15)]'
+                ];
+                const rankGrad = rankGradients[idx] || rankGradients[4];
+
+                return (
+                  <motion.div
+                    key={donor.id || `donor-${idx}`}
+                    whileHover={{ y: -2, scale: 1.01, boxShadow: '0 6px 20px rgba(124,58,237,0.04)' }}
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-100/60 shadow-sm transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* 3D Rank Badge */}
+                      <div className={`w-[22px] h-[22px] rounded-lg bg-gradient-to-br ${rankGrad} text-white flex items-center justify-center text-[10px] font-black tracking-tight border border-white/20 select-none shrink-0`}>
+                        {idx + 1}
+                      </div>
+
+                      {/* Avatar with Glow Rings */}
+                      <div className="relative shrink-0">
+                        <div className="w-[42px] h-[42px] rounded-full overflow-hidden border border-purple-100/80 p-[1.5px] bg-white">
+                          {donor.avatar ? (
+                            <img src={donor.avatar} alt={donor.name} className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-purple-50 text-brand-primary flex items-center justify-center text-[11px] font-black uppercase">
+                              {donor.initials}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details: Name, Purpose, Date */}
+                      <div className="flex flex-col text-left">
+                        <span className="text-[13px] font-extrabold text-slate-800 tracking-tight leading-tight mb-0.5">
+                          {donor.name}
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          {/* Purpose badge */}
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${purposeBg} border border-purple-100/10`}>
+                              {purposeIcon}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-500 truncate max-w-[130px] leading-tight">
+                              {donor.purpose}
+                            </span>
                           </div>
-                        )}
+                          {/* Date info */}
+                          <div className="flex items-center gap-1 text-[8.5px] font-semibold text-slate-400 leading-tight">
+                            <Calendar size={8} className="text-slate-400" />
+                            <span>{donor.date}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Details: Name, Purpose, Date */}
-                    <div className="flex flex-col text-left">
-                      <span className="text-[13px] font-extrabold text-slate-800 tracking-tight leading-tight mb-0.5">
-                        {donor.name}
+                    {/* Amount and Payment Mode */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-[14px] font-black text-emerald-600 leading-none tracking-tight">
+                        ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(donor.amount)}
                       </span>
-                      <div className="flex flex-col gap-0.5">
-                        {/* Purpose badge */}
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${purposeBg} border border-purple-100/10`}>
-                            {purposeIcon}
-                          </span>
-                          <span className="text-[9px] font-bold text-slate-500 truncate max-w-[130px] leading-tight">
-                            {donor.purpose}
-                          </span>
-                        </div>
-                        {/* Date info */}
-                        <div className="flex items-center gap-1 text-[8.5px] font-semibold text-slate-400 leading-tight">
-                          <Calendar size={8} className="text-slate-400" />
-                          <span>{donor.date}</span>
-                        </div>
-                      </div>
+                      {paymentBadge}
                     </div>
-                  </div>
-
-                  {/* Amount and Payment Mode */}
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className="text-[14px] font-black text-emerald-600 leading-none tracking-tight">
-                      ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(donor.amount)}
-                    </span>
-                    {paymentBadge}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Large View All Button */}
-          <button 
-            onClick={() => navigate('/member/donation')}
-            className="w-full py-3 bg-[#FF2162] hover:bg-[#E0144C] text-white text-[13px] font-black rounded-2xl flex items-center justify-center gap-1.5 transition-all duration-300 press-scale shadow-[0_6px_20px_rgba(255,33,98,0.25)] border border-[#FF2162]/10"
-          >
-            View All Donors <ArrowRight size={14} strokeWidth={3} />
-          </button>
+          {displayTopDonors.length > 0 && (
+            <button 
+              onClick={() => navigate('/member/donation/donors')}
+              className="w-full py-3 bg-[#FF2162] hover:bg-[#E0144C] text-white text-[13px] font-black rounded-2xl flex items-center justify-center gap-1.5 transition-all duration-300 press-scale shadow-[0_6px_20px_rgba(255,33,98,0.25)] border border-[#FF2162]/10"
+            >
+              View All Donors <ArrowRight size={14} strokeWidth={3} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1232,7 +1245,7 @@ const HomePage = () => {
               <div
                 key={event.id || event._id || `event-${idx}`}
                 className="snap-center shrink-0 w-[260px] card-neo overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
-                onClick={() => navigate(`/member/events/${event.id}`)}
+                onClick={() => navigate(`/member/events/${event._id || event.id}`)}
               >
                 {/* Image / Gradient Header */}
                 <div className="h-[100px] relative flex items-center justify-center overflow-hidden bg-gray-900 rounded-t-[24px]">

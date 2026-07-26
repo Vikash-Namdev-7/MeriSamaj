@@ -48,12 +48,7 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
     description: '',
     cityIds: [],
     logoUrl: '',
-    status: 'Active',
-    headName: '',
-    headEmail: '',
-    headPhone: '',
-    headPassword: '',
-    headConfirmPassword: ''
+    status: 'Active'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -71,19 +66,6 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Community name is required'); return; }
     if (form.cityIds.length === 0) { setError('At least one City is required'); return; }
-    
-    // If any head details are entered, require all
-    const hasHead = form.headName.trim() || form.headEmail.trim() || form.headPhone.trim() || form.headPassword || form.headConfirmPassword;
-    if (hasHead) {
-      if (!form.headName.trim()) { setError('Head Full Name is required'); return; }
-      if (!form.headEmail.trim()) { setError('Head Email Address is required'); return; }
-      if (!form.headPhone.trim()) { setError('Head Mobile Number is required'); return; }
-      if (!form.headPassword) { setError('Head Password is required'); return; }
-      if (form.headPassword !== form.headConfirmPassword) {
-        setError('Passwords do not match');
-        return;
-      }
-    }
 
     setLoading(true);
     setError('');
@@ -102,21 +84,17 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
     <div className="community-modal-overlay" onClick={onClose}>
       <div className="community-modal community-modal-wide" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="community-modal-header">
-          <h3>🏛️ Nayi Community & Head Banayein</h3>
+          <h3>🏛️ Create New Community</h3>
           <button className="community-modal-close" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={handleSubmit}>
           
-          <div className="community-section-title" style={{ fontWeight: '700', fontSize: '0.95rem', color: '#4f46e5', marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
-            1. Community Details
-          </div>
-
           <div className="community-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="community-form-group">
-              <label>Community Ka Naam *</label>
+              <label>Community Name *</label>
               <input
                 type="text"
-                placeholder="jaise: Namdev Samaj"
+                placeholder="e.g. Namdev Samaj"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="community-input"
@@ -190,7 +168,7 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
           <div className="community-form-group">
             <label>Description</label>
             <textarea
-              placeholder="Is community ke baare mein likhein..."
+              placeholder="Write description about this community..."
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className="community-textarea"
@@ -198,72 +176,11 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
             />
           </div>
 
-          <div className="community-section-title" style={{ fontWeight: '700', fontSize: '0.95rem', color: '#4f46e5', marginTop: '16px', marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
-            2. Dedicated Community Head Account (Optional)
-          </div>
-
-          <div className="community-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="community-form-group">
-              <label>Head Full Name</label>
-              <input
-                type="text"
-                placeholder="Rahul Namdev"
-                value={form.headName}
-                onChange={e => setForm(f => ({ ...f, headName: e.target.value }))}
-                className="community-input"
-              />
-            </div>
-            <div className="community-form-group">
-              <label>Mobile Number (For Login)</label>
-              <input
-                type="text"
-                placeholder="9876543210"
-                value={form.headPhone}
-                onChange={e => setForm(f => ({ ...f, headPhone: e.target.value }))}
-                className="community-input"
-              />
-            </div>
-          </div>
-
-          <div className="community-form-group">
-            <label>Email Address</label>
-            <input
-              type="email"
-              placeholder="head@namdevsamaj.com"
-              value={form.headEmail}
-              onChange={e => setForm(f => ({ ...f, headEmail: e.target.value }))}
-              className="community-input"
-            />
-          </div>
-
-          <div className="community-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="community-form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                placeholder="******"
-                value={form.headPassword}
-                onChange={e => setForm(f => ({ ...f, headPassword: e.target.value }))}
-                className="community-input"
-              />
-            </div>
-            <div className="community-form-group">
-              <label>Confirm Password</label>
-              <input
-                type="password"
-                placeholder="******"
-                value={form.headConfirmPassword}
-                onChange={e => setForm(f => ({ ...f, headConfirmPassword: e.target.value }))}
-                className="community-input"
-              />
-            </div>
-          </div>
-
           {error && <p className="community-form-error">⚠️ {error}</p>}
           <div className="community-modal-actions" style={{ marginTop: '24px' }}>
             <button type="button" className="community-btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="community-btn-primary" disabled={loading}>
-              {loading ? 'Bana rahe hain...' : '✓ Create Community & Head'}
+              {loading ? 'Creating...' : '✓ Create Community'}
             </button>
           </div>
         </form>
@@ -340,7 +257,7 @@ const EditCommunityModal = ({ community, onClose, onUpdated }) => {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="community-form-group">
-            <label>Community Ka Naam *</label>
+            <label>Community Name *</label>
             <input
               type="text"
               value={form.name}
@@ -493,7 +410,7 @@ const ModuleSettingsPanel = ({ community, onClose, onUpdated }) => {
           <button className="community-modal-close" onClick={onClose}>✕</button>
         </div>
         <p className="community-settings-subtitle">
-          Is community ke liye kaunse modules enable honge, ye yahan control karein.
+          Control which modules are enabled for this community.
         </p>
         <div className="community-module-grid">
           {MODULE_FLAGS.map(({ key, label, icon }) => (
@@ -513,7 +430,7 @@ const ModuleSettingsPanel = ({ community, onClose, onUpdated }) => {
         <div className="community-modal-actions">
           <button className="community-btn-secondary" onClick={onClose}>Close</button>
           <button className="community-btn-primary" onClick={handleSave} disabled={loading}>
-            {loading ? 'Save ho raha hai...' : saved ? '✓ Saved!' : 'Settings Save Karo'}
+            {loading ? 'Saving...' : saved ? '✓ Saved!' : 'Save Settings'}
           </button>
         </div>
       </div>
@@ -584,7 +501,7 @@ const CommunityCard = ({ community, onEdit, onModules, onDelete }) => {
             </div>
           </div>
         ) : (
-          <p className="community-no-head">⚠️ Koi Head assign nahi hai</p>
+          <p className="community-no-head">⚠️ No Head assigned</p>
         )}
       </div>
 
@@ -634,7 +551,7 @@ const CommunitiesPage = () => {
       const res = await getAllCommunities();
       setCommunities(res.data || []);
     } catch (err) {
-      setError('Communities load nahi ho payi. Backend connected hai?');
+      setError('Failed to load communities. Is backend connected?');
     } finally {
       setLoading(false);
     }
@@ -643,7 +560,7 @@ const CommunitiesPage = () => {
   useEffect(() => { fetchCommunities(); }, []);
 
   const handleDelete = async (community) => {
-    if (!window.confirm(`"${community.name}" ko deactivate karna chahte hain?`)) return;
+    if (!window.confirm(`Are you sure you want to deactivate "${community.name}"?`)) return;
     try {
       await deleteCommunity(community._id);
       fetchCommunities();
@@ -671,7 +588,7 @@ const CommunitiesPage = () => {
             </p>
           </div>
           <button className="community-btn-primary communities-create-btn" onClick={() => setShowCreate(true)}>
-            + Nayi Community
+            + New Community
           </button>
         </div>
 
@@ -710,7 +627,7 @@ const CommunitiesPage = () => {
         {loading ? (
           <div className="communities-loading">
             <div className="communities-spinner" />
-            <p>Communities load ho rahi hain...</p>
+            <p>Loading communities...</p>
           </div>
         ) : error ? (
           <div className="communities-error">
@@ -719,9 +636,9 @@ const CommunitiesPage = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="communities-empty">
-            <p>🏛️ Koi community nahi mili</p>
+            <p>🏛️ No communities found</p>
             <button className="community-btn-primary" onClick={() => setShowCreate(true)}>
-              Pehli Community Banao
+              Create First Community
             </button>
           </div>
         ) : (

@@ -90,7 +90,7 @@ const EventCard = ({ event, index, onNavigate }) => {
     <div
       className="card-neo overflow-hidden cursor-pointer animate-stagger-fade-in"
       style={{ animationDelay: `${index * 60}ms` }}
-      onClick={() => navigate(`/member/events/${event.id}`)}
+      onClick={() => navigate(`/member/events/${event._id || event.id}`)}
     >
       {/* Top gradient strip */}
       <div className={`h-2 bg-gradient-to-r ${config.gradient}`} />
@@ -138,7 +138,7 @@ const EventCard = ({ event, index, onNavigate }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              toggleEventRSVP(event.id);
+              toggleEventRSVP(event._id || event.id);
             }}
             className={`text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 transition-all active:scale-95 ${
               event.isRegistered
@@ -375,9 +375,9 @@ const EventsPage = () => {
             ) : (
               featuredEvents.map(event => (
                 <FeaturedEventCard
-                  key={event.id}
+                  key={event._id || event.id}
                   event={event}
-                  onClick={() => navigate(`/member/events/${event.id}`)}
+                  onClick={() => navigate(`/member/events/${event._id || event.id}`)}
                 />
               ))
             )}

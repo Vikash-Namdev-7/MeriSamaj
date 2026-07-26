@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X, Bookmark } from 'lucide-react';
+import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
 
@@ -98,15 +98,131 @@ const RenderMedia = ({ url, isSingle = true }) => {
 };
 
 const MultiImageGrid = ({ images }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollRef = React.useRef(null);
+
   if (!images || images.length === 0) return null;
 
+  if (images.length === 1) {
+    return (
+      <div className="w-full mb-3 rounded-2xl overflow-hidden bg-slate-950/5 flex items-center justify-center">
+        <RenderMedia url={images[0]} isSingle={true} />
+      </div>
+    );
+  }
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollPosition = scrollRef.current.scrollLeft;
+    const width = scrollRef.current.offsetWidth;
+    const newIndex = Math.round(scrollPosition / width);
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < images.length) {
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  const scrollToImage = (index) => {
+    if (!scrollRef.current) return;
+    const width = scrollRef.current.offsetWidth;
+    scrollRef.current.scrollTo({
+      left: width * index,
+      behavior: 'smooth'
+    });
+    setCurrentIndex(index);
+  };
+
+  const handleTouchStart = (e) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchEnd = (e) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="space-y-2 mb-3">
-      {images.map((url, idx) => (
-        <div key={idx} className="w-full rounded-2xl overflow-hidden border border-slate-100 shadow-[0_2px_6px_rgba(0,0,0,0.01)]">
-          <RenderMedia url={url} />
-        </div>
-      ))}
+    <div 
+      className="relative w-full mb-3 rounded-2xl overflow-hidden bg-slate-950/5 group border border-slate-100/80 shadow-xs select-none"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      data-swipe-block="true"
+    >
+      {/* Top Right Counter Badge */}
+      <div className="absolute top-3 right-3 z-20 bg-slate-900/75 backdrop-blur-md text-white text-[10.5px] font-extrabold px-2.5 py-1 rounded-full shadow-md pointer-events-none tracking-wider flex items-center gap-1 border border-white/10">
+        <span>{currentIndex + 1}</span>
+        <span className="text-white/60">/</span>
+        <span>{images.length}</span>
+      </div>
+
+      {/* Horizontal Swipeable Container */}
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none"
+        style={{ scrollSnapType: 'x mandatory', touchAction: 'pan-x' }}
+      >
+        {images.map((imgUrl, idx) => (
+          <div 
+            key={idx} 
+            className="w-full shrink-0 snap-center snap-always flex items-center justify-center min-h-[250px] max-h-[550px] overflow-hidden"
+          >
+            <RenderMedia url={imgUrl} isSingle={false} />
+          </div>
+        ))}
+      </div>
+
+      {/* Left Navigation Arrow */}
+      {currentIndex > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToImage(currentIndex - 1);
+          }}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md backdrop-blur-xs flex items-center justify-center transition-all opacity-90 hover:opacity-100 hover:scale-105 active:scale-95 border border-slate-200/50"
+          aria-label="Previous image"
+        >
+          <ChevronLeft size={18} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Right Navigation Arrow */}
+      {currentIndex < images.length - 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToImage(currentIndex + 1);
+          }}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md backdrop-blur-xs flex items-center justify-center transition-all opacity-90 hover:opacity-100 hover:scale-105 active:scale-95 border border-slate-200/50"
+          aria-label="Next image"
+        >
+          <ChevronRight size={18} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Bottom Pagination Dots */}
+      <div className="absolute bottom-3 left-0 right-0 z-20 flex items-center justify-center gap-1.5 pointer-events-none">
+        {images.map((_, idx) => (
+          <span
+            key={idx}
+            className={`transition-all duration-300 rounded-full shadow-xs ${
+              idx === currentIndex
+                ? 'w-2.5 h-2.5 bg-blue-500 ring-2 ring-white/80 scale-110'
+                : 'w-1.5 h-1.5 bg-white/80 backdrop-blur-xs'
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 };

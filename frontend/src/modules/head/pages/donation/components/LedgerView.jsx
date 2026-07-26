@@ -69,13 +69,14 @@ const LedgerView = () => {
         <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <h3 className="font-bold text-gray-900 text-lg">Transaction History</h3>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
             <input
               type="text"
               placeholder="Search transactions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl border border-gray-200 focus:border-brand-primary outline-none transition-all text-sm w-64"
+              style={{ paddingLeft: '2.5rem' }}
+              className="pr-4 py-2 rounded-xl border border-gray-200 focus:border-brand-primary outline-none transition-all text-sm w-64"
             />
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Lock, Trash2, Heart, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Eye, Edit2, Lock, Trash2, Heart, CheckCircle2, AlertCircle, Globe, Building2 } from 'lucide-react';
 
 export const DonationTable = ({
   donations = [],
@@ -36,6 +36,7 @@ export const DonationTable = ({
             <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               <th className="py-3.5 px-4">Campaign</th>
               <th className="py-3.5 px-4">Category</th>
+              <th className="py-3.5 px-4">Target Scope</th>
               <th className="py-3.5 px-4">Goal & Raised</th>
               <th className="py-3.5 px-4">Donors</th>
               <th className="py-3.5 px-4">Status</th>
@@ -47,6 +48,9 @@ export const DonationTable = ({
               const raised = item.raisedAmount || 0;
               const target = item.targetAmount || 1;
               const percentage = Math.min(100, Math.round((raised / target) * 100));
+
+              const isGlobal = item.isGlobalCampaign === true || item.visibility === 'All Members';
+              const targetedList = Array.isArray(item.targetedCommunities) ? item.targetedCommunities : [];
 
               return (
                 <tr key={item._id} className="hover:bg-slate-50/50 transition-colors">
@@ -63,7 +67,7 @@ export const DonationTable = ({
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800 text-sm">{item.title}</h4>
-                        <p className="text-[11px] text-slate-400 line-clamp-1 max-w-xs">{item.description || 'No description'}</p>
+                        <p className="text-[11px] text-slate-400 line-clamp-1 max-w-xs">{item.description || item.shortDescription || 'No description'}</p>
                       </div>
                     </div>
                   </td>
@@ -71,6 +75,31 @@ export const DonationTable = ({
                     <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-semibold text-[11px] border border-indigo-100">
                       {item.category || 'General'}
                     </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {isGlobal ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200">
+                        <Globe size={12} /> All Communities
+                      </span>
+                    ) : targetedList.length > 0 ? (
+                      <span
+                        title={targetedList.map(c => typeof c === 'object' ? c.name : c).join(', ')}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold text-[11px] border border-purple-200 cursor-help"
+                      >
+                        <Building2 size={12} />
+                        {targetedList.length === 1
+                          ? (typeof targetedList[0] === 'object' ? targetedList[0].name : '1 Community')
+                          : `${targetedList.length} Communities`}
+                      </span>
+                    ) : item.communityId ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200">
+                        <Building2 size={12} /> {typeof item.communityId === 'object' ? item.communityId.name : 'Single Community'}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 font-medium text-[11px]">
+                        Unspecified
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4">
                     <div className="w-36 space-y-1">
@@ -118,7 +147,7 @@ export const DonationTable = ({
                       </button>
                       {item.status === 'Active' && (
                         <button
-                          onClick={() => onClose(item._id)}
+                          onClick={() => onClose(item._id, item.source)}
                           title="Close Donation Drive"
                           className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-600 transition-colors cursor-pointer"
                         >
@@ -126,7 +155,7 @@ export const DonationTable = ({
                         </button>
                       )}
                       <button
-                        onClick={() => onDelete(item._id)}
+                        onClick={() => onDelete(item._id, item.source)}
                         title="Delete Donation"
                         className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 transition-colors cursor-pointer"
                       >

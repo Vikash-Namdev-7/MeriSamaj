@@ -455,7 +455,7 @@ const LeadershipPage = () => {
             {/* Footer */}
             <div className="text-center py-4">
               <div className="h-px bg-gradient-to-r from-transparent via-purple-200/40 to-transparent mb-4" />
-              <p className="text-[10px] text-gray-400">{currentUser?.community || 'Agrawal Samaj'} · {activeCityDetail}</p>
+              <p className="text-[10px] text-gray-400">{currentUser?.community || 'Samaj Directory'} · {activeCityDetail}</p>
             </div>
 
           </div>
@@ -558,11 +558,11 @@ const LeadershipPage = () => {
           {/* Mission */}
           <MissionSection />
 
-          {/* Footer */}
-          <div className="text-center py-4">
-            <div className="h-px bg-gradient-to-r from-transparent via-purple-200/40 to-transparent mb-4" />
-            <p className="text-[10px] text-gray-400">{currentUser?.community || 'Agrawal Samaj'} · {userCity}</p>
-          </div>
+            {/* Footer */}
+            <div className="text-center py-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-purple-200/40 to-transparent mb-4" />
+              <p className="text-[10px] text-gray-400">{currentUser?.community || 'Samaj Directory'} · {userCity}</p>
+            </div>
         </div>
 
       </div>

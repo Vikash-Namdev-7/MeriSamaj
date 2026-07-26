@@ -49,6 +49,8 @@ const campaignSchema = new mongoose.Schema({
     enum: ['Entire Community', 'Selected Communities', 'All Locations', 'Selected Locations', 'Selected Cities', 'Selected States', 'Selected Members', 'Selected Families', 'Selected Area', 'Selected Groups', 'All Members'],
     default: 'All Members'
   },
+  isGlobalCampaign: { type: Boolean, default: false, index: true },
+  targetedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true }],
   targetedMembers: [{ type: String }],
   targetAudiences: [{ type: String }], // Stores member IDs, group IDs, etc.
   
@@ -63,6 +65,8 @@ const campaignSchema = new mongoose.Schema({
   
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   contributorsCount: { type: Number, default: 0 },
+  isDeleted: { type: Boolean, default: false, index: true },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

@@ -43,11 +43,18 @@ export const DonationProvider = ({ children }) => {
     }
   };
 
+  const userId = auth.user?._id || auth.user?.id;
+
   useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (auth.isAuthenticated && userId) {
       fetchDonationData();
+    } else {
+      setDonationHistory([]);
+      setPurposes([]);
+      setTopDonors([]);
+      setImpactStats([]);
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, userId]);
 
   const makeDonation = async (purposeId, amount, type, donorName) => {
     try {

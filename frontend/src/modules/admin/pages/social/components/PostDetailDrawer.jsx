@@ -4,12 +4,7 @@ import {
   MapPin, Users, Calendar, Clock, User, ShieldAlert, Award, FileText, 
   Image as ImageIcon, Video, ExternalLink, Share2, Bookmark, Copy, Check
 } from 'lucide-react';
-import axios from 'axios';
-
-const getAuthHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('admin_jwt='))?.split('=')[1] || '';
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
+import { axiosPrivate } from '../../../../../core/api/axiosPrivate';
 
 export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => {
   const [post, setPost] = useState(null);
@@ -28,9 +23,9 @@ export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => 
     try {
       setLoading(true);
       const [postRes, likesRes, commentsRes] = await Promise.all([
-        axios.get(`/api/v1/admin/social/posts/${postId}`, getAuthHeaders()),
-        axios.get(`/api/v1/admin/social/likes?postId=${postId}`, getAuthHeaders()),
-        axios.get(`/api/v1/admin/social/comments?postId=${postId}`, getAuthHeaders())
+        axiosPrivate.get(`/admin/social/posts/${postId}`),
+        axiosPrivate.get(`/admin/social/likes?postId=${postId}`),
+        axiosPrivate.get(`/admin/social/comments?postId=${postId}`)
       ]);
 
       const postData = postRes.data?.data || postRes.data;
@@ -79,10 +74,10 @@ export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => 
     try {
       setActionLoading(true);
       if (post.isDeleted) {
-        await axios.post(`/api/v1/admin/social/posts/${post._id}/restore`, {}, getAuthHeaders());
+        await axiosPrivate.post(`/admin/social/posts/${post._id}/restore`);
         showToast('Post restored successfully');
       } else {
-        await axios.delete(`/api/v1/admin/social/posts/${post._id}`, getAuthHeaders());
+        await axiosPrivate.delete(`/admin/social/posts/${post._id}`);
         showToast('Post soft-deleted successfully');
       }
       await fetchDetails();
@@ -98,7 +93,7 @@ export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => 
     if (!post) return;
     try {
       setActionLoading(true);
-      const res = await axios.post(`/api/v1/admin/social/posts/${post._id}/pin`, {}, getAuthHeaders());
+      const res = await axiosPrivate.post(`/admin/social/posts/${post._id}/pin`);
       if (res.data.success || res.data.status === 'success') {
         const updated = res.data.data || post;
         setPost(prev => ({ ...prev, isPinned: !prev.isPinned }));
@@ -116,7 +111,7 @@ export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => 
     if (!post) return;
     try {
       setActionLoading(true);
-      const res = await axios.post(`/api/v1/admin/social/posts/${post._id}/hide`, {}, getAuthHeaders());
+      const res = await axiosPrivate.post(`/admin/social/posts/${post._id}/hide`);
       if (res.data.success || res.data.status === 'success') {
         const updatedStatus = post.status === 'archived' ? 'published' : 'archived';
         setPost(prev => ({ ...prev, status: updatedStatus }));
@@ -133,7 +128,7 @@ export const PostDetailDrawer = ({ postId, isOpen, onClose, onPostUpdated }) => 
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Are you sure you want to delete this comment?')) return;
     try {
-      await axios.delete(`/api/v1/admin/social/comments/${commentId}`, getAuthHeaders());
+      await axiosPrivate.delete(`/admin/social/comments/${commentId}`);
       showToast('Comment deleted');
       await fetchDetails();
       if (onPostUpdated) onPostUpdated();

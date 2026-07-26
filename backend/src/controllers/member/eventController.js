@@ -1,5 +1,6 @@
 const Event = require('../../models/Event');
 const EventResponse = require('../../models/EventResponse');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // Helper to format event for member with user's specific EventResponse state
 const formatMemberEvents = async (events, userId) => {
@@ -70,12 +71,33 @@ const formatMemberEvents = async (events, userId) => {
     if (isGoing) userResponse = 'Going';
     else if (isInterested) userResponse = 'Interested';
 
+    let daysRemaining = '–';
+    const targetDateStr = event.startDate || event.date;
+    if (targetDateStr) {
+      let targetDate = new Date(targetDateStr);
+      if (isNaN(targetDate.getTime()) && typeof targetDateStr === 'string') {
+        const parts = targetDateStr.split('-');
+        if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+          targetDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
+      }
+      if (!isNaN(targetDate.getTime())) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        targetDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        daysRemaining = diffDays < 0 ? 'Ended' : (diffDays === 0 ? 'Today' : diffDays);
+      }
+    }
+
     return {
       id: event._id,
       _id: event._id,
       title: event.title,
       titleEn: event.titleEn,
+      startDate: event.startDate,
       date: event.date,
+      daysRemaining,
       day: event.day,
       month: event.month,
       monthShort: event.monthShort,
@@ -121,33 +143,48 @@ const formatMemberEvents = async (events, userId) => {
   });
 };
 
+// Helper to verify if user can access/interact with an event based on visibility and community scope
+const canAccessEvent = (event, req) => {
+  if (!event || event.isDeleted || ['Draft', 'Deleted', 'Archived'].includes(event.status)) {
+    return false;
+  }
+
+  // Admin roles retain global access
+  const userRole = (req.user?.role || '').toLowerCase();
+  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(userRole)) {
+    return true;
+  }
+
+  // GLOBAL events are accessible by any authenticated member
+  if (event.visibility === 'GLOBAL' || event.isGlobal) {
+    return true;
+  }
+
+  // COMMUNITY events require exact communityId match (neither can be missing/falsy)
+  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId)?.toString();
+  const eventCommId = event.communityId ? event.communityId.toString() : null;
+
+  if (!userCommId || !eventCommId) {
+    return false;
+  }
+
+  return userCommId === eventCommId;
+};
+
 // @desc    Get member events (GLOBAL Admin events + Member Community events)
 // @route   GET /api/v1/member/events
 // @access  Member
 exports.getEvents = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
-    const rawCommunityId = req.communityId || (req.user?.communityId?._id || req.user?.communityId);
-    const communityId = rawCommunityId ? rawCommunityId.toString() : null;
 
-    const query = { 
+    let baseQuery = { 
       isDeleted: { $ne: true },
       status: { $nin: ['Draft', 'Deleted', 'Archived'] }
     };
 
-    if (communityId) {
-      query.$or = [
-        { visibility: 'GLOBAL' },
-        { isGlobal: true },
-        { communityId: communityId },
-        { communityId: rawCommunityId },
-        { communityId: null },
-        { communityId: { $exists: false } },
-        { visibility: 'COMMUNITY' },
-        { visibility: 'Entire Community' },
-        { visibility: 'All Members' }
-      ];
-    }
+    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
+    const query = applyScopeFilter(req, baseQuery);
 
     const events = await Event.find(query).sort({ createdAt: -1 }).lean();
     const formattedEvents = await formatMemberEvents(events, userId);
@@ -167,6 +204,8 @@ exports.getEvents = async (req, res) => {
   }
 };
 
+const mongoose = require('mongoose');
+
 // @desc    Get single event by ID with dynamic response state
 // @route   GET /api/v1/member/events/:eventId
 // @access  Member
@@ -174,21 +213,15 @@ exports.getEventById = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
     const { eventId } = req.params;
-    const rawCommunityId = req.communityId || (req.user?.communityId?._id || req.user?.communityId);
-    const communityId = rawCommunityId ? rawCommunityId.toString() : null;
 
-    const event = await Event.findOne({ 
-      _id: eventId, 
-      isDeleted: { $ne: true },
-      status: { $nin: ['Draft', 'Deleted', 'Archived'] }
-    }).lean();
-
-    if (!event) {
-      return res.status(404).json({ success: false, status: 'fail', message: 'Event not found or has been removed.' });
+    if (!eventId || eventId === 'undefined' || !mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, status: 'fail', message: 'Invalid Event ID' });
     }
 
-    if (event.visibility === 'COMMUNITY' && event.communityId && communityId && event.communityId.toString() !== communityId) {
-      return res.status(403).json({ success: false, status: 'fail', message: 'Access denied. You can only view events for your own community.' });
+    const event = await Event.findById(eventId).lean();
+
+    if (!canAccessEvent(event, req)) {
+      return res.status(404).json({ success: false, status: 'fail', message: 'Event not found or has been removed.' });
     }
 
     const formattedList = await formatMemberEvents([event], userId);
@@ -238,7 +271,7 @@ exports.reactToEvent = async (req, res) => {
     const { response } = req.body;
 
     const event = await Event.findById(eventId);
-    if (!event || event.isDeleted || ['Draft', 'Deleted', 'Archived'].includes(event.status)) {
+    if (!canAccessEvent(event, req)) {
       return res.status(404).json({ success: false, message: 'Event not found or unavailable.' });
     }
 
@@ -303,6 +336,11 @@ exports.toggleInterested = async (req, res) => {
     const userId = req.user?._id || req.user?.id;
     const { eventId } = req.params;
 
+    const event = await Event.findById(eventId);
+    if (!canAccessEvent(event, req)) {
+      return res.status(404).json({ success: false, message: 'Event not found or unavailable.' });
+    }
+
     const existing = await EventResponse.findOne({ eventId, memberId: userId });
     const isInterested = existing ? !existing.isInterested : true;
 
@@ -342,6 +380,11 @@ exports.toggleAttend = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
     const { eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+    if (!canAccessEvent(event, req)) {
+      return res.status(404).json({ success: false, message: 'Event not found or unavailable.' });
+    }
 
     const existing = await EventResponse.findOne({ eventId, memberId: userId });
     const isGoing = existing ? !existing.isGoing : true;
@@ -384,6 +427,11 @@ exports.toggleBookmark = async (req, res) => {
     const userId = req.user?._id || req.user?.id;
     const { eventId } = req.params;
 
+    const event = await Event.findById(eventId);
+    if (!canAccessEvent(event, req)) {
+      return res.status(404).json({ success: false, message: 'Event not found or unavailable.' });
+    }
+
     const existing = await EventResponse.findOne({ eventId, memberId: userId });
     const isBookmarked = existing ? !existing.bookmarked : true;
 
@@ -410,6 +458,11 @@ exports.toggleReminder = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
     const { eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+    if (!canAccessEvent(event, req)) {
+      return res.status(404).json({ success: false, message: 'Event not found or unavailable.' });
+    }
 
     const existing = await EventResponse.findOne({ eventId, memberId: userId });
     const reminderEnabled = existing ? !existing.reminderEnabled : true;

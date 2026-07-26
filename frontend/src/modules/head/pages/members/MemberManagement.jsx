@@ -8,14 +8,29 @@ import {
 } from 'lucide-react';
 import { useData } from '../../../member/context/DataProvider';
 import { Avatar } from '../../../member/components/common/Avatar';
+import { useHeadAuth } from '../../auth/useHeadAuth';
+import { filterMembersForHead } from '../../utils/headCommunityFilter';
 
 export const MemberManagement = () => {
-  const { members, verifyMember, rejectMember } = useData();
+  const { headAuth } = useHeadAuth();
+  const { members, verifyMember, rejectMember, currentUser } = useData();
 
-  // Local state representing the local scope of members for the current Samaj (head's community)
-  const headCommunityName = "Agrawal Samaj Indore";
+  const headUser = headAuth?.headUser || currentUser;
+
+  const headCommunityName = useMemo(() => {
+    if (Array.isArray(headUser?.assignedCommunityIds) && headUser.assignedCommunityIds.length > 0) {
+      return headUser.assignedCommunityIds.map(c => typeof c === 'string' ? c : c.name || c._id).join(', ');
+    }
+    if (headUser?.community) return headUser.community;
+    if (headUser?.communityId?.name) return headUser.communityId.name;
+    return "Assigned Samaj Communities";
+  }, [headUser]);
+
+  // Local state representing the local scope of members for the current Samaj (head's assigned community)
+  const assignedMembers = useMemo(() => filterMembersForHead(members || [], headUser), [members, headUser]);
+
   const communityMembers = useMemo(() => {
-    return (members || []).map(m => {
+    return assignedMembers.map(m => {
       const cityName = typeof m.city === 'object' && m.city?.name ? m.city.name : (m.city || (Number(m.id || 1) % 2 === 0 ? 'Indore' : 'Bhopal'));
       return {
         ...m,
@@ -40,7 +55,7 @@ export const MemberManagement = () => {
         ]
       };
     });
-  }, [members]);
+  }, [assignedMembers]);
 
   // Derive unique cities dynamically from community members
   const uniqueCities = useMemo(() => {

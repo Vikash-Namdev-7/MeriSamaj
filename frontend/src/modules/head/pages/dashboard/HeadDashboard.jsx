@@ -9,8 +9,11 @@ import {
 import { useData } from '../../../member/context/DataProvider';
 import { useFund } from '../../../member/context/FundContext';
 import { Avatar } from '../../../member/components/common/Avatar';
+import { useHeadAuth } from '../../auth/useHeadAuth';
+import { filterMembersForHead } from '../../utils/headCommunityFilter';
 
 export const HeadDashboard = () => {
+  const { headAuth } = useHeadAuth();
   const { 
     members, 
     matrimonialProfiles, 
@@ -21,6 +24,11 @@ export const HeadDashboard = () => {
     createPost,
     currentUser 
   } = useData();
+
+  const headUser = headAuth?.headUser || currentUser;
+
+  // Filter members belonging to assigned communities for Head user
+  const communityMembers = useMemo(() => filterMembersForHead(members || [], headUser), [members, headUser]);
 
   const { funds, expenses, contributions } = useFund();
 
@@ -35,8 +43,8 @@ export const HeadDashboard = () => {
   const [announcementText, setAnnouncementText] = useState('');
   const [selectedProofMember, setSelectedProofMember] = useState(null);
 
-  const pendingMembers = useMemo(() => members.filter(m => !m.isVerified), [members]);
-  const verifiedCount = useMemo(() => members.filter(m => m.isVerified).length, [members]);
+  const pendingMembers = useMemo(() => communityMembers.filter(m => !m.isVerified), [communityMembers]);
+  const verifiedCount = useMemo(() => communityMembers.filter(m => m.isVerified).length, [communityMembers]);
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -95,16 +103,16 @@ export const HeadDashboard = () => {
   };
 
   const filteredMembers = useMemo(() => {
-    return members.filter(m => 
+    return communityMembers.filter(m => 
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (m.profession && m.profession.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-  }, [members, searchQuery]);
+  }, [communityMembers, searchQuery]);
 
   const activityLog = useMemo(() => {
     const logs = [];
-    members.slice(-4).forEach(m => {
+    communityMembers.slice(-4).forEach(m => {
       logs.push({
         id: `act-m-${m.id}`,
         type: 'members',
@@ -184,7 +192,7 @@ export const HeadDashboard = () => {
               President Dashboard
             </h1>
             <p className="text-[12px] text-slate-500 font-medium mt-0.5 whitespace-nowrap">
-              {currentUser?.community || 'Agrawal Samaj'} &nbsp;•&nbsp;
+              {currentUser?.community || 'Community Dashboard'} &nbsp;•&nbsp;
               <span className="text-indigo-600 font-semibold">Session: Active Council</span>
             </p>
           </div>

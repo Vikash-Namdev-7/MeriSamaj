@@ -5,13 +5,7 @@ import {
   Trash2, ShieldAlert, Award, Pin, CheckCircle2, XCircle, 
   AlertTriangle, Clock, MapPin, Building2, User, Play, ExternalLink
 } from 'lucide-react';
-import axios from 'axios';
-
-// Private Axios instance mapping helper (or fallback)
-const getAuthHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('admin_jwt='))?.split('=')[1] || '';
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
+import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 
 export const PostDetailsPage = () => {
   const { id } = useParams();
@@ -31,8 +25,8 @@ export const PostDetailsPage = () => {
     try {
       setLoading(true);
       const [postRes, commentRes] = await Promise.all([
-        axios.get(`/api/v1/admin/social/posts/${id}`, getAuthHeaders()),
-        axios.get(`/api/v1/admin/social/comments?postId=${id}`, getAuthHeaders())
+        axiosPrivate.get(`/admin/social/posts/${id}`),
+        axiosPrivate.get(`/admin/social/comments?postId=${id}`)
       ]);
       if (postRes.data.success) {
         setPost(postRes.data.data);
@@ -62,10 +56,10 @@ export const PostDetailsPage = () => {
 
   const handleUpdate = async () => {
     try {
-      const res = await axios.patch(`/api/v1/admin/social/posts/${id}`, {
+      const res = await axiosPrivate.patch(`/admin/social/posts/${id}`, {
         content: editContent,
         category: editCategory
-      }, getAuthHeaders());
+      });
       if (res.data.success) {
         setPost(res.data.data);
         setIsEditing(false);
@@ -78,7 +72,7 @@ export const PostDetailsPage = () => {
 
   const handleTogglePin = async () => {
     try {
-      const res = await axios.post(`/api/v1/admin/social/posts/${id}/pin`, {}, getAuthHeaders());
+      const res = await axiosPrivate.post(`/admin/social/posts/${id}/pin`);
       if (res.data.success) {
         setPost(res.data.data);
         showSuccess(res.data.data.isPinned ? 'Post pinned successfully!' : 'Post unpinned successfully!');
@@ -90,7 +84,7 @@ export const PostDetailsPage = () => {
 
   const handleToggleFeature = async () => {
     try {
-      const res = await axios.post(`/api/v1/admin/social/posts/${id}/feature`, {}, getAuthHeaders());
+      const res = await axiosPrivate.post(`/admin/social/posts/${id}/feature`);
       if (res.data.success) {
         setPost(res.data.data);
         showSuccess(res.data.data.isFeatured ? 'Post featured successfully!' : 'Post unfeatured successfully!');
@@ -102,7 +96,7 @@ export const PostDetailsPage = () => {
 
   const handleToggleHide = async () => {
     try {
-      const res = await axios.post(`/api/v1/admin/social/posts/${id}/hide`, {}, getAuthHeaders());
+      const res = await axiosPrivate.post(`/admin/social/posts/${id}/hide`);
       if (res.data.success) {
         setPost(res.data.data);
         showSuccess(res.data.data.status === 'archived' ? 'Post hidden successfully!' : 'Post made visible!');
@@ -115,7 +109,7 @@ export const PostDetailsPage = () => {
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
     try {
-      const res = await axios.delete(`/api/v1/admin/social/posts/${id}`, getAuthHeaders());
+      const res = await axiosPrivate.delete(`/admin/social/posts/${id}`);
       if (res.data.success) {
         navigate(-1);
       }
@@ -127,7 +121,7 @@ export const PostDetailsPage = () => {
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?')) return;
     try {
-      await axios.delete(`/api/v1/admin/social/comments/${commentId}`, getAuthHeaders());
+      await axiosPrivate.delete(`/admin/social/comments/${commentId}`);
       setComments(prev => prev.filter(c => c._id !== commentId));
       showSuccess('Comment deleted.');
     } catch (err) {
@@ -137,7 +131,7 @@ export const PostDetailsPage = () => {
 
   const handleModerateComment = async (commentId, action) => {
     try {
-      await axios.post(`/api/v1/admin/social/comments/${commentId}/${action}`, {}, getAuthHeaders());
+      await axiosPrivate.post(`/admin/social/comments/${commentId}/${action}`);
       fetchPostDetails();
       showSuccess(`Comment ${action}d successfully.`);
     } catch (err) {
@@ -439,7 +433,7 @@ export const PostDetailsPage = () => {
               <Building2 size={17} className="text-slate-400" />
               <div>
                 <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Community Samaj</span>
-                <span className="text-[13px] font-bold text-slate-700">{post.communityId?.name || 'Namdev Samaj'}</span>
+                <span className="text-[13px] font-bold text-slate-700">{post.communityId?.name || 'All Communities'}</span>
               </div>
             </div>
             <div className="flex items-center gap-3">

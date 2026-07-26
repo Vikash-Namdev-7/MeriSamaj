@@ -119,7 +119,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
 
   const getHeaderTitle = () => {
     const userCity = currentUser?.city || 'Indore';
-    const userCommunity = (currentUser?.community || 'Namdev').replace(/samaj/gi, '').replace(/\s+/g, ' ').trim();
+    const userCommunity = (currentUser?.community || 'General').replace(/samaj/gi, '').replace(/\s+/g, ' ').trim();
     
     switch (activeTab) {
       case 0: // City Feed

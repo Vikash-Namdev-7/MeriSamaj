@@ -15,16 +15,21 @@ const MemberProtectedRoute = () => {
   }
 
   if (auth.isAuthenticated) {
-    const hasCommunity = !!(auth.user?.communityId);
+    const hasCommunity = !!(auth.user?.communityId || auth.user?.community);
     const isOnboardingPath = location.pathname.startsWith('/member/onboarding') || location.pathname.startsWith('/member/splash');
     
+    // Allow onboarding if explicitly resuming from home, newly registered, or onboarding resume step is set
+    const isResumingOnboarding = !!localStorage.getItem('merisamaj_onboarding_resume_step') ||
+                                 localStorage.getItem('merisamaj_just_registered') === 'true' ||
+                                 localStorage.getItem('merisamaj_onboarding_from_home') === 'true';
+
     // Redirect authenticated users without a community to the onboarding flow
     if (!hasCommunity && !isOnboardingPath) {
       return <Navigate to="/member/onboarding" replace />;
     }
     
-    // If onboarding is complete, prevent navigating back to onboarding screen
-    if (hasCommunity && location.pathname.startsWith('/member/onboarding')) {
+    // If onboarding is complete and not resuming, prevent navigating back to onboarding screen
+    if (hasCommunity && location.pathname.startsWith('/member/onboarding') && !isResumingOnboarding) {
       return <Navigate to="/member/home" replace />;
     }
     

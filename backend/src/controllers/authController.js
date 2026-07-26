@@ -75,9 +75,23 @@ const getUserResponsePayload = (user) => {
     company: user.company,
     annualIncome: user.annualIncome,
     workCity: user.workCity,
+    houseNumber: user.houseNumber,
+    streetAddress: user.streetAddress,
+    landmark: user.landmark,
+    areaAddress: user.areaAddress,
+    pincodeAddress: user.pincodeAddress,
     detailedAddress: user.detailedAddress,
-    address: user.detailedAddress,
+    address: user.detailedAddress || user.streetAddress || user.areaAddress || '',
+    alternatePhone: user.alternatePhone,
+    alternateEmail: user.alternateEmail,
     familyMembers: user.familyMembers || [],
+    prefEducation: user.prefEducation,
+    prefAge: user.prefAge,
+    prefHeight: user.prefHeight,
+    prefOccupation: user.prefOccupation,
+    prefCity: user.prefCity,
+    isAadharVerified: user.isAadharVerified || false,
+    isFaceVerified: user.isFaceVerified || false,
     accountStatus: user.accountStatus,
     verificationStatus: user.verificationStatus,
     isVerified: user.isVerified || (user.verificationStatus === 'verified')
@@ -91,18 +105,13 @@ const registerUser = async (req, res) => {
   let { name, phone, email, password, referralCode } = req.body;
 
   try {
-    if (!name || !name.trim()) {
-      return res.status(400).json({ message: 'Full Name is required' });
-    }
-    if (!phone || !password) {
-      return res.status(400).json({ message: 'Phone and password are required' });
-    }
-
-    phone = phone.replace(/\D/g, ''); // Normalize phone
+    // Normalize: validators middleware already cleaned these, but apply again as safety net
+    if (name) name = name.trim().replace(/\s+/g, ' ');
+    if (phone) phone = phone.replace(/\D/g, '');
 
     const userExists = await User.findOne({ phone });
     if (userExists) {
-      return res.status(400).json({ message: 'User with this phone number already exists' });
+      return res.status(400).json({ success: false, errors: { phone: 'This mobile number is already registered.' } });
     }
 
     const userData = {
@@ -126,17 +135,10 @@ const registerUser = async (req, res) => {
 
     if (email && email.trim() !== '') {
       email = email.trim().toLowerCase();
-      // Basic email regex validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: 'Invalid email format' });
-      }
-      
       const emailExists = await User.findOne({ email });
       if (emailExists) {
-        return res.status(400).json({ message: 'User with this email already exists' });
+        return res.status(400).json({ success: false, errors: { email: 'This email address is already registered.' } });
       }
-      
       userData.email = email;
     }
 
@@ -261,6 +263,28 @@ const loginUser = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get current user profile (Fresh from DB)
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('communityId', 'name slug isActive settings logoUrl description city')
+      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user: getUserResponsePayload(user)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -435,20 +459,29 @@ const updateProfile = async (req, res) => {
         user.cover = req.body.cover;
       }
       
-      // Community
-      if (req.body.communityId) {
-        if (user.communityId && user.communityId.toString() !== req.body.communityId.toString() && req.user.role !== 'admin') {
-          return res.status(400).json({ status: 'error', message: 'Community selection is permanent and cannot be changed.' });
-        }
-        const Community = require('../models/Community');
+      // Community Update & Sync
+      const Community = require('../models/Community');
+      const mongoose = require('mongoose');
+
+      if (req.body.communityId && mongoose.isValidObjectId(req.body.communityId)) {
         const targetComm = await Community.findById(req.body.communityId);
-        if (!targetComm || !targetComm.isActive) {
-          return res.status(400).json({ status: 'error', message: 'Selected community is inactive or does not exist.' });
+        if (targetComm && targetComm.isActive) {
+          user.communityId = targetComm._id;
+          user.community = targetComm.name;
         }
-        user.communityId = req.body.communityId;
+      } else if (req.body.community || (req.body.communityId && typeof req.body.communityId === 'string')) {
+        const targetName = (req.body.community || req.body.communityId).toString().replace(/samaj/gi, '').trim();
+        if (targetName) {
+          const commDoc = await Community.findOne({ name: { $regex: new RegExp(`^${targetName}`, 'i') } });
+          if (commDoc) {
+            user.communityId = commDoc._id;
+            user.community = commDoc.name;
+          } else {
+            user.community = req.body.community || req.body.communityId;
+          }
+        }
       }
-      user.community = req.body.community || user.community;
-      user.subCommunity = req.body.subCommunity || user.subCommunity;
+      user.subCommunity = req.body.subCommunity !== undefined ? req.body.subCommunity : user.subCommunity;
       
       // Location
       user.city = req.body.city || user.city;
@@ -645,6 +678,7 @@ const getPublicCities = async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
+  getMe,
   logoutUser,
   logoutAdmin,
   logoutHead,

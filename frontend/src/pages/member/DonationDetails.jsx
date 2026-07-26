@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Users, Calendar, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Heart, 
+  Users, 
+  Calendar, 
+  ShieldCheck, 
+  CheckCircle2, 
+  AlertCircle, 
+  MapPin, 
+  User, 
+  Tag, 
+  Flame, 
+  Clock, 
+  Wallet,
+  Globe
+} from 'lucide-react';
 import memberDonationApi from '../../api/memberDonationApi';
 import DonateModal from '../../components/member/DonateModal';
 import { useData } from '../../modules/member/context/DataProvider';
@@ -154,9 +169,10 @@ export const DonationDetails = () => {
     );
   }
 
-  const raised = donation.raisedAmount || 0;
+  const raised = donation.raisedAmount || donation.collectedAmount || 0;
   const target = donation.targetAmount || 1;
   const percentage = Math.min(100, Math.round((raised / target) * 100));
+  const createdByName = donation.createdBy?.name || 'Community Management';
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 pb-24 font-sans max-w-4xl mx-auto space-y-6">
@@ -180,36 +196,102 @@ export const DonationDetails = () => {
       {/* Main Campaign Card */}
       <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl space-y-6 pb-6">
         {/* Cover Photo Header */}
-        <div className="relative h-64 sm:h-80 bg-slate-100">
-          {donation.coverImage ? (
-            <img src={donation.coverImage} alt={donation.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-indigo-50 to-purple-50">
-              <Heart className="w-16 h-16 text-indigo-300" />
+        {(() => {
+          const coverImg = donation.coverImage || donation.bannerImage;
+          return (
+            <div className="relative w-full min-h-[220px] max-h-[380px] bg-slate-950 flex items-center justify-center overflow-hidden">
+              {coverImg ? (
+                <>
+                  {/* Blurred ambient backdrop */}
+                  <img 
+                    src={coverImg} 
+                    alt="" 
+                    className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 select-none pointer-events-none" 
+                  />
+                  {/* Uncropped centered image */}
+                  <img 
+                    src={coverImg} 
+                    alt={donation.title} 
+                    className="relative z-10 max-h-[380px] w-auto max-w-full object-contain mx-auto shadow-md" 
+                  />
+                </>
+              ) : (
+                <div className="w-full h-56 flex items-center justify-center text-slate-300 bg-gradient-to-br from-indigo-50 to-purple-50">
+                  <Heart className="w-16 h-16 text-indigo-300" />
+                </div>
+              )}
             </div>
-          )}
-          <div className="absolute top-4 left-4 flex items-center gap-2">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-white/90 text-indigo-700 backdrop-blur-md shadow-md">
-              {donation.category || 'General'}
+          );
+        })()}
+
+        <div className="px-6 sm:px-8 space-y-5 pt-2">
+          {/* Category, Priority & Status Badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1">
+              <Tag size={12} /> {donation.category || 'General'}
             </span>
-            {donation.status === 'Active' ? (
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-emerald-500 text-white shadow-md">
+            {donation.priority && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                <Flame size={12} /> {donation.priority} Priority
+              </span>
+            )}
+            {donation.status === 'Active' || donation.status === 'Published' ? (
+              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Active Cause
               </span>
             ) : (
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-slate-700 text-white shadow-md">
+              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                 Closed Cause
               </span>
             )}
           </div>
-        </div>
 
-        <div className="px-6 sm:px-8 space-y-6">
-          <div>
+          {/* Header Title & Created By */}
+          <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">{donation.title}</h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed whitespace-pre-line">
-              {donation.description || 'No detailed description provided.'}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 font-medium">
+              <span className="flex items-center gap-1 text-slate-700 font-bold">
+                <User size={14} className="text-indigo-600" /> Created by: {createdByName}
+              </span>
+              {donation.city && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={14} className="text-rose-500" /> {donation.city}
+                </span>
+              )}
+              {donation.visibility && (
+                <span className="flex items-center gap-1">
+                  <Globe size={14} className="text-blue-500" /> Visibility: {donation.visibility}
+                </span>
+              )}
+              {donation.startDate && (
+                <span className="flex items-center gap-1">
+                  <Clock size={14} className="text-amber-500" /> Started: {new Date(donation.startDate).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Description & Details Section */}
+          <div className="bg-slate-50/70 border border-slate-100 p-5 rounded-2xl space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">About This Campaign</h3>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              {donation.description || donation.desc || 'No detailed description provided.'}
             </p>
+
+            {/* Additional info pills */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {donation.minDonation > 1 && (
+                <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600">
+                  Min Donation: ₹{donation.minDonation}
+                </span>
+              )}
+              {donation.endDate && (
+                <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600">
+                  Ends on: {new Date(donation.endDate).toLocaleDateString()}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Fundraising Progress Box */}
@@ -239,7 +321,7 @@ export const DonationDetails = () => {
               <span className="text-indigo-600 font-extrabold">{percentage}% Funded</span>
             </div>
 
-            {donation.status === 'Active' && (
+            {(donation.status === 'Active' || donation.status === 'Published') && (
               <button
                 onClick={() => setIsDonateModalOpen(true)}
                 className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
@@ -261,13 +343,17 @@ export const DonationDetails = () => {
                 {donation.recentDonations.map((donor, idx) => (
                   <div key={idx} className="p-4 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shadow-sm">
-                        {donor.donorName ? donor.donorName[0].toUpperCase() : 'A'}
-                      </div>
+                      {donor.avatar ? (
+                        <img src={donor.avatar} alt={donor.donorName} className="w-9 h-9 rounded-full object-cover shadow-sm border border-white" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shadow-sm">
+                          {donor.donorName ? donor.donorName[0].toUpperCase() : 'A'}
+                        </div>
+                      )}
                       <div>
                         <span className="font-bold text-slate-800 block text-sm">{donor.donorName}</span>
                         <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Calendar size={10} /> {new Date(donor.date).toLocaleDateString()}
+                          <Calendar size={10} /> {new Date(donor.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
                     </div>

@@ -2,12 +2,13 @@ const Donation = require('../models/Donation');
 const User = require('../models/User');
 const { handleDonationPayment } = require('../utils/paymentHandler');
 const { notifyDonationReceived, notifyDonationReceipt } = require('../services/notificationService');
+const { applyScopeFilter } = require('../utils/queryScopeHelper');
 
-// GET /member/donations — Server-side filtered to status: "Active", isDeleted: false
+// GET /member/donations — Server-side filtered to status: "Active", isDeleted: false, and scoped by Community/City
 exports.getActiveDonations = async (req, res) => {
   try {
     const { category, search } = req.query;
-    const filter = {
+    let filter = {
       status: 'Active',
       isDeleted: false
     };
@@ -20,6 +21,9 @@ exports.getActiveDonations = async (req, res) => {
       filter.title = new RegExp(search.trim(), 'i');
     }
 
+    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
+    filter = applyScopeFilter(req, filter);
+
     const donations = await Donation.find(filter).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -31,13 +35,14 @@ exports.getActiveDonations = async (req, res) => {
   }
 };
 
-// GET /member/donations/:id — Get single donation details (isDeleted: false)
+// GET /member/donations/:id — Get single donation details (Community Scoped)
 exports.getDonationById = async (req, res) => {
   try {
-    const donation = await Donation.findOne({ _id: req.params.id, isDeleted: false });
+    const filter = applyScopeFilter(req, { _id: req.params.id, isDeleted: false });
+    const donation = await Donation.findOne(filter);
 
     if (!donation) {
-      return res.status(404).json({ success: false, message: 'Donation campaign not found' });
+      return res.status(404).json({ success: false, message: 'Donation campaign not found or access denied' });
     }
 
     res.status(200).json({
@@ -49,16 +54,17 @@ exports.getDonationById = async (req, res) => {
   }
 };
 
-// POST /member/donations/:id/donate — Donate to campaign
+// POST /member/donations/:id/donate — Donate to campaign (Community Scoped)
 exports.donate = async (req, res) => {
   try {
     const { amount, donorName } = req.body;
     const donationId = req.params.id;
 
-    const donation = await Donation.findOne({ _id: donationId, status: 'Active', isDeleted: false });
+    const filter = applyScopeFilter(req, { _id: donationId, status: 'Active', isDeleted: false });
+    const donation = await Donation.findOne(filter);
 
     if (!donation) {
-      return res.status(400).json({ success: false, message: 'Donation campaign is closed or inactive' });
+      return res.status(400).json({ success: false, message: 'Donation campaign is closed, inactive, or belongs to another community' });
     }
 
     const parsedAmount = Number(amount);

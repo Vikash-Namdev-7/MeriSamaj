@@ -216,6 +216,12 @@ const userSchema = new mongoose.Schema({
     canViewObituary: { type: Boolean, default: true },
     canManageObituary: { type: Boolean, default: false },
     
+    // Elections & Home Content
+    canViewElections: { type: Boolean, default: true },
+    canManageElections: { type: Boolean, default: false },
+    canViewHomeContent: { type: Boolean, default: true },
+    canManageHomeContent: { type: Boolean, default: false },
+
     // General Admin & Notifications
     canSendNotifications: { type: Boolean, default: false },
     canViewReports: { type: Boolean, default: true }

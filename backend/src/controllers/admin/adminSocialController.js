@@ -60,7 +60,7 @@ exports.getPosts = async (req, res) => {
     if (feedType === 'city') {
       filter.feedType = { $ne: 'community' };
     } else if (feedType === 'community') {
-      filter.feedType = 'community';
+      filter.feedType = { $in: ['community', 'both'] };
     }
 
     if (communityId) filter.communityId = communityId;

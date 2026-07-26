@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { authService } from './authService';
+import { authService, clearAllUserData } from './authService';
 
 export const AuthContext = createContext({});
 
@@ -37,6 +37,15 @@ export const AuthProvider = ({ children }) => {
               isAuthenticated: true,
               isInitialized: true,
             });
+            // Fetch fresh user profile from DB to eliminate any stale/cached data
+            authService.getMe()
+              .then(res => {
+                if (isMounted && res && res.user) {
+                  localStorage.setItem('merisamaj_user', JSON.stringify(res.user));
+                  setAuth(prev => ({ ...prev, user: res.user }));
+                }
+              })
+              .catch(() => {});
           } catch {
             setAuth(prev => ({ ...prev, isInitialized: true }));
           }
@@ -79,6 +88,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
+    clearAllUserData(false);
     const response = await authService.login(credentials);
     localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
     localStorage.setItem('merisamaj_token', response.accessToken);
@@ -93,9 +103,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
+    clearAllUserData(true);
     const response = await authService.register(userData);
     localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
     localStorage.setItem('merisamaj_token', response.accessToken);
+    localStorage.setItem('merisamaj_just_registered', 'true');
     localStorage.setItem(SESSION_FLAG_KEY, '1');
     setAuth({
       user: response.user,
@@ -112,15 +124,16 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error', error);
     } finally {
-      localStorage.removeItem('merisamaj_user');
-      localStorage.removeItem('merisamaj_token');
-      localStorage.removeItem(SESSION_FLAG_KEY);
+      clearAllUserData(false);
       setAuth({
         user: null,
         accessToken: null,
         isAuthenticated: false,
         isInitialized: true,
       });
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   };
 

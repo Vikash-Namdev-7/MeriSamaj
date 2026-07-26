@@ -21,16 +21,16 @@ const EditProfilePage = () => {
   const navigate = useNavigate();
   const { currentUser, updateProfile } = useData();
   const [formData, setFormData] = useState({
-    name: currentUser.name || '',
-    phone: currentUser.phone || '',
-    email: currentUser.email || '',
-    gender: currentUser.gender || 'Male',
-    dob: currentUser.dob || '1995-08-15',
-    profession: currentUser.profession || '',
-    company: currentUser.company || 'Agrawal Enterprises',
-    state: currentUser.state || (currentUser.city === 'Indore' || currentUser.city === 'Bhopal' || currentUser.city === 'Ujjain' ? 'Madhya Pradesh' : (currentUser.city === 'Jaipur' ? 'Rajasthan' : '')),
-    city: currentUser.city || '',
-    address: currentUser.address || ''
+    name: currentUser?.name || '',
+    phone: currentUser?.phone || '',
+    email: currentUser?.email || '',
+    gender: currentUser?.gender || '',
+    dob: currentUser?.dob || '',
+    profession: currentUser?.profession || '',
+    company: currentUser?.company || '',
+    state: currentUser?.state || '',
+    city: currentUser?.city || '',
+    address: currentUser?.detailedAddress || currentUser?.address || ''
   });
 
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);

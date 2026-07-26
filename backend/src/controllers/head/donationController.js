@@ -3,31 +3,12 @@ const Donation = require('../../models/Donation');
 const Expense = require('../../models/Expense');
 const User = require('../../models/User');
 const { notifyCampaignCreated } = require('../../services/notificationService');
-
-/**
- * Helper: build the community filter for Head queries.
- * Uses req.communityId (ObjectId) from auth middleware — the authoritative isolation key.
- * Head can ONLY see/manage their own community's data.
- */
-const getCommunityFilter = (req) => {
-  if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-    return { communityId: { $in: req.user.assignedCommunityIds } };
-  }
-  // req.communityId is always a plain ObjectId set by authMiddleware
-  if (req.communityId) {
-    return { communityId: req.communityId };
-  }
-  // Fallback for pre-migration data (community String)
-  if (req.user?.community) {
-    return { community: req.user.community };
-  }
-  return {};
-};
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // 1. Dashboard Stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, {});
 
     const campaigns = await Campaign.find(communityFilter);
     const totalCampaigns = campaigns.length;
@@ -36,7 +17,7 @@ exports.getDashboardStats = async (req, res) => {
     const completedCampaigns = campaigns.filter(c => c.status === 'Completed').length;
 
     const amountAggr = await Campaign.aggregate([
-      { $match: req.communityId ? { communityId: req.communityId } : { community: req.user?.community } },
+      { $match: communityFilter },
       { $group: { _id: null, totalTarget: { $sum: '$targetAmount' }, totalRaised: { $sum: '$collectedAmount' }, totalExpenses: { $sum: '$expenseAmount' } } }
     ]);
     const totalTargetAmount = amountAggr.length > 0 ? amountAggr[0].totalTarget : 0;
@@ -73,7 +54,7 @@ exports.getDashboardStats = async (req, res) => {
 // 2. Get All Campaigns (Data Table) — community-scoped
 exports.getAllCampaigns = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, { isDeleted: { $ne: true } });
     const campaigns = await Campaign.find(communityFilter).sort({ createdAt: -1 }).populate('createdBy', 'name');
 
     const formatted = campaigns.map(c => ({
@@ -128,23 +109,18 @@ const parseCampaignBody = (body, file) => {
   return data;
 };
 
-// 3. Create Campaign
+// 3. Create Campaign (Using inheritTenantPayload helper)
 exports.createCampaign = async (req, res) => {
   try {
-    const community = req.user?.community;
     const parsedData = parseCampaignBody(req.body, req.file);
-    const newCampaign = new Campaign({
+    const campaignPayload = inheritTenantPayload(req, {
       ...parsedData,
-      /**
-       * communityId is ALWAYS set server-side from the authenticated Head's community.
-       * community String is kept for backward compatibility during migration period.
-       */
-      communityId: req.communityId || req.user?.communityId?._id || req.user?.communityId,
-      community,
+      community: req.user?.community,
       status: parsedData.status || 'Active',
       createdBy: req.user?._id
     });
-    
+
+    const newCampaign = new Campaign(campaignPayload);
     await newCampaign.save();
 
     // ── Non-critical: notify active community members ──────────────────────
@@ -179,12 +155,16 @@ exports.updateCampaign = async (req, res) => {
   }
 };
 
-// 5. Delete / Archive Campaign
+// 5. Delete / Soft Delete Campaign
 exports.deleteCampaign = async (req, res) => {
   try {
-    const campaign = await Campaign.findByIdAndDelete(req.params.id);
+    const campaign = await Campaign.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isDeleted: true, deletedAt: new Date() } },
+      { new: true }
+    );
     if (!campaign) return res.status(404).json({ status: 'error', message: 'Campaign not found' });
-    res.status(204).json({ status: 'success', data: null });
+    res.status(200).json({ status: 'success', data: null });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -206,19 +186,19 @@ exports.getCampaignDonors = async (req, res) => {
   try {
     const donations = await Donation.find({ campaign: req.params.id })
       .populate('user', 'name memberId')
-      .sort({ date: -1 });
+      .sort({ createdAt: -1 });
 
     const formatted = donations.map(d => ({
       id: d._id,
-      name: d.user?.name || 'Anonymous',
+      name: d.user?.name || d.donorName || 'Anonymous',
       memberId: d.user?.memberId || 'N/A',
-      family: 'N/A', // Update if we expand user schema
-      mobile: 'N/A', // Update if we expand user schema
-      amount: d.amount,
-      paymentMethod: d.paymentMode,
-      txnId: d.txnId,
-      date: d.date,
-      status: d.status
+      family: 'N/A',
+      mobile: 'N/A',
+      amount: d.amount || d.raisedAmount || 0,
+      paymentMethod: d.paymentMode || d.paymentMethod || 'Razorpay',
+      txnId: d.txnId || '',
+      date: d.paidAt || d.createdAt || new Date(),
+      status: d.status || 'Active'
     }));
 
     res.status(200).json({ status: 'success', data: formatted });
@@ -255,10 +235,6 @@ exports.addExpense = async (req, res) => {
     
     const expense = new Expense({
       campaign: id,
-      /**
-       * Inherit communityId from the parent Campaign.
-       * Falls back to req.communityId if campaign not yet migrated.
-       */
       communityId: campaign.communityId || req.communityId,
       title,
       description,
@@ -294,7 +270,7 @@ exports.getCampaignExpenses = async (req, res) => {
 // 11. Get Full Ledger — community-scoped
 exports.getLedger = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, { isDeleted: { $ne: true } });
     
     // Fetch all campaigns in the Head's community
     const campaigns = await Campaign.find(communityFilter, 'title collectedAmount expenseAmount');
@@ -305,30 +281,40 @@ exports.getLedger = async (req, res) => {
       .populate('campaign', 'title category')
       .sort({ date: -1 });
       
-    // Fetch all donations
-    const donations = await Donation.find({ campaign: { $in: campaignIds }, status: 'Approved' })
+    // Fetch all donations (either linked to community's campaigns or communityId)
+    const donationQuery = { isDeleted: { $ne: true } };
+    if (campaignIds.length > 0) {
+      donationQuery.$or = [
+        { campaign: { $in: campaignIds } },
+        { communityId: req.communityId }
+      ];
+    } else if (req.communityId) {
+      donationQuery.communityId = req.communityId;
+    }
+
+    const donations = await Donation.find(donationQuery)
       .populate('campaign', 'title category')
       .populate('user', 'name memberId')
-      .sort({ date: -1 });
+      .sort({ createdAt: -1 });
       
     const transactions = [
       ...donations.map(d => ({
         id: `don_${d._id}`,
         type: 'INCOME',
-        title: `Donation from ${d.user?.name || 'Anonymous'}`,
-        campaignTitle: d.campaign?.title || 'Unknown',
-        amount: d.amount,
-        date: d.date,
-        txnId: d.txnId
+        title: d.donorName || (d.user?.name ? `Donation from ${d.user.name}` : 'Anonymous Donation'),
+        campaignTitle: d.campaign?.title || d.title || 'General Community Donation',
+        amount: d.amount || d.raisedAmount || 0,
+        date: d.paidAt || d.createdAt || new Date(),
+        txnId: d.txnId || ''
       })),
       ...expenses.map(e => ({
         id: `exp_${e._id}`,
         type: 'EXPENSE',
-        title: e.title,
+        title: e.title || 'Expense',
         campaignTitle: e.campaign?.title || 'Unknown',
-        amount: e.amount,
-        date: e.date,
-        category: e.category
+        amount: e.amount || 0,
+        date: e.date || e.createdAt || new Date(),
+        category: e.category || 'General'
       }))
     ].sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort all by date descending
     

@@ -132,7 +132,7 @@ const EventDetailPage = () => {
       setRsvpErrors(errors);
       return;
     }
-    await registerForEvent(event.id, rsvpForm);
+    await registerForEvent(event._id || event.id, rsvpForm);
     setEvent(prev => ({
       ...prev,
       isRegistered: true,
@@ -187,6 +187,36 @@ const EventDetailPage = () => {
   const isRegistered = !!event.isRegistered;
   const isInterested = !!event.isInterested;
   const isBookmarked = !!event.isBookmarked;
+
+  // Calculate Days Left dynamically from startDate or date
+  const getDaysLeft = () => {
+    if (typeof event.daysRemaining === 'number') return event.daysRemaining;
+    if (event.daysRemaining && event.daysRemaining !== '–') return event.daysRemaining;
+    
+    const rawDate = event.startDate || event.date;
+    if (!rawDate) return '–';
+
+    let targetDate = new Date(rawDate);
+    if (isNaN(targetDate.getTime()) && typeof rawDate === 'string') {
+      const parts = rawDate.split('-');
+      if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+        targetDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    }
+
+    if (isNaN(targetDate.getTime())) return '–';
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const diffTime = targetDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 'Ended';
+    if (diffDays === 0) return 'Today';
+    return diffDays;
+  };
 
   // Gallery images: use event-specific gallery or fallback to category-based photos
   const galleryImages = event.gallery || [
@@ -340,7 +370,7 @@ const EventDetailPage = () => {
             <p className="text-[10px] text-gray-500 font-bold mt-1.5">Attending</p>
           </div>
           <div className="bg-white rounded-2xl p-3.5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100">
-            <p className="text-[20px] font-black text-orange-500 leading-none">{event.daysRemaining || '–'}</p>
+            <p className="text-[20px] font-black text-orange-500 leading-none">{getDaysLeft()}</p>
             <p className="text-[10px] text-gray-500 font-bold mt-1.5">Days Left</p>
           </div>
         </div>

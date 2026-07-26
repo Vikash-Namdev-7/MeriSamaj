@@ -29,6 +29,28 @@ const {
   notifyMemberDemoted
 } = require('../../services/notificationService');
 
+// ─── Helper: Verify group community access ─────────────────────────────────────
+const canAccessGroup = (group, req) => {
+  if (!group || group.isDeleted) {
+    return false;
+  }
+
+  // Admin roles retain global access
+  const userRole = (req.user?.role || '').toLowerCase();
+  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(userRole)) {
+    return true;
+  }
+
+  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId)?.toString();
+  const groupCommId = group.communityId ? group.communityId.toString() : null;
+
+  if (!userCommId || !groupCommId) {
+    return false;
+  }
+
+  return userCommId === groupCommId;
+};
+
 // ─── Helper: Get group with member check ─────────────────────────────────────
 const getGroupAndVerifyMember = async (groupId, userId) => {
   const group = await Group.findOne({ _id: groupId, isDeleted: false });
@@ -209,19 +231,19 @@ exports.createGroup = async (req, res) => {
 exports.getGroups = async (req, res) => {
   try {
     const { page = 1, limit = 20, category, search, type } = req.query;
-    const communityId = req.user.communityId?._id || req.user.communityId;
-    if (!communityId) return res.status(400).json({ status: 'error', message: 'Community not found.' });
-
-    const filter = {
-      communityId,
+    
+    let baseFilter = {
       isDeleted: false,
       approvalStatus: 'approved'
     };
-    if (category && category !== 'all') filter.category = category;
-    if (type)     filter.type = type;
+    if (category && category !== 'all') baseFilter.category = category;
+    if (type)     baseFilter.type = type;
     if (search) {
-      filter.$text = { $search: search };
+      baseFilter.$text = { $search: search };
     }
+
+    const { applyScopeFilter } = require('../../utils/queryScopeHelper');
+    const filter = applyScopeFilter(req, baseFilter);
 
     const total = await Group.countDocuments(filter);
     const groups = await Group.find(filter)
@@ -300,7 +322,9 @@ exports.getGroupMembers = async (req, res) => {
     const group = await Group.findOne({ _id: id, isDeleted: false })
       .populate('members.userId', 'name avatar verificationStatus phone');
 
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     // For private groups, only members can see members
     if (group.type !== 'public' && !group.isMember(userId)) {
@@ -332,7 +356,9 @@ exports.getGroupById = async (req, res) => {
       .populate('creator', 'name avatar')
       .populate('members.userId', 'name avatar verificationStatus');
 
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     // For private/invite_only groups, only members can see details
     if (group.type !== 'public' && !group.isMember(userId)) {
@@ -363,7 +389,9 @@ exports.updateGroup = async (req, res) => {
     const { name, description, category, type } = req.body;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(userId, 'canEditGroupInfo')) {
       return res.status(403).json({ status: 'error', message: 'You do not have permission to edit this group.' });
@@ -401,9 +429,11 @@ exports.deleteGroup = async (req, res) => {
     const userId  = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
-    // Only head role or community head can delete
+    // Only head role or group head can delete
     if (!group.hasMinRole(userId, 'head') && req.user.role !== 'head') {
       return res.status(403).json({ status: 'error', message: 'Only the Community Head can delete groups.' });
     }
@@ -438,12 +468,8 @@ exports.joinGroup = async (req, res) => {
     const userId  = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false, approvalStatus: 'approved' });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
-
-    // Must be same community — req.user.communityId may be a populated object
-    const userCommunityId = req.user.communityId?._id || req.user.communityId;
-    if (group.communityId.toString() !== userCommunityId?.toString()) {
-      return res.status(403).json({ status: 'error', message: 'You can only join groups within your community.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
     }
 
     if (group.isMember(userId)) {
@@ -518,7 +544,13 @@ exports.leaveGroup = async (req, res) => {
     const { id } = req.params;
     const userId  = req.user._id;
 
-    const group = await getGroupAndVerifyMember(id, userId);
+    const group = await Group.findOne({ _id: id, isDeleted: false });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
+    if (!group.isMember(userId)) {
+      return res.status(403).json({ status: 'error', message: 'You are not a member of this group.' });
+    }
 
     // Head cannot leave — must transfer or delete
     if (group.getMemberRole(userId) === 'head') {
@@ -571,7 +603,9 @@ exports.inviteMembers = async (req, res) => {
     }
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(requesterId, 'canAddMembers')) {
       return res.status(403).json({ status: 'error', message: 'You do not have permission to add members.' });
@@ -663,7 +697,7 @@ exports.acceptInvitation = async (req, res) => {
     if (!invitation) return res.status(404).json({ status: 'error', message: 'Invitation not found or already processed.' });
 
     const group = await Group.findOne({ _id: invitation.group, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group no longer exists.' });
+    if (!canAccessGroup(group, req)) return res.status(404).json({ status: 'error', message: 'Group no longer exists.' });
 
     invitation.status = 'accepted';
     invitation.resolvedAt = new Date();
@@ -727,7 +761,9 @@ exports.removeMember = async (req, res) => {
     const requesterId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(requesterId, 'canRemoveMembers')) {
       return res.status(403).json({ status: 'error', message: 'You do not have permission to remove members.' });
@@ -771,7 +807,9 @@ exports.promoteToAdmin = async (req, res) => {
     const requesterId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     // Only head role can promote
     if (!group.hasMinRole(requesterId, 'head') && req.user.role !== 'head') {
@@ -810,7 +848,9 @@ exports.demoteAdmin = async (req, res) => {
     const requesterId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.hasMinRole(requesterId, 'head') && req.user.role !== 'head') {
       return res.status(403).json({ status: 'error', message: 'Only the Community Head can demote admins.' });
@@ -849,7 +889,9 @@ exports.updateGroupSettings = async (req, res) => {
     const { chatPermissions } = req.body;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(userId, 'canChangeSettings')) {
       return res.status(403).json({ status: 'error', message: 'You do not have permission to change settings.' });
@@ -877,7 +919,9 @@ exports.approveGroup = async (req, res) => {
     }
 
     const group = await Group.findOne({ _id: id, isDeleted: false, approvalStatus: 'pending' });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Pending group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Pending group not found.' });
+    }
 
     group.approvalStatus = action === 'approve' ? 'approved' : 'rejected';
     group.approvedBy = req.user._id;
@@ -901,7 +945,9 @@ exports.getJoinRequests = async (req, res) => {
     const userId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(userId, 'canAddMembers')) {
       return res.status(403).json({ status: 'error', message: 'Not authorized.' });
@@ -925,7 +971,9 @@ exports.approveJoinRequest = async (req, res) => {
     const userId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(userId, 'canAddMembers')) {
       return res.status(403).json({ status: 'error', message: 'Not authorized.' });
@@ -977,7 +1025,9 @@ exports.rejectJoinRequest = async (req, res) => {
     const userId = req.user._id;
 
     const group = await Group.findOne({ _id: id, isDeleted: false });
-    if (!group) return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    if (!canAccessGroup(group, req)) {
+      return res.status(404).json({ status: 'error', message: 'Group not found.' });
+    }
 
     if (!group.canPerform(userId, 'canAddMembers')) {
       return res.status(403).json({ status: 'error', message: 'Not authorized.' });

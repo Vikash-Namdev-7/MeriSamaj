@@ -4,15 +4,10 @@ import {
   MapPin, Building2, Heart, MessageCircle, FileText, Image as ImageIcon, 
   Video, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, ShieldAlert, X
 } from 'lucide-react';
-import axios from 'axios';
+import { axiosPrivate } from '../../../../../core/api/axiosPrivate';
 import PostDetailDrawer from './PostDetailDrawer';
 import { socialFeedService } from '../../../services/socialFeedService';
 import { cityService } from '../../../services/cityService';
-
-const getAuthHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('admin_jwt='))?.split('=')[1] || '';
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
 
 export const SocialFeedManager = ({ feedType = 'city' }) => {
   const isCityFeed = feedType === 'city';
@@ -140,7 +135,7 @@ export const SocialFeedManager = ({ feedType = 'city' }) => {
   const handleRestore = async (postId) => {
     try {
       setActionLoading(true);
-      await axios.post(`/api/v1/admin/social/posts/${postId}/restore`, {}, getAuthHeaders());
+      await axiosPrivate.post(`/admin/social/posts/${postId}/restore`);
       showToast('Post restored successfully');
       fetchPosts();
     } catch (err) {

@@ -590,9 +590,16 @@ export const DataProvider = ({ children }) => {
 
   const saveState = (key, state) => {
     try {
-      localStorage.setItem(`merisamaj_v6_${key}`, JSON.stringify(state));
+      let safeState = state;
+      if (key === 'currentUser' && state && typeof state === 'object') {
+        safeState = { ...state };
+        if (typeof safeState.avatar === 'string' && safeState.avatar.startsWith('data:image')) {
+          delete safeState.avatar;
+        }
+      }
+      localStorage.setItem(`merisamaj_v6_${key}`, JSON.stringify(safeState));
     } catch (err) {
-      console.error('Could not save state', err);
+      // Gracefully handle browser storage quota limits
     }
   };
 
@@ -609,18 +616,22 @@ export const DataProvider = ({ children }) => {
 
   // State Definitions
   const [currentUser, setCurrentUser] = useState(() => {
-    const loaded = loadState('currentUser', initialUser);
-    return {
-      ...loaded,
-      communityId: loaded?.communityId || 'c1'
-    };
+    if (auth?.isAuthenticated && auth?.user) return auth.user;
+    const savedUser = localStorage.getItem('merisamaj_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && (parsed.id || parsed._id || parsed.name)) return parsed;
+      } catch {}
+    }
+    return auth?.user || null;
   });
 
   useEffect(() => {
     if (auth.isAuthenticated && auth.user) {
       setCurrentUser(auth.user);
     } else if (!auth.isAuthenticated) {
-      setCurrentUser(initialUser);
+      setCurrentUser(null);
     }
   }, [auth.isAuthenticated, auth.user]);
   const [members, setMembers] = useState(() => loadState('members', initialMembers));
@@ -642,11 +653,16 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const currentUserId = auth.user?._id || auth.user?.id || currentUser?._id || currentUser?.id;
+
   useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (auth.isAuthenticated && currentUserId) {
       loadMembers();
+    } else if (!auth.isAuthenticated) {
+      setMembers(initialMembers);
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, currentUserId]);
+
   const [admins, setAdmins] = useState(() => {
     const loaded = loadState('admins', initialAdmins);
     if (loaded && loaded.length < initialAdmins.length) {
@@ -661,12 +677,17 @@ export const DataProvider = ({ children }) => {
   const [stories, setStories] = useState([]);
 
   useEffect(() => {
-    if (currentUser && (currentUser.id || currentUser._id)) {
+    if (auth.isAuthenticated && currentUserId) {
       fetchFeedPosts('city');
       fetchFeedPosts('community');
       fetchStoriesList();
+    } else {
+      setPosts([]);
+      setCityPosts([]);
+      setCommunityPosts([]);
+      setStories([]);
     }
-  }, [currentUser]);
+  }, [auth.isAuthenticated, currentUserId]);
 
   const [followedAnnouncements, setFollowedAnnouncements] = useState(() => loadState('followedAnnouncements', {
     announcements: true,
@@ -1060,23 +1081,12 @@ export const DataProvider = ({ children }) => {
   };
 
   const logoutUser = async () => {
-    // Clear localStorage keys
-    localStorage.removeItem('merisamaj_v6_currentUser');
-    localStorage.removeItem('merisamaj_v6_posts');
-    localStorage.removeItem('merisamaj_v6_followedAnnouncements');
-    localStorage.removeItem('merisamaj_v6_notifications');
-    localStorage.removeItem('merisamaj_v6_chats');
-    localStorage.removeItem('merisamaj_v6_chatMessages');
-    localStorage.removeItem('merisamaj_v6_eventReminders');
-    localStorage.removeItem('merisamaj_v6_eventRegistrations');
-    localStorage.removeItem('posts');
-
     // Reset state values
-    setCurrentUser(initialUser);
-    setPosts(initialPosts.map((p) => ({ ...p, commentsList: p.commentsList || [] })));
+    setCurrentUser(null);
+    setPosts([]);
     setEvents([]);
     setObituaries([]);
-    setNotifications(initialNotifications);
+    setNotifications([]);
     setChats([]);
     setChatMessages({});
 
@@ -1205,31 +1215,43 @@ export const DataProvider = ({ children }) => {
         feedType: options.feedType || 'city'
       });
 
-      const postData = (res && res.data) ? res.data : res;
-
-      const formatted = {
-        ...postData,
-        id: postData._id,
+      const formatSinglePost = (p) => ({
+        ...p,
+        id: p._id,
         city: options.city || currentUser?.city || 'Indore',
         community: currentUser?.community || 'Agrawal Samaj',
-        feedType: options.feedType || 'city',
+        feedType: p.feedType || 'city',
         author: {
-          id: postData.userId?._id || postData.userId?.id || currentUser?.id,
-          name: postData.userId?.name || currentUser?.name || 'Member',
-          avatar: postData.userId?.avatar || currentUser?.avatar,
-          initials: postData.userId?.name
-            ? postData.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+          id: p.userId?._id || p.userId?.id || currentUser?.id,
+          name: p.userId?.name || currentUser?.name || 'Member',
+          avatar: p.userId?.avatar || currentUser?.avatar,
+          initials: p.userId?.name
+            ? p.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
             : (currentUser?.initials || 'U')
         },
-        images: postData.media?.map(m => m.url) || images || [],
-        likes: postData.likesCount || 0,
-        comments: postData.commentsCount || 0,
-        views: postData.viewsCount || 0
-      };
+        images: p.media?.map(m => m.url) || images || [],
+        likes: p.likesCount || 0,
+        comments: p.commentsCount || 0,
+        views: p.viewsCount || 0
+      });
+
+      if (res?.posts && Array.isArray(res.posts) && res.posts.length === 2) {
+        const cityFormatted = formatSinglePost(res.posts[0]);
+        const communityFormatted = formatSinglePost(res.posts[1]);
+
+        setCityPosts(prev => [cityFormatted, ...prev]);
+        setCommunityPosts(prev => [communityFormatted, ...prev]);
+        setPosts(prev => [cityFormatted, communityFormatted, ...prev]);
+
+        return { success: true, data: cityFormatted, posts: [cityFormatted, communityFormatted] };
+      }
+
+      const postData = (res && res.data) ? res.data : res;
+      const formatted = formatSinglePost(postData);
 
       if (formatted.feedType === 'city') {
         setCityPosts(prev => [formatted, ...prev]);
-      } else {
+      } else if (formatted.feedType === 'community') {
         setCommunityPosts(prev => [formatted, ...prev]);
       }
       setPosts(prev => [formatted, ...prev]);

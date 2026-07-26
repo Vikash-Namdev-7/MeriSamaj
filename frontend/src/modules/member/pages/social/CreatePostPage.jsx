@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  ArrowLeft, Camera, MapPin, X, Send, Mic, Radio, Check, Users, 
+  ArrowLeft, Camera, X, Send, Mic, Radio, Users, 
   Heart, Sparkles, Folder, Layers, ImagePlus, UploadCloud, Play, 
   Trash2, Monitor, Smartphone, Link, AlertCircle 
 } from 'lucide-react';
@@ -43,13 +43,7 @@ const Youtube = (props) => (
   </svg>
 );
 
-const BG_PRESETS = [
-  { name: 'Pure White', value: '#ffffff', textColor: 'text-gray-900 bg-white/80' },
-  { name: 'Dark Mode', value: '#121212', textColor: 'text-white bg-black/55' },
-  { name: 'Ocean Blue', value: '#2563eb', textColor: 'text-white bg-blue-900/60' },
-  { name: 'Royal Purple', value: '#7c3aed', textColor: 'text-white bg-purple-900/60' },
-  { name: 'Sunset Glow', value: 'linear-gradient(135deg, #f472b6 0%, #7c3aed 100%)', textColor: 'text-white bg-black/40' }
-];
+
 
 const CreatePostPage = () => {
   const navigate = useNavigate();
@@ -74,7 +68,6 @@ const CreatePostPage = () => {
   
   // Story specific states
   const [storyText, setStoryText] = useState('');
-  const [selectedBg, setSelectedBg] = useState(BG_PRESETS[4]); // default Sunset gradient
 
   // Upload emulation
   const [isUploading, setIsUploading] = useState(false);
@@ -204,8 +197,8 @@ const CreatePostPage = () => {
         alert(`Post creation failed: ${err.message}`);
       }
     } else if (activeTab === 'story') {
-      // storyBg is either the media attachment URL, or the color code/gradient string
-      const storyBg = attachments.length > 0 ? attachments[0].url : selectedBg.value;
+      // storyBg is either the media attachment URL, or default background gradient
+      const storyBg = attachments.length > 0 ? attachments[0].url : 'linear-gradient(135deg, #f472b6 0%, #7c3aed 100%)';
       addStory(storyBg, storyText.trim());
       navigate(-1);
     }
@@ -358,44 +351,37 @@ const CreatePostPage = () => {
                 </div>
               )}
 
-              {/* Feed Scope & Location details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Target Feed</label>
-                  <div className="flex gap-2 bg-slate-100 rounded-2xl p-1 border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setFeedType('city')}
-                      className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
-                        feedType === 'city' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      📍 City Feed
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFeedType('community')}
-                      className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
-                        feedType === 'community' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      👥 Community
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Add Location</label>
-                  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5">
-                    <MapPin size={15} className="text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Add location details..."
-                      value={locationInput}
-                      onChange={(e) => setLocationInput(e.target.value)}
-                      className="bg-transparent outline-none w-full text-[12px] text-slate-700 placeholder-slate-400 font-semibold"
-                    />
-                  </div>
+              {/* Feed Scope details */}
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Target Feed</label>
+                <div className="flex gap-1.5 bg-slate-100 rounded-2xl p-1 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setFeedType('city')}
+                    className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
+                      feedType === 'city' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    📍 City Feed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedType('community')}
+                    className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
+                      feedType === 'community' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    👥 Community
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedType('both')}
+                    className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all ${
+                      feedType === 'both' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    🌐 Both (City & Community)
+                  </button>
                 </div>
               </div>
 
@@ -424,28 +410,6 @@ const CreatePostPage = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[14px] text-slate-800 placeholder-slate-400 outline-none h-24 resize-none leading-relaxed transition-all focus:border-indigo-500/50 focus:bg-white"
                 />
               </div>
-
-              {/* Background presets (only active if no media uploaded) */}
-              {attachments.length === 0 && (
-                <div>
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-2 px-1">Choose Color Background</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {BG_PRESETS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSelectedBg(preset)}
-                        className={`h-12 rounded-xl transition-all relative overflow-hidden flex items-center justify-center border ${
-                          selectedBg.name === preset.name ? 'border-indigo-500 ring-2 ring-indigo-500/20 scale-105' : 'border-slate-200'
-                        }`}
-                        style={{ background: preset.value }}
-                      >
-                        {selectedBg.name === preset.name && <Check size={14} className="text-slate-900 bg-white rounded-full p-0.5" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
             </div>
           )}

@@ -1,5 +1,6 @@
 const Invitation = require('../../models/Invitation');
 const { notifyInvitationReceived } = require('../../services/notificationService');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // @desc    Create a new invitation
 // @route   POST /api/member/invitations
@@ -96,20 +97,12 @@ exports.createInvitation = async (req, res) => {
   }
 };
 
-// @desc    Get all invitations for the logged-in user's community
+// @desc    Get all invitations for the logged-in user's community (2-Level Scope)
 // @route   GET /api/member/invitations
 // @access  Private
 exports.getInvitations = async (req, res) => {
   try {
-    /**
-     * Community-scoped query: only return invitations belonging to the
-     * same community as the authenticated user. req.communityId is set
-     * by authMiddleware from the user's communityId field.
-     */
-    const filter = {};
-    if (req.communityId) {
-      filter.communityId = req.communityId;
-    }
+    const filter = applyScopeFilter(req, {});
 
     const invitations = await Invitation.find(filter)
       .populate('creatorId', 'name email')
@@ -123,19 +116,20 @@ exports.getInvitations = async (req, res) => {
   }
 };
 
-// @desc    Get invitation by ID
+// @desc    Get invitation by ID (Community Scoped)
 // @route   GET /api/member/invitations/:id
 // @access  Private
 exports.getInvitationById = async (req, res) => {
   try {
-    const invitation = await Invitation.findById(req.params.id)
+    const filter = applyScopeFilter(req, { _id: req.params.id });
+    const invitation = await Invitation.findOne(filter)
       .populate('creatorId', 'name email')
       .populate('rsvps.memberId', 'name');
 
     if (invitation) {
       res.json(invitation);
     } else {
-      res.status(404).json({ message: 'Invitation not found' });
+      res.status(404).json({ message: 'Invitation not found or access denied' });
     }
   } catch (error) {
     console.error('Error fetching invitation:', error);
@@ -149,7 +143,8 @@ exports.getInvitationById = async (req, res) => {
 exports.updateRSVP = async (req, res) => {
   try {
     const { status } = req.body;
-    const invitation = await Invitation.findById(req.params.id);
+    const filter = applyScopeFilter(req, { _id: req.params.id });
+    const invitation = await Invitation.findOne(filter);
 
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found' });
@@ -180,21 +175,22 @@ exports.updateRSVP = async (req, res) => {
 // @access  Private
 exports.deleteInvitation = async (req, res) => {
   try {
-    const invitation = await Invitation.findById(req.params.id);
+    const filter = applyScopeFilter(req, { _id: req.params.id });
+    const invitation = await Invitation.findOne(filter);
 
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found' });
     }
 
-    // Check if the user is authorized (creator, head, or admin)
+    // Check if the user is authorized within their community (creator, head, or admin)
     const isCreator = invitation.creatorId && invitation.creatorId.toString() === req.user._id.toString();
-    const isHeadOrAdmin = ['head', 'admin', 'head_admin', 'super_admin', 'master_admin'].includes(req.user.role);
+    const isHeadOrAdmin = ['head', 'admin', 'head_admin', 'super_admin', 'master_admin'].includes((req.user.role || '').toLowerCase());
 
     if (!isCreator && !isHeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to delete this invitation' });
     }
 
-    await Invitation.findByIdAndDelete(req.params.id);
+    await Invitation.deleteOne({ _id: invitation._id });
     res.json({ message: 'Invitation removed' });
   } catch (error) {
     console.error('Error deleting invitation:', error);
@@ -207,14 +203,18 @@ exports.deleteInvitation = async (req, res) => {
 // @access  Private
 exports.updateInvitation = async (req, res) => {
   try {
-    const invitation = await Invitation.findById(req.params.id);
+    const filter = applyScopeFilter(req, { _id: req.params.id });
+    const invitation = await Invitation.findOne(filter);
 
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found' });
     }
 
-    // Check if the user is authorized (creator, head, or admin)
-    if (invitation.creatorId.toString() !== req.user._id.toString() && !['head', 'admin'].includes(req.user.role)) {
+    // Check if the user is authorized within their community (creator, head, or admin)
+    const isCreator = invitation.creatorId && invitation.creatorId.toString() === req.user._id.toString();
+    const isHeadOrAdmin = ['head', 'admin', 'head_admin', 'super_admin', 'master_admin'].includes((req.user.role || '').toLowerCase());
+
+    if (!isCreator && !isHeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to update this invitation' });
     }
 

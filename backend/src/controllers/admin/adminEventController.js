@@ -163,6 +163,16 @@ exports.getEventById = async (req, res) => {
     const memberResponses = responses.map(r => {
       const u = r.memberId || {};
       const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+      
+      let resStatus = r.response || 'None';
+      if (r.isGoing || r.registered || r.response === 'Going') {
+        resStatus = 'Going';
+      } else if (r.isInterested || r.response === 'Interested') {
+        resStatus = 'Interested';
+      } else if (r.response === 'Not Going') {
+        resStatus = 'Not Going';
+      }
+
       return {
         id: r._id,
         memberId: u._id,
@@ -174,17 +184,19 @@ exports.getEventById = async (req, res) => {
         gotra: u.gotra || 'N/A',
         communityName: u.communityId?.name || 'N/A',
         cityName: u.city?.name || 'N/A',
-        response: r.response,
-        registered: r.registered,
+        response: resStatus,
+        isInterested: !!(r.isInterested || r.response === 'Interested'),
+        isGoing: !!(r.isGoing || r.registered || r.response === 'Going'),
+        registered: !!r.registered,
         registeredAt: r.registeredAt,
-        bookmarked: r.bookmarked,
-        reminderEnabled: r.reminderEnabled,
+        bookmarked: !!r.bookmarked,
+        reminderEnabled: !!r.reminderEnabled,
         responseTime: r.updatedAt || r.respondedAt
       };
     });
 
-    const interestedCount = memberResponses.filter(r => r.response === 'Interested').length;
-    const goingCount = memberResponses.filter(r => r.response === 'Going').length;
+    const interestedCount = memberResponses.filter(r => r.isInterested).length;
+    const goingCount = memberResponses.filter(r => r.isGoing).length;
     const notGoingCount = memberResponses.filter(r => r.response === 'Not Going').length;
     const registeredCount = memberResponses.filter(r => r.registered).length;
 

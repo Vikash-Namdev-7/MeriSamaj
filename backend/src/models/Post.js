@@ -51,7 +51,7 @@ const postSchema = new mongoose.Schema(
     // Feed Visibility: city or community
     feedType: {
       type: String,
-      enum: ['city', 'community'],
+      enum: ['city', 'community', 'both'],
       default: 'city',
       index: true,
     },

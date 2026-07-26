@@ -64,10 +64,10 @@ const MatrimonialHomePage = () => {
   };
 
   const [myPhotosCount, setMyPhotosCount] = useState(3);
-  const [myMatrimonialBio, setMyMatrimonialBio] = useState(currentUser?.matrimonialBio || "Hi, I am Rajesh Agrawal. I work as a Senior software developer in Indore. Looking for a progressive, family-oriented partner who shares similar values and interest in traveling.");
-  const [myGotra, setMyGotra] = useState(currentUser?.gotra || "Garg");
-  const [myDiet, setMyDiet] = useState(currentUser?.diet || "Vegetarian");
-  const [myIncome, setMyIncome] = useState(currentUser?.income || "₹10-15 Lacs p.a");
+  const [myMatrimonialBio, setMyMatrimonialBio] = useState(currentUser?.matrimonialBio || currentUser?.bio || "");
+  const [myGotra, setMyGotra] = useState(currentUser?.gotra || "Not specified");
+  const [myDiet, setMyDiet] = useState(currentUser?.diet || "Not specified");
+  const [myIncome, setMyIncome] = useState(currentUser?.income || currentUser?.annualIncome || "Not specified");
   
   // New Basic Details
   const [myHeight, setMyHeight] = useState(currentUser?.height || "");
@@ -1744,9 +1744,9 @@ const MatrimonialHomePage = () => {
                 </div>
               </div>
               
-              <h3 className="text-[16px] font-black text-indigo-950">{currentUser?.name || 'Rajesh Agrawal'}</h3>
+              <h3 className="text-[16px] font-black text-indigo-950">{currentUser?.name || 'Member Profile'}</h3>
               <p className="text-[12px] text-slate-400 font-bold mt-0.5">
-                {currentUser?.city || 'Indore'} · {currentUser?.gender || 'Male'} · {currentUser?.age || 28} Years
+                {currentUser?.city || 'City Not Set'}{currentUser?.gender ? ` · ${currentUser.gender}` : ''}{currentUser?.age ? ` · ${currentUser.age} Years` : ''}
               </p>
 
               {/* Dynamic status pill markers */}

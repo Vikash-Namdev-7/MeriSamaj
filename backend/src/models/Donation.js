@@ -19,8 +19,10 @@ const donationSchema = new mongoose.Schema({
   paidAt: { type: Date },
   donorName: { type: String, default: 'Anonymous' },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  campaign: { type: mongoose.Schema.Types.ObjectId },
+  campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign' },
   communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
+  isGlobalCampaign: { type: Boolean, default: false, index: true },
+  targetedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true }],
   amount: { type: Number, default: 0 },
   paymentMode: { type: String, default: 'Razorpay' },
   recentDonations: [

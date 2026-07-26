@@ -3,6 +3,7 @@ const { notifyUserBlocked, notifyUserActivated } = require('../../services/notif
 const Community = require('../../models/Community');
 const Post = require('../../models/Post');
 const Donation = require('../../models/Donation');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // ─── Helper: normalize filter value to lowercase for DB match ───
 const statusMap = {
@@ -184,10 +185,11 @@ exports.getUserById = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'User not found' });
     }
 
-    // Fetch recent activity from available models
+    // Fetch recent activity from available models (routed through applyScopeFilter)
+    const donationFilter = applyScopeFilter(req, { user: user._id });
     const [recentPosts, recentDonations] = await Promise.all([
       Post.find({ authorId: user._id }).sort({ createdAt: -1 }).limit(5).select('content createdAt').lean(),
-      Donation.find({ user: user._id }).sort({ createdAt: -1 }).limit(5).select('amount status createdAt').lean(),
+      Donation.find(donationFilter).sort({ createdAt: -1 }).limit(5).select('amount status createdAt').lean(),
     ]);
 
     const activityFeed = [
@@ -221,7 +223,7 @@ exports.getUserById = async (req, res) => {
         activityFeed,
         stats: {
           posts: await Post.countDocuments({ authorId: user._id }),
-          donations: await Donation.countDocuments({ user: user._id }),
+          donations: await Donation.countDocuments(donationFilter),
           invitations: 0,
         },
       },

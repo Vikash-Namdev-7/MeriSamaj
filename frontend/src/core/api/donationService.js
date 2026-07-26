@@ -32,6 +32,11 @@ const getStats = async () => {
   return response.data;
 };
 
+const getAllDonors = async () => {
+  const response = await axiosPrivate.get(`${API_URL}/all-donors`);
+  return response.data;
+};
+
 const createOrder = async (orderData) => {
   const response = await axiosPrivate.post(`${API_URL}/create-order`, orderData);
   return response.data;
@@ -50,7 +55,8 @@ const donationService = {
   createDonation,
   createOrder,
   verifyPayment,
-  getStats
+  getStats,
+  getAllDonors
 };
 
 export default donationService;

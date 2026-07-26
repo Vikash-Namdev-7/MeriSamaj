@@ -2,17 +2,18 @@ const Dharmashala = require('../../models/Dharmashala');
 const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
-// Get all Dharmashalas (List with filters)
+// Get all Dharmashalas (List with filters: Community mandatory + City optional)
 exports.getAllDharmashalas = async (req, res) => {
   try {
     const { search, city, ac, food } = req.query;
-    let query = { status: { $ne: 'Inactive' } };
+    let baseQuery = { status: { $ne: 'Inactive' } };
     
     // Search filter
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      query.$or = [
+      baseQuery.$or = [
         { name: searchRegex },
         { city: searchRegex },
         { address: searchRegex },
@@ -20,20 +21,18 @@ exports.getAllDharmashalas = async (req, res) => {
       ];
     }
     
-    // City filter
-    if (city && city !== 'all') {
-      query.city = new RegExp(`^${city.trim()}$`, 'i');
-    }
-    
     // AC filter
     if (ac === 'true') {
-      query.amenities = { $in: [/ac/i, /air conditioning/i] };
+      baseQuery.amenities = { $in: [/ac/i, /air conditioning/i] };
     }
     
     // Food filter
     if (food === 'true') {
-      query.amenities = { $in: [/kitchen/i, /dining/i, /food/i] };
+      baseQuery.amenities = { $in: [/kitchen/i, /dining/i, /food/i] };
     }
+
+    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
+    const query = applyScopeFilter(req, baseQuery, { overrideCity: city });
     
     const dharamshalas = await Dharmashala.find(query).sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', data: dharamshalas });

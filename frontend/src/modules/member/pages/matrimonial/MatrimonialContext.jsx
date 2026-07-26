@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useAuth } from '../../../../core/auth/useAuth';
 import {
   matrimonialDashboardService,
   matrimonialShortlistService,
@@ -17,6 +18,8 @@ const MatrimonialContext = createContext(null);
  * All pages read from here, not from DataProvider or mock data.
  */
 export const MatrimonialProvider = () => {
+  const { auth } = useAuth();
+  const userId = auth.user?._id || auth.user?.id;
   // ─── My Own Profile ──────────────────────────────────────────────────────
   const [myProfile, setMyProfile]           = useState(null);
   const [myProfileLoading, setMyProfileLoading] = useState(false);
@@ -139,15 +142,26 @@ export const MatrimonialProvider = () => {
     }
   }, []);
 
-  // ─── Bootstrap on mount ───────────────────────────────────────────────────
+  // ─── Bootstrap on user change / reset on logout ───────────────────────────────────
   useEffect(() => {
-    fetchMyProfile();
-    fetchDashboard();
-    fetchInterests();
-    fetchVisitors();
-    fetchShortlistIds();
-    fetchBlockedIds();
-  }, [fetchMyProfile, fetchDashboard, fetchInterests, fetchVisitors, fetchShortlistIds, fetchBlockedIds]);
+    if (auth.isAuthenticated && userId) {
+      fetchMyProfile();
+      fetchDashboard();
+      fetchInterests();
+      fetchVisitors();
+      fetchShortlistIds();
+      fetchBlockedIds();
+    } else {
+      setMyProfile(null);
+      setDashboard(null);
+      setReceivedInterests([]);
+      setSentInterests([]);
+      setAcceptedInterests([]);
+      setVisitors([]);
+      setShortlistedIds([]);
+      setBlockedIds([]);
+    }
+  }, [auth.isAuthenticated, userId, fetchMyProfile, fetchDashboard, fetchInterests, fetchVisitors, fetchShortlistIds, fetchBlockedIds]);
 
   // ─── Interest Actions (real API) ──────────────────────────────────────────
   const sendInterest = useCallback(async (receiverProfileId, message = '') => {

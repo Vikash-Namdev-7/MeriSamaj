@@ -9,6 +9,7 @@ const City = require('../../models/City');
 const User = require('../../models/User');
 const Community = require('../../models/Community');
 const Follower = require('../../models/Follower');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // Helper to resolve user city string to cityId (find or create)
 const getCityId = async (cityName) => {
@@ -66,49 +67,46 @@ const getCommunityId = (req) => {
   return null;
 };
 
-// @desc    Get Feed posts dynamically
+// @desc    Get Feed posts dynamically (2-Level Scope: Mandatory Community + Optional City)
 // @route   GET /api/v1/member/social/posts
 // @access  Private
 exports.getPosts = async (req, res) => {
   try {
     const { feed, category, limit = 10, cursor } = req.query;
-    // Resolve user community ObjectIds (supports single communityId, assignedCommunityIds, or string lookup)
-    const userCommIds = await getCommunityIds(req);
 
-    // Base filter
-    const filter = {
+    // Base filter: active, non-deleted published posts
+    let baseFilter = {
       status: 'published',
       isDeleted: false
     };
 
     // Category filter
     if (category) {
-      filter.category = category;
+      baseFilter.category = category;
     }
 
-    // Dynamic feed filter resolving
-    if (feed === 'city') {
-      const commFilter = userCommIds.length > 0 ? { $in: userCommIds } : null;
-      const cityScope = [
-        { feedType: { $ne: 'community' } }
-      ];
-      if (commFilter) {
-        cityScope.push({ communityId: commFilter });
+    // Determine optional city filter
+    let cityName = req.query.city;
+    if (feed === 'city' && (!cityName || cityName === 'all' || cityName === 'All')) {
+      cityName = req.user?.city;
+    }
+
+    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory)
+    const filter = applyScopeFilter(req, baseFilter);
+
+    // Resolve cityId for city feed queries
+    if (feed === 'city' && cityName && cityName !== 'all' && cityName !== 'All') {
+      const cityId = await getCityId(cityName);
+      if (cityId) {
+        filter.cityId = cityId;
       }
-      filter.$or = cityScope;
-    } else if (feed === 'community') {
-      if (userCommIds.length > 0) {
-        filter.$or = [
-          { communityId: { $in: userCommIds } },
-          { feedType: 'community' }
-        ];
-      } else {
-        filter.feedType = 'community';
-      }
-    } else {
-      if (userCommIds.length > 0) {
-        filter.communityId = { $in: userCommIds };
-      }
+    }
+
+    // Handle feed-type specific sub-filter within the community
+    if (feed === 'community') {
+      filter.feedType = { $in: ['community', 'both'] };
+    } else if (feed === 'city') {
+      filter.feedType = { $in: ['city', 'both'] };
     }
 
     // Cursor Pagination (O(1) database keyset scans)
@@ -170,9 +168,12 @@ exports.getPostById = async (req, res) => {
     }
 
     // Verify community matches
-    const userCommunityId = getCommunityId(req);
-    if (userCommunityId && post.communityId && post.communityId.toString() !== userCommunityId.toString()) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+    if (!['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
+      const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+      const postCommId = (post.communityId?._id || post.communityId || '').toString();
+      if (!userCommId || !postCommId || userCommId !== postCommId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
     }
 
     const [likeDoc, saveDoc] = await Promise.all([
@@ -221,16 +222,18 @@ exports.createPost = async (req, res) => {
       cityId = await getCityId('Indore');
     }
 
-    // 2. Guaranteed Community Resolution
-    let targetCommunityId = getCommunityId(req);
-    if (!targetCommunityId && req.user?.community) {
-      const commDoc = await Community.findOne({ name: new RegExp('^' + req.user.community.trim() + '$', 'i') });
-      if (commDoc) targetCommunityId = commDoc._id;
+    // 2. Tenant Payload Inheritance & Verification
+    const tenantPayload = inheritTenantPayload(req, {
+      content: content.trim(),
+      category: category || 'Notice',
+      feedType: req.body.feedType || 'city',
+      status: 'published'
+    });
+
+    if (!tenantPayload.communityId) {
+      return res.status(400).json({ success: false, message: 'User is not assigned to any community' });
     }
-    if (!targetCommunityId) {
-      const defaultComm = await Community.findOne({});
-      if (defaultComm) targetCommunityId = defaultComm._id;
-    }
+    const targetCommunityId = tenantPayload.communityId;
 
     // 3. Format Media structures safely (validate enum types and providers)
     const validMedia = [];
@@ -296,6 +299,54 @@ exports.createPost = async (req, res) => {
       }
     }
 
+    const requestedFeedType = req.body.feedType;
+
+    if (requestedFeedType === 'both') {
+      const cityPost = await Post.create({
+        userId: req.user._id,
+        authorId: req.user._id,
+        communityId: targetCommunityId,
+        cityId,
+        content: content.trim(),
+        category: category || 'Notice',
+        media: validMedia,
+        images: validMedia.map(m => m.url),
+        feedType: 'city',
+        status: 'published'
+      });
+
+      const communityPost = await Post.create({
+        userId: req.user._id,
+        authorId: req.user._id,
+        communityId: targetCommunityId,
+        cityId,
+        content: content.trim(),
+        category: category || 'Notice',
+        media: validMedia,
+        images: validMedia.map(m => m.url),
+        feedType: 'community',
+        status: 'published'
+      });
+
+      const populatedCity = await Post.findById(cityPost._id)
+        .populate('userId', 'name avatar role city community communityId')
+        .populate('authorId', 'name avatar role city community communityId')
+        .populate('communityId', 'name slug city')
+        .populate('cityId', 'name');
+
+      const populatedCommunity = await Post.findById(communityPost._id)
+        .populate('userId', 'name avatar role city community communityId')
+        .populate('authorId', 'name avatar role city community communityId')
+        .populate('communityId', 'name slug city')
+        .populate('cityId', 'name');
+
+      return res.status(201).json({
+        success: true,
+        data: populatedCity,
+        posts: [populatedCity, populatedCommunity]
+      });
+    }
+
     const post = await Post.create({
       userId: req.user._id,
       authorId: req.user._id,
@@ -305,7 +356,7 @@ exports.createPost = async (req, res) => {
       category: category || 'Notice',
       media: validMedia,
       images: validMedia.map(m => m.url),
-      feedType: req.body.feedType || 'city',
+      feedType: requestedFeedType || 'city',
       status: 'published'
     });
 
@@ -322,6 +373,16 @@ exports.createPost = async (req, res) => {
   }
 };
 
+// Helper to verify post community ownership for non-admin actions
+const verifyPostCommunityAccess = (req, post) => {
+  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
+    return true;
+  }
+  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+  const postCommId = (post?.communityId?._id || post?.communityId || '').toString();
+  return !!(userCommId && postCommId && userCommId === postCommId);
+};
+
 // @desc    Toggle unique like on a post
 // @route   POST /api/v1/member/social/posts/:id/like
 // @access  Private
@@ -333,6 +394,9 @@ exports.toggleLike = async (req, res) => {
     const post = await Post.findOne({ _id: postId, isDeleted: false });
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
     }
 
     const alreadyLiked = await PostLike.findOne({ postId, userId });
@@ -371,6 +435,14 @@ exports.getComments = async (req, res) => {
   try {
     const { parentCommentId } = req.query;
 
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
+    }
+
     const filter = {
       postId: req.params.id
     };
@@ -405,6 +477,9 @@ exports.addComment = async (req, res) => {
     const post = await Post.findOne({ _id: postId, isDeleted: false });
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
     }
 
     const comment = await Comment.create({
@@ -498,6 +573,9 @@ exports.toggleSave = async (req, res) => {
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
+    }
 
     const alreadySaved = await SavedPost.findOne({ postId, userId });
 
@@ -525,6 +603,7 @@ exports.recordView = async (req, res) => {
 
     const post = await Post.findOne({ _id: postId, isDeleted: false });
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    if (!verifyPostCommunityAccess(req, post)) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const viewLogged = await PostView.findOne({ postId, userId });
     if (!viewLogged) {
@@ -550,6 +629,7 @@ exports.recordShare = async (req, res) => {
 
     const post = await Post.findOne({ _id: postId, isDeleted: false });
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    if (!verifyPostCommunityAccess(req, post)) return res.status(403).json({ success: false, message: 'Access denied' });
 
     await PostShare.create({ postId, userId, platform: platform || 'copy_link' });
     await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: 1 } });
@@ -571,27 +651,30 @@ exports.searchSocial = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Query parameter is required' });
     }
 
-    const posts = await Post.find({
-      communityId: req.user.communityId,
+    const baseFilter = {
       status: 'published',
       isDeleted: false,
-      $text: { $search: query } // leverage mongodb text indexes for fast search
-    })
-    .populate('userId', 'name avatar role')
-    .limit(30);
+      $text: { $search: query }
+    };
+    const filter = applyScopeFilter(req, baseFilter);
+
+    const posts = await Post.find(filter)
+      .populate('userId', 'name avatar role')
+      .limit(30);
 
     res.json({ success: true, data: posts });
   } catch (error) {
-    // Fallback if text index not set up in dev yet
     try {
-      const posts = await Post.find({
-        communityId: req.user.communityId,
+      const baseFilter = {
         status: 'published',
         isDeleted: false,
         content: new RegExp(query, 'i')
-      })
-      .populate('userId', 'name avatar role')
-      .limit(30);
+      };
+      const filter = applyScopeFilter(req, baseFilter);
+
+      const posts = await Post.find(filter)
+        .populate('userId', 'name avatar role')
+        .limit(30);
       return res.json({ success: true, data: posts });
     } catch (e) {
       console.error('searchSocial error:', e);
@@ -608,8 +691,10 @@ exports.getProfileStats = async (req, res) => {
     const targetUserId = req.query.userId || req.user._id;
     const isOwner = targetUserId.toString() === req.user._id.toString();
 
+    const postFilter = applyScopeFilter(req, { authorId: targetUserId, isDeleted: false });
+
     const [postsCount, followersCount, followingCount, savedCount] = await Promise.all([
-      Post.countDocuments({ authorId: targetUserId, isDeleted: false }),
+      Post.countDocuments(postFilter),
       Follower.countDocuments({ followingId: targetUserId, status: 'accepted' }),
       Follower.countDocuments({ followerId: targetUserId, status: 'accepted' }),
       SavedPost.countDocuments({ userId: targetUserId })
@@ -636,6 +721,8 @@ exports.getProfileStats = async (req, res) => {
 exports.getMySavedPosts = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role);
 
     const savedRecords = await SavedPost.find({ userId })
       .sort({ createdAt: -1 })
@@ -651,7 +738,12 @@ exports.getMySavedPosts = async (req, res) => {
 
     const validPosts = savedRecords
       .map(r => r.postId)
-      .filter(post => post && !post.isDeleted);
+      .filter(post => {
+        if (!post || post.isDeleted) return false;
+        if (isAdmin) return true;
+        const postCommId = (post.communityId?._id || post.communityId || '').toString();
+        return userCommId && postCommId && userCommId === postCommId;
+      });
 
     res.json({
       success: true,
@@ -669,6 +761,8 @@ exports.getMySavedPosts = async (req, res) => {
 exports.getMyLikedPosts = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role);
 
     const likedRecords = await PostLike.find({ userId })
       .sort({ createdAt: -1 })
@@ -684,7 +778,12 @@ exports.getMyLikedPosts = async (req, res) => {
 
     const validPosts = likedRecords
       .map(r => r.postId)
-      .filter(post => post && !post.isDeleted);
+      .filter(post => {
+        if (!post || post.isDeleted) return false;
+        if (isAdmin) return true;
+        const postCommId = (post.communityId?._id || post.communityId || '').toString();
+        return userCommId && postCommId && userCommId === postCommId;
+      });
 
     res.json({
       success: true,
@@ -704,15 +803,17 @@ exports.getUserPosts = async (req, res) => {
     const { userId } = req.params;
     const { limit = 10, cursor } = req.query;
 
-    const filter = {
+    const baseFilter = {
       authorId: userId,
       status: 'published',
       isDeleted: false
     };
 
     if (cursor) {
-      filter.createdAt = { $lt: new Date(cursor) };
+      baseFilter.createdAt = { $lt: new Date(cursor) };
     }
+
+    const filter = applyScopeFilter(req, baseFilter);
 
     const posts = await Post.find(filter)
       .populate('userId', 'name avatar role city community communityId')

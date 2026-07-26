@@ -13,11 +13,15 @@ const PublicRoute = () => {
     );
   }
 
-  return auth.isAuthenticated ? (
-    <Navigate to="/member/home" replace />
-  ) : (
-    <Outlet />
-  );
+  if (auth.isAuthenticated) {
+    const justRegistered = localStorage.getItem('merisamaj_just_registered');
+    if (justRegistered === 'true') {
+      return <Navigate to="/member/onboarding" replace />;
+    }
+    return <Navigate to="/member/home" replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default PublicRoute;

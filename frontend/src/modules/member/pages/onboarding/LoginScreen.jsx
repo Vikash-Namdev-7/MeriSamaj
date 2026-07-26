@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Phone, ArrowRight, ArrowLeft, Bell, Lock, Eye, EyeOff, AlertCircle, Globe, Check, Loader2
@@ -6,6 +6,13 @@ import {
 import { useData } from '../../context/DataProvider';
 import { useAuth } from '../../../../core/auth/useAuth';
 import { authService } from '../../../../core/auth/authService';
+import {
+  validateIdentifier,
+  validatePassword,
+  validatePhone,
+  validateConfirmPassword,
+  validatePastedValue,
+} from '../../../../core/utils/validators';
 
 // ─── OTP NOTIFICATION BANNER ──────────────────────────────────────────────────
 const OtpBanner = ({ code, onDismiss }) => (
@@ -41,16 +48,23 @@ const LoginScreen = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPass, setShowLoginPass] = useState(false);
 
+  // Field-level inline validation errors
+  const [fieldErrors, setFieldErrors] = useState({});
+  const identifierRef = useRef(null);
+  const passwordRef = useRef(null);
+
   // Forgot Password flow
-  const [forgotPasswordStep, setForgotPasswordStep] = useState(null); // null | 1 | 2 | 3
+  const [forgotPasswordStep, setForgotPasswordStep] = useState(null);
   const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotMobileError, setForgotMobileError] = useState('');
   const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotPassErrors, setForgotPassErrors] = useState({});
   const [showForgotNewPass, setShowForgotNewPass] = useState(false);
   const [showForgotConfirmPass, setShowForgotConfirmPass] = useState(false);
 
-  // Otp notifications
+  // OTP notifications
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [showOtpBanner, setShowOtpBanner] = useState(false);
   const [otpError, setOtpError] = useState('');
@@ -76,7 +90,12 @@ const LoginScreen = () => {
   };
 
   const handleForgotSendOtp = () => {
-    if (!forgotMobile || forgotMobile.length !== 10) return;
+    const phoneResult = validatePhone(forgotMobile);
+    if (!phoneResult.valid) {
+      setForgotMobileError(phoneResult.error);
+      return;
+    }
+    setForgotMobileError('');
     triggerOtpBanner();
     setForgotPasswordStep(2);
   };
@@ -87,11 +106,16 @@ const LoginScreen = () => {
   };
 
   const handleForgotResetPassword = async () => {
-    if (!forgotNewPassword || forgotNewPassword !== forgotConfirmPassword) {
-      setToastMessage('Passwords do not match');
-      setTimeout(() => setToastMessage(''), 3000);
+    const newPassErrors = {};
+    const passResult = validatePassword(forgotNewPassword);
+    if (!passResult.valid) newPassErrors.newPassword = passResult.error;
+    const confirmResult = validateConfirmPassword(forgotNewPassword, forgotConfirmPassword);
+    if (!confirmResult.valid) newPassErrors.confirmPassword = confirmResult.error;
+    if (Object.keys(newPassErrors).length > 0) {
+      setForgotPassErrors(newPassErrors);
       return;
     }
+    setForgotPassErrors({});
     setIsLoading(true);
     try {
       await authService.resetPassword({ phone: forgotMobile, otp: forgotOtp.join(''), newPassword: forgotNewPassword });
@@ -112,21 +136,38 @@ const LoginScreen = () => {
   ];
 
   const handleLogin = async () => {
-    if (!loginIdentifier || !loginPassword) {
-      setToastMessage('Please enter email/mobile and password');
-      setTimeout(() => setToastMessage(''), 3000);
+    const errors = {};
+    const idResult = validateIdentifier(loginIdentifier);
+    if (!idResult.valid) errors.identifier = idResult.error;
+    const passResult = validatePassword(loginPassword);
+    if (!passResult.valid) errors.password = passResult.error;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // Focus first invalid field
+      if (errors.identifier) identifierRef.current?.focus();
+      else if (errors.password) passwordRef.current?.focus();
       return;
     }
+    setFieldErrors({});
 
     setIsLoading(true);
     try {
-      const response = await login({ identifier: loginIdentifier, password: loginPassword });
-      // Keep DataProvider state in sync for backward compatibility during transition
-      loginUser(response.user);
+      localStorage.removeItem('merisamaj_just_registered');
+      localStorage.removeItem('merisamaj_onboarding_resume_step');
+      localStorage.removeItem('merisamaj_onboarding_from_home');
+      const response = await login({ identifier: loginIdentifier.trim(), password: loginPassword });
+      if (response?.user) {
+        loginUser(response.user);
+      }
       navigate('/member/home');
     } catch (error) {
-      setToastMessage(error?.response?.data?.message || 'Login failed. Please check credentials.');
-      setTimeout(() => setToastMessage(''), 3000);
+      const apiErrors = error?.response?.data?.errors;
+      if (apiErrors) {
+        setFieldErrors(apiErrors);
+      } else {
+        setFieldErrors({ identifier: error?.response?.data?.message || 'Login failed. Please check your credentials.' });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -254,32 +295,53 @@ const LoginScreen = () => {
               {/* Login fields */}
               <div className="space-y-4 animate-fade-in text-left">
                 <div>
-                  <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Email or Mobile Number</label>
-                  <div className="flex items-center gap-3 mt-2 bg-white/85 border border-purple-100/20 rounded-xl px-4 py-3.5 input-glow-focus transition-all shadow-xs">
-                    <input 
-                      type="text" 
-                      placeholder="Enter your email or mobile number" 
-                      value={loginIdentifier} 
-                      onChange={(e) => setLoginIdentifier(e.target.value)} 
-                      className="flex-1 text-sm text-text-primary outline-none bg-transparent placeholder-gray-400 font-bold" 
+                  <label htmlFor="login-identifier" className="text-xs font-bold text-text-secondary uppercase tracking-wider">Email or Mobile Number</label>
+                  <div className={`flex items-center gap-3 mt-2 bg-white/85 border rounded-xl px-4 py-3.5 input-glow-focus transition-all shadow-xs ${fieldErrors.identifier ? 'border-red-400' : 'border-purple-100/20'}`}>
+                    <input
+                      id="login-identifier"
+                      ref={identifierRef}
+                      type="text"
+                      autoComplete="username"
+                      placeholder="Enter your email or mobile number"
+                      value={loginIdentifier}
+                      onChange={(e) => { setLoginIdentifier(e.target.value); setFieldErrors(prev => ({ ...prev, identifier: '' })); }}
+                      onBlur={() => { const r = validateIdentifier(loginIdentifier); if (!r.valid) setFieldErrors(prev => ({ ...prev, identifier: r.error })); }}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        if (/^\d+$/.test(pasted.trim())) {
+                          const res = validatePastedValue(pasted, 'phone');
+                          if (!res.valid) { e.preventDefault(); setFieldErrors(prev => ({ ...prev, identifier: res.error })); }
+                        }
+                      }}
+                      aria-invalid={!!fieldErrors.identifier}
+                      aria-describedby="login-identifier-error"
+                      className="flex-1 text-sm text-text-primary outline-none bg-transparent placeholder-gray-400 font-bold"
                     />
                   </div>
+                  {fieldErrors.identifier && <p id="login-identifier-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.identifier}</p>}
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Password</label>
-                  <div className="flex items-center gap-3 mt-2 bg-white/85 border border-purple-100/20 rounded-xl px-4 py-3.5 input-glow-focus transition-all shadow-xs">
-                    <input 
-                      type={showLoginPass ? 'text' : 'password'} 
-                      placeholder="Enter your password" 
-                      value={loginPassword} 
-                      onChange={(e) => setLoginPassword(e.target.value)} 
-                      className="flex-1 text-sm text-text-primary outline-none bg-transparent placeholder-gray-400 font-bold" 
+                  <label htmlFor="login-password" className="text-xs font-bold text-text-secondary uppercase tracking-wider">Password</label>
+                  <div className={`flex items-center gap-3 mt-2 bg-white/85 border rounded-xl px-4 py-3.5 input-glow-focus transition-all shadow-xs ${fieldErrors.password ? 'border-red-400' : 'border-purple-100/20'}`}>
+                    <input
+                      id="login-password"
+                      ref={passwordRef}
+                      type={showLoginPass ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      value={loginPassword}
+                      onChange={(e) => { setLoginPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); }}
+                      onBlur={() => { const r = validatePassword(loginPassword); if (!r.valid) setFieldErrors(prev => ({ ...prev, password: r.error })); }}
+                      aria-invalid={!!fieldErrors.password}
+                      aria-describedby="login-password-error"
+                      className="flex-1 text-sm text-text-primary outline-none bg-transparent placeholder-gray-400 font-bold"
                     />
-                    <button type="button" onClick={() => setShowLoginPass(!showLoginPass)} className="text-slate-400 hover:text-slate-650 shrink-0">
+                    <button type="button" onClick={() => setShowLoginPass(!showLoginPass)} className="text-slate-400 hover:text-slate-650 shrink-0" aria-label={showLoginPass ? 'Hide password' : 'Show password'}>
                       {showLoginPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {fieldErrors.password && <p id="login-password-error" role="alert" className="text-[10px] text-red-500 font-semibold mt-1 ml-1">{fieldErrors.password}</p>}
                 </div>
 
                 <div className="flex justify-end pt-1">

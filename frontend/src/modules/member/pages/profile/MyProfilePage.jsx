@@ -470,18 +470,18 @@ const MyProfilePage = () => {
     'Business Owner': 'Manufacturing & Trading',
   };
 
-  const phoneNum = profileUser.phone || `98765${(10000 + (hash % 89999))}`;
-  const emailAddr = profileUser.email || `${(profileUser.name || 'member').toLowerCase().replace(/\s+/g, '')}@email.com`;
-  const englishCity = cityMap[profileUser.city] || `${profileUser.city || 'Indore'}, Rajasthan`;
+  const phoneNum = profileUser.phone || '';
+  const emailAddr = profileUser.email || '';
+  const englishCity = profileUser.city || profileUser.district || profileUser.state || '';
 
   // Professional details
-  const englishProfession = professionMap[profileUser.profession] || profileUser.role || 'Business Owner';
-  const companyName = profileUser.company || `${(profileUser.name || 'Sharma').split(' ')[1] || 'Sharma'} Industries`;
-  const businessSector = businessTypeMap[profileUser.profession] || 'Manufacturing & Trading';
-  const estYear = 2000 + (hash % 24);
+  const englishProfession = profileUser.profession || profileUser.role || '';
+  const companyName = profileUser.company || '';
+  const businessSector = businessTypeMap[profileUser.profession] || (profileUser.profession ? 'Professional Services' : '');
+  const estYear = profileUser.passingYear || '';
 
   // Full Address
-  const fullAddress = profileUser.address || `${10 + (hash % 200)}, Vaishali Nagar, ${englishCity} - ${302000 + (hash % 999)}`;
+  const fullAddress = profileUser.detailedAddress || profileUser.address || (englishCity ? `${englishCity}${profileUser.pincode ? ' - ' + profileUser.pincode : ''}` : '');
 
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">

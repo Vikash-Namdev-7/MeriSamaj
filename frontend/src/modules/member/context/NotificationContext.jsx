@@ -18,11 +18,16 @@ export const NotificationProvider = ({ children }) => {
 
   // ── Fetch initial unread count on mount / when user changes ────────────────
   useEffect(() => {
-    if (!user?._id) return;
+    if (!user?._id && !user?.id) {
+      setUnreadCount(0);
+      setLatestNotification(null);
+      setToastNotif(null);
+      return;
+    }
     notificationService.getUnread()
       .then(res => setUnreadCount(res.data?.data?.count || res.data?.data?.unreadCount || 0))
       .catch(() => {}); // non-critical
-  }, [user?._id]);
+  }, [user?._id, user?.id]);
 
   // ── Socket listener for real-time notifications ────────────────────────────
   useEffect(() => {

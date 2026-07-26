@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Wallet, Vote, Send, Settings, LogOut, Menu, X, Award, ShieldCheck, Shield, Users, Calendar, Briefcase, Heart, Search, BarChart3, HeartHandshake, User, ChevronDown, ChevronUp, Mail, LayoutTemplate, Home, Share2, Megaphone
@@ -6,19 +6,35 @@ import {
 import { useData } from '../../member/context/DataProvider';
 import { useHeadAuth } from '../auth/useHeadAuth';
 import { Avatar } from '../../member/components/common/Avatar';
+import { filterMembersForHead } from '../utils/headCommunityFilter';
 
 export const HeadLayout = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { currentUser, members } = useData();
   const { headAuth, headLogout } = useHeadAuth();
-  const headUser = headAuth.headUser;
+  const { currentUser, members } = useData();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const headUser = headAuth.headUser || currentUser;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
 
-  // Live count of pending verification requests
-  const pendingApprovalsCount = members.filter(m => !m.isVerified).length;
+  // Filter members belonging to assigned communities for Head user
+  const assignedMembers = useMemo(() => filterMembersForHead(members || [], headUser), [members, headUser]);
+
+  // Live count of pending verification requests for assigned communities
+  const pendingApprovalsCount = assignedMembers.filter(m => !m.isVerified).length;
+
+  // Permission filter check for Head users
+  const permissions = headUser?.headPermissions || {};
+  const isSuperAdmin = currentUser?.role === 'admin';
+
+  const isModuleAllowed = (permKey) => {
+    if (isSuperAdmin) return true;
+    if (!permKey) return true;
+    // If permission key is explicitly false, hide it; otherwise show
+    return permissions[permKey] !== false;
+  };
 
   const navigationConfig = [
     {
@@ -28,6 +44,7 @@ export const HeadLayout = () => {
           name: 'President Dashboard', 
           path: '/head/dashboard', 
           icon: LayoutDashboard,
+          permKey: 'canViewDashboard',
           badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null
         }
       ]
@@ -38,6 +55,7 @@ export const HeadLayout = () => {
         {
           name: 'Social',
           icon: Share2,
+          permKey: 'canViewSocial',
           children: [
             { name: 'City Feed', path: '/head/social/city-feed' },
             { name: 'Community Feed', path: '/head/social/community-feed' },
@@ -47,6 +65,7 @@ export const HeadLayout = () => {
         {
           name: 'Members',
           icon: Users,
+          permKey: 'canViewMembers',
           children: [
             { name: 'All Members', path: '/head/members', search: '?tab=list' },
             { name: 'Verifications', path: '/head/members', search: '?tab=verification', badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null },
@@ -56,6 +75,7 @@ export const HeadLayout = () => {
         {
           name: 'Professionals',
           icon: Briefcase,
+          permKey: 'canViewDirectory',
           children: [
             { name: 'Directory', path: '/head/professionals' },
             { name: 'Category Management', path: '/head/professionals/categories' }
@@ -64,6 +84,7 @@ export const HeadLayout = () => {
         {
           name: 'Matrimonial Management',
           path: '/head/matrimonial',
+          permKey: 'canViewProfiles',
           icon: Heart
         }
       ]
@@ -74,41 +95,49 @@ export const HeadLayout = () => {
         {
           name: 'Event Management',
           path: '/head/events',
+          permKey: 'canViewEvents',
           icon: Calendar
         },
         {
           name: 'Invitations',
           path: '/head/invitations',
+          permKey: 'canViewInvitations',
           icon: Mail
         },
         {
           name: 'Notification Center',
           path: '/head/notifications',
+          permKey: 'canSendNotifications',
           icon: Send
         },
         { 
           name: 'Fund Governance', 
           path: '/head/funds', 
+          permKey: 'canViewFunds',
           icon: Wallet 
         },
         {
           name: 'Donation Campaigns',
           path: '/head/donations',
+          permKey: 'canViewDonations',
           icon: HeartHandshake
         },
         {
           name: 'Obituaries',
           path: '/head/obituaries',
+          permKey: 'canViewObituary',
           icon: Award
         },
         {
           name: 'Dharmashalas',
           path: '/head/dharmashala',
+          permKey: 'canViewDharmashala',
           icon: Home
         },
         {
           name: 'Leadership & Team',
           path: '/head/leadership',
+          permKey: 'canViewLeadership',
           icon: Shield
         }
       ]
@@ -119,22 +148,30 @@ export const HeadLayout = () => {
         { 
           name: 'Election Commission', 
           path: '/head/elections', 
+          permKey: 'canViewElections',
           icon: Vote 
         },
         {
           name: 'Home Content',
           path: '/head/home-content',
+          permKey: 'canViewHomeContent',
           icon: LayoutTemplate
         }
       ]
     }
   ];
 
+  // Filter sections and items based on permissions
+  const filteredNavigationConfig = navigationConfig.map(section => ({
+    ...section,
+    items: section.items.filter(item => isModuleAllowed(item.permKey))
+  })).filter(section => section.items.length > 0);
+
   // Auto-expand active category
   useEffect(() => {
     const newExpanded = { ...expandedItems };
     let changed = false;
-    navigationConfig.forEach(section => {
+    filteredNavigationConfig.forEach(section => {
       section.items.forEach(item => {
         if (item.children) {
           const hasActiveChild = item.children.some(child => 
@@ -162,7 +199,7 @@ export const HeadLayout = () => {
   };
 
   const renderNavItems = (isMobile) => {
-    return navigationConfig.map((section) => (
+    return filteredNavigationConfig.map((section) => (
       <div key={section.category} className="space-y-1 pt-3">
         {/* Category Header */}
         <div className="px-4 py-1.5 text-[10px] font-bold tracking-wider text-purple-300/60 uppercase">

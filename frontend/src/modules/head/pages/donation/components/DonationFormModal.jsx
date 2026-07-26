@@ -329,10 +329,6 @@ const DonationFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand-primary outline-none transition-all"
                       >
                         <option value="All Members">All Members</option>
-                        <option value="Selected Communities">Selected Communities</option>
-                        <option value="All Locations">All Locations</option>
-                        <option value="Selected Cities">Selected Cities</option>
-                        <option value="Selected Members">Selected Members</option>
                       </select>
                       
 

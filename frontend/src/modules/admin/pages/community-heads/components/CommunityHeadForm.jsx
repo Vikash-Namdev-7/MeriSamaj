@@ -1,18 +1,129 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, ChevronRight, ChevronLeft, Shield, Building2, User, Key } from 'lucide-react';
+import { 
+  X, CheckCircle, ChevronRight, ChevronLeft, Shield, Building2, User, Key,
+  LayoutDashboard, Wallet, Vote, Send, Users, Calendar, Briefcase, Heart, HeartHandshake, Home, Mail, Share2, Award, LayoutTemplate
+} from 'lucide-react';
 import { axiosPrivate } from '../../../../../core/api/axiosPrivate';
 
 const defaultPermissions = {
   canViewDashboard: true,
-  canViewMembers: true, canAddMembers: false, canEditMembers: false, canRemoveMembers: false, canExportMembers: false,
-  canViewProfiles: true, canApproveProfiles: false, canEditProfiles: false,
-  canCreateEvents: false, canEditEvents: false, canDeleteEvents: false, canManageBookings: false,
-  canCreateDonationCampaigns: false, canViewDonations: true, canManageExpenses: false,
-  canCreateInvitations: false, canManageInvitations: false,
-  canManageDirectory: false,
-  canSendNotifications: false, canViewReports: true
+  canViewReports: true,
+  canViewMembers: true, canAddMembers: true, canEditMembers: true, canRemoveMembers: false, canExportMembers: true,
+  canViewProfiles: true, canApproveProfiles: true, canEditProfiles: true,
+  canViewEvents: true, canCreateEvents: true, canEditEvents: true, canDeleteEvents: false, canManageBookings: true,
+  canViewDharmashala: true, canManageDharmashala: true,
+  canViewInvitations: true, canCreateInvitations: true, canManageInvitations: true,
+  canViewDonations: true, canCreateDonationCampaigns: true, canManageExpenses: true,
+  canViewFunds: true, canManageFunds: true,
+  canViewSocial: true, canManageSocial: true, canSendNotifications: true,
+  canViewDirectory: true, canManageDirectory: true,
+  canViewLeadership: true, canManageLeadership: true,
+  canViewObituary: true, canManageObituary: true,
+  canViewElections: true, canManageElections: true,
+  canViewHomeContent: true, canManageHomeContent: true
 };
+
+const HEAD_MODULES = [
+  {
+    id: 'dashboard',
+    title: 'President Dashboard',
+    description: 'Overview dashboard, analytics & samaj activity reports',
+    icon: LayoutDashboard,
+    keys: ['canViewDashboard', 'canViewReports']
+  },
+  {
+    id: 'members',
+    title: 'Members Management',
+    description: 'Member directory, verifications, profiles, add/edit & export',
+    icon: Users,
+    keys: ['canViewMembers', 'canAddMembers', 'canEditMembers', 'canRemoveMembers', 'canExportMembers']
+  },
+  {
+    id: 'matrimonial',
+    title: 'Matrimonial Management',
+    description: 'Matrimonial profiles, interest request approvals & editing',
+    icon: Heart,
+    keys: ['canViewProfiles', 'canApproveProfiles', 'canEditProfiles']
+  },
+  {
+    id: 'events',
+    title: 'Event Management',
+    description: 'Community events, activity logs & ticket bookings',
+    icon: Calendar,
+    keys: ['canViewEvents', 'canCreateEvents', 'canEditEvents', 'canDeleteEvents', 'canManageBookings']
+  },
+  {
+    id: 'dharmashala',
+    title: 'Dharmashala Management',
+    description: 'Dharmashalas, room inventory & guest bookings',
+    icon: Home,
+    keys: ['canViewDharmashala', 'canManageDharmashala']
+  },
+  {
+    id: 'invitations',
+    title: 'Digital Invitations',
+    description: 'Event digital invitation cards & broadcast tools',
+    icon: Mail,
+    keys: ['canViewInvitations', 'canCreateInvitations', 'canManageInvitations']
+  },
+  {
+    id: 'donations',
+    title: 'Donation Campaigns',
+    description: 'Fundraising campaigns, donor tracking & expense management',
+    icon: HeartHandshake,
+    keys: ['canViewDonations', 'canCreateDonationCampaigns', 'canManageExpenses']
+  },
+  {
+    id: 'funds',
+    title: 'Fund Governance',
+    description: 'Community treasury funds, ledger transactions & expenses',
+    icon: Wallet,
+    keys: ['canViewFunds', 'canManageFunds']
+  },
+  {
+    id: 'social',
+    title: 'Social & Group Hub',
+    description: 'Community feed, post moderation, groups & notifications',
+    icon: Share2,
+    keys: ['canViewSocial', 'canManageSocial', 'canSendNotifications']
+  },
+  {
+    id: 'professionals',
+    title: 'Professional Directory',
+    description: 'Business directory listings & category management',
+    icon: Briefcase,
+    keys: ['canViewDirectory', 'canManageDirectory']
+  },
+  {
+    id: 'leadership',
+    title: 'Leadership & Team',
+    description: 'Executive committee, sub-heads & leadership team',
+    icon: Shield,
+    keys: ['canViewLeadership', 'canManageLeadership']
+  },
+  {
+    id: 'obituary',
+    title: 'Obituaries (Shradhanjali)',
+    description: 'Shradhanjali posts, condolences & remembrance notices',
+    icon: Award,
+    keys: ['canViewObituary', 'canManageObituary']
+  },
+  {
+    id: 'elections',
+    title: 'Election Commission',
+    description: 'Community voting polls, elections & result verification',
+    icon: Vote,
+    keys: ['canViewElections', 'canManageElections']
+  },
+  {
+    id: 'homeContent',
+    title: 'Home Banners & Content',
+    description: 'Homepage banners, CMS announcements & app content',
+    icon: LayoutTemplate,
+    keys: ['canViewHomeContent', 'canManageHomeContent']
+  }
+];
 
 export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [step, setStep] = useState(1);
@@ -120,7 +231,7 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
                 <Shield className="w-6 h-6 text-brand-primary inline mr-2" />
                 {initialData ? 'Edit Community Head' : 'Create Community Head'}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">Setup a new administrator account and assign communities.</p>
+              <p className="text-sm text-gray-500 mt-1">Setup a new administrator account and assign module access.</p>
             </div>
             <button onClick={onClose} className="p-2 rounded-xl bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
               <X size={20} />
@@ -209,16 +320,15 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
                   <div className="space-y-5">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-600 uppercase">Login ID *</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <User size={18} className="text-gray-400" />
+                      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/20 focus-within:border-brand-primary transition-all overflow-hidden">
+                        <div className="pl-3.5 pr-1 flex items-center justify-center text-gray-400 shrink-0">
+                          <User size={18} />
                         </div>
                         <input 
                           type="text" 
                           value={formData.loginId}
                           onChange={e => setFormData({...formData, loginId: e.target.value})}
-                          className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm font-medium"
-                          style={{ paddingLeft: '2.75rem' }}
+                          className="w-full px-3 py-2.5 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm font-medium text-gray-900"
                           placeholder="e.g. rahul_head"
                         />
                       </div>
@@ -227,16 +337,15 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-600 uppercase">Login Password {initialData ? '(Leave blank to keep current)' : '*'}</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <Key size={18} className="text-gray-400" />
+                      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/20 focus-within:border-brand-primary transition-all overflow-hidden">
+                        <div className="pl-3.5 pr-1 flex items-center justify-center text-gray-400 shrink-0">
+                          <Key size={18} />
                         </div>
                         <input
                           type="text"
                           value={formData.password}
                           onChange={(e) => setFormData({...formData, password: e.target.value})}
-                          className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm font-medium"
-                          style={{ paddingLeft: '2.75rem' }}
+                          className="w-full px-3 py-2.5 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm font-medium text-gray-900"
                           placeholder={initialData ? "Leave blank to keep current" : "Set password for login"}
                         />
                       </div>
@@ -305,52 +414,78 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
             )}
 
             {step === 3 && (
-              <div className="max-w-4xl mx-auto space-y-4">
+              <div className="max-w-4xl mx-auto space-y-6">
                 {/* Select All Bar */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-5 rounded-2xl border border-gray-100 shadow-sm gap-3">
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900">Module Access & Permissions</h4>
-                    <p className="text-xs text-gray-500">Toggle individual rights or grant full administrative access at once.</p>
+                    <h4 className="text-base font-bold text-gray-900">Head Module Access Controls</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Toggle modules ACTIVE to grant full module access, or DISABLED to restrict.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      const allTrue = Object.values(permissions).every(Boolean);
-                      const updated = {};
-                      Object.keys(permissions).forEach(k => {
-                        updated[k] = !allTrue;
+                      const allActive = HEAD_MODULES.every(mod => mod.keys.some(k => permissions[k]));
+                      const updated = { ...permissions };
+                      HEAD_MODULES.forEach(mod => {
+                        mod.keys.forEach(k => { updated[k] = !allActive; });
                       });
                       setPermissions(updated);
                     }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                      Object.values(permissions).every(Boolean)
+                      HEAD_MODULES.every(mod => mod.keys.some(k => permissions[k]))
                         ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                         : 'bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:bg-brand-primary/20'
                     }`}
                   >
                     <CheckCircle size={14} />
-                    {Object.values(permissions).every(Boolean) ? 'Deselect All' : 'Select All Permissions'}
+                    {HEAD_MODULES.every(mod => mod.keys.some(k => permissions[k])) ? 'Disable All Modules' : 'Enable All Modules'}
                   </button>
                 </div>
 
-                {/* Permissions Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.keys(permissions).map(key => {
-                    const label = key.replace('can', '').replace(/([A-Z])/g, ' $1').trim();
+                {/* Module Toggles List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {HEAD_MODULES.map(mod => {
+                    const ModuleIcon = mod.icon;
+                    const isActive = mod.keys.some(k => permissions[k]);
                     return (
-                      <label key={key} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl cursor-pointer hover:border-brand-primary/30 transition-all shadow-sm">
-                        <span className="text-sm font-semibold text-gray-700">{label}</span>
-                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${permissions[key] ? 'bg-brand-primary' : 'bg-gray-200'}`}>
-                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                      <div
+                        key={mod.id}
+                        onClick={() => {
+                          const updated = { ...permissions };
+                          mod.keys.forEach(k => { updated[k] = !isActive; });
+                          setPermissions(updated);
+                        }}
+                        className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                          isActive 
+                            ? 'bg-white border-brand-primary shadow-md shadow-brand-primary/5' 
+                            : 'bg-white border-gray-100 opacity-70 hover:opacity-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isActive ? 'bg-brand-primary/10 text-brand-primary' : 'bg-gray-100 text-gray-400'}`}>
+                            <ModuleIcon size={24} />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                              {mod.title}
+                              {isActive ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                                  ACTIVE
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
+                                  DISABLED
+                                </span>
+                              )}
+                            </h5>
+                            <p className="text-xs text-gray-500 mt-1 leading-snug">{mod.description}</p>
+                          </div>
                         </div>
-                        {/* Hidden checkbox for a11y */}
-                        <input 
-                          type="checkbox" 
-                          className="hidden"
-                          checked={permissions[key]} 
-                          onChange={e => setPermissions({...permissions, [key]: e.target.checked})} 
-                        />
-                      </label>
+
+                        <div className={`w-12 h-7 rounded-full p-1 transition-colors shrink-0 ml-3 ${isActive ? 'bg-brand-primary' : 'bg-gray-200'}`}>
+                          <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -374,7 +509,7 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
                       <ul className="space-y-2">
                         {formData.assignedCommunityIds.map(id => {
                           const c = availableCommunities.find(c => c._id === id);
-                          return <li key={id} className="text-sm font-semibold text-gray-700 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />{c ? c.name : id}</li>;
+                          return <li key={id} className="text-sm font-semibold text-gray-700 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-brand-primary" /><span key={id}>{c ? c.name : id}</span></li>;
                         })}
                       </ul>
                     ) : (
@@ -382,12 +517,14 @@ export const CommunityHeadForm = ({ isOpen, onClose, onSubmit, initialData }) =>
                     )}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Key Permissions</h4>
-                    <ul className="space-y-2">
-                      <li className="text-sm text-gray-700 flex items-center justify-between">Members: <span className="font-bold">{permissions.canAddMembers ? 'Full' : 'Read-only'}</span></li>
-                      <li className="text-sm text-gray-700 flex items-center justify-between">Events: <span className="font-bold">{permissions.canCreateEvents ? 'Full' : 'Read-only'}</span></li>
-                      <li className="text-sm text-gray-700 flex items-center justify-between">Matrimonial: <span className="font-bold">{permissions.canApproveProfiles ? 'Full' : 'Read-only'}</span></li>
-                    </ul>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Active Modules</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {HEAD_MODULES.filter(m => m.keys.some(k => permissions[k])).map(m => (
+                        <span key={m.id} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                          ✓ {m.title}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

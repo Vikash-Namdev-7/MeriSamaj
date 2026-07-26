@@ -175,7 +175,7 @@ export default function HeadLeadershipManagement() {
               <Shield size={14} className="text-amber-400" /> Community Head Governance
             </div>
             <h1 className="text-2xl font-black text-white leading-tight">{user?.name || 'Community President'}</h1>
-            <p className="text-xs font-semibold text-purple-200/90 mt-0.5">{user?.community || 'Agrawal Samaj'} • {user?.city || 'Indore'}</p>
+            <p className="text-xs font-semibold text-purple-200/90 mt-0.5">{user?.community || 'Community'}{user?.city ? ` • ${user.city}` : ''}</p>
           </div>
         </div>
 
