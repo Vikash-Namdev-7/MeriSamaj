@@ -3,29 +3,12 @@ const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
 const { notifyBookingStatusChanged } = require('../../services/notificationService');
-
-// Helper to check user's community
-const getCommunity = (req) => {
-  return req.user?.community || 'Agrawal Samaj';
-};
-
-const getCommunityFilter = (req) => {
-  if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-    return { communityId: { $in: req.user.assignedCommunityIds } };
-  }
-  if (req.communityId) {
-    return { communityId: req.communityId };
-  }
-  if (req.user?.community) {
-    return { community: req.user.community };
-  }
-  return {};
-};
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // 1. Dashboard Analytics Stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, {});
     
     // Find all Dharmashalas in community
     const properties = await Dharmashala.find(communityFilter);
@@ -125,7 +108,7 @@ exports.getDashboardStats = async (req, res) => {
 // 2. CRUD Properties
 exports.getProperties = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, {});
     const properties = await Dharmashala.find(communityFilter).sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', data: properties });
   } catch (error) {
@@ -142,23 +125,26 @@ const getFilePath = (file) => {
 
 exports.createProperty = async (req, res) => {
   try {
-    const community = getCommunity(req);
+    const payload = inheritTenantPayload(req, req.body);
+    if (!payload.communityId) {
+      return res.status(400).json({ status: 'error', message: 'Community context missing for property creation' });
+    }
     
     // Parse amenities list if passed as stringified JSON array
-    let amenities = req.body.amenities;
+    let amenities = payload.amenities;
     if (typeof amenities === 'string') {
       try { amenities = JSON.parse(amenities); } catch (e) { amenities = []; }
     }
     
     // Retrieve cover photo and galleries files
-    let image = req.body.image || '';
+    let image = payload.image || '';
     let galleryImages = [];
     
-    if (req.body.galleryImages) {
-      if (typeof req.body.galleryImages === 'string') {
-        try { galleryImages = JSON.parse(req.body.galleryImages); } catch (e) { galleryImages = [req.body.galleryImages]; }
-      } else if (Array.isArray(req.body.galleryImages)) {
-        galleryImages = req.body.galleryImages;
+    if (payload.galleryImages) {
+      if (typeof payload.galleryImages === 'string') {
+        try { galleryImages = JSON.parse(payload.galleryImages); } catch (e) { galleryImages = [payload.galleryImages]; }
+      } else if (Array.isArray(payload.galleryImages)) {
+        galleryImages = payload.galleryImages;
       }
     }
     
@@ -172,21 +158,13 @@ exports.createProperty = async (req, res) => {
         galleryImages = [...galleryImages, ...newUploaded];
       }
     }
-    
-    let communityId = req.communityId || req.user?.communityId;
-    if (!communityId && req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-      const first = req.user.assignedCommunityIds[0];
-      communityId = first._id ? first._id : first;
-    }
 
     const property = new Dharmashala({
-      ...req.body,
-      communityId,
-      community,
+      ...payload,
       amenities,
       image,
       galleryImages,
-      status: req.body.status || 'Active'
+      status: payload.status || 'Active'
     });
     
     await property.save();
@@ -198,6 +176,9 @@ exports.createProperty = async (req, res) => {
 
 exports.updateProperty = async (req, res) => {
   try {
+    const existingProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: req.params.id }));
+    if (!existingProp) return res.status(404).json({ status: 'error', message: 'Property not found' });
+
     const updateData = { ...req.body };
     
     if (typeof updateData.amenities === 'string') {
@@ -235,6 +216,9 @@ exports.updateProperty = async (req, res) => {
 
 exports.deleteProperty = async (req, res) => {
   try {
+    const existingProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: req.params.id }));
+    if (!existingProp) return res.status(404).json({ status: 'error', message: 'Property not found' });
+
     const property = await Dharmashala.findByIdAndDelete(req.params.id);
     if (!property) return res.status(404).json({ status: 'error', message: 'Property not found' });
     
@@ -251,6 +235,9 @@ exports.deleteProperty = async (req, res) => {
 // 3. CRUD Rooms
 exports.getDharmashalaRooms = async (req, res) => {
   try {
+    const property = await Dharmashala.findOne(applyScopeFilter(req, { _id: req.params.id }));
+    if (!property) return res.status(404).json({ status: 'error', message: 'Property not found or unauthorized' });
+
     const rooms = await DharmashalaRoom.find({ dharmashala: req.params.id });
     res.status(200).json({ status: 'success', data: rooms });
   } catch (error) {
@@ -261,6 +248,8 @@ exports.getDharmashalaRooms = async (req, res) => {
 exports.createRoom = async (req, res) => {
   try {
     const { dharmashala } = req.body;
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: dharmashala }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Target property not found or unauthorized' });
     
     // Handle image file arrays
     let images = [];
@@ -292,13 +281,16 @@ exports.createRoom = async (req, res) => {
 
 exports.updateRoom = async (req, res) => {
   try {
+    const oldRoom = await DharmashalaRoom.findById(req.params.roomId);
+    if (!oldRoom) return res.status(404).json({ status: 'error', message: 'Room not found' });
+
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: oldRoom.dharmashala }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Target property not found or unauthorized' });
+    
     const updateData = { ...req.body };
     if (req.files && req.files.images) {
       updateData.images = req.files.images.map(file => file.path);
     }
-    
-    const oldRoom = await DharmashalaRoom.findById(req.params.roomId);
-    if (!oldRoom) return res.status(404).json({ status: 'error', message: 'Room not found' });
     
     const room = await DharmashalaRoom.findByIdAndUpdate(req.params.roomId, updateData, { new: true });
     
@@ -325,7 +317,13 @@ exports.updateRoom = async (req, res) => {
 
 exports.deleteRoom = async (req, res) => {
   try {
-    const room = await DharmashalaRoom.findByIdAndDelete(req.params.roomId);
+    const room = await DharmashalaRoom.findById(req.params.roomId);
+    if (!room) return res.status(404).json({ status: 'error', message: 'Room not found' });
+
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: room.dharmashala }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Target property not found or unauthorized' });
+
+    await DharmashalaRoom.findByIdAndDelete(req.params.roomId);
     if (!room) return res.status(404).json({ status: 'error', message: 'Room not found' });
     
     // Adjust counts
@@ -346,7 +344,7 @@ exports.deleteRoom = async (req, res) => {
 // 4. Bookings Management
 exports.getAllBookings = async (req, res) => {
   try {
-    const communityFilter = getCommunityFilter(req);
+    const communityFilter = applyScopeFilter(req, {});
     const properties = await Dharmashala.find(communityFilter);
     const propertyIds = properties.map(p => p._id);
     
@@ -397,6 +395,9 @@ exports.updateBookingStatus = async (req, res) => {
     
     const booking = await DharmashalaBooking.findById(id);
     if (!booking) return res.status(404).json({ status: 'error', message: 'Booking request not found.' });
+
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: booking.dharmashala }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Booking request not found or unauthorized.' });
     
     const oldStatus = booking.status;
     booking.status = status;
@@ -477,6 +478,9 @@ exports.logMaintenance = async (req, res) => {
   try {
     const { dharmashalaId, roomId, startDate, endDate, reason, remarks } = req.body;
     
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: dharmashalaId }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Property not found or unauthorized' });
+    
     const log = new DharmashalaMaintenance({
       dharmashala: dharmashalaId,
       room: roomId || null,
@@ -507,6 +511,9 @@ exports.logMaintenance = async (req, res) => {
 
 exports.getMaintenanceLogs = async (req, res) => {
   try {
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: req.query.dharmashalaId }));
+    if (!parentProp) return res.status(404).json({ status: 'error', message: 'Property not found or unauthorized' });
+
     const logs = await DharmashalaMaintenance.find({ dharmashala: req.query.dharmashalaId })
       .populate('room')
       .sort({ createdAt: -1 });

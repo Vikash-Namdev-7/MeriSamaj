@@ -9,16 +9,11 @@ import {
   Upload,
   X,
   CheckCircle2,
-  Globe,
-  Lock,
   Phone,
   ChevronDown,
   CalendarDays,
   Clock,
   MapPin,
-  RotateCcw,
-  Crop,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { AnimatedPage } from '../../components/layout/AnimatedPage';
@@ -601,34 +596,18 @@ const CreateShradhanjaliPage = () => {
       </div>
 
       {form.photoUrl ? (
-        <div className="relative rounded-2xl overflow-hidden aspect-[4/5] max-h-[320px]">
-          <img src={form.photoUrl} alt="preview" className="w-full h-full object-cover" />
-          {/* Overlay controls */}
-          <div
-            className="absolute inset-x-0 bottom-0 py-3 flex items-center justify-around"
-            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}
-          >
-            {[
-              { icon: <Crop size={18} />, label: 'Crop' },
-              { icon: <SlidersHorizontal size={18} />, label: 'Filter' },
-              { icon: <RotateCcw size={18} />, label: 'Rotate' },
-            ].map(({ icon, label }) => (
-              <button key={label} className="flex flex-col items-center gap-1 text-white press-scale">
-                {icon}
-                <span className="text-[10px]">{label}</span>
-              </button>
-            ))}
-          </div>
+        <div className="relative rounded-2xl overflow-hidden shadow-md max-h-[380px] w-full flex items-center justify-center">
+          <img src={form.photoUrl} alt="preview" className="w-full h-auto max-h-[380px] object-cover rounded-2xl" />
           {/* Remove */}
           <button
             onClick={() => setForm(f => ({ ...f, photoUrl: '', photoFile: null }))}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center press-scale"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center press-scale z-10"
           >
             <X size={14} />
           </button>
           {/* Om badge preview */}
           <div
-            className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold"
+            className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold z-10"
             style={{ background: 'rgba(20,12,0,0.75)', color: '#D4AF37' }}
           >
             🪔 Om Shanti
@@ -947,26 +926,6 @@ const CreateShradhanjaliPage = () => {
           </div>
         )}
 
-        {/* Location toggle */}
-        {showLocationConfig.enabled && (
-          <div className="flex items-center justify-between py-3 px-4 rounded-xl border" style={{ borderColor: 'rgba(212,175,55,0.2)', background: 'rgba(212,175,55,0.04)' }}>
-            <div>
-              <p className="text-[14px] font-semibold text-gray-800">{showLocationConfig.label}</p>
-              <p className="text-[11px] text-gray-500">Display location on map</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => set('showLocation', !form.showLocation)}
-              className="relative w-12 h-6 rounded-full transition-colors duration-200 press-scale"
-              style={{ background: form.showLocation ? '#7C5C2E' : '#D1D5DB' }}
-            >
-              <div
-                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200"
-                style={{ left: form.showLocation ? '26px' : '2px' }}
-              />
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -995,41 +954,6 @@ const CreateShradhanjaliPage = () => {
         <div className="flex justify-between mt-1">
           {errors.message && <p className="text-[12px] text-red-500">{errors.message}</p>}
           <span className="text-[11px] text-gray-400 ml-auto">{form.message.length}/300</span>
-        </div>
-      </div>
-
-      {/* Privacy */}
-      <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">Post Privacy</label>
-        <div className="space-y-2">
-          {[
-            { value: 'public', label: 'Public', desc: 'All community members can view', icon: <Globe size={16} style={{ color: '#7C5C2E' }} /> },
-            { value: 'private', label: 'Family Only', desc: 'Visible only to family members', icon: <Lock size={16} style={{ color: '#6B7280' }} /> },
-          ].map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => set('privacy', opt.value)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all press-scale"
-              style={{
-                borderColor: form.privacy === opt.value ? 'rgba(212,175,55,0.5)' : '#E5E7EB',
-                background: form.privacy === opt.value ? 'rgba(212,175,55,0.06)' : 'white'
-              }}
-            >
-              <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">{opt.icon}</div>
-              <div className="flex-1">
-                <p className="text-[13px] font-bold text-gray-900">{opt.label}</p>
-                <p className="text-[11px] text-gray-400">{opt.desc}</p>
-              </div>
-              <div
-                className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
-                style={{ borderColor: form.privacy === opt.value ? '#7C5C2E' : '#D1D5DB' }}
-              >
-                {form.privacy === opt.value && (
-                  <div className="w-2 h-2 rounded-full" style={{ background: '#7C5C2E' }} />
-                )}
-              </div>
-            </button>
-          ))}
         </div>
       </div>
 
@@ -1108,18 +1032,13 @@ const CreateShradhanjaliPage = () => {
               </div>
             )}
 
-            {/* Privacy & contact */}
-            <div className="flex items-center gap-3 text-[11px] text-gray-500">
-              {form.privacy === 'public' ? <Globe size={12} /> : <Lock size={12} />}
-              <span>{form.privacy === 'public' ? 'Public' : 'Family Only'}</span>
-              {form.familyContact && (
-                <>
-                  <span>•</span>
-                  <Phone size={12} />
-                  <span>{form.familyContact}</span>
-                </>
-              )}
-            </div>
+            {/* Family contact */}
+            {form.familyContact && (
+              <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                <Phone size={12} />
+                <span>{form.familyContact}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

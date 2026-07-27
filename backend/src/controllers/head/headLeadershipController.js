@@ -1,12 +1,18 @@
 const User = require('../../models/User');
 const bcrypt = require('bcryptjs');
+const { inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // @desc    Create a new Sub-Leader (Vice President, Secretary, Treasurer, etc.)
 // @route   POST /api/v1/head/leadership/sub-leaders
 // @access  Private (Head/Admin)
 exports.createSubLeader = async (req, res) => {
   try {
-    const { name, email, phone, password, designation, department, termYears, socialLinks, headPermissions } = req.body;
+    const payload = inheritTenantPayload(req, req.body);
+    if (!payload.communityId) {
+      return res.status(400).json({ status: 'error', message: 'No community context found.' });
+    }
+
+    const { name, email, phone, password, designation, department, termYears, socialLinks, headPermissions } = payload;
 
     if (!name || !phone || !password || !designation) {
       return res.status(400).json({ status: 'error', message: 'Name, phone, password, and designation are required' });
@@ -46,7 +52,13 @@ exports.createSubLeader = async (req, res) => {
       });
     }
 
+    const resolvedCity = payload.city || req.user?.city || (req.user?.workAddress ? req.user.workAddress.split(',').pop().trim() : '');
+    if (!resolvedCity) {
+      return res.status(400).json({ status: 'error', message: 'City is required for sub-leader creation.' });
+    }
+
     const subLeader = new User({
+      ...payload,
       name,
       email: email || undefined,
       phone,
@@ -54,10 +66,10 @@ exports.createSubLeader = async (req, res) => {
       plainPassword: password,
       role: 'sub_head',
       parentHeadId: req.user._id,
-      communityId: req.communityId || req.user.communityId,
-      assignedCommunityIds: req.user.assignedCommunityIds || [req.communityId || req.user.communityId],
-      city: req.user.city || 'Indore',
-      state: req.user.state || 'Madhya Pradesh',
+      communityId: payload.communityId,
+      assignedCommunityIds: req.user?.assignedCommunityIds || [payload.communityId],
+      city: resolvedCity,
+      state: payload.state || req.user?.state || 'Madhya Pradesh',
       designation: designation || 'Executive Member',
       department: department || 'General Governance',
       termYears: termYears || '2024-2027',

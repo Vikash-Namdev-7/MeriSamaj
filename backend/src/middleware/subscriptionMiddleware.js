@@ -33,7 +33,7 @@ const getEffectiveFeatures = async (userId) => {
       messageLimit:         -1,
       advancedFilters:      false,
       visitorHistory:       false,
-      chat:                 false,
+      chat:                 true, // TEMPORARY: Enabled for testing until subscription module is released
       profileBoosts:        0,
       highlightProfile:     false,
       priorityListing:      false,

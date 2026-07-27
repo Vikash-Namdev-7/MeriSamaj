@@ -124,13 +124,6 @@ const ShradhanjaliDetailPage = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleShare}
-              className="w-9 h-9 rounded-full flex items-center justify-center press-scale"
-              style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: '#D4AF37' }}
-            >
-              <Share2 size={16} />
-            </button>
-            <button
               onClick={() => saveShradhanjali && saveShradhanjali(id)}
               className="w-9 h-9 rounded-full flex items-center justify-center press-scale"
               style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: obituary.isSaved ? '#D4AF37' : 'rgba(212,175,55,0.6)' }}
@@ -173,7 +166,7 @@ const ShradhanjaliDetailPage = () => {
         />
 
         {/* Main content card */}
-        <div className="px-4 -mt-4 relative z-10 space-y-4">
+        <div className="px-4 mt-3 relative z-10 space-y-4">
 
           {/* ── Name & Bio Card ── */}
           <motion.div
@@ -300,55 +293,6 @@ const ShradhanjaliDetailPage = () => {
               comments={obituary.comments || []}
             />
           </motion.div>
-
-          {/* ── Stats Bar ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="card-std px-4 py-3"
-          >
-            <div className="flex items-center justify-around">
-              <div className="flex flex-col items-center gap-0.5">
-                <div className="flex items-center gap-1">
-                  <Eye size={14} className="text-gray-400" />
-                  <span className="text-[13px] font-bold text-gray-700">{formatCount(obituary.views)}</span>
-                </div>
-                <span className="text-[10px] text-gray-400">Views</span>
-              </div>
-              <div className="w-px h-8 bg-gray-100" />
-              <button
-                onClick={handleShare}
-                className="flex flex-col items-center gap-0.5 press-scale"
-              >
-                <div className="flex items-center gap-1">
-                  <Share2 size={14} className="text-gray-400" />
-                  <span className="text-[13px] font-bold text-gray-700">{formatCount(obituary.shares)}</span>
-                </div>
-                <span className="text-[10px] text-gray-400">Shares</span>
-              </button>
-              <div className="w-px h-8 bg-gray-100" />
-              <button
-                onClick={() => saveShradhanjali && saveShradhanjali(id)}
-                className="flex flex-col items-center gap-0.5 press-scale"
-              >
-                <div className="flex items-center gap-1">
-                  {obituary.isSaved
-                    ? <BookmarkCheck size={14} style={{ color: '#7C5C2E' }} />
-                    : <Bookmark size={14} className="text-gray-400" />
-                  }
-                  <span className="text-[13px] font-bold text-gray-700">{formatCount(obituary.saves)}</span>
-                </div>
-                <span
-                  className="text-[10px]"
-                  style={{ color: obituary.isSaved ? '#7C5C2E' : '#9CA3AF' }}
-                >
-                  {obituary.isSaved ? 'Saved' : 'Save'}
-                </span>
-              </button>
-            </div>
-          </motion.div>
-
         </div>
       </div>
     </AnimatedPage>

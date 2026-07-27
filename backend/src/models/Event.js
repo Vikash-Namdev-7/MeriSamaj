@@ -119,4 +119,8 @@ const eventSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Compound indexes for multi-tenant community scoping & global admin events
+eventSchema.index({ communityId: 1, isDeleted: 1, status: 1, createdAt: -1 });
+eventSchema.index({ isGlobal: 1, isDeleted: 1, status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Event', eventSchema);

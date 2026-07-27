@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Search, Filter, CheckCircle, XCircle, AlertTriangle, Eye, Download, Users, 
@@ -65,6 +65,17 @@ export default function ObituaryManagement() {
     }
     return defaults;
   });
+
+  useEffect(() => {
+    if (selectedObituary) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedObituary]);
 
   const updateSetting = (key, val) => {
     const saved = localStorage.getItem(`community_settings_${communityId}`);
@@ -284,10 +295,9 @@ export default function ObituaryManagement() {
           <Settings size={18} className="animate-spin-slow" />
           <h4 className="text-xs font-black uppercase tracking-wider">Obituary Module Controls</h4>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {renderToggleField('Enable Obituary Section', 'enabled', 'Toggle condolences portal for members')}
           {renderToggleField('Member Submissions', 'memberSubmissionEnabled', 'Let members create obituary posts')}
-          {renderToggleField('Moderation Pre-Approval', 'requireApproval', 'Member posts stay pending until approved')}
         </div>
       </section>
 
@@ -321,9 +331,10 @@ export default function ObituaryManagement() {
       </section>
 
       {/* ─── FILTERS TOOLBAR ─── */}
-      <section className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm shadow-slate-100/50 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
+      <section className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm shadow-slate-100/50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search bar */}
+          <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-450">
               <Search size={15} />
             </span>
@@ -335,7 +346,25 @@ export default function ObituaryManagement() {
               className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-2xl py-3 pl-11 pr-4 text-[13px] text-slate-850 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all duration-200"
             />
           </div>
+
+          {/* Ceremony filter dropdown */}
+          <div className="relative shrink-0 min-w-[200px]">
+            <select 
+              value={ceremonyFilter} 
+              onChange={(e) => setCeremonyFilter(e.target.value)} 
+              className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-2xl px-4 py-3 text-[12px] font-bold focus:outline-none appearance-none cursor-pointer text-slate-700 pr-9"
+            >
+              <option value="all">All Ceremony Types</option>
+              <option value="Funeral / Last Rites">Funeral / Last Rites</option>
+              <option value="Uthawna / Chautha">Uthawna / Chautha</option>
+              <option value="Tehravi / Prayers">Tehravi / Prayers</option>
+              <option value="Besna">Besna</option>
+              <option value="Memorial / Rasam Pagri">Memorial / Rasam Pagri</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
           
+          {/* View mode toggle */}
           <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shrink-0">
             {[{ id: 'grid', label: 'Grid View' }, { id: 'table', label: 'Table View' }].map(m => (
               <button 
@@ -343,36 +372,6 @@ export default function ObituaryManagement() {
                 className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase transition-all duration-200 cursor-pointer ${viewMode === m.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-150'}`}
               >{m.label}</button>
             ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-450 uppercase tracking-wider pl-1">Moderation Status</label>
-            <div className="relative">
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-2xl px-4 py-3 text-[12px] font-bold focus:outline-none appearance-none cursor-pointer text-slate-700">
-                <option value="all">All Tributes</option>
-                <option value="Approved">Approved / Live</option>
-                <option value="Pending">Pending Review</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-450 uppercase tracking-wider pl-1">Ceremony Type</label>
-            <div className="relative">
-              <select value={ceremonyFilter} onChange={(e) => setCeremonyFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-2xl px-4 py-3 text-[12px] font-bold focus:outline-none appearance-none cursor-pointer text-slate-700">
-                <option value="all">All Ceremony Types</option>
-                <option value="Funeral / Last Rites">Funeral / Last Rites</option>
-                <option value="Uthawna / Chautha">Uthawna / Chautha</option>
-                <option value="Tehravi / Prayers">Tehravi / Prayers</option>
-                <option value="Besna">Besna</option>
-                <option value="Memorial / Rasam Pagri">Memorial / Rasam Pagri</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
           </div>
         </div>
       </section>
@@ -577,15 +576,31 @@ export default function ObituaryManagement() {
         </div>
       </section>
 
-      {/* ─── REVIEW DRAWER MODAL ─── */}
+      {/* ─── REVIEW MODAL POPUP (CENTERED) ─── */}
       <AnimatePresence>
         {selectedObituary && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }} onClick={() => setSelectedObituary(null)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40" />
-            <motion.div initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }} transition={{ type: 'spring', damping: 26, stiffness: 220 }} className="fixed inset-y-0 right-0 w-full max-w-xl bg-white z-55 flex flex-col shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setSelectedObituary(null)} 
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40" 
+            />
+
+            {/* Centered Modal */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.9, y: 20 }} 
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }} 
+              className="relative w-full max-w-xl max-h-[85vh] bg-white rounded-3xl z-50 flex flex-col shadow-2xl overflow-hidden border border-slate-100"
+              onClick={(e) => e.stopPropagation()}
+            >
               
-              {/* Drawer Header */}
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-full border border-slate-200 overflow-hidden bg-slate-100 shadow-sm shrink-0">
                     <img src={selectedObituary.image || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=100'} alt="" className="w-full h-full object-cover" />
@@ -602,7 +617,7 @@ export default function ObituaryManagement() {
                 <button onClick={() => setSelectedObituary(null)} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
 
-              {/* Drawer Content */}
+              {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
@@ -680,7 +695,7 @@ export default function ObituaryManagement() {
                 </div>
               </div>
 
-              {/* Drawer Footer Actions */}
+              {/* Modal Footer Actions */}
               <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <button 
@@ -706,7 +721,7 @@ export default function ObituaryManagement() {
               </div>
 
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 

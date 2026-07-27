@@ -1,12 +1,36 @@
 const Obituary = require('../../models/Obituary');
 const User = require('../../models/User');
-const { notifyObituaryPosted } = require('../../services/notificationService');
+const { notifyObituaryPosted, notifyObituaryPostedToHead } = require('../../services/notificationService');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
+
+const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
+
+// Helper to check if an obituary belongs to the requester's community
+const isSameCommunity = (obituary, req) => {
+  if (!obituary) return false;
+  const userRole = (req?.user?.role || '').toLowerCase();
+  if (ADMIN_ROLES.includes(userRole)) return true; // Admin: global access
+
+  const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
+  if (req?.communityId && obCommunityId) {
+    return obCommunityId.toString() === req.communityId.toString();
+  }
+  // Fallback for pre-migration documents using String community field
+  if (req?.user?.community && obituary.community) {
+    return obituary.community === req.user.community;
+  }
+  return false;
+};
 
 // @desc    Create a new obituary
 // @route   POST /api/member/obituaries
 // @access  Private
 exports.createObituary = async (req, res) => {
   try {
+    const payload = inheritTenantPayload(req, req.body);
+    if (!payload.communityId) {
+      return res.status(400).json({ message: 'No community context found.' });
+    }
     const {
       prefix,
       deceasedName,
@@ -80,7 +104,7 @@ exports.createObituary = async (req, res) => {
 
     const savedObituary = await obituary.save();
     
-    // ── Notification: notify community members ────────────────────────────────────
+    // ── Notification: notify community members & head ────────────────────────────
     try {
       if (req.communityId) {
         const members = await User.find({
@@ -88,8 +112,20 @@ exports.createObituary = async (req, res) => {
           accountStatus: 'active',
           verificationStatus: 'verified',
           _id: { $ne: req.user._id }
-        }).select('_id').lean();
+        }).select('_id role').lean();
+
         notifyObituaryPosted(members.map(m => m._id), fullName, savedObituary._id);
+
+        // Find community head(s) and send specific head notification
+        const heads = await User.find({
+          communityId: req.communityId,
+          role: { $in: ['head', 'admin'] },
+          _id: { $ne: req.user._id }
+        }).select('_id').lean();
+
+        heads.forEach(h => {
+          notifyObituaryPostedToHead(h._id, fullName, req.user.name || 'A community member', savedObituary._id);
+        });
       }
     } catch (notifErr) {
       console.warn('[Notify] createObituary obituary_posted failed:', notifErr.message);
@@ -110,25 +146,17 @@ exports.createObituary = async (req, res) => {
 // @access  Private
 exports.getObituaries = async (req, res) => {
   try {
-    /**
-     * Community-scoped query using communityId (ObjectId — primary).
-     * Falls back to community String for documents not yet migrated.
-     */
-    let query;
-    if (req.communityId) {
-      query = { communityId: req.communityId };
-    } else {
-      // Fallback: use String field for pre-migration documents
-      query = { community: req.user.community };
-    }
+    let baseFilter = {};
 
     // Regular members only see Approved posts and their own submissions
     if (req.user.role !== 'head' && req.user.role !== 'admin') {
-      query.$or = [
+      baseFilter.$or = [
         { status: 'Approved' },
         { creatorId: req.user._id }
       ];
     }
+
+    const query = applyScopeFilter(req, baseFilter);
 
     const obituaries = await Obituary.find(query)
       .populate('creatorId', 'name email avatar initials phone')
@@ -153,13 +181,7 @@ exports.getObituaryById = async (req, res) => {
       return res.status(404).json({ message: 'Obituary not found' });
     }
 
-    // Community security check — use communityId ObjectId (primary) with string fallback
-    const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
-    const isOwnCommunity = req.communityId && obCommunityId
-      ? obCommunityId.equals(req.communityId)
-      : obituary.community === req.user.community; // pre-migration fallback
-
-    if (!isOwnCommunity) {
+    if (!isSameCommunity(obituary, req)) {
       return res.status(403).json({ message: 'Unauthorized to view obituaries from other communities' });
     }
 
@@ -183,12 +205,7 @@ exports.updateObituary = async (req, res) => {
 
     // Verify ownership or community leadership role
     const isCreator = obituary.creatorId.toString() === req.user._id.toString();
-    // Use communityId ObjectId check (primary) with string fallback for pre-migration
-    const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
-    const isSameCommunity = req.communityId && obCommunityId
-      ? obCommunityId.equals(req.communityId)
-      : obituary.community === req.user.community;
-    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity;
+    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity(obituary, req);
 
     if (!isCreator && !isLeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to update this obituary' });
@@ -269,7 +286,7 @@ exports.deleteObituary = async (req, res) => {
 
     // Verify ownership or community leadership role
     const isCreator = obituary.creatorId.toString() === req.user._id.toString();
-    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && obituary.community === req.user.community;
+    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity(obituary, req);
 
     if (!isCreator && !isLeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to delete this obituary' });
@@ -291,6 +308,9 @@ exports.toggleHaathJode = async (req, res) => {
     const obituary = await Obituary.findById(req.params.id);
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
+    }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
     }
 
     const index = obituary.haathJodeUsers.indexOf(req.user._id);
@@ -322,19 +342,22 @@ exports.incrementMalaArpan = async (req, res) => {
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
     }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
+    }
 
-    const delta = parseInt(req.body.delta) || 1;
-
-    let userGarland = obituary.malaArpanUsers.find(
+    const index = obituary.malaArpanUsers.findIndex(
       (m) => m.user.toString() === req.user._id.toString()
     );
 
-    if (userGarland) {
-      userGarland.count = Math.max(0, userGarland.count + delta);
+    if (index >= 0) {
+      // Toggle off - remove user garland offer
+      obituary.malaArpanUsers.splice(index, 1);
     } else {
+      // Toggle on - add 1 garland offer
       obituary.malaArpanUsers.push({
         user: req.user._id,
-        count: Math.max(0, delta)
+        count: 1
       });
     }
 
@@ -345,10 +368,10 @@ exports.incrementMalaArpan = async (req, res) => {
 
     res.json({
       malaArpanCount: totalGarlands,
-      userHasMalaArpan: true
+      userHasMalaArpan: index < 0
     });
   } catch (error) {
-    console.error('Error incrementing mala arpan:', error);
+    console.error('Error toggling mala arpan:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -361,6 +384,9 @@ exports.toggleSave = async (req, res) => {
     const obituary = await Obituary.findById(req.params.id);
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
+    }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
     }
 
     const index = obituary.saves.indexOf(req.user._id);
@@ -392,9 +418,24 @@ exports.incrementViews = async (req, res) => {
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
     }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
+    }
 
-    obituary.views += 1;
-    await obituary.save();
+    if (!obituary.viewedUsers) {
+      obituary.viewedUsers = [];
+    }
+
+    const userIdStr = req.user._id.toString();
+    const alreadyViewed = obituary.viewedUsers.some(id => id.toString() === userIdStr);
+
+    if (!alreadyViewed) {
+      obituary.viewedUsers.push(req.user._id);
+      obituary.views = obituary.viewedUsers.length;
+      await obituary.save();
+    } else {
+      obituary.views = obituary.viewedUsers.length;
+    }
 
     res.json({ views: obituary.views });
   } catch (error) {
@@ -416,6 +457,9 @@ exports.addComment = async (req, res) => {
     const obituary = await Obituary.findById(req.params.id);
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
+    }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
     }
 
     // Generate initials
@@ -449,6 +493,9 @@ exports.toggleCommentLike = async (req, res) => {
     const obituary = await Obituary.findById(req.params.id);
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
+    }
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to interact with obituaries from other communities' });
     }
 
     const comment = obituary.comments.id(req.params.commentId);
@@ -488,8 +535,8 @@ exports.updateObituaryStatus = async (req, res) => {
       return res.status(404).json({ message: 'Obituary not found' });
     }
 
-    // Community security check
-    if (obituary.community !== req.user.community) {
+    // Community security check using standardized helper
+    if (!isSameCommunity(obituary, req)) {
       return res.status(403).json({ message: 'Unauthorized to manage obituaries from other communities' });
     }
 

@@ -240,6 +240,8 @@ const EventDetailPage = () => {
             <img 
               src={event.image} 
               alt={event.title} 
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover opacity-80"
             />
           ) : (

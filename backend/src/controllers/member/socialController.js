@@ -11,19 +11,29 @@ const Community = require('../../models/Community');
 const Follower = require('../../models/Follower');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
-// Helper to resolve user city string to cityId (find or create)
+// In-memory cache for resolved city string to cityId
+const cityIdCache = new Map();
+
 const getCityId = async (cityName) => {
   if (!cityName) return null;
   const trimmed = cityName.trim();
-  let cityDoc = await City.findOne({ name: new RegExp('^' + trimmed + '$', 'i') });
+  const cacheKey = trimmed.toLowerCase();
+  if (cityIdCache.has(cacheKey)) {
+    return cityIdCache.get(cacheKey);
+  }
+  let cityDoc = await City.findOne({ name: new RegExp('^' + trimmed + '$', 'i') }).lean();
   if (!cityDoc) {
     try {
       cityDoc = await City.create({ name: trimmed });
     } catch (e) {
-      cityDoc = await City.findOne({ name: new RegExp('^' + trimmed + '$', 'i') });
+      cityDoc = await City.findOne({ name: new RegExp('^' + trimmed + '$', 'i') }).lean();
     }
   }
-  return cityDoc ? cityDoc._id : null;
+  const resultId = cityDoc ? cityDoc._id : null;
+  if (resultId) {
+    cityIdCache.set(cacheKey, resultId);
+  }
+  return resultId;
 };
 
 // Helper to extract raw ObjectIds for communityIds
@@ -115,12 +125,12 @@ exports.getPosts = async (req, res) => {
     }
 
     const posts = await Post.find(filter)
-      .populate('userId', 'name avatar role city community communityId')
-      .populate('authorId', 'name avatar role city community communityId')
+      .populate('userId authorId', 'name avatar role city community communityId')
       .populate('communityId', 'name slug city')
       .populate('cityId', 'name')
       .sort({ isPinned: -1, createdAt: -1 })
-      .limit(Number(limit) + 1); // Get extra one to check hasMore
+      .limit(Number(limit) + 1)
+      .lean();
 
     const hasMore = posts.length > Number(limit);
     if (hasMore) {
@@ -130,15 +140,15 @@ exports.getPosts = async (req, res) => {
     // Look up whether the logged-in user liked or saved these posts
     const postIds = posts.map(p => p._id);
     const [likes, saves] = await Promise.all([
-      PostLike.find({ postId: { $in: postIds }, userId: req.user._id }),
-      SavedPost.find({ postId: { $in: postIds }, userId: req.user._id })
+      PostLike.find({ postId: { $in: postIds }, userId: req.user._id }).lean(),
+      SavedPost.find({ postId: { $in: postIds }, userId: req.user._id }).lean()
     ]);
 
     const likedPostIds = new Set(likes.map(l => l.postId.toString()));
     const savedPostIds = new Set(saves.map(s => s.postId.toString()));
 
     const formattedPosts = posts.map(p => ({
-      ...p.toObject(),
+      ...p,
       isLiked: likedPostIds.has(p._id.toString()),
       isSaved: savedPostIds.has(p._id.toString())
     }));
@@ -606,12 +616,15 @@ exports.recordView = async (req, res) => {
     if (!verifyPostCommunityAccess(req, post)) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const viewLogged = await PostView.findOne({ postId, userId });
+    let currentViews = post.viewsCount || 0;
+
     if (!viewLogged) {
       await PostView.create({ postId, userId, duration });
-      await Post.findByIdAndUpdate(postId, { $inc: { viewsCount: 1 } });
+      const updatedPost = await Post.findByIdAndUpdate(postId, { $inc: { viewsCount: 1 } }, { new: true });
+      currentViews = updatedPost?.viewsCount || (currentViews + 1);
     }
 
-    res.json({ success: true });
+    res.json({ success: true, viewsCount: currentViews });
   } catch (error) {
     console.error('recordView error:', error);
     res.status(500).json({ success: false });
@@ -816,12 +829,12 @@ exports.getUserPosts = async (req, res) => {
     const filter = applyScopeFilter(req, baseFilter);
 
     const posts = await Post.find(filter)
-      .populate('userId', 'name avatar role city community communityId')
-      .populate('authorId', 'name avatar role city community communityId')
+      .populate('userId authorId', 'name avatar role city community communityId')
       .populate('communityId', 'name slug city')
       .populate('cityId', 'name')
       .sort({ createdAt: -1 })
-      .limit(Number(limit) + 1);
+      .limit(Number(limit) + 1)
+      .lean();
 
     const hasMore = posts.length > Number(limit);
     if (hasMore) {
@@ -830,15 +843,15 @@ exports.getUserPosts = async (req, res) => {
 
     const postIds = posts.map(p => p._id);
     const [likes, saves] = await Promise.all([
-      PostLike.find({ postId: { $in: postIds }, userId: req.user._id }),
-      SavedPost.find({ postId: { $in: postIds }, userId: req.user._id })
+      PostLike.find({ postId: { $in: postIds }, userId: req.user._id }).lean(),
+      SavedPost.find({ postId: { $in: postIds }, userId: req.user._id }).lean()
     ]);
 
     const likedPostIds = new Set(likes.map(l => l.postId.toString()));
     const savedPostIds = new Set(saves.map(s => s.postId.toString()));
 
     const formattedPosts = posts.map(p => ({
-      ...p.toObject(),
+      ...p,
       id: p._id,
       isLiked: likedPostIds.has(p._id.toString()),
       isSaved: savedPostIds.has(p._id.toString())

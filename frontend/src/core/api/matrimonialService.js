@@ -47,7 +47,10 @@ export const matrimonialInterestService = {
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export const matrimonialChatService = {
-  getConversations:     ()              => axiosPrivate.get(`${BASE}/chat/conversations`),
+  getConversations:     ()              => axiosPrivate.get(`${BASE}/chat/conversations`).catch(err => {
+    if (err.response?.status === 403) return { data: { data: { conversations: [] } } };
+    throw err;
+  }),
   openConversation:     (profileId)     => axiosPrivate.post(`${BASE}/chat/conversations`, { profileId }),
   getMessages:          (cId, params)   => axiosPrivate.get(`${BASE}/chat/conversations/${cId}/messages`, { params }),
   sendMessage:          (cId, data)     => axiosPrivate.post(`${BASE}/chat/conversations/${cId}/messages`, data),

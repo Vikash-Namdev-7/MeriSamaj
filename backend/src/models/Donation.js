@@ -37,4 +37,8 @@ const donationSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Compound index for fast multi-tenant donation campaign listing & sorting
+donationSchema.index({ status: 1, isDeleted: 1, communityId: 1, category: 1, createdAt: -1 });
+donationSchema.index({ title: 'text' });
+
 module.exports = mongoose.model('Donation', donationSchema);

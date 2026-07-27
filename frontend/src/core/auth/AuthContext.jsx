@@ -9,6 +9,27 @@ export const AuthContext = createContext({});
 // eliminating the spurious POST /auth/refresh 401 on first-ever app visits.
 const SESSION_FLAG_KEY = 'merisamaj_has_session';
 
+const cleanUserForStorage = (userObj) => {
+  if (!userObj || typeof userObj !== 'object') return userObj;
+  const safeObj = { ...userObj };
+  if (typeof safeObj.avatar === 'string' && safeObj.avatar.startsWith('data:')) {
+    delete safeObj.avatar;
+  }
+  if (Array.isArray(safeObj.photos)) {
+    safeObj.photos = safeObj.photos.filter(p => typeof p === 'string' && !p.startsWith('data:'));
+  }
+  return safeObj;
+};
+
+const safeSetUserItem = (user) => {
+  try {
+    const cleaned = cleanUserForStorage(user);
+    localStorage.setItem('merisamaj_user', JSON.stringify(cleaned));
+  } catch (err) {
+    console.warn('LocalStorage quota warning for merisamaj_user:', err);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState({
     user: null,
@@ -41,7 +62,7 @@ export const AuthProvider = ({ children }) => {
             authService.getMe()
               .then(res => {
                 if (isMounted && res && res.user) {
-                  localStorage.setItem('merisamaj_user', JSON.stringify(res.user));
+                  safeSetUserItem(res.user);
                   setAuth(prev => ({ ...prev, user: res.user }));
                 }
               })
@@ -56,8 +77,8 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await authService.refresh();
           if (isMounted) {
-            localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
-            localStorage.setItem('merisamaj_token', response.accessToken);
+            safeSetUserItem(response.user);
+            try { localStorage.setItem('merisamaj_token', response.accessToken); } catch(e){}
             setAuth({
               user: response.user,
               accessToken: response.accessToken,
@@ -67,7 +88,7 @@ export const AuthProvider = ({ children }) => {
           }
         } catch {
           // Refresh token expired or invalid — clear the stale flag and proceed as guest
-          localStorage.removeItem(SESSION_FLAG_KEY);
+          try { localStorage.removeItem(SESSION_FLAG_KEY); } catch(e){}
           if (isMounted) {
             setAuth(prev => ({ ...prev, isInitialized: true }));
           }
@@ -90,9 +111,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     clearAllUserData(false);
     const response = await authService.login(credentials);
-    localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
-    localStorage.setItem('merisamaj_token', response.accessToken);
-    localStorage.setItem(SESSION_FLAG_KEY, '1');
+    safeSetUserItem(response.user);
+    try {
+      localStorage.setItem('merisamaj_token', response.accessToken);
+      localStorage.setItem(SESSION_FLAG_KEY, '1');
+    } catch(e){}
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -105,10 +128,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     clearAllUserData(true);
     const response = await authService.register(userData);
-    localStorage.setItem('merisamaj_user', JSON.stringify(response.user));
-    localStorage.setItem('merisamaj_token', response.accessToken);
-    localStorage.setItem('merisamaj_just_registered', 'true');
-    localStorage.setItem(SESSION_FLAG_KEY, '1');
+    safeSetUserItem(response.user);
+    try {
+      localStorage.setItem('merisamaj_token', response.accessToken);
+      localStorage.setItem('merisamaj_just_registered', 'true');
+      localStorage.setItem(SESSION_FLAG_KEY, '1');
+    } catch(e){}
     setAuth({
       user: response.user,
       accessToken: response.accessToken,
@@ -132,7 +157,7 @@ export const AuthProvider = ({ children }) => {
         isInitialized: true,
       });
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        window.location.href = '/member/login';
       }
     }
   };

@@ -54,5 +54,7 @@ const eventResponseSchema = new mongoose.Schema({
 
 // Ensure only one reaction response record per member per event
 eventResponseSchema.index({ eventId: 1, memberId: 1 }, { unique: true });
+// Compound index for fast aggregation of attendance and interest stats
+eventResponseSchema.index({ eventId: 1, isInterested: 1, isGoing: 1, registered: 1, response: 1 });
 
 module.exports = mongoose.model('EventResponse', eventResponseSchema);

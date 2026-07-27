@@ -9,6 +9,7 @@ const FILTER_TABS = [
   { id: 'all', label: 'All' },
   { id: 'recent', label: 'Recent' },
   { id: 'ceremony', label: 'Upcoming Ceremonies' },
+  { id: 'saved', label: 'Saved' },
 ];
 
 const formatCount = (n) => {
@@ -34,12 +35,12 @@ const MemorialCard = ({ obituary, index }) => {
       }}
     >
       {/* ── Hero photo ── */}
-      <div className="relative h-[220px]">
+      <div className="relative h-[220px] bg-slate-900 flex items-center justify-center overflow-hidden">
         <img
           src={obituary.image}
           alt={obituary.deceasedName}
           className="w-full h-full object-cover"
-          style={{ objectPosition: 'top center' }}
+          style={{ objectPosition: 'center 20%' }}
         />
 
         {/* Om Shanti badge */}
@@ -229,6 +230,10 @@ const ShradhanjaliHomePage = () => {
       return false;
     }
 
+    if (activeFilter === 'saved') {
+      return !!ob.isSaved;
+    }
+
     return true;
   });
 
@@ -408,8 +413,15 @@ const ShradhanjaliHomePage = () => {
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center gap-3 py-20"
               >
-                <span className="text-[64px]">🕊️</span>
-                <p className="text-[16px] font-bold text-gray-500">No obituaries found</p>
+                <span className="text-[64px]">🔖</span>
+                <p className="text-[16px] font-bold text-gray-500">
+                  {activeFilter === 'saved' ? 'No saved obituaries yet' : 'No obituaries found'}
+                </p>
+                {activeFilter === 'saved' && (
+                  <p className="text-[13px] text-gray-400 text-center max-w-xs">
+                    Tribute posts that you bookmark will appear here for easy access.
+                  </p>
+                )}
                 {search && (
                   <p className="text-[13px] text-gray-400 text-center">
                     No results for "{search}"

@@ -1,43 +1,22 @@
 const Professional = require('../../models/Professional');
 const User = require('../../models/User');
 const { notifyListingSubmitted } = require('../../services/notificationService');
-
-// Helper to resolve communityId
-const getCommunityId = (req) => {
-  let communityId = req.communityId || req.user?.communityId;
-  if (communityId) {
-    return communityId._id ? communityId._id : communityId;
-  }
-  if (req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-    const firstAssigned = req.user.assignedCommunityIds[0];
-    return firstAssigned._id ? firstAssigned._id : firstAssigned;
-  }
-  return null;
-};
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // 1. Get all professionals with query filters (scoped to community)
 exports.getProfessionals = async (req, res) => {
   try {
-    const communityId = getCommunityId(req);
     const { search, category, city } = req.query;
 
-    const filter = {};
-    if (communityId) {
-      filter.communityId = communityId;
-    }
-    filter.status = 'Approved'; // Only return verified/approved listings
+    const baseFilter = { status: 'Approved' };
 
     if (category && category !== 'All' && category !== 'All Categories') {
-      filter.categoryKey = category.toLowerCase().replace(/[^a-z0-9]+/g, '');
-    }
-
-    if (city && city !== 'All' && city !== 'All Cities') {
-      filter.city = { $regex: new RegExp(`^${city}$`, 'i') };
+      baseFilter.categoryKey = category.toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
 
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
+      baseFilter.$or = [
         { companyName: searchRegex },
         { profession: searchRegex },
         { category: searchRegex },
@@ -46,6 +25,9 @@ exports.getProfessionals = async (req, res) => {
         { about: searchRegex }
       ];
     }
+
+    const activeCity = (city && city !== 'All' && city !== 'All Cities') ? city : null;
+    const filter = applyScopeFilter(req, baseFilter, { overrideCity: activeCity });
 
     const listings = await Professional.find(filter)
       .populate('ownerId', 'name email phone avatar')
@@ -81,7 +63,8 @@ exports.getProfessionals = async (req, res) => {
 // 2. Get Single Professional Detail
 exports.getProfessionalById = async (req, res) => {
   try {
-    const p = await Professional.findById(req.params.id)
+    const query = applyScopeFilter(req, { _id: req.params.id });
+    const p = await Professional.findOne(query)
       .populate('ownerId', 'name email phone avatar');
 
     if (!p) {
@@ -117,20 +100,12 @@ exports.getProfessionalById = async (req, res) => {
 // 3. Create Professional Listing
 exports.createProfessional = async (req, res) => {
   try {
-    console.log('CREATE PROFESSIONAL DEBUG: req.user =', {
-      _id: req.user?._id,
-      name: req.user?.name,
-      phone: req.user?.phone,
-      role: req.user?.role,
-      communityId: req.user?.communityId,
-      assignedCommunityIds: req.user?.assignedCommunityIds
-    });
-    const communityId = getCommunityId(req);
-    if (!communityId) {
+    const payload = inheritTenantPayload(req, req.body);
+    if (!payload.communityId) {
       return res.status(400).json({ success: false, message: 'No community context found.' });
     }
 
-    const { category, profession, companyName, yearsOfExperience, workAddress, city, about, media, businessTiming } = req.body;
+    const { category, profession, companyName, yearsOfExperience, workAddress, city, about, media, businessTiming } = payload;
 
     if (!category || !profession || !companyName || !yearsOfExperience || !workAddress || !about) {
       return res.status(400).json({ success: false, message: 'All required fields must be filled.' });
@@ -138,14 +113,16 @@ exports.createProfessional = async (req, res) => {
 
     const categoryKey = category.toLowerCase().replace(/[^a-z0-9]+/g, '');
     const initials = companyName.substring(0, 2).toUpperCase();
-    const phone = req.user.phone || '';
 
-    // If city is not explicitly parsed, extract it from address
-    const resolvedCity = city || workAddress.split(',').pop().trim() || 'Indore';
+    // Derive city from explicit input, user profile, or workAddress fallback
+    const resolvedCity = city || (req.user?.city ? req.user.city : (workAddress ? workAddress.split(',').pop().trim() : ''));
+    if (!resolvedCity) {
+      return res.status(400).json({ success: false, message: 'City is required for business listing.' });
+    }
 
     const p = new Professional({
+      ...payload,
       ownerId: req.user._id,
-      communityId,
       category,
       categoryKey,
       profession,
@@ -191,13 +168,15 @@ exports.createProfessional = async (req, res) => {
 // 4. Update Professional Listing
 exports.updateProfessional = async (req, res) => {
   try {
-    const p = await Professional.findById(req.params.id);
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
+    const query = isAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
+    const p = await Professional.findOne(query);
     if (!p) {
       return res.status(404).json({ success: false, message: 'Business listing not found.' });
     }
 
     // Verify ownership
-    if (p.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (!isAdmin && p.ownerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this listing.' });
     }
 
@@ -233,13 +212,15 @@ exports.updateProfessional = async (req, res) => {
 // 5. Delete Professional Listing
 exports.deleteProfessional = async (req, res) => {
   try {
-    const p = await Professional.findById(req.params.id);
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
+    const query = isAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
+    const p = await Professional.findOne(query);
     if (!p) {
       return res.status(404).json({ success: false, message: 'Business listing not found.' });
     }
 
     // Verify ownership
-    if (p.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (!isAdmin && p.ownerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this listing.' });
     }
 

@@ -126,6 +126,8 @@ const postSchema = new mongoose.Schema(
 );
 
 // High-speed index configuration for feed query performance
+postSchema.index({ communityId: 1, status: 1, isDeleted: 1, feedType: 1, createdAt: -1 });
+postSchema.index({ cityId: 1, status: 1, isDeleted: 1, feedType: 1, createdAt: -1 });
 postSchema.index({ communityId: 1, cityId: 1, createdAt: -1 });
 postSchema.index({ feedType: 1, isDeleted: 1, createdAt: -1 });
 postSchema.index({ cityId: 1, feedType: 1, createdAt: -1 });

@@ -642,13 +642,27 @@ const notifyObituaryPosted = (memberIds, deceasedName, obituaryId) => {
       message:       `An obituary has been posted for "${deceasedName}". Please keep the family in your prayers.`,
       icon:          '🕊️',
       priority:      'high',
-      actionUrl:     `/member/obituaries/${obituaryId}`,
+      actionUrl:     `/member/shradhanjali/${obituaryId}`,
       referenceId:   obituaryId,
       referenceType: 'Obituary'
     })
   );
   return Promise.allSettled(promises);
 };
+
+const notifyObituaryPostedToHead = (headId, deceasedName, memberName, obituaryId) =>
+  createNotification({
+    userId:        headId,
+    module:        'obituary',
+    type:          'obituary_head_notice',
+    title:         'New Obituary Submission 🕯️',
+    message:       `${memberName} has posted a new obituary for "${deceasedName}".`,
+    icon:          '🕯️',
+    priority:      'high',
+    actionUrl:     `/head/obituaries`,
+    referenceId:   obituaryId,
+    referenceType: 'Obituary'
+  });
 
 // ─── User Management / Account Notification Helpers ───────────────────────────
 
@@ -989,6 +1003,7 @@ module.exports = {
   notifyBookingStatusChanged,
   // ─── Obituary ────────────────────────────────────────────────────────────────
   notifyObituaryPosted,
+  notifyObituaryPostedToHead,
   // ─── User Management / Account ────────────────────────────────────────────────
   notifyUserBlocked,
   notifyUserActivated,

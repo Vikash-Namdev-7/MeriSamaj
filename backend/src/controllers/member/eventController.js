@@ -177,6 +177,7 @@ const canAccessEvent = (event, req) => {
 exports.getEvents = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
+    const { page = 1, limit = 20 } = req.query;
 
     let baseQuery = { 
       isDeleted: { $ne: true },
@@ -186,13 +187,29 @@ exports.getEvents = async (req, res) => {
     // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
     const query = applyScopeFilter(req, baseQuery);
 
-    const events = await Event.find(query).sort({ createdAt: -1 }).lean();
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const events = await Event.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
     const formattedEvents = await formatMemberEvents(events, userId);
+    const totalCount = await Event.countDocuments(query);
 
     res.status(200).json({
       success: true,
       status: 'success',
-      data: formattedEvents
+      data: formattedEvents,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        hasMore: skip + events.length < totalCount
+      }
     });
   } catch (error) {
     console.error('Get Member Events Fatal Error:', error);

@@ -1,5 +1,7 @@
 const Leadership = require('../../models/Leadership');
 const User = require('../../models/User');
+const mongoose = require('mongoose');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // @desc    Get leadership directory for member's community (Dynamic Head + Sub-Leaders)
 // @route   GET /api/v1/member/leadership
@@ -7,30 +9,27 @@ const User = require('../../models/User');
 exports.getCommunityLeadership = async (req, res) => {
   try {
     const { city, designation, search } = req.query;
-    const communityId = req.communityId;
+    const rawCommunityId = req.communityId || req.user?.communityId;
+    const targetCommunityId = (rawCommunityId && mongoose.Types.ObjectId.isValid(rawCommunityId))
+      ? new mongoose.Types.ObjectId(rawCommunityId.toString())
+      : (rawCommunityId ? rawCommunityId : new mongoose.Types.ObjectId('000000000000000000000000'));
 
-    // 1. Fetch Main Community Head
-    let headQuery = { role: 'head', accountStatus: 'active' };
-    if (communityId) {
-      headQuery.$or = [
-        { communityId },
-        { assignedCommunityIds: communityId }
-      ];
-    }
+    // 1. Fetch Main Community Head (Strictly scoped to targetCommunityId, NO global fallback)
+    const headQuery = {
+      role: 'head',
+      accountStatus: 'active',
+      $or: [
+        { communityId: targetCommunityId },
+        { assignedCommunityIds: targetCommunityId }
+      ]
+    };
     if (city && city !== 'all') {
       headQuery.city = new RegExp(`^${city.trim()}$`, 'i');
     }
 
-    let communityHeadUser = await User.findOne(headQuery)
+    const communityHeadUser = await User.findOne(headQuery)
       .select('name email phone city state designation bio avatar cover socialLinks termYears createdAt')
       .lean();
-
-    // Fallback Head if community-specific search is empty
-    if (!communityHeadUser) {
-      communityHeadUser = await User.findOne({ role: 'head', accountStatus: 'active' })
-        .select('name email phone city state designation bio avatar cover socialLinks termYears createdAt')
-        .lean();
-    }
 
     const formattedHead = communityHeadUser ? {
       _id: communityHeadUser._id,
@@ -50,24 +49,21 @@ exports.getCommunityLeadership = async (req, res) => {
       isHead: true
     } : null;
 
-    // 2. Fetch Sub-Leaders from User collection (created by Head)
-    let subLeadersQuery = { role: 'sub_head', accountStatus: 'active' };
-    if (communityId) {
-      subLeadersQuery.communityId = communityId;
-    }
-    if (city && city !== 'all') {
-      subLeadersQuery.city = new RegExp(`^${city.trim()}$`, 'i');
-    }
+    // 2. Fetch Sub-Leaders from User collection (unconditionally scoped via applyScopeFilter)
+    const baseSubFilter = { role: 'sub_head', accountStatus: 'active' };
     if (designation && designation !== 'all') {
-      subLeadersQuery.designation = designation;
+      baseSubFilter.designation = designation;
     }
     if (search) {
-      subLeadersQuery.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { designation: { $regex: search, $options: 'i' } },
-        { department: { $regex: search, $options: 'i' } }
+      const searchRegex = new RegExp(search, 'i');
+      baseSubFilter.$or = [
+        { name: searchRegex },
+        { designation: searchRegex },
+        { department: searchRegex }
       ];
     }
+    const activeCity = (city && city !== 'all') ? city : null;
+    const subLeadersQuery = applyScopeFilter(req, baseSubFilter, { overrideCity: activeCity });
 
     const subHeadUsers = await User.find(subLeadersQuery)
       .select('name email phone city state designation department bio avatar socialLinks termYears joiningDate')
@@ -93,11 +89,12 @@ exports.getCommunityLeadership = async (req, res) => {
       isHead: false
     }));
 
-    // 3. Fetch entries from Leadership collection
-    let leadershipFilter = { isActive: true };
-    if (communityId) leadershipFilter.communityId = communityId;
-    if (city && city !== 'all') leadershipFilter.city = new RegExp(`^${city.trim()}$`, 'i');
-    if (designation && designation !== 'all') leadershipFilter.role = designation;
+    // 3. Fetch entries from Leadership collection (unconditionally scoped via applyScopeFilter)
+    const baseLegacyFilter = { isActive: true };
+    if (designation && designation !== 'all') {
+      baseLegacyFilter.role = designation;
+    }
+    const leadershipFilter = applyScopeFilter(req, baseLegacyFilter, { overrideCity: activeCity });
 
     const legacyLeaders = await Leadership.find(leadershipFilter).lean();
     const formattedLegacy = legacyLeaders.map(l => ({

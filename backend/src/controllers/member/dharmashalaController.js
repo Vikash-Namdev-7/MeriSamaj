@@ -44,7 +44,8 @@ exports.getAllDharmashalas = async (req, res) => {
 // Get single Dharmashala detail with rooms list
 exports.getDharmashalaById = async (req, res) => {
   try {
-    const dharamshala = await Dharmashala.findById(req.params.id);
+    const query = applyScopeFilter(req, { _id: req.params.id });
+    const dharamshala = await Dharmashala.findOne(query);
     if (!dharamshala) {
       return res.status(404).json({ status: 'error', message: 'Dharmashala not found' });
     }
@@ -109,7 +110,8 @@ exports.getAvailability = async (req, res) => {
     const m = parseInt(month) || new Date().getMonth() + 1;
     const y = parseInt(year) || new Date().getFullYear();
     
-    const dharamshala = await Dharmashala.findById(id);
+    const query = applyScopeFilter(req, { _id: id });
+    const dharamshala = await Dharmashala.findOne(query);
     if (!dharamshala) {
       return res.status(404).json({ status: 'error', message: 'Dharmashala not found' });
     }
@@ -222,9 +224,10 @@ exports.createBooking = async (req, res) => {
   try {
     const { dharmashalaId, checkIn, checkOut, roomType, checkInTime, checkOutTime, bookedBy, phone, specialRequests } = req.body;
     
-    const dharamshala = await Dharmashala.findById(dharmashalaId);
+    const query = applyScopeFilter(req, { _id: dharmashalaId });
+    const dharamshala = await Dharmashala.findOne(query);
     if (!dharamshala) {
-      return res.status(404).json({ status: 'error', message: 'Dharmashala not found' });
+      return res.status(404).json({ status: 'error', message: 'Dharmashala not found or unauthorized' });
     }
     
     const checkInDate = new Date(checkIn);
@@ -437,6 +440,11 @@ exports.payBooking = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
+    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
+    }
+
     // Check 15-minute lock expiration
     if (booking.reservedUntil && new Date() > new Date(booking.reservedUntil)) {
       booking.status = 'expired';
@@ -474,6 +482,11 @@ exports.createBookingRazorpayOrder = async (req, res) => {
     }
     if (!booking) {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
+    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
     }
 
     // Lock verification: 15 minutes payment timeout
@@ -540,6 +553,11 @@ exports.verifyRazorpayBookingPayment = async (req, res) => {
     }
     if (!booking) {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
+    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
     }
 
     booking.status = 'confirmed';

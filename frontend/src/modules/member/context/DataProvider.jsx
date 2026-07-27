@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../core/auth/useAuth';
 import { useHeadAuth } from '../../head/auth/useHeadAuth';
 import { axiosPrivate } from '../../../core/api/axiosPrivate';
@@ -675,11 +675,11 @@ export const DataProvider = ({ children }) => {
   const [cityPosts, setCityPosts] = useState([]);
   const [communityPosts, setCommunityPosts] = useState([]);
   const [stories, setStories] = useState([]);
+  const inFlightFeedRequests = useRef(new Map());
 
   useEffect(() => {
     if (auth.isAuthenticated && currentUserId) {
       fetchFeedPosts('city');
-      fetchFeedPosts('community');
       fetchStoriesList();
     } else {
       setPosts([]);
@@ -729,11 +729,7 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    if (auth.isAuthenticated || headAuth?.isAuthenticated) {
-      loadEvents();
-    }
-  }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
+  // Events are loaded lazily on-demand by EventsPage to eliminate un-needed background queries on app mount
   const [obituaries, setObituaries] = useState([]);
   const [obituariesLoading, setObituariesLoading] = useState(false);
   const [obituariesError, setObituariesError] = useState(null);
@@ -1154,34 +1150,46 @@ export const DataProvider = ({ children }) => {
   };
 
   const fetchFeedPosts = async (feedType, category = '', cursor = '') => {
-    try {
-      const res = await socialService.getPosts(feedType, category, 10, cursor);
-      const data = res.data.map(p => ({
-        ...p,
-        id: p._id,
-        author: {
-          id: p.userId?._id || p.userId?.id || 'Unknown',
-          name: p.userId?.name || 'Member',
-          avatar: p.userId?.avatar,
-          initials: p.userId?.name ? p.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'
-        },
-        images: p.media?.map(m => m.url) || [],
-        likes: p.likesCount || 0,
-        comments: p.commentsCount || 0,
-        views: p.viewsCount || 0
-      }));
-
-      if (feedType === 'city') {
-        setCityPosts(prev => cursor ? [...prev, ...data] : data);
-        setPosts(prev => cursor ? [...prev, ...data] : data);
-      } else {
-        setCommunityPosts(prev => cursor ? [...prev, ...data] : data);
-        setPosts(prev => cursor ? [...prev, ...data] : data);
-      }
-      return res;
-    } catch (error) {
-      console.error('Failed to fetch feed posts:', error);
+    const reqKey = `${feedType}_${category}_${cursor}`;
+    if (inFlightFeedRequests.current.has(reqKey)) {
+      return inFlightFeedRequests.current.get(reqKey);
     }
+
+    const promise = (async () => {
+      try {
+        const res = await socialService.getPosts(feedType, category, 10, cursor);
+        const data = res.data.map(p => ({
+          ...p,
+          id: p._id,
+          author: {
+            id: p.userId?._id || p.userId?.id || 'Unknown',
+            name: p.userId?.name || 'Member',
+            avatar: p.userId?.avatar,
+            initials: p.userId?.name ? p.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'
+          },
+          images: p.media?.map(m => m.url) || [],
+          likes: p.likesCount || 0,
+          comments: p.commentsCount || 0,
+          views: p.viewsCount || 0
+        }));
+
+        if (feedType === 'city') {
+          setCityPosts(prev => cursor ? [...prev, ...data] : data);
+          setPosts(prev => cursor ? [...prev, ...data] : data);
+        } else {
+          setCommunityPosts(prev => cursor ? [...prev, ...data] : data);
+          setPosts(prev => cursor ? [...prev, ...data] : data);
+        }
+        return res;
+      } catch (error) {
+        console.error('Failed to fetch feed posts:', error);
+      } finally {
+        inFlightFeedRequests.current.delete(reqKey);
+      }
+    })();
+
+    inFlightFeedRequests.current.set(reqKey, promise);
+    return promise;
   };
 
   const fetchStoriesList = async () => {
@@ -1262,31 +1270,71 @@ export const DataProvider = ({ children }) => {
       throw new Error(msg);
     }
   };
+
+  const updateStateIfPresent = (setter, postId, updateFn) => {
+    setter(prev => {
+      if (!prev.some(p => p._id === postId || p.id === postId)) return prev;
+      return prev.map(updateFn);
+    });
+  };
+
   const togglePostLike = async (postId) => {
+    // Optimistic Update
+    const applyLike = p => {
+      if (p._id === postId || p.id === postId) {
+        const nextLiked = !p.isLiked;
+        const nextCount = nextLiked ? (p.likes || 0) + 1 : Math.max(0, (p.likes || 0) - 1);
+        return { ...p, isLiked: nextLiked, likes: nextCount };
+      }
+      return p;
+    };
+
+    updateStateIfPresent(setPosts, postId, applyLike);
+    updateStateIfPresent(setCityPosts, postId, applyLike);
+    updateStateIfPresent(setCommunityPosts, postId, applyLike);
+
     try {
       const res = await socialService.toggleLike(postId);
-      const updateFn = p => (p._id === postId || p.id === postId)
-        ? { ...p, isLiked: res.liked, likes: res.liked ? (p.likes || 0) + 1 : Math.max(0, (p.likes || 0) - 1) }
+      const reconcileFn = p => (p._id === postId || p.id === postId)
+        ? { ...p, isLiked: res.liked }
         : p;
-      setPosts(prev => prev.map(updateFn));
-      setCityPosts(prev => prev.map(updateFn));
-      setCommunityPosts(prev => prev.map(updateFn));
+      updateStateIfPresent(setPosts, postId, reconcileFn);
+      updateStateIfPresent(setCityPosts, postId, reconcileFn);
+      updateStateIfPresent(setCommunityPosts, postId, reconcileFn);
     } catch (error) {
-      console.error('Failed to toggle post like:', error);
+      console.error('Failed to toggle post like, rolling back:', error);
+      const rollbackFn = p => {
+        if (p._id === postId || p.id === postId) {
+          const prevLiked = !p.isLiked;
+          const prevCount = prevLiked ? (p.likes || 0) + 1 : Math.max(0, (p.likes || 0) - 1);
+          return { ...p, isLiked: prevLiked, likes: prevCount };
+        }
+        return p;
+      };
+      updateStateIfPresent(setPosts, postId, rollbackFn);
+      updateStateIfPresent(setCityPosts, postId, rollbackFn);
+      updateStateIfPresent(setCommunityPosts, postId, rollbackFn);
     }
   };
 
   const togglePostSave = async (postId) => {
+    const applySave = p => (p._id === postId || p.id === postId) ? { ...p, isSaved: !p.isSaved } : p;
+    updateStateIfPresent(setPosts, postId, applySave);
+    updateStateIfPresent(setCityPosts, postId, applySave);
+    updateStateIfPresent(setCommunityPosts, postId, applySave);
+
     try {
       const res = await socialService.toggleSave(postId);
-      const updateFn = p => (p._id === postId || p.id === postId)
-        ? { ...p, isSaved: res.saved }
-        : p;
-      setPosts(prev => prev.map(updateFn));
-      setCityPosts(prev => prev.map(updateFn));
-      setCommunityPosts(prev => prev.map(updateFn));
+      const reconcileFn = p => (p._id === postId || p.id === postId) ? { ...p, isSaved: res.saved } : p;
+      updateStateIfPresent(setPosts, postId, reconcileFn);
+      updateStateIfPresent(setCityPosts, postId, reconcileFn);
+      updateStateIfPresent(setCommunityPosts, postId, reconcileFn);
     } catch (error) {
-      console.error('Failed to toggle post save:', error);
+      console.error('Failed to toggle post save, rolling back:', error);
+      const rollbackFn = p => (p._id === postId || p.id === postId) ? { ...p, isSaved: !p.isSaved } : p;
+      updateStateIfPresent(setPosts, postId, rollbackFn);
+      updateStateIfPresent(setCityPosts, postId, rollbackFn);
+      updateStateIfPresent(setCommunityPosts, postId, rollbackFn);
     }
   };
 
@@ -1318,22 +1366,20 @@ export const DataProvider = ({ children }) => {
         };
       });
 
-      // Separate top-level comments and replies
       const topLevel = allFormatted.filter(c => !c.parentCommentId);
       const replies = allFormatted.filter(c => c.parentCommentId);
 
-      // Attach replies to their parent comments
       topLevel.forEach(parent => {
         parent.replies = replies.filter(r => String(r.parentCommentId) === String(parent.id));
       });
 
       const updateFn = p => (p._id === postId || p.id === postId)
-        ? { ...p, commentsList: topLevel, comments: topLevel.length }
+        ? { ...p, commentsList: topLevel, comments: allFormatted.length, commentsCount: allFormatted.length }
         : p;
 
-      setPosts(prev => prev.map(updateFn));
-      setCityPosts(prev => prev.map(updateFn));
-      setCommunityPosts(prev => prev.map(updateFn));
+      updateStateIfPresent(setPosts, postId, updateFn);
+      updateStateIfPresent(setCityPosts, postId, updateFn);
+      updateStateIfPresent(setCommunityPosts, postId, updateFn);
       return topLevel;
     } catch (error) {
       console.error('Failed to fetch post comments:', error);
@@ -1341,12 +1387,48 @@ export const DataProvider = ({ children }) => {
   };
 
   const addPostComment = async (postId, commentText) => {
+    if (!commentText || !commentText.trim()) return;
+    const tempId = `temp_c_${Date.now()}`;
+    const optimisticComment = {
+      id: tempId,
+      _id: tempId,
+      text: commentText.trim(),
+      createdAt: new Date().toISOString(),
+      time: 'Just now',
+      author: {
+        id: currentUser?.id || currentUser?._id || 'me',
+        name: currentUser?.name || 'Member',
+        avatar: currentUser?.avatar,
+        initials: currentUser?.initials || (currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'ME'),
+        isVerified: true
+      },
+      likes: 0,
+      isLiked: false,
+      replies: []
+    };
+
+    // Optimistic Update
+    const applyComment = p => {
+      if (p._id === postId || p.id === postId) {
+        return {
+          ...p,
+          comments: (p.comments || 0) + 1,
+          commentsCount: (p.commentsCount || p.comments || 0) + 1,
+          commentsList: [...(p.commentsList || []), optimisticComment]
+        };
+      }
+      return p;
+    };
+    updateStateIfPresent(setPosts, postId, applyComment);
+    updateStateIfPresent(setCityPosts, postId, applyComment);
+    updateStateIfPresent(setCommunityPosts, postId, applyComment);
+
     try {
       const res = await socialService.addComment(postId, { text: commentText });
       const commentDoc = res.data;
-      const formattedComment = {
+      const realComment = {
         ...commentDoc,
-        id: commentDoc._id || commentDoc.id || `c_${Date.now()}`,
+        id: commentDoc._id || commentDoc.id,
         author: {
           id: commentDoc.userId?._id || commentDoc.userId?.id || currentUser?.id,
           name: commentDoc.userId?.name || currentUser?.name || 'Member',
@@ -1355,25 +1437,38 @@ export const DataProvider = ({ children }) => {
             ? commentDoc.userId.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
             : (currentUser?.initials || 'M')
         },
-        text: commentDoc.text || commentText,
+        text: commentDoc.text || commentText.trim(),
         time: 'Just now',
         likes: 0,
         isLiked: false,
         replies: []
       };
 
-      const updateFn = p => (p._id === postId || p.id === postId)
-        ? {
-          ...p,
-          comments: (p.comments || 0) + 1,
-          commentsList: [...(p.commentsList || []), formattedComment]
+      const reconcileFn = p => {
+        if (p._id === postId || p.id === postId) {
+          const list = (p.commentsList || []).map(c => (c.id === tempId || c._id === tempId) ? realComment : c);
+          return { ...p, commentsList: list };
         }
-        : p;
-      setPosts(prev => prev.map(updateFn));
-      setCityPosts(prev => prev.map(updateFn));
-      setCommunityPosts(prev => prev.map(updateFn));
+        return p;
+      };
+      updateStateIfPresent(setPosts, postId, reconcileFn);
+      updateStateIfPresent(setCityPosts, postId, reconcileFn);
+      updateStateIfPresent(setCommunityPosts, postId, reconcileFn);
+      return realComment;
     } catch (error) {
-      console.error('Failed to add comment:', error);
+      console.error('Failed to add comment, rolling back:', error);
+      const rollbackFn = p => {
+        if (p._id === postId || p.id === postId) {
+          const list = (p.commentsList || []).filter(c => c.id !== tempId && c._id !== tempId);
+          const nextCount = Math.max(0, (p.comments || 1) - 1);
+          return { ...p, comments: nextCount, commentsCount: nextCount, commentsList: list };
+        }
+        return p;
+      };
+      updateStateIfPresent(setPosts, postId, rollbackFn);
+      updateStateIfPresent(setCityPosts, postId, rollbackFn);
+      updateStateIfPresent(setCommunityPosts, postId, rollbackFn);
+      throw error;
     }
   };
 
@@ -1448,13 +1543,15 @@ export const DataProvider = ({ children }) => {
 
   const recordPostView = async (postId) => {
     try {
-      await socialService.recordView(postId);
-      const updateFn = p => (p._id === postId || p.id === postId)
-        ? { ...p, views: (p.views || 0) + 1 }
-        : p;
-      setPosts(prev => prev.map(updateFn));
-      setCityPosts(prev => prev.map(updateFn));
-      setCommunityPosts(prev => prev.map(updateFn));
+      const res = await socialService.recordView(postId);
+      if (res && res.viewsCount !== undefined) {
+        const updateFn = p => (p._id === postId || p.id === postId)
+          ? { ...p, views: res.viewsCount, viewsCount: res.viewsCount }
+          : p;
+        updateStateIfPresent(setPosts, postId, updateFn);
+        updateStateIfPresent(setCityPosts, postId, updateFn);
+        updateStateIfPresent(setCommunityPosts, postId, updateFn);
+      }
     } catch (error) {
       console.error('Failed to record post view:', error);
     }
@@ -1804,21 +1901,21 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const incrementMalaArpan = async (obId, delta) => {
+  const incrementMalaArpan = async (obId) => {
     setObituaries(prev => prev.map(ob => {
       if (ob.id === obId) {
         return {
           ...ob,
-          malaArpanCount: Math.max(0, (ob.malaArpanCount || 0) + delta),
-          userHasMalaArpan: true
+          userHasMalaArpan: !ob.userHasMalaArpan,
+          malaArpanCount: ob.userHasMalaArpan ? Math.max(0, (ob.malaArpanCount || 0) - 1) : (ob.malaArpanCount || 0) + 1
         };
       }
       return ob;
     }));
     try {
-      await obituaryService.incrementMalaArpan(obId, delta);
+      await obituaryService.incrementMalaArpan(obId, 1);
     } catch (error) {
-      console.error('Error incrementing mala arpan:', error);
+      console.error('Error toggling mala arpan:', error);
       loadObituaries();
     }
   };
@@ -1853,10 +1950,11 @@ export const DataProvider = ({ children }) => {
 
   const incrementObituaryViews = async (obId) => {
     try {
-      await obituaryService.incrementViews(obId);
+      const res = await obituaryService.incrementViews(obId);
+      const serverViews = res?.views;
       setObituaries(prev => prev.map(ob => {
         if (ob.id === obId) {
-          return { ...ob, views: (ob.views || 0) + 1 };
+          return { ...ob, views: typeof serverViews === 'number' ? serverViews : ob.views };
         }
         return ob;
       }));
@@ -2854,8 +2952,52 @@ export const DataProvider = ({ children }) => {
       }
     },
 
-    // Event RSVP Registrations
+    // Event RSVP Registrations with Optimistic UI updates
     eventRegistrations,
+    toggleEventRSVP: async (eventId) => {
+      // 1. Optimistic UI update
+      setEvents(prev => prev.map(ev => {
+        if (ev.id === eventId || ev._id === eventId) {
+          const nextState = !ev.isRegistered;
+          const delta = nextState ? 1 : -1;
+          return {
+            ...ev,
+            isRegistered: nextState,
+            attendees: Math.max(0, (ev.attendees || 0) + delta),
+            goingCount: Math.max(0, (ev.goingCount || 0) + delta)
+          };
+        }
+        return ev;
+      }));
+
+      try {
+        const res = await eventService.toggleAttend(eventId);
+        if (res && res.data) {
+          setEvents(prev => prev.map(ev => {
+            if (ev.id === eventId || ev._id === eventId) {
+              return { ...ev, isRegistered: res.data.isRegistered, attendees: res.data.attendeesCount, goingCount: res.data.attendeesCount };
+            }
+            return ev;
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to toggle event RSVP, rolling back:', error);
+        // Rollback on error
+        setEvents(prev => prev.map(ev => {
+          if (ev.id === eventId || ev._id === eventId) {
+            const prevState = !ev.isRegistered;
+            const delta = prevState ? 1 : -1;
+            return {
+              ...ev,
+              isRegistered: prevState,
+              attendees: Math.max(0, (ev.attendees || 0) + delta),
+              goingCount: Math.max(0, (ev.goingCount || 0) + delta)
+            };
+          }
+          return ev;
+        }));
+      }
+    },
     registerForEvent: async (eventId, registrationData) => {
       try {
         const res = await eventService.toggleAttend(eventId);

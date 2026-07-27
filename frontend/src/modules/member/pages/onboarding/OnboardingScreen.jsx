@@ -25,6 +25,38 @@ import {
   ALLOWED_MARITAL_STATUSES,
   buildCleanPayload,
 } from '../../../../core/utils/validators';
+
+// Helper to strip heavy base64 Data URIs before writing to localStorage to prevent QuotaExceededError
+const cleanUserForStorage = (userObj) => {
+  if (!userObj || typeof userObj !== 'object') return userObj;
+  const safeObj = { ...userObj };
+  if (typeof safeObj.avatar === 'string' && safeObj.avatar.startsWith('data:')) {
+    delete safeObj.avatar;
+  }
+  if (Array.isArray(safeObj.photos)) {
+    safeObj.photos = safeObj.photos.filter(p => typeof p === 'string' && !p.startsWith('data:'));
+  }
+  if (Array.isArray(safeObj.familyMembers)) {
+    safeObj.familyMembers = safeObj.familyMembers.map(m => {
+      if (m && typeof m.avatar === 'string' && m.avatar.startsWith('data:')) {
+        const { avatar, ...rest } = m;
+        return rest;
+      }
+      return m;
+    });
+  }
+  return safeObj;
+};
+
+const safeSetLocalStorage = (key, val) => {
+  try {
+    const cleaned = (key === 'merisamaj_user' || key === 'merisamaj_registered_user') ? cleanUserForStorage(val) : val;
+    localStorage.setItem(key, typeof cleaned === 'string' ? cleaned : JSON.stringify(cleaned));
+  } catch (err) {
+    console.warn(`LocalStorage quota exceeded for ${key}:`, err);
+  }
+};
+
 // ─── MOCK DATA ───────────────────────────────────────────────────────────────
 const communityData = {
   'Agrawal Samaj': {
@@ -585,8 +617,8 @@ const OnboardingScreen = () => {
 
     // 1. Instantly persist to local storage & state so UX never breaks or shows error
     try {
-      localStorage.setItem('merisamaj_registered_user', JSON.stringify(completeUserObj));
-      localStorage.setItem('merisamaj_user', JSON.stringify(completeUserObj));
+      safeSetLocalStorage('merisamaj_registered_user', completeUserObj);
+      safeSetLocalStorage('merisamaj_user', completeUserObj);
       if (typeof loginUser === 'function') loginUser(completeUserObj);
       if (typeof setAuth === 'function') setAuth(prev => ({ ...prev, user: completeUserObj }));
     } catch (e) {
@@ -619,7 +651,7 @@ const OnboardingScreen = () => {
       const response = await authService.updateProfile(formData);
       if (response && typeof response === 'object') {
         const mergedUser = { ...completeUserObj, ...response };
-        localStorage.setItem('merisamaj_user', JSON.stringify(mergedUser));
+        safeSetLocalStorage('merisamaj_user', mergedUser);
         if (typeof loginUser === 'function') loginUser(mergedUser);
         if (typeof setAuth === 'function') setAuth(prev => ({ ...prev, user: mergedUser }));
       }
@@ -634,18 +666,28 @@ const OnboardingScreen = () => {
   };
 
   const handleGoToHome = () => {
-    localStorage.removeItem('merisamaj_just_registered');
-    localStorage.removeItem('merisamaj_onboarding_resume_step');
-    localStorage.removeItem('merisamaj_onboarding_from_home');
-    let savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null') ||
-                      JSON.parse(localStorage.getItem('merisamaj_user') || 'null') ||
-                      auth.user || {};
+    try {
+      localStorage.removeItem('merisamaj_just_registered');
+      localStorage.removeItem('merisamaj_onboarding_resume_step');
+      localStorage.removeItem('merisamaj_onboarding_from_home');
+    } catch (e) {}
+
+    let savedUser = {};
+    try {
+      savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null') ||
+                        JSON.parse(localStorage.getItem('merisamaj_user') || 'null') ||
+                        auth.user || {};
+    } catch (e) {
+      savedUser = auth.user || {};
+    }
+
     if (!savedUser.community && !savedUser.communityId) {
       savedUser = { ...savedUser, community: 'Jain Samaj', communityId: 'Jain Samaj' };
     }
-    localStorage.setItem('merisamaj_user', JSON.stringify(savedUser));
-    loginUser(savedUser);
-    setAuth(prev => ({ ...prev, user: savedUser, isAuthenticated: true }));
+
+    safeSetLocalStorage('merisamaj_user', savedUser);
+    if (typeof loginUser === 'function') loginUser(savedUser);
+    if (typeof setAuth === 'function') setAuth(prev => ({ ...prev, user: savedUser, isAuthenticated: true }));
     navigate('/member/home');
   };
 
@@ -1436,8 +1478,17 @@ const OnboardingScreen = () => {
             </button>
             <button 
               onClick={() => {
-                const savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || '{}');
-                loginUser(savedUser);
+                let savedUser = {};
+                try {
+                  savedUser = JSON.parse(localStorage.getItem('merisamaj_registered_user') || 'null') ||
+                                    JSON.parse(localStorage.getItem('merisamaj_user') || 'null') ||
+                                    auth.user || {};
+                } catch (e) {
+                  savedUser = auth.user || {};
+                }
+                safeSetLocalStorage('merisamaj_user', savedUser);
+                if (typeof loginUser === 'function') loginUser(savedUser);
+                if (typeof setAuth === 'function') setAuth(prev => ({ ...prev, user: savedUser, isAuthenticated: true }));
                 navigate('/member/matrimonial');
               }}
               className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-655 text-sm font-bold rounded-2xl flex items-center justify-center gap-1.5"

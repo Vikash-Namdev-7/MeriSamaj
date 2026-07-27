@@ -4,10 +4,12 @@ const { handleDonationPayment } = require('../utils/paymentHandler');
 const { notifyDonationReceived, notifyDonationReceipt } = require('../services/notificationService');
 const { applyScopeFilter } = require('../utils/queryScopeHelper');
 
+const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /member/donations — Server-side filtered to status: "Active", isDeleted: false, and scoped by Community/City
 exports.getActiveDonations = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, page = 1, limit = 10 } = req.query;
     let filter = {
       status: 'Active',
       isDeleted: false
@@ -18,17 +20,41 @@ exports.getActiveDonations = async (req, res) => {
     }
 
     if (search && search.trim()) {
-      filter.title = new RegExp(search.trim(), 'i');
+      const cleanSearch = search.trim();
+      const escaped = escapeRegex(cleanSearch);
+      filter.$or = [
+        { title: new RegExp(`^${escaped}`, 'i') },
+        { title: new RegExp(escaped, 'i') }
+      ];
     }
 
     // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
     filter = applyScopeFilter(req, filter);
 
-    const donations = await Donation.find(filter).sort({ createdAt: -1 });
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Use .select() to exclude heavy nested arrays (recentDonations) and description from grid listing payload
+    // Use .lean() to bypass Mongoose hydration overhead
+    const donations = await Donation.find(filter)
+      .select('-recentDonations -description')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    const totalCount = await Donation.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      data: donations
+      data: donations,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        hasMore: skip + donations.length < totalCount
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -39,7 +65,7 @@ exports.getActiveDonations = async (req, res) => {
 exports.getDonationById = async (req, res) => {
   try {
     const filter = applyScopeFilter(req, { _id: req.params.id, isDeleted: false });
-    const donation = await Donation.findOne(filter);
+    const donation = await Donation.findOne(filter).lean();
 
     if (!donation) {
       return res.status(404).json({ success: false, message: 'Donation campaign not found or access denied' });

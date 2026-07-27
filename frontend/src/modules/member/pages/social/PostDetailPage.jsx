@@ -91,6 +91,8 @@ const RenderMedia = ({ url, isSingle = true }) => {
       <img 
         src={cleanUrl} 
         alt="Post Attachment" 
+        loading="lazy"
+        decoding="async"
         className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl animate-fade-in block" : "w-full h-full object-cover"} 
       />
     </div>

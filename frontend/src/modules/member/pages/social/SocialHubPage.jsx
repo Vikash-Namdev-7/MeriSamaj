@@ -109,12 +109,12 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   const [hasMore, setHasMore] = useState({ 'city-feed': true, 'community-feed': true });
 
   useEffect(() => {
-    if (activeTab === 0) {
+    if (activeTab === 0 && (!cityPosts || cityPosts.length === 0)) {
       fetchFeedPosts('city');
-    } else if (activeTab === 1) {
+    } else if (activeTab === 1 && (!communityPosts || communityPosts.length === 0)) {
       fetchFeedPosts('community');
     }
-  }, [activeTab]);
+  }, [activeTab, cityPosts, communityPosts]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const getHeaderTitle = () => {

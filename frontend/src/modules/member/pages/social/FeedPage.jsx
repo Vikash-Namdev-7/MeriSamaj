@@ -202,6 +202,8 @@ const RenderMedia = ({ url, onClick, isSingle = true }) => {
       <img 
         src={cleanUrl} 
         alt="Post Attachment" 
+        loading="lazy"
+        decoding="async"
         className={isSingle ? "w-full h-auto max-h-[850px] object-cover rounded-2xl block cursor-pointer hover:scale-[1.005] transition-transform duration-300" : "w-full h-full object-cover cursor-pointer"} 
         onClick={onClick} 
       />

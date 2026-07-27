@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Filter, MapPin, Clock, Users as UsersIcon, CalendarDays, CheckCircle, ChevronRight, Star, Sparkles, X } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
@@ -26,6 +26,8 @@ const FeaturedEventCard = ({ event, onClick }) => {
         <img 
           src={event.image} 
           alt={event.title} 
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-300 hover:scale-105"
         />
       ) : (
@@ -127,11 +129,11 @@ const EventCard = ({ event, index, onNavigate }) => {
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1">
-              <UsersIcon size={11} className="text-gray-400" /> {event.attendees} Attending
+              <UsersIcon size={11} className="text-gray-400" /> {event.attendees || event.goingCount || 0} Attending
             </span>
             <span className="text-[11px] text-gray-400">•</span>
             <span className="text-[11px] text-gray-500 font-medium">
-              {event.interested}+ Interested
+              {event.interested || 0}+ Interested
             </span>
           </div>
 
@@ -277,6 +279,10 @@ const EventsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ category: 'all', registration: 'all', sort: 'date' });
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
   const categories = [...new Set(events.map(e => e.category))];
 
