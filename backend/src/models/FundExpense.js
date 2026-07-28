@@ -24,4 +24,8 @@ const fundExpenseSchema = new mongoose.Schema({
   timestamps: true
 });
 
+fundExpenseSchema.index({ fundId: 1, date: -1 });
+fundExpenseSchema.index({ communityId: 1, fundId: 1 });
+
 module.exports = mongoose.model('FundExpense', fundExpenseSchema);
+

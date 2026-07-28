@@ -14,8 +14,8 @@ const createObituary = async (obituaryData) => {
 };
 
 // Get all obituaries for user's community
-const getObituaries = async () => {
-  const response = await axiosPrivate.get(API_URL);
+const getObituaries = async (params = {}) => {
+  const response = await axiosPrivate.get(API_URL, { params });
   return response.data;
 };
 

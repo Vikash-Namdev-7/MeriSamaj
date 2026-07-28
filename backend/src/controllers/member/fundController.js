@@ -6,6 +6,7 @@ const FundExpense  = require('../../models/FundExpense');
 const User         = require('../../models/User');
 const paymentService = require('../../services/paymentService');
 const { notifyContributionRecorded } = require('../../services/notificationService');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // Helper: Format Date as DD MMM YYYY (e.g. "12 Jun 2024")
 const formatDisplayDate = (date) => {
@@ -19,47 +20,63 @@ const formatDisplayDate = (date) => {
 // Fetches funds, contributions, expenses, and community users
 exports.getFundsData = async (req, res) => {
   try {
-    const communityId = req.communityId;
-    if (!communityId) {
-      return res.status(400).json({ status: 'error', message: 'Community context missing.' });
-    }
+    const scopeFilter = applyScopeFilter(req, {}, { includeGlobalScope: true });
 
-    // 1. Fetch all funds (Global or Community-scoped)
-    const fundsList = await Fund.find({
-      $or: [
-        { scope: 'GLOBAL' },
-        { scope: 'COMMUNITY', communityId }
-      ]
-    }).sort({ createdAt: -1 });
+    // 1. Fetch all funds (Global or Community-scoped for members, all for admin)
+    const fundsList = await Fund.find(scopeFilter).sort({ createdAt: -1 }).lean();
 
-    // 2. Self-healing check: Ensure the current user has a contribution ledger for each fund
+    const communityId = req.communityId || req.user?.communityId;
     const myId = req.user._id;
-    for (const f of fundsList) {
-      const exists = await Contribution.findOne({ fundId: f._id, memberId: myId });
-      if (!exists) {
-        await Contribution.create({
-          fundId: f._id,
-          memberId: myId,
-          communityId,
-          assignedAmount: f.contributionPerMember,
-          paidAmount: 0,
-          transactions: []
-        });
+    const fundIds = fundsList.map(f => f._id);
+
+    // 2. Bulk self-healing check: Ensure the current user has a contribution ledger for each fund
+    if (communityId && myId && fundIds.length > 0) {
+      const existingMyContribs = await Contribution.find({
+        fundId: { $in: fundIds },
+        memberId: myId
+      }).select('fundId').lean();
+
+      const existingFundIdSet = new Set(existingMyContribs.map(c => c.fundId.toString()));
+      const missingContribs = [];
+
+      for (let i = 0; i < fundsList.length; i++) {
+        const f = fundsList[i];
+        if (!existingFundIdSet.has(f._id.toString())) {
+          missingContribs.push({
+            fundId: f._id,
+            memberId: myId,
+            communityId,
+            assignedAmount: f.contributionPerMember,
+            paidAmount: 0,
+            transactions: []
+          });
+        }
+      }
+
+      if (missingContribs.length > 0) {
+        await Contribution.insertMany(missingContribs);
       }
     }
 
     // 3. Fetch all community members
-    const membersList = await User.find({ communityId, accountStatus: { $ne: 'deleted' } })
-      .select('name phone avatar');
+    const memberQuery = communityId
+      ? { communityId, accountStatus: { $ne: 'deleted' } }
+      : { accountStatus: { $ne: 'deleted' } };
 
-    const memberIds = membersList.map(m => m._id);
+    const membersList = await User.find(memberQuery)
+      .select('name phone avatar')
+      .lean();
 
     // 4. Fetch all contributions and expenses for these funds
-    const fundIds = fundsList.map(f => f._id);
-    const contributionsList = await Contribution.find({ fundId: { $in: fundIds } });
-    const expensesList = await FundExpense.find({ fundId: { $in: fundIds } }).sort({ date: -1 });
+    const contributionsList = fundIds.length > 0
+      ? await Contribution.find({ fundId: { $in: fundIds } }).lean()
+      : [];
+    const expensesList = fundIds.length > 0
+      ? await FundExpense.find({ fundId: { $in: fundIds } }).sort({ date: -1 }).lean()
+      : [];
 
     // 5. Format output
+    const memberIdsStr = membersList.map(m => m._id.toString());
     const formattedFunds = fundsList.map(f => ({
       id: f._id.toString(),
       name: f.name,
@@ -67,47 +84,57 @@ exports.getFundsData = async (req, res) => {
       description: f.description || '',
       targetAmount: f.targetAmount,
       contributionPerMember: f.contributionPerMember,
-      dueDate: f.dueDate ? f.dueDate.toISOString().split('T')[0] : '',
-      startDate: f.startDate ? f.startDate.toISOString().split('T')[0] : '',
-      endDate: f.endDate ? f.endDate.toISOString().split('T')[0] : '',
+      dueDate: f.dueDate ? new Date(f.dueDate).toISOString().split('T')[0] : '',
+      startDate: f.startDate ? new Date(f.startDate).toISOString().split('T')[0] : '',
+      endDate: f.endDate ? new Date(f.endDate).toISOString().split('T')[0] : '',
       status: f.status,
-      assignedMembers: membersList.map(m => m._id.toString())
+      assignedMembers: memberIdsStr
     }));
 
+    // Build HashMap for O(1) contribution matrix lookups
+    const contribMap = new Map();
+    for (let i = 0; i < contributionsList.length; i++) {
+      const c = contributionsList[i];
+      contribMap.set(`${c.fundId.toString()}_${c.memberId.toString()}`, c);
+    }
+
     const formattedContributions = {};
-    fundIds.forEach(fId => {
-      const key = fId.toString();
-      const fundContribs = contributionsList.filter(c => c.fundId.toString() === key);
-      
-      // Ensure there is an entry for every community member (self-healing/completeness)
-      formattedContributions[key] = membersList.map(m => {
-        const mId = m._id.toString();
-        const found = fundContribs.find(c => c.memberId.toString() === mId);
-        
+    for (let i = 0; i < fundIds.length; i++) {
+      const fIdStr = fundIds[i].toString();
+      formattedContributions[fIdStr] = membersList.map(m => {
+        const mIdStr = m._id.toString();
+        const found = contribMap.get(`${fIdStr}_${mIdStr}`);
+
         return {
-          memberId: mId,
+          memberId: mIdStr,
           assignedAmount: found ? found.assignedAmount : 0,
           paidAmount: found ? found.paidAmount : 0,
           lastPaymentDate: found && found.lastPaymentDate ? formatDisplayDate(found.lastPaymentDate) : null
         };
       });
-    });
+    }
 
+    // Group expenses by fundId
     const formattedExpenses = {};
-    fundIds.forEach(fId => {
-      const key = fId.toString();
-      const fundExps = expensesList.filter(e => e.fundId.toString() === key);
-      
-      formattedExpenses[key] = fundExps.map(e => ({
-        id: e._id.toString(),
-        title: e.title,
-        category: e.category || 'General',
-        amount: e.amount,
-        date: e.date ? e.date.toISOString().split('T')[0] : '',
-        addedBy: e.addedBy || 'Admin',
-        receiptAttached: e.receiptAttached || false
-      }));
-    });
+    for (let i = 0; i < fundIds.length; i++) {
+      formattedExpenses[fundIds[i].toString()] = [];
+    }
+
+    for (let i = 0; i < expensesList.length; i++) {
+      const e = expensesList[i];
+      const key = e.fundId.toString();
+      if (formattedExpenses[key]) {
+        formattedExpenses[key].push({
+          id: e._id.toString(),
+          title: e.title,
+          category: e.category || 'General',
+          amount: e.amount,
+          date: e.date ? new Date(e.date).toISOString().split('T')[0] : '',
+          addedBy: e.addedBy || 'Admin',
+          receiptAttached: e.receiptAttached || false
+        });
+      }
+    }
 
     const formattedUsers = membersList.map(m => ({
       id: m._id.toString(),
@@ -131,6 +158,7 @@ exports.getFundsData = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 
 // 2. Submit a payment/contribution
 // ⚠️  DEPRECATED: This route now only handles legacy / manual payments.
@@ -224,8 +252,9 @@ exports.createFund = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized.' });
     }
 
+    const payload = inheritTenantPayload(req, req.body);
     const { name, purpose, description, targetAmount, contributionPerMember, startDate, endDate, dueDate, scope } = req.body;
-    const communityId = req.communityId || req.user.communityId;
+    const communityId = payload.communityId;
 
     if (!name || !targetAmount || !contributionPerMember) {
       return res.status(400).json({ success: false, message: 'Required fields missing.' });
@@ -320,7 +349,8 @@ exports.getHistory = async (req, res) => {
   try {
     const myId = req.user._id;
     const contributions = await Contribution.find({ memberId: myId })
-      .populate('fundId', 'name');
+      .populate('fundId', 'name')
+      .lean();
 
     const history = [];
     contributions.forEach(c => {

@@ -44,6 +44,9 @@ const dharmashalaBookingSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   bookedBy: { type: String, required: true },
   phone: { type: String, required: true },
+  guestCount: { type: Number, default: 1 },
+  purpose: { type: String },
+  memberNotes: { type: String },
   specialRequests: { type: String },
   paymentStatus: { type: String, enum: ['Pending', 'Paid', 'Failed', 'Refunded'], default: 'Pending' },
   
@@ -56,8 +59,15 @@ const dharmashalaBookingSchema = new mongoose.Schema({
   razorpaySignature: { type: String },
   paidAt: { type: Date },
 
+  // Pricing Breakdown Snapshot
+  baseAmount: { type: Number },
+  additionalCharges: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  pricingNote: { type: String },
+
   // Approval & Rejection Audit
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedByRole: { type: String, enum: ['ADMIN', 'HEAD', 'SUPER_ADMIN', 'MASTER_ADMIN', 'MASTER', 'HEAD_ADMIN'] },
   approvedAt: { type: Date },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectedAt: { type: Date },
@@ -80,7 +90,14 @@ const dharmashalaBookingSchema = new mongoose.Schema({
 
   remarks: { type: String },
   statusHistory: [{
+    action: { type: String },
+    previousStatus: { type: String },
+    newStatus: { type: String },
     status: { type: String },
+    performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    performedByRole: { type: String },
+    amount: { type: Number },
+    notes: { type: String },
     updatedAt: { type: Date, default: Date.now },
     updatedBy: { type: String }
   }]

@@ -147,10 +147,6 @@ export const MatrimonialProvider = () => {
     if (auth.isAuthenticated && userId) {
       fetchMyProfile();
       fetchDashboard();
-      fetchInterests();
-      fetchVisitors();
-      fetchShortlistIds();
-      fetchBlockedIds();
     } else {
       setMyProfile(null);
       setDashboard(null);
@@ -161,7 +157,7 @@ export const MatrimonialProvider = () => {
       setShortlistedIds([]);
       setBlockedIds([]);
     }
-  }, [auth.isAuthenticated, userId, fetchMyProfile, fetchDashboard, fetchInterests, fetchVisitors, fetchShortlistIds, fetchBlockedIds]);
+  }, [auth.isAuthenticated, userId, fetchMyProfile, fetchDashboard]);
 
   // ─── Interest Actions (real API) ──────────────────────────────────────────
   const sendInterest = useCallback(async (receiverProfileId, message = '') => {

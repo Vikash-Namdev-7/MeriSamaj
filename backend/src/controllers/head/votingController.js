@@ -1,12 +1,13 @@
 const Voting = require('../../models/Voting');
 const Vote = require('../../models/Vote');
 const { notifyElectionCreated } = require('../../services/notificationService');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // Helper to resolve the community ID for write/bind operations
 const resolveCommunityId = async (req) => {
-  let communityId = req.communityId || req.user?.communityId;
+  let communityId = req.communityId || (req.user?.communityId?._id || req.user?.communityId);
   if (communityId) {
-    return communityId._id || communityId;
+    return communityId;
   }
   
   if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
@@ -19,60 +20,41 @@ const resolveCommunityId = async (req) => {
     if (comm) return comm._id;
   }
   
-  const mongoose = require('mongoose');
-  return new mongoose.Types.ObjectId('000000000000000000000000');
+  return null;
 };
 
 /**
- * Update voting statuses dynamically based on dates (Helper)
+ * Derive election status dynamically based on start/end dates
  */
-const updateVotingStatuses = async (communityId) => {
+const deriveVotingStatus = (voting) => {
+  if (!voting) return 'Upcoming';
+  if (voting.status === 'Cancelled') return 'Cancelled';
   const now = new Date();
-  
-  // Update to Active if start date reached and still Upcoming
-  await Voting.updateMany(
-    { communityId: typeof communityId === 'object' && communityId.$in ? communityId : communityId, status: 'Upcoming', startDate: { $lte: now } },
-    { $set: { status: 'Active' } }
-  );
-
-  // Update to Completed if end date passed and still Active
-  await Voting.updateMany(
-    { communityId: typeof communityId === 'object' && communityId.$in ? communityId : communityId, status: 'Active', endDate: { $lt: now } },
-    { $set: { status: 'Completed' } }
-  );
+  const start = new Date(voting.startDate);
+  const end = new Date(voting.endDate);
+  if (now < start) return 'Upcoming';
+  if (now > end) return 'Completed';
+  return 'Active';
 };
 
 /**
- * Get all elections for the Head's community
+ * Get all elections for the Head's community (or global for Admin)
  */
 exports.getElections = async (req, res) => {
   try {
-    let communityId = req.communityId;
+    const query = applyScopeFilter(req, {});
 
+    // Multi-community Head support: if head user has assignedCommunityIds, support filtering across assigned communities
     if (req.user?.role === 'head' && req.user.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
-      communityId = { $in: req.user.assignedCommunityIds };
-    } else {
-      // Fallback for users not yet fully migrated to ObjectId references
-      if (!communityId && req.user.community) {
-        const Community = require('../../models/Community');
-        const comm = await Community.findOne({ name: req.user.community });
-        if (comm) communityId = comm._id;
-      }
-
-      // Dev Fallback: If still no ID, use a dummy one so the UI still functions for testing
-      if (!communityId) {
-        const mongoose = require('mongoose');
-        communityId = new mongoose.Types.ObjectId('000000000000000000000000');
-      }
+      query.communityId = { $in: req.user.assignedCommunityIds };
     }
 
-    await updateVotingStatuses(communityId);
-
-    const votings = await Voting.find({ communityId: typeof communityId === 'object' && communityId.$in ? communityId : communityId }).sort({ createdAt: -1 }).lean();
+    const votings = await Voting.find(query).sort({ createdAt: -1 }).lean();
 
     // Get vote counts for stats
+    const matchStage = query.communityId ? { communityId: query.communityId } : {};
     const voteCounts = await Vote.aggregate([
-      { $match: { communityId: typeof communityId === 'object' && communityId.$in ? communityId : communityId } },
+      ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
       { $group: {
           _id: { voting: "$voting", candidateId: "$candidateId" },
           count: { $sum: 1 }
@@ -98,9 +80,12 @@ exports.getElections = async (req, res) => {
         votes: counts[c._id.toString()] || 0
       }));
 
+      const effectiveStatus = deriveVotingStatus(v);
+
       return {
         ...v,
         id: vId,
+        status: effectiveStatus,
         totalVotes: counts.total,
         candidates: candidatesWithVotes,
         // formatted dates for UI
@@ -124,9 +109,14 @@ exports.getElections = async (req, res) => {
  */
 exports.createElection = async (req, res) => {
   try {
-    const { title, description, type, startDate, endDate, candidates } = req.body;
-    const communityId = await resolveCommunityId(req);
+    const payload = inheritTenantPayload(req, req.body);
+    const { title, description, type, startDate, endDate, candidates } = payload;
+    const communityId = payload.communityId || await resolveCommunityId(req);
     const createdBy = req.user._id;
+
+    if (!communityId) {
+      return res.status(400).json({ status: 'error', message: 'No valid community context found for creating election' });
+    }
 
     if (!title || !description || !startDate || !endDate || !candidates || candidates.length < 2) {
       return res.status(400).json({ status: 'error', message: 'Please provide all required fields and at least 2 candidates' });
@@ -206,6 +196,9 @@ exports.deleteElection = async (req, res) => {
       query = { _id: electionId, communityId: { $in: req.user.assignedCommunityIds } };
     } else {
       const communityId = await resolveCommunityId(req);
+      if (!communityId) {
+        return res.status(400).json({ status: 'error', message: 'No valid community context found' });
+      }
       query = { _id: electionId, communityId };
     }
 
@@ -247,6 +240,9 @@ exports.closeElection = async (req, res) => {
       query = { _id: electionId, communityId: { $in: req.user.assignedCommunityIds } };
     } else {
       const communityId = await resolveCommunityId(req);
+      if (!communityId) {
+        return res.status(400).json({ status: 'error', message: 'No valid community context found' });
+      }
       query = { _id: electionId, communityId };
     }
 

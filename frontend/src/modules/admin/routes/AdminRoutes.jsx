@@ -29,6 +29,7 @@ import AdminPostDetailsPage from '../pages/social/PostDetailsPage';
 import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
 import SuccessStoriesManagement from '../pages/matrimonial/SuccessStoriesManagement';
 import AdminDharmashalaManagement from '../pages/dharmashala/AdminDharmashalaManagement';
+import { AdminObituaryManagement } from '../pages/obituary/AdminObituaryManagement';
 
 export const AdminRoutes = () => {
   return (
@@ -83,6 +84,9 @@ export const AdminRoutes = () => {
         
         {/* 🏨 Dharmashala Master Supervision */}
         <Route path="dharmashala" element={<AdminDharmashalaManagement />} />
+
+        {/* 🕊️ Obituary Global Supervision */}
+        <Route path="obituaries" element={<AdminObituaryManagement />} />
 
         {/* Global Groups */}
         <Route path="groups" element={<AdminGroupsPage />} />

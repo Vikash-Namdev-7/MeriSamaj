@@ -100,4 +100,9 @@ const ProfessionalSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+ProfessionalSchema.index({ status: 1, communityId: 1, createdAt: -1 });
+ProfessionalSchema.index({ status: 1, communityId: 1, categoryKey: 1, createdAt: -1 });
+ProfessionalSchema.index({ status: 1, communityId: 1, city: 1, createdAt: -1 });
+ProfessionalSchema.index({ companyName: 'text', profession: 'text', category: 'text', city: 'text', about: 'text' });
+
 module.exports = mongoose.model('Professional', ProfessionalSchema);

@@ -7,6 +7,39 @@ import {
 import dharmashalaService from '../../../../core/api/dharmashalaService';
 import { loadRazorpay } from '../../../../core/utils/razorpayLoader';
 
+function ReservationTimer({ reservedUntil, onExpire }) {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!reservedUntil) return;
+    const calculate = () => {
+      const diff = new Date(reservedUntil).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('00:00');
+        setIsExpired(true);
+        onExpire?.();
+      } else {
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
+      }
+    };
+    calculate();
+    const interval = setInterval(calculate, 1000);
+    return () => clearInterval(interval);
+  }, [reservedUntil]);
+
+  if (!reservedUntil) return null;
+
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${isExpired ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-900 border border-amber-300/50'}`}>
+      <span>⏱ Payment Window:</span>
+      <span className="font-mono text-[12px]">{timeLeft || '15:00'}</span>
+    </div>
+  );
+}
+
 export default function MyBookingsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
@@ -16,6 +49,44 @@ export default function MyBookingsPage() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentToastMsg, setPaymentToastMsg] = useState('');
   const [qrModalBooking, setQrModalBooking] = useState(null);
+
+  // Modal payment fallback state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [activeBooking, setActiveBooking] = useState(null);
+  const [paymentStep, setPaymentStep] = useState('select'); // 'select' | 'processing' | 'success'
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [upiId, setUpiId] = useState('');
+
+  const fetchMyBookings = async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
+    try {
+      const res = await dharmashalaService.getMyBookings();
+      if (res.status === 'success') {
+        setBookings(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load my bookings:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyBookings(true);
+
+    try {
+      const io = window.socketInstance || null;
+      if (io) {
+        const handleRefresh = () => fetchMyBookings(false);
+        io.on('dharmashala:booking_status_updated', handleRefresh);
+        io.on('dharmashala:payment_completed', handleRefresh);
+        return () => {
+          io.off('dharmashala:booking_status_updated', handleRefresh);
+          io.off('dharmashala:payment_completed', handleRefresh);
+        };
+      }
+    } catch (e) {}
+  }, []);
 
   const initiatePayment = (booking) => {
     handleRazorpayCheckout(booking);
@@ -57,7 +128,7 @@ export default function MyBookingsPage() {
               setPaymentToastMsg('Payment Verified & Room Confirmed! 🎉');
               setShowPaymentSuccess(true);
               setTimeout(() => setShowPaymentSuccess(false), 4000);
-              fetchBookings(false);
+              fetchMyBookings(false);
             }
           } catch (err) {
             alert(err.response?.data?.message || 'Payment signature verification failed.');
@@ -100,7 +171,7 @@ export default function MyBookingsPage() {
         setTimeout(() => setShowPaymentSuccess(false), 4000);
         
         // Refresh listings without spinner
-        fetchBookings(false);
+        fetchMyBookings(false);
       }
     } catch (error) {
       console.error("Payment failed", error);
@@ -194,7 +265,7 @@ export default function MyBookingsPage() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <Hash size={12} className="text-indigo-400" />
-                    <span className="text-[12px] font-bold text-slate-800">{b.id}</span>
+                    <span className="text-[12px] font-bold text-slate-800">{b.id || b._id}</span>
                   </div>
                 </div>
                 
@@ -202,14 +273,54 @@ export default function MyBookingsPage() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
                   <p className="text-[13px] font-black text-emerald-600 mt-0.5">₹ {b.totalAmount}</p>
                 </div>
+
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Guests & Purpose</p>
+                  <p className="text-[11px] font-bold text-slate-700 mt-0.5">{b.guestCount || 1} Guest(s) • {b.purpose || 'Personal Stay'}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Status</p>
+                  <p className={`text-[11px] font-bold mt-0.5 ${b.paymentStatus === 'Paid' ? 'text-emerald-600' : 'text-amber-600'}`}>{b.paymentStatus || 'Pending'}</p>
+                </div>
               </div>
 
-              {/* Payment Button for Approved Bookings */}
-              {b.status === 'approved' && (
-                <div className="mt-3.5 pt-3 border-t border-slate-100">
+              {/* Member Notes if present */}
+              {(b.memberNotes || b.specialRequests) && (
+                <div className="mt-2.5 p-2 bg-slate-50 rounded-lg text-[11px] text-slate-600">
+                  <span className="font-bold text-slate-500">Note: </span>{b.memberNotes || b.specialRequests}
+                </div>
+              )}
+
+              {/* Amenities Display */}
+              {b.dharmashala?.amenities && b.dharmashala.amenities.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100">
+                  <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider mb-1">Available Amenities</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {b.dharmashala.amenities.map(a => (
+                      <span key={a} className="px-2 py-0.5 bg-slate-100 text-slate-650 rounded-md text-[10px] font-bold">
+                        ✓ {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Button & Reservation Timer for Approved Bookings */}
+              {(b.status === 'approved' || b.status === 'payment_pending') && b.paymentStatus !== 'Paid' && (
+                <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="bg-amber-50/70 border border-amber-200/60 p-2.5 rounded-xl flex-1 text-left">
+                      <p className="text-[10.5px] font-bold text-amber-900">
+                        ✅ Booking Approved! Final Amount: <span className="font-extrabold text-emerald-700">₹{b.totalAmount}</span>
+                      </p>
+                      {b.pricingNote && <p className="text-[9.5px] text-amber-700 font-medium mt-0.5">{b.pricingNote}</p>}
+                    </div>
+                  </div>
+                  {b.reservedUntil && <ReservationTimer reservedUntil={b.reservedUntil} onExpire={() => fetchMyBookings(false)} />}
                   <button
                     onClick={() => initiatePayment(b)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white py-3 rounded-2xl text-[12.5px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white py-3 rounded-2xl text-[12.5px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     💳 Pay Now (₹{b.totalAmount})
                   </button>

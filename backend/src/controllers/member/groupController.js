@@ -227,6 +227,8 @@ exports.createGroup = async (req, res) => {
   }
 };
 
+const mongoose = require('mongoose');
+
 // ─── Get Groups (Paginated + Filterable) ─────────────────────────────────────
 exports.getGroups = async (req, res) => {
   try {
@@ -246,23 +248,91 @@ exports.getGroups = async (req, res) => {
     const filter = applyScopeFilter(req, baseFilter);
 
     const total = await Group.countDocuments(filter);
-    const groups = await Group.find(filter)
-      .select('name description avatar category type members creator approvalStatus chatPermissions conversationId createdAt')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .populate('creator', 'name avatar');
+    const userIdObj = req.user._id;
 
-    // Attach isJoined flag and member count for current user
-    const userId = req.user._id.toString();
-    const enriched = groups.map(g => ({
-      ...g.toObject(),
-      memberCount: g.members.length,
-      isJoined: g.members.some(m => m.userId.toString() === userId),
-      myRole: (g.members.find(m => m.userId.toString() === userId) || {}).role || null
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.max(1, Number(limit));
+
+    // MongoDB Aggregation Pipeline: Projects memberCount, isJoined, and myRole at the DB level.
+    // The embedded members array is NEVER transferred from MongoDB to Node.js!
+    const pipeline = [
+      { $match: filter },
+      { $sort: { createdAt: -1 } },
+      { $skip: (pageNum - 1) * limitNum },
+      { $limit: limitNum },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'creator',
+          foreignField: '_id',
+          as: 'creatorDoc'
+        }
+      },
+      { $unwind: { path: '$creatorDoc', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          avatar: 1,
+          category: 1,
+          type: 1,
+          approvalStatus: 1,
+          chatPermissions: 1,
+          conversationId: 1,
+          createdAt: 1,
+          creator: {
+            _id: '$creatorDoc._id',
+            name: '$creatorDoc.name',
+            avatar: '$creatorDoc.avatar'
+          },
+          memberCount: { $size: { $ifNull: ['$members', []] } },
+          isJoined: {
+            $gt: [
+              {
+                $size: {
+                  $filter: {
+                    input: { $ifNull: ['$members', []] },
+                    as: 'm',
+                    cond: { $eq: ['$$m.userId', userIdObj] }
+                  }
+                }
+              },
+              0
+            ]
+          },
+          myRole: {
+            $let: {
+              vars: {
+                matched: {
+                  $filter: {
+                    input: { $ifNull: ['$members', []] },
+                    as: 'm',
+                    cond: { $eq: ['$$m.userId', userIdObj] }
+                  }
+                }
+              },
+              in: {
+                $cond: [
+                  { $gt: [{ $size: '$$matched' }, 0] },
+                  { $arrayElemAt: ['$$matched.role', 0] },
+                  null
+                ]
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    const groups = await Group.aggregate(pipeline);
+
+    const formatted = groups.map(g => ({
+      ...g,
+      id: g._id.toString()
     }));
 
-    res.json({ status: 'success', data: { groups: enriched, total, page: Number(page) } });
+    res.json({ status: 'success', data: { groups: formatted, total, page: pageNum } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -271,20 +341,77 @@ exports.getGroups = async (req, res) => {
 // ─── Get My Groups ───────────────────────────────────────────────────────────
 exports.getMyGroups = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const communityId = req.user.communityId?._id || req.user.communityId;
+    const userIdObj = req.user._id;
+    const rawCommunityId = req.user.communityId?._id || req.user.communityId;
+    const communityIdObj = new mongoose.Types.ObjectId(rawCommunityId);
 
-    const groups = await Group.find({
-      communityId,
-      'members.userId': userId,
-      isDeleted: false,
-      approvalStatus: 'approved'
-    })
-      .select('name description avatar category type members creator chatPermissions conversationId updatedAt')
-      .populate('creator', 'name avatar');
+    // DB-level Aggregation: Excludes members array from DB-to-server payload completely
+    const pipeline = [
+      {
+        $match: {
+          communityId: communityIdObj,
+          'members.userId': userIdObj,
+          isDeleted: false,
+          approvalStatus: 'approved'
+        }
+      },
+      { $sort: { updatedAt: -1 } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'creator',
+          foreignField: '_id',
+          as: 'creatorDoc'
+        }
+      },
+      { $unwind: { path: '$creatorDoc', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          avatar: 1,
+          category: 1,
+          type: 1,
+          chatPermissions: 1,
+          conversationId: 1,
+          updatedAt: 1,
+          createdAt: 1,
+          creator: {
+            _id: '$creatorDoc._id',
+            name: '$creatorDoc.name',
+            avatar: '$creatorDoc.avatar'
+          },
+          memberCount: { $size: { $ifNull: ['$members', []] } },
+          isJoined: true,
+          myRole: {
+            $let: {
+              vars: {
+                matched: {
+                  $filter: {
+                    input: { $ifNull: ['$members', []] },
+                    as: 'm',
+                    cond: { $eq: ['$$m.userId', userIdObj] }
+                  }
+                }
+              },
+              in: {
+                $cond: [
+                  { $gt: [{ $size: '$$matched' }, 0] },
+                  { $arrayElemAt: ['$$matched.role', 0] },
+                  'member'
+                ]
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    const groups = await Group.aggregate(pipeline);
 
     const { getUserConversations } = require('../../services/conversationService');
-    const conversations = await getUserConversations(userId, 'group', 100);
+    const conversations = await getUserConversations(userIdObj, 'group', 100);
     const convMap = {};
     conversations.forEach(c => {
       convMap[c._id.toString()] = c;
@@ -293,11 +420,8 @@ exports.getMyGroups = async (req, res) => {
     const enriched = groups.map(g => {
       const conv = convMap[g.conversationId?.toString()];
       return {
-        ...g.toObject(),
-        memberCount: g.members.length,
-        isJoined: true,
-        myRole: (g.members.find(m => m.userId.toString() === userId.toString()) || {}).role || 'member',
-        
+        ...g,
+        id: g._id.toString(),
         // Chat normalization fields
         conversationId: g.conversationId,
         lastMessageAt: conv ? conv.lastMessageAt : null,

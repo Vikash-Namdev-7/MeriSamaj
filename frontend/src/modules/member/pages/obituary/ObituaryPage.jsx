@@ -9,7 +9,7 @@ import { Avatar } from '../../components/common/Avatar';
 
 const ObituaryPage = () => {
   const navigate = useNavigate();
-  const { currentUser, obituaries, toggleObituaryShraddhanjali, addObituaryComment } = useData();
+  const { currentUser, obituaries, obituariesLoading, hasMoreObituaries, loadMoreObituaries, toggleObituaryShraddhanjali, addObituaryComment } = useData();
   const [commentTexts, setCommentTexts] = useState({});
   const [expandedComments, setExpandedComments] = useState({});
 
@@ -173,6 +173,19 @@ const ObituaryPage = () => {
             )}
           </motion.div>
         ))}
+
+        {/* Load More Button */}
+        {hasMoreObituaries && obituaries.length > 0 && (
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={loadMoreObituaries}
+              disabled={obituariesLoading}
+              className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {obituariesLoading ? 'Loading more...' : 'Load More Tributes'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* FAB to create obituary */}

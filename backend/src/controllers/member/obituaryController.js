@@ -5,11 +5,17 @@ const { applyScopeFilter, inheritTenantPayload } = require('../../utils/querySco
 
 const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
 
-// Helper to check if an obituary belongs to the requester's community
+// Helper to check if user is a privileged user (head or any admin role)
+const isPrivilegedUser = (req) => {
+  const role = (req?.user?.role || '').toLowerCase();
+  return role === 'head' || ADMIN_ROLES.includes(role);
+};
+
+// Helper to check if an obituary belongs to the requester's community (or if requester is admin)
 const isSameCommunity = (obituary, req) => {
   if (!obituary) return false;
   const userRole = (req?.user?.role || '').toLowerCase();
-  if (ADMIN_ROLES.includes(userRole)) return true; // Admin: global access
+  if (ADMIN_ROLES.includes(userRole)) return true;  // Admin: global access
 
   const obCommunityId = obituary.communityId?._id ?? obituary.communityId;
   if (req?.communityId && obCommunityId) {
@@ -41,12 +47,28 @@ exports.createObituary = async (req, res) => {
       ritesDate,
       ritesTime,
       ritesVenue,
+      ceremonies: rawCeremonies,
       message,
       privacy,
       familyContact,
       relation,
       status
     } = req.body;
+
+    // Safe JSON parsing for ceremonies array
+    let parsedCeremonies = [];
+    if (rawCeremonies) {
+      try {
+        parsedCeremonies = typeof rawCeremonies === 'string' ? JSON.parse(rawCeremonies) : rawCeremonies;
+      } catch (e) {
+        return res.status(400).json({ message: 'Invalid ceremonies JSON format' });
+      }
+    }
+
+    const primaryType = parsedCeremonies[0]?.type || ritesType || 'Funeral / Last Rites';
+    const primaryDate = parsedCeremonies[0]?.date || ritesDate;
+    const primaryTime = parsedCeremonies[0]?.time !== undefined ? parsedCeremonies[0].time : (ritesTime || '');
+    const primaryVenue = parsedCeremonies[0]?.venue || ritesVenue;
 
     // Validate critical inputs
     if (!deceasedName || !deceasedName.trim()) {
@@ -55,11 +77,11 @@ exports.createObituary = async (req, res) => {
     if (!dateOfPassing) {
       return res.status(400).json({ message: 'Date of passing is required' });
     }
-    if (!ritesDate) {
-      return res.status(400).json({ message: 'Ceremony date is required' });
+    if (!primaryDate) {
+      return res.status(400).json({ message: 'Primary ceremony date is required' });
     }
-    if (!ritesVenue || !ritesVenue.trim()) {
-      return res.status(400).json({ message: 'Ceremony venue is required' });
+    if (!primaryVenue || !primaryVenue.trim()) {
+      return res.status(400).json({ message: 'Primary ceremony venue is required' });
     }
     if (!message || !message.trim()) {
       return res.status(400).json({ message: 'Condolence message is required' });
@@ -81,21 +103,22 @@ exports.createObituary = async (req, res) => {
       birthDate: birthDate || '',
       dateOfPassing,
       funeralDetails: {
-        type: ritesType || 'Funeral / Last Rites',
-        date: ritesDate,
-        time: ritesTime || '',
-        venue: ritesVenue
+        type: primaryType,
+        date: primaryDate,
+        time: primaryTime,
+        venue: primaryVenue
       },
+      ceremonies: parsedCeremonies.length > 0 ? parsedCeremonies : [{
+        type: primaryType,
+        date: primaryDate,
+        time: primaryTime,
+        venue: primaryVenue
+      }],
       message,
       image,
       creatorId: req.user._id,
       relation: relation || 'Family Member',
-      /**
-       * communityId is set server-side from req.communityId (ObjectId).
-       * community String is also set for backward compatibility during migration.
-       * communityId is the authoritative field going forward.
-       */
-      communityId: req.communityId,
+      communityId: payload.communityId,
       community: req.user.community || '',
       privacy: privacy || 'public',
       familyContact: familyContact || '',
@@ -149,18 +172,46 @@ exports.getObituaries = async (req, res) => {
     let baseFilter = {};
 
     // Regular members only see Approved posts and their own submissions
-    if (req.user.role !== 'head' && req.user.role !== 'admin') {
+    if (!isPrivilegedUser(req)) {
       baseFilter.$or = [
         { status: 'Approved' },
         { creatorId: req.user._id }
       ];
     }
 
+    // Ceremony type filter (Array-aware via $elemMatch + fallback)
+    if (req.query.ceremonyType && req.query.ceremonyType !== 'all') {
+      const ceremonyType = req.query.ceremonyType.trim();
+      const ceremonyCondition = [
+        { 'funeralDetails.type': ceremonyType },
+        { ceremonies: { $elemMatch: { type: ceremonyType } } }
+      ];
+      if (baseFilter.$or) {
+        const existingOr = baseFilter.$or;
+        delete baseFilter.$or;
+        baseFilter.$and = baseFilter.$and || [];
+        baseFilter.$and.push({ $or: existingOr }, { $or: ceremonyCondition });
+      } else {
+        baseFilter.$or = ceremonyCondition;
+      }
+    }
+
     const query = applyScopeFilter(req, baseFilter);
 
-    const obituaries = await Obituary.find(query)
+    const pageNum = Math.max(1, Number(req.query.page) || 1);
+    const limitNum = req.query.limit ? Math.max(1, Number(req.query.limit)) : 0;
+    const skipNum = (pageNum - 1) * (limitNum || 50);
+
+    let queryExec = Obituary.find(query)
       .populate('creatorId', 'name email avatar initials phone')
+      .populate('communityId', 'name slug')
       .sort({ createdAt: -1 });
+
+    if (limitNum > 0) {
+      queryExec = queryExec.skip(skipNum).limit(limitNum);
+    }
+
+    const obituaries = await queryExec.lean();
 
     res.json(obituaries);
   } catch (error) {
@@ -175,7 +226,8 @@ exports.getObituaries = async (req, res) => {
 exports.getObituaryById = async (req, res) => {
   try {
     const obituary = await Obituary.findById(req.params.id)
-      .populate('creatorId', 'name email avatar initials phone');
+      .populate('creatorId', 'name email avatar initials phone')
+      .lean();
 
     if (!obituary) {
       return res.status(404).json({ message: 'Obituary not found' });
@@ -204,8 +256,12 @@ exports.updateObituary = async (req, res) => {
     }
 
     // Verify ownership or community leadership role
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to update obituaries from other communities' });
+    }
+
     const isCreator = obituary.creatorId.toString() === req.user._id.toString();
-    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity(obituary, req);
+    const isLeadOrAdmin = isPrivilegedUser(req);
 
     if (!isCreator && !isLeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to update this obituary' });
@@ -221,6 +277,7 @@ exports.updateObituary = async (req, res) => {
       ritesDate,
       ritesTime,
       ritesVenue,
+      ceremonies: rawCeremonies,
       message,
       privacy,
       familyContact,
@@ -228,6 +285,15 @@ exports.updateObituary = async (req, res) => {
       existingImage,
       status
     } = req.body;
+
+    let parsedCeremonies = null;
+    if (rawCeremonies) {
+      try {
+        parsedCeremonies = typeof rawCeremonies === 'string' ? JSON.parse(rawCeremonies) : rawCeremonies;
+      } catch (e) {
+        return res.status(400).json({ message: 'Invalid ceremonies JSON format' });
+      }
+    }
 
     let image = existingImage || obituary.image;
     if (req.file) {
@@ -243,14 +309,25 @@ exports.updateObituary = async (req, res) => {
     obituary.age = age !== undefined ? parseInt(age) || 0 : obituary.age;
     obituary.birthDate = birthDate !== undefined ? birthDate : obituary.birthDate;
     obituary.dateOfPassing = dateOfPassing || obituary.dateOfPassing;
-    
-    if (ritesType || ritesDate || ritesVenue) {
+
+    if (parsedCeremonies && Array.isArray(parsedCeremonies) && parsedCeremonies.length > 0) {
+      obituary.ceremonies = parsedCeremonies;
       obituary.funeralDetails = {
-        type: ritesType || obituary.funeralDetails.type,
-        date: ritesDate || obituary.funeralDetails.date,
-        time: ritesTime !== undefined ? ritesTime : obituary.funeralDetails.time,
-        venue: ritesVenue || obituary.funeralDetails.venue
+        type: parsedCeremonies[0].type || obituary.funeralDetails?.type,
+        date: parsedCeremonies[0].date || obituary.funeralDetails?.date,
+        time: parsedCeremonies[0].time !== undefined ? parsedCeremonies[0].time : obituary.funeralDetails?.time,
+        venue: parsedCeremonies[0].venue || obituary.funeralDetails?.venue
       };
+    } else if (ritesType || ritesDate || ritesVenue) {
+      obituary.funeralDetails = {
+        type: ritesType || obituary.funeralDetails?.type,
+        date: ritesDate || obituary.funeralDetails?.date,
+        time: ritesTime !== undefined ? ritesTime : obituary.funeralDetails?.time,
+        venue: ritesVenue || obituary.funeralDetails?.venue
+      };
+      if (!obituary.ceremonies || obituary.ceremonies.length === 0) {
+        obituary.ceremonies = [obituary.funeralDetails];
+      }
     }
     
     obituary.message = message || obituary.message;
@@ -285,8 +362,12 @@ exports.deleteObituary = async (req, res) => {
     }
 
     // Verify ownership or community leadership role
+    if (!isSameCommunity(obituary, req)) {
+      return res.status(403).json({ message: 'Unauthorized to delete obituaries from other communities' });
+    }
+
     const isCreator = obituary.creatorId.toString() === req.user._id.toString();
-    const isLeadOrAdmin = ['head', 'admin'].includes(req.user.role) && isSameCommunity(obituary, req);
+    const isLeadOrAdmin = isPrivilegedUser(req);
 
     if (!isCreator && !isLeadOrAdmin) {
       return res.status(401).json({ message: 'Not authorized to delete this obituary' });
@@ -541,7 +622,7 @@ exports.updateObituaryStatus = async (req, res) => {
     }
 
     // Verify user is head/admin
-    if (req.user.role !== 'head' && req.user.role !== 'admin') {
+    if (!isPrivilegedUser(req)) {
       return res.status(403).json({ message: 'Only Samaj Head or Admin can update moderation status' });
     }
 

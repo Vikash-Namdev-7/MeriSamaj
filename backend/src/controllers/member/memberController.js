@@ -1,6 +1,7 @@
 const User = require('../../models/User');
 const Follower = require('../../models/Follower');
 const UserBlock = require('../../models/UserBlock');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // ─────────────────────────────────────────────
 // @desc    Get members of the logged-in user's community
@@ -9,27 +10,6 @@ const UserBlock = require('../../models/UserBlock');
 // ─────────────────────────────────────────────
 exports.getCommunityMembers = async (req, res) => {
   try {
-    /**
-     * Community-scoped member listing.
-     * Members only see other members from their own community.
-     * req.communityId is always a plain ObjectId, set by authMiddleware.
-     */
-    if (!req.communityId) {
-      const pageNum = Number(req.query.page || 1);
-      const limitNum = Number(req.query.limit || 10);
-      return res.status(200).json({
-        success: true,
-        status: 'success',
-        data: [],
-        pagination: {
-          total: 0,
-          page: pageNum,
-          limit: limitNum,
-          pages: 0
-        }
-      });
-    }
-
     const {
       search,
       city,
@@ -40,10 +20,8 @@ exports.getCommunityMembers = async (req, res) => {
       limit = 10
     } = req.query;
 
-    const filter = {
-      communityId: req.communityId,
-      accountStatus: { $ne: 'deleted' },
-    };
+    const baseFilter = { accountStatus: { $ne: 'deleted' } };
+    const filter = applyScopeFilter(req, baseFilter);
 
     // Optional search by name
     if (search) {
@@ -87,7 +65,8 @@ exports.getCommunityMembers = async (req, res) => {
         .select('name avatar city profession phone community communityId accountStatus verificationStatus createdAt')
         .sort({ name: 1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(Number(limit))
+        .lean(),
       User.countDocuments(filter),
     ]);
 
@@ -255,15 +234,9 @@ exports.getMemberProfile = async (req, res) => {
 // ─────────────────────────────────────────────
 exports.getMemberStats = async (req, res) => {
   try {
-    if (!req.communityId) {
-      return res.status(400).json({ status: 'error', message: 'Community context missing.' });
-    }
-
+    const scopeFilter = applyScopeFilter(req, { accountStatus: { $ne: 'deleted' } });
     const matchStage = {
-      $match: {
-        communityId: req.communityId,
-        accountStatus: { $ne: 'deleted' }
-      }
+      $match: scopeFilter
     };
 
     // Calculate dynamic age boundaries

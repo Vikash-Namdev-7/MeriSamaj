@@ -610,25 +610,68 @@ const notifyBookingReceived = (headId, bookedBy, dharmashalaName, bookingId) =>
     referenceType: 'DharmashalaBooking'
   }) : Promise.resolve();
 
-const notifyBookingStatusChanged = (userId, status, dharmashalaName, bookingId) =>
+const notifyBookingStatusChanged = (userId, status, dharmashalaName, bookingId, extra = {}) =>
   createNotification({
     userId,
     module:        'dharmashala',
     type:          `booking_${status}`,
     title:         status === 'approved'  ? 'Booking Approved ✅'
+                 : status === 'rejected'  ? 'Booking Request Declined ❌'
                  : status === 'cancelled' ? 'Booking Cancelled ❌'
                  : 'Booking Updated',
     message:       status === 'approved'
-      ? `Your booking at "${dharmashalaName}" has been approved.`
+      ? `Your booking for "${dharmashalaName}" has been approved! Final Payable Amount: ₹${extra.amount || 0}. Please complete payment.`
+      : status === 'rejected'
+      ? `Your booking request at "${dharmashalaName}" was declined. Reason: ${extra.reason || 'Not specified'}`
       : status === 'cancelled'
       ? `Your booking at "${dharmashalaName}" has been cancelled.`
       : `Your booking at "${dharmashalaName}" status has been updated to: ${status}.`,
-    icon:          status === 'approved' ? '✅' : status === 'cancelled' ? '❌' : '🔔',
+    icon:          status === 'approved' ? '✅' : status === 'rejected' || status === 'cancelled' ? '❌' : '🔔',
     priority:      'high',
-    actionUrl:     `/member/dharmashala/bookings`,
+    actionUrl:     `/member/dharmashala/my-bookings`,
     referenceId:   bookingId,
     referenceType: 'DharmashalaBooking'
   });
+
+const notifyPaymentReceivedToHeadAndAdmin = async ({ headId, adminIds = [], bookedBy, dharmashalaName, amount, bookingId, paymentId }) => {
+  const promises = [];
+  
+  if (headId) {
+    promises.push(
+      createNotification({
+        userId:        headId,
+        module:        'dharmashala',
+        type:          'payment_received',
+        title:         'Payment Received 💳',
+        message:       `Payment of ₹${amount} received from ${bookedBy} for "${dharmashalaName}". (Txn: ${paymentId})`,
+        icon:          '💳',
+        priority:      'high',
+        actionUrl:     `/head/dharmashala`,
+        referenceId:   bookingId,
+        referenceType: 'DharmashalaBooking'
+      })
+    );
+  }
+
+  (adminIds || []).forEach(adminId => {
+    promises.push(
+      createNotification({
+        userId:        adminId,
+        module:        'dharmashala',
+        type:          'payment_received',
+        title:         'Payment Confirmed 💳',
+        message:       `Payment of ₹${amount} received from ${bookedBy} for "${dharmashalaName}". (Txn: ${paymentId})`,
+        icon:          '💳',
+        priority:      'high',
+        actionUrl:     `/admin/dharmashala`,
+        referenceId:   bookingId,
+        referenceType: 'DharmashalaBooking'
+      })
+    );
+  });
+
+  return Promise.allSettled(promises);
+};
 
 // ─── Obituary Notification Helpers ────────────────────────────────────────────
 
@@ -1001,6 +1044,7 @@ module.exports = {
   // ─── Dharmashala / Booking ────────────────────────────────────────────────────
   notifyBookingReceived,
   notifyBookingStatusChanged,
+  notifyPaymentReceivedToHeadAndAdmin,
   // ─── Obituary ────────────────────────────────────────────────────────────────
   notifyObituaryPosted,
   notifyObituaryPostedToHead,

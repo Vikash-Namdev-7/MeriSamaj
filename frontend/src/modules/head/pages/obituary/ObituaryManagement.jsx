@@ -639,36 +639,30 @@ export default function ObituaryManagement() {
                 </div>
 
                 {/* Ceremony Details */}
-                {(settings.fieldConfig?.ceremonyType?.enabled || 
-                  settings.fieldConfig?.date?.enabled || 
-                  settings.fieldConfig?.time?.enabled || 
-                  settings.fieldConfig?.venueAddress?.enabled) && (
-                  <div className="p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 pb-2">
-                      <Clock size={12} /> Funeral & Ceremony Details
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 text-[12px] font-medium text-slate-650">
-                      {settings.fieldConfig?.ceremonyType?.enabled && (
-                        <div>{settings.fieldConfig.ceremonyType.label}: <span className="text-slate-800 font-bold">{selectedObituary.funeralDetails?.type}</span></div>
-                      )}
-                      {(settings.fieldConfig?.date?.enabled || settings.fieldConfig?.time?.enabled) && (
-                        <div>
-                          {settings.fieldConfig?.date?.enabled && settings.fieldConfig?.date?.label} 
-                          {settings.fieldConfig?.date?.enabled && settings.fieldConfig?.time?.enabled && ' & '} 
-                          {settings.fieldConfig?.time?.enabled && settings.fieldConfig?.time?.label}:{' '}
-                          <span className="text-slate-800 font-bold">
-                            {settings.fieldConfig?.date?.enabled && selectedObituary.funeralDetails?.date} 
-                            {settings.fieldConfig?.date?.enabled && settings.fieldConfig?.time?.enabled && ' • '} 
-                            {settings.fieldConfig?.time?.enabled && (selectedObituary.funeralDetails?.time || 'Not specified')}
-                          </span>
+                {(() => {
+                  const displayCeremonies = (selectedObituary.ceremonies && selectedObituary.ceremonies.length > 0)
+                    ? selectedObituary.ceremonies
+                    : (selectedObituary.funeralDetails ? [selectedObituary.funeralDetails] : []);
+
+                  if (displayCeremonies.length === 0) return null;
+
+                  return (
+                    <div className="space-y-3">
+                      {displayCeremonies.map((c, idx) => (
+                        <div key={idx} className="p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 pb-1.5">
+                            <span className="flex items-center gap-1.5"><Clock size={12} /> {c.type || 'Ceremony'}</span>
+                            {displayCeremonies.length > 1 && <span className="bg-indigo-100 px-2 py-0.5 rounded-full text-indigo-800 text-[9px]">Program #{idx + 1}</span>}
+                          </div>
+                          <div className="grid grid-cols-1 gap-1 text-[12px] font-medium text-slate-650">
+                            <div>Date & Time: <span className="text-slate-800 font-bold">{c.date || '—'} {c.time && `• ${c.time}`}</span></div>
+                            <div>Venue Address: <span className="text-slate-800 font-bold">{c.venue || '—'}</span></div>
+                          </div>
                         </div>
-                      )}
-                      {settings.fieldConfig?.venueAddress?.enabled && (
-                        <div>{settings.fieldConfig.venueAddress.label}: <span className="text-slate-800 font-bold">{selectedObituary.funeralDetails?.venue}</span></div>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Submitter Details */}
                 <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-3">

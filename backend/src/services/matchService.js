@@ -10,13 +10,19 @@ const MatrimonialSettings = require('../models/MatrimonialSettings');
  * @param {Object} targetProfile - The profile being viewed
  * @returns {{ matchPercentage: Number, matchedCriteria: String[] }}
  */
-const calculateMatchPercentage = async (myProfile, targetProfile) => {
+const calculateMatchPercentage = async (myProfile, targetProfile, customWeights = null) => {
   // Load admin-configurable weights (fallback to defaults if not set)
-  let settings = await MatrimonialSettings.findOne().lean();
-  const weights = settings?.matchWeights || {
-    community: 20, age: 20, education: 15, profession: 15,
-    location: 10, height: 10, lifestyle: 10
-  };
+  let weights = customWeights;
+  if (!weights) {
+    let settings = await MatrimonialSettings.findOne().lean();
+    weights = settings?.matchWeights;
+  }
+  if (!weights) {
+    weights = {
+      community: 20, age: 20, education: 15, profession: 15,
+      location: 10, height: 10, lifestyle: 10
+    };
+  }
 
   let score = 0;
   const matchedCriteria = [];

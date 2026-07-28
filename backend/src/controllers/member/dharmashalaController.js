@@ -7,12 +7,13 @@ const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 // Get all Dharmashalas (List with filters: Community mandatory + City optional)
 exports.getAllDharmashalas = async (req, res) => {
   try {
-    const { search, city, ac, food } = req.query;
+    const { search, city, ac, food, page, limit } = req.query;
     let baseQuery = { status: { $ne: 'Inactive' } };
     
     // Search filter
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       baseQuery.$or = [
         { name: searchRegex },
         { city: searchRegex },
@@ -21,21 +22,48 @@ exports.getAllDharmashalas = async (req, res) => {
       ];
     }
     
-    // AC filter
+    // Exact multikey indexed AC filter (combines stored amenity strings + acRooms counter + regex fallback safety)
     if (ac === 'true') {
-      baseQuery.amenities = { $in: [/ac/i, /air conditioning/i] };
+      baseQuery.$or = [
+        { amenities: { $in: ['AC', 'Ac', 'ac', 'AC Rooms', 'ac rooms', 'AC Room', 'Air Conditioning', 'air conditioning', 'Air Conditioner', /ac/i, /air conditioning/i] } },
+        { acRooms: { $gt: 0 } }
+      ];
     }
     
-    // Food filter
+    // Exact multikey indexed Food filter
     if (food === 'true') {
-      baseQuery.amenities = { $in: [/kitchen/i, /dining/i, /food/i] };
+      baseQuery.amenities = { $in: ['Kitchen', 'kitchen', 'Dining Hall', 'dining hall', 'Dining', 'dining', 'Food', 'food', 'Restaurant', 'Catering', /kitchen/i, /dining/i, /food/i] };
     }
 
     // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional)
-    const query = applyScopeFilter(req, baseQuery, { overrideCity: city });
+    const activeCity = (city && city !== 'all' && city !== 'All Cities') ? city : null;
+    const query = applyScopeFilter(req, baseQuery, { overrideCity: activeCity });
     
-    const dharamshalas = await Dharmashala.find(query).sort({ createdAt: -1 });
-    res.status(200).json({ status: 'success', data: dharamshalas });
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = limit ? Math.max(1, Number(limit)) : 0;
+    const skipNum = (pageNum - 1) * (limitNum || 50);
+
+    let queryExec = Dharmashala.find(query).sort({ createdAt: -1 });
+
+    if (limitNum > 0) {
+      queryExec = queryExec.skip(skipNum).limit(limitNum);
+    }
+
+    const [dharamshalas, total] = await Promise.all([
+      queryExec.lean(),
+      Dharmashala.countDocuments(query)
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: dharamshalas,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum || total,
+        pages: limitNum > 0 ? Math.ceil(total / limitNum) : 1
+      }
+    });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -45,7 +73,7 @@ exports.getAllDharmashalas = async (req, res) => {
 exports.getDharmashalaById = async (req, res) => {
   try {
     const query = applyScopeFilter(req, { _id: req.params.id });
-    const dharamshala = await Dharmashala.findOne(query);
+    const dharamshala = await Dharmashala.findOne(query).lean();
     if (!dharamshala) {
       return res.status(404).json({ status: 'error', message: 'Dharmashala not found' });
     }
@@ -54,7 +82,7 @@ exports.getDharmashalaById = async (req, res) => {
     let rooms = await DharmashalaRoom.find({ 
       dharmashala: req.params.id,
       status: { $ne: 'Blocked' }
-    });
+    }).lean();
 
     if (rooms.length === 0) {
       rooms = await DharmashalaRoom.create([
@@ -222,7 +250,7 @@ exports.getAvailability = async (req, res) => {
 // Create a new booking checking real-time availability
 exports.createBooking = async (req, res) => {
   try {
-    const { dharmashalaId, checkIn, checkOut, roomType, checkInTime, checkOutTime, bookedBy, phone, specialRequests } = req.body;
+    const { dharmashalaId, checkIn, checkOut, roomType, checkInTime, checkOutTime, bookedBy, phone, guestCount, purpose, memberNotes, specialRequests } = req.body;
     
     const query = applyScopeFilter(req, { _id: dharmashalaId });
     const dharamshala = await Dharmashala.findOne(query);
@@ -241,13 +269,15 @@ exports.createBooking = async (req, res) => {
     
     // 1. Get room IDs currently occupied on these dates
     const bookedRoomIds = new Set();
+    const activeStatuses = ['pending_approval', 'approved', 'reserved', 'payment_pending', 'paid', 'confirmed', 'upcoming', 'checked_in'];
+    
     const overlappingBookings = await DharmashalaBooking.find({
       dharmashala: dharmashalaId,
-      status: { $in: ['pending_approval', 'approved', 'upcoming', 'checked_in'] },
+      status: { $in: activeStatuses },
       checkIn: { $lt: checkOutDate },
       checkOut: { $gt: checkInDate }
     });
-    overlappingBookings.forEach(b => b.rooms.forEach(roomId => bookedRoomIds.add(roomId.toString())));
+    overlappingBookings.forEach(b => (b.rooms || []).forEach(roomId => bookedRoomIds.add(roomId.toString())));
     
     // 2. Get room IDs locked for maintenance
     const maintenanceBlocks = await DharmashalaMaintenance.find({
@@ -315,7 +345,7 @@ exports.createBooking = async (req, res) => {
     if (availableRooms.length === 0) {
       return res.status(400).json({ 
         status: 'error', 
-        message: 'No available rooms found for the selected type and dates.' 
+        message: 'No available rooms found for the selected dates and room type.' 
       });
     }
     
@@ -341,13 +371,25 @@ exports.createBooking = async (req, res) => {
       totalAmount,
       bookedBy: bookedBy || req.user.name,
       phone: phone || req.user.phone,
+      guestCount: guestCount ? Number(guestCount) : 1,
+      purpose: purpose || specialRequests || '',
+      memberNotes: memberNotes || specialRequests || '',
       specialRequests,
-      status: 'pending_approval'
+      status: 'pending_approval',
+      statusHistory: [{
+        action: 'CREATE_REQUEST',
+        previousStatus: null,
+        newStatus: 'pending_approval',
+        status: 'pending_approval',
+        performedBy: req.user._id,
+        performedByRole: (req.user.role || 'MEMBER').toUpperCase(),
+        notes: 'Booking request created by member',
+        updatedAt: new Date(),
+        updatedBy: req.user.name || 'Member'
+      }]
     });
     
     await booking.save();
-    
-    // Remove fake 8-second simulation timer. Real workflow requires Community Head to approve.
     
     // Broadcast Socket.io event for live Head & Admin dashboard updates
     try {
@@ -356,6 +398,7 @@ exports.createBooking = async (req, res) => {
         io.emit('dharmashala:booking_created', {
           bookingId: booking._id,
           dharmashalaId,
+          communityId: booking.communityId,
           bookedBy: booking.bookedBy,
           totalAmount
         });
@@ -364,12 +407,61 @@ exports.createBooking = async (req, res) => {
       console.warn('[Socket] dharmashala:booking_created warning:', sErr.message);
     }
 
-    // Trigger Notification for Head Users
+    // Trigger Notification for Head and Admin Users
     try {
-      const { notifyBookingReceived } = require('../../services/notificationService');
-      notifyBookingReceived(null, booking.bookedBy, dharamshala.name, booking.bookingId);
+      const User = require('../../models/User');
+      const { createNotification } = require('../../services/notificationService');
+      const targetCommunityId = dharamshala.communityId || req.communityId;
+
+      // Find Community Heads for member's community
+      const headUsers = await User.find({
+        role: { $in: ['head', 'community_head', 'HEAD', 'COMMUNITY_HEAD'] },
+        communityId: targetCommunityId
+      }).select('_id');
+
+      // Find System Admins
+      const adminUsers = await User.find({
+        role: { $in: ['admin', 'super_admin', 'master_admin', 'master', 'head_admin', 'ADMIN', 'SUPER_ADMIN', 'MASTER_ADMIN'] }
+      }).select('_id');
+
+      const notifPromises = [];
+      headUsers.forEach(h => {
+        notifPromises.push(
+          createNotification({
+            userId: h._id,
+            module: 'dharmashala',
+            type: 'booking_received',
+            title: 'New Booking Request 🏠',
+            message: `${booking.bookedBy} requested a booking at "${dharamshala.name}".`,
+            icon: '🏠',
+            priority: 'high',
+            actionUrl: `/head/dharmashala`,
+            referenceId: booking._id,
+            referenceType: 'DharmashalaBooking'
+          })
+        );
+      });
+
+      adminUsers.forEach(a => {
+        notifPromises.push(
+          createNotification({
+            userId: a._id,
+            module: 'dharmashala',
+            type: 'booking_received',
+            title: 'New Global Booking Request 🏠',
+            message: `${booking.bookedBy} submitted a booking request for "${dharamshala.name}".`,
+            icon: '🏠',
+            priority: 'normal',
+            actionUrl: `/admin/dharmashala`,
+            referenceId: booking._id,
+            referenceType: 'DharmashalaBooking'
+          })
+        );
+      });
+
+      await Promise.allSettled(notifPromises);
     } catch (nErr) {
-      console.warn('[Notify] notifyBookingReceived warning:', nErr.message);
+      console.warn('[Notify] createBooking notification warning:', nErr.message);
     }
 
     res.status(201).json({ status: 'success', data: booking });
@@ -384,7 +476,8 @@ exports.getBookingHistory = async (req, res) => {
     const bookings = await DharmashalaBooking.find({ user: req.user._id })
       .populate('dharmashala')
       .populate('rooms')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     
     const formatted = bookings.map(b => {
       // Auto-expire reservation lock if 15 minutes window passed without payment
@@ -415,9 +508,18 @@ exports.getBookingHistory = async (req, res) => {
         rooms: b.rooms ? b.rooms.map(r => r.roomNumber) : [],
         checkInTime: b.checkInTime,
         checkOutTime: b.checkOutTime,
+        guestCount: b.guestCount || 1,
+        purpose: b.purpose || b.specialRequests || '',
+        memberNotes: b.memberNotes || b.specialRequests || '',
+        baseAmount: b.baseAmount || b.totalAmount,
+        additionalCharges: b.additionalCharges || 0,
+        discount: b.discount || 0,
+        pricingNote: b.pricingNote || '',
+        approvedByRole: b.approvedByRole || null,
         reservedUntil: b.reservedUntil,
         qrCodeData: b.qrCodeData || `DH-QR-${b.bookingId}`,
-        rejectionReason: b.rejectionReason || null
+        rejectionReason: b.rejectionReason || null,
+        statusHistory: b.statusHistory || []
       };
     });
     
@@ -567,6 +669,20 @@ exports.verifyRazorpayBookingPayment = async (req, res) => {
     booking.razorpaySignature = razorpay_signature;
     booking.paidAt = new Date();
     booking.qrCodeData = `DH-QR-${booking.bookingId}-${Date.now().toString().slice(-6)}`;
+
+    booking.statusHistory.push({
+      action: 'PAYMENT_RECEIVED',
+      previousStatus: 'approved',
+      newStatus: 'confirmed',
+      status: 'confirmed',
+      performedBy: req.user._id,
+      performedByRole: 'MEMBER',
+      amount: booking.totalAmount,
+      notes: `Payment verified & completed via Razorpay (${razorpay_payment_id})`,
+      updatedAt: new Date(),
+      updatedBy: booking.bookedBy
+    });
+
     await booking.save();
 
     // Broadcast Socket
@@ -583,9 +699,36 @@ exports.verifyRazorpayBookingPayment = async (req, res) => {
 
     // Notifications
     try {
-      const { notifyBookingStatusChanged } = require('../../services/notificationService');
-      notifyBookingStatusChanged(booking.user, 'confirmed', 'Dharmashala', booking._id);
-    } catch (nErr) {}
+      const { notifyBookingStatusChanged, notifyPaymentReceivedToHeadAndAdmin } = require('../../services/notificationService');
+      const Dharmashala = require('../../models/Dharmashala');
+      const dhDoc = await Dharmashala.findById(booking.dharmashala);
+      const dName = dhDoc?.name || 'Dharmashala';
+
+      notifyBookingStatusChanged(booking.user, 'confirmed', dName, booking._id, { amount: booking.totalAmount });
+
+      // Notify Community Heads and Admins
+      const User = require('../../models/User');
+      const headUsers = await User.find({
+        role: { $in: ['head', 'community_head', 'HEAD', 'COMMUNITY_HEAD'] },
+        communityId: booking.communityId
+      }).select('_id');
+      const headId = headUsers.length > 0 ? headUsers[0]._id : booking.approvedBy;
+
+      const admins = await User.find({ role: { $in: ['admin', 'super_admin', 'master_admin', 'master', 'head_admin', 'ADMIN', 'SUPER_ADMIN', 'MASTER_ADMIN'] } }).select('_id');
+      const adminIds = admins.map(a => a._id);
+
+      await notifyPaymentReceivedToHeadAndAdmin({
+        headId,
+        adminIds,
+        bookedBy: booking.bookedBy,
+        dharmashalaName: dName,
+        amount: booking.totalAmount,
+        bookingId: booking._id,
+        paymentId: razorpay_payment_id
+      });
+    } catch (nErr) {
+      console.warn('[Notify] verifyRazorpayBookingPayment notification warning:', nErr.message);
+    }
 
     res.status(200).json({ status: 'success', message: 'Payment verified and booking confirmed!', data: booking });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { CheckCircle, ChevronRight, Camera, LogOut, Globe, Lock, Check, ArrowLeft, Sparkles, ShieldCheck, User, Briefcase, Package, Activity, Users, Gift, Grid, Settings as SettingsIcon, Edit3, Heart, Bookmark, Plus, Crown, MapPin, Sun, Moon, Mail, Phone, Loader2, Info } from 'lucide-react';
@@ -106,77 +106,68 @@ const MyProfilePage = () => {
   const [targetFollowingList, setTargetFollowingList] = useState([]);
   const [loadingFollows, setLoadingFollows] = useState(false);
 
-  const profileUser = isMe ? currentUser : (loadedMember || {});
-
-  // Load target member details if !isMe
-  useEffect(() => {
-    const loadMemberProfile = async () => {
-      if (memberId && !isMe) {
-        setLoadingProfile(true);
-        // Fallback search from context list first to display instantly
-        const cached = (members || []).find(m => m.id === memberId || m._id === memberId) || 
-                       (admins || []).find(a => a.id === memberId || a._id === memberId);
-        if (cached) {
-          setLoadedMember({
-            ...cached,
-            id: cached._id || cached.id,
-            initials: cached.name ? cached.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
-          });
-        }
-        try {
-          const res = await getMemberById(memberId);
-          if (res.success && res.data) {
-            const mapped = {
-              ...res.data,
-              id: res.data._id || res.data.id,
-              initials: res.data.name ? res.data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
-            };
-            setLoadedMember(mapped);
-          }
-        } catch (err) {
-          console.error("Failed to load member profile details:", err);
-        } finally {
-          setLoadingProfile(false);
-        }
-      } else {
-        setLoadedMember(null);
-        setLoadingProfile(false);
-      }
+  // Instant cached member fallback derived via useMemo
+  const cachedMemberFallback = useMemo(() => {
+    if (!memberId || isMe) return null;
+    const found = (members || []).find(m => m.id === memberId || m._id === memberId) || 
+                  (admins || []).find(a => a.id === memberId || a._id === memberId);
+    if (!found) return null;
+    return {
+      ...found,
+      id: found._id || found.id,
+      initials: found.name ? found.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
     };
-    loadMemberProfile();
   }, [memberId, isMe, members, admins]);
 
-  // Fetch real profile stats and highlights from backend
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      const targetId = isMe ? '' : memberId;
-      try {
-        const [statsRes, highlightsRes] = await Promise.all([
-          socialService.getProfileStats(targetId),
-          socialService.getUserHighlights(targetId)
-        ]);
-        if (statsRes.success) setProfileStats(statsRes.data);
-        if (highlightsRes.success) setHighlights(highlightsRes.data);
-      } catch (err) {
-        console.error('Failed to load profile stats or highlights:', err);
-      }
-    };
+  const profileUser = isMe ? currentUser : (loadedMember || cachedMemberFallback || {});
 
+  // Consolidated Parallel Profile Data Loader
+  useEffect(() => {
+    let isMounted = true;
     const targetUserId = isMe ? myId : memberId;
-    if (targetUserId) {
-      fetchProfileData();
-    }
-  }, [memberId, isMe, myId]);
+    if (!targetUserId) return;
 
-  // Fetch user posts
-  useEffect(() => {
-    const loadUserPosts = async () => {
+    if (cachedMemberFallback) {
+      setLoadedMember(cachedMemberFallback);
+    } else if (isMe) {
+      setLoadedMember(null);
+    }
+
+    const loadAllProfileData = async () => {
       setLoadingPosts(true);
-      const targetId = isMe ? myId : memberId;
+      if (memberId && !isMe && !cachedMemberFallback) {
+        setLoadingProfile(true);
+      }
+
+      const targetSocialId = isMe ? '' : memberId;
+
       try {
-        const res = await socialService.getUserPosts(targetId);
-        if (res.success && res.data) {
-          const mapped = res.data.map(p => ({
+        const promises = [
+          socialService.getProfileStats(targetSocialId),
+          socialService.getUserHighlights(targetSocialId),
+          socialService.getUserPosts(targetUserId)
+        ];
+
+        if (memberId && !isMe) {
+          promises.push(getMemberById(memberId));
+        }
+
+        const results = await Promise.allSettled(promises);
+        if (!isMounted) return;
+
+        // Result 0: Profile Stats
+        if (results[0].status === 'fulfilled' && results[0].value?.success) {
+          setProfileStats(results[0].value.data);
+        }
+
+        // Result 1: Highlights
+        if (results[1].status === 'fulfilled' && results[1].value?.success) {
+          setHighlights(results[1].value.data);
+        }
+
+        // Result 2: User Posts
+        if (results[2].status === 'fulfilled' && results[2].value?.success && results[2].value.data) {
+          const mapped = results[2].value.data.map(p => ({
             ...p,
             id: p._id || p.id,
             images: p.media?.map(m => m.url) || p.images || [],
@@ -185,17 +176,34 @@ const MyProfilePage = () => {
           }));
           setUserPosts(mapped);
         }
+
+        // Result 3: Detailed Member Profile (if viewing another user)
+        if (memberId && !isMe && results[3] && results[3].status === 'fulfilled') {
+          const memberRes = results[3].value;
+          if (memberRes.success && memberRes.data) {
+            const mapped = {
+              ...memberRes.data,
+              id: memberRes.data._id || memberRes.data.id,
+              initials: memberRes.data.name ? memberRes.data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
+            };
+            setLoadedMember(mapped);
+          }
+        }
       } catch (err) {
-        console.error("Failed to load user posts:", err);
+        console.error("Failed to load profile data:", err);
       } finally {
-        setLoadingPosts(false);
+        if (isMounted) {
+          setLoadingProfile(false);
+          setLoadingPosts(false);
+        }
       }
     };
 
-    const targetUserId = isMe ? myId : memberId;
-    if (targetUserId) {
-      loadUserPosts();
-    }
+    loadAllProfileData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [memberId, isMe, myId]);
 
   // Fetch Saved and Liked posts dynamically on tab switch

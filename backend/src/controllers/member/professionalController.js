@@ -3,19 +3,21 @@ const User = require('../../models/User');
 const { notifyListingSubmitted } = require('../../services/notificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
+const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // 1. Get all professionals with query filters (scoped to community)
 exports.getProfessionals = async (req, res) => {
   try {
-    const { search, category, city } = req.query;
+    const { search, category, city, page, limit } = req.query;
 
     const baseFilter = { status: 'Approved' };
 
-    if (category && category !== 'All' && category !== 'All Categories') {
+    if (category && category !== 'All' && category !== 'All Categories' && category !== 'all') {
       baseFilter.categoryKey = category.toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
 
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       baseFilter.$or = [
         { companyName: searchRegex },
         { profession: searchRegex },
@@ -29,9 +31,22 @@ exports.getProfessionals = async (req, res) => {
     const activeCity = (city && city !== 'All' && city !== 'All Cities') ? city : null;
     const filter = applyScopeFilter(req, baseFilter, { overrideCity: activeCity });
 
-    const listings = await Professional.find(filter)
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = limit ? Math.max(1, Number(limit)) : 0;
+    const skipNum = (pageNum - 1) * (limitNum || 100);
+
+    let queryExec = Professional.find(filter)
       .populate('ownerId', 'name email phone avatar')
       .sort({ createdAt: -1 });
+
+    if (limitNum > 0) {
+      queryExec = queryExec.skip(skipNum).limit(limitNum);
+    }
+
+    const [listings, total] = await Promise.all([
+      queryExec.lean(),
+      Professional.countDocuments(filter)
+    ]);
 
     const formatted = listings.map(p => ({
       id: p._id.toString(),
@@ -41,19 +56,28 @@ exports.getProfessionals = async (req, res) => {
       profession: p.profession,
       city: p.city,
       rating: p.rating || 5.0,
-      initials: p.initials || p.companyName.substring(0, 2).toUpperCase(),
+      initials: p.initials || (p.companyName ? p.companyName.substring(0, 2).toUpperCase() : 'BU'),
       phone: p.phone || (p.ownerId ? p.ownerId.phone : ''),
       verified: p.status === 'Approved',
       description: p.about,
       experience: p.yearsOfExperience,
       address: p.workAddress,
       businessTiming: p.businessTiming || '09:00 AM - 08:00 PM',
-      logo: p.media.find(m => m.type === 'image')?.url || null,
-      media: p.media.map(m => ({ type: m.type, url: m.url })),
-      ownerId: p.ownerId ? p.ownerId._id : null
+      logo: p.media ? (p.media.find(m => m.type === 'image')?.url || null) : null,
+      media: (p.media || []).map(m => ({ type: m.type, url: m.url })),
+      ownerId: p.ownerId ? (p.ownerId._id ? p.ownerId._id.toString() : p.ownerId.toString()) : null
     }));
 
-    res.status(200).json({ success: true, data: formatted });
+    res.status(200).json({
+      success: true,
+      data: formatted,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum || total,
+        pages: limitNum > 0 ? Math.ceil(total / limitNum) : 1
+      }
+    });
   } catch (error) {
     console.error('getProfessionals error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -65,7 +89,8 @@ exports.getProfessionalById = async (req, res) => {
   try {
     const query = applyScopeFilter(req, { _id: req.params.id });
     const p = await Professional.findOne(query)
-      .populate('ownerId', 'name email phone avatar');
+      .populate('ownerId', 'name email phone avatar')
+      .lean();
 
     if (!p) {
       return res.status(404).json({ success: false, message: 'Business listing not found.' });
@@ -78,16 +103,16 @@ exports.getProfessionalById = async (req, res) => {
       categoryKey: p.categoryKey,
       city: p.city,
       rating: p.rating || 5.0,
-      initials: p.initials || p.companyName.substring(0, 2).toUpperCase(),
+      initials: p.initials || (p.companyName ? p.companyName.substring(0, 2).toUpperCase() : 'BU'),
       phone: p.phone || (p.ownerId ? p.ownerId.phone : ''),
       verified: p.status === 'Approved',
       description: p.about,
       experience: p.yearsOfExperience,
       address: p.workAddress,
       businessTiming: p.businessTiming || '09:00 AM - 08:00 PM',
-      logo: p.media.find(m => m.type === 'image')?.url || null,
-      media: p.media.map(m => ({ type: m.type, url: m.url })),
-      ownerId: p.ownerId ? p.ownerId._id : null
+      logo: p.media ? (p.media.find(m => m.type === 'image')?.url || null) : null,
+      media: (p.media || []).map(m => ({ type: m.type, url: m.url })),
+      ownerId: p.ownerId ? (p.ownerId._id ? p.ownerId._id.toString() : p.ownerId.toString()) : null
     };
 
     res.status(200).json({ success: true, data });
@@ -236,7 +261,7 @@ exports.deleteProfessional = async (req, res) => {
 const Category = require('../../models/Category');
 exports.getActiveCategories = async (req, res) => {
   try {
-    const list = await Category.find({ isActive: true }).select('name key icon');
+    const list = await Category.find({ isActive: true }).select('name key icon').lean();
     res.status(200).json({ success: true, data: list });
   } catch (error) {
     console.error('getActiveCategories error:', error);

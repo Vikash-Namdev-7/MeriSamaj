@@ -186,11 +186,15 @@ const matrimonialProfileSchema = new mongoose.Schema(
 
 // ─── Compound Indexes for Search Performance ──────────────────────────────────
 matrimonialProfileSchema.index({ status: 1, visibility: 1, isDeleted: 1 });
+matrimonialProfileSchema.index({ status: 1, isDeleted: 1, isClosed: 1, 'personal.gender': 1, createdAt: -1 });
 matrimonialProfileSchema.index({ 'personal.community': 1, 'personal.gender': 1 });
+matrimonialProfileSchema.index({ 'personal.gender': 1, 'personal.community': 1, status: 1 });
 matrimonialProfileSchema.index({ 'location.city': 1, 'location.state': 1 });
+matrimonialProfileSchema.index({ 'personal.gender': 1, 'location.state': 1, 'location.city': 1 });
 matrimonialProfileSchema.index({ 'personal.dateOfBirth': 1, 'personal.gender': 1 });
 matrimonialProfileSchema.index({ lastActiveAt: -1, status: 1 });
 matrimonialProfileSchema.index({ verificationStatus: 1, status: 1 });
+matrimonialProfileSchema.index({ 'personal.gender': 1, 'lifestyle.diet': 1 });
 
 // ─── Virtual: Age (calculated dynamically) ────────────────────────────────────
 matrimonialProfileSchema.virtual('age').get(function () {

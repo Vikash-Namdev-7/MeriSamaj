@@ -159,6 +159,9 @@ const groupSchema = new mongoose.Schema(
 
 // ─── Indexes ─────────────────────────────────────────────────────────────────
 groupSchema.index({ communityId: 1, isDeleted: 1 });
+groupSchema.index({ communityId: 1, isDeleted: 1, approvalStatus: 1, createdAt: -1 });
+groupSchema.index({ communityId: 1, isDeleted: 1, approvalStatus: 1, category: 1, createdAt: -1 });
+groupSchema.index({ communityId: 1, isDeleted: 1, approvalStatus: 1, type: 1, createdAt: -1 });
 groupSchema.index({ communityId: 1, category: 1 });
 groupSchema.index({ communityId: 1, approvalStatus: 1 });
 groupSchema.index({ 'members.userId': 1 });

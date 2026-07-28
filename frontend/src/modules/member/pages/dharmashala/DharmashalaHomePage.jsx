@@ -9,39 +9,58 @@ export default function DharmashalaHomePage() {
   const { setMobileMenuOpen } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [dharamshalas, setDharamshalas] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Filter states
-  const [selectedLocation, setSelectedLocation] = useState('all');
-  const [selectedFacilities, setSelectedFacilities] = useState({ ac: false, food: false });
+  const fetchDharamshalas = async (pageNum = 1) => {
+    if (pageNum === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
 
-  // Temporary states for modal before applying
-  const [tempLocation, setTempLocation] = useState('all');
-  const [tempFacilities, setTempFacilities] = useState({ ac: false, food: false });
-
-  const fetchDharamshalas = async () => {
-    setIsLoading(true);
     try {
       const res = await dharmashalaService.getDharmashalas({
         search: searchQuery,
         city: selectedLocation,
         ac: selectedFacilities.ac ? 'true' : 'false',
-        food: selectedFacilities.food ? 'true' : 'false'
+        food: selectedFacilities.food ? 'true' : 'false',
+        page: pageNum,
+        limit: 12
       });
       if (res.status === 'success') {
-        setDharamshalas(res.data);
+        const list = res.data || [];
+        if (pageNum === 1) {
+          setDharamshalas(list);
+        } else {
+          setDharamshalas(prev => [...prev, ...list]);
+        }
+        if (res.pagination) {
+          setHasMore(pageNum < res.pagination.pages);
+        } else {
+          setHasMore(list.length >= 12);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch dharmashalas", error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchDharamshalas();
+    setPage(1);
+    fetchDharamshalas(1);
   }, [searchQuery, selectedLocation, selectedFacilities]);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchDharamshalas(nextPage);
+  };
 
   const handleOpenFilter = () => {
     setTempLocation(selectedLocation);
@@ -117,40 +136,57 @@ export default function DharmashalaHomePage() {
               No Dharmashala found
             </div>
           ) : (
-            dharamshalas.map(d => (
-              <div key={d._id} className="card-neo overflow-hidden flex flex-col">
-                <div className="flex p-4 gap-4">
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
-                    <img 
-                      src={d.image || (d.galleryImages && d.galleryImages[0]) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500'} 
-                      alt={d.name} 
-                      className="w-full h-full object-cover" 
-                    />
+            <>
+              {dharamshalas.map(d => (
+                <div key={d._id} className="card-neo overflow-hidden flex flex-col">
+                  <div className="flex p-4 gap-4">
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
+                      <img 
+                        src={d.image || (d.galleryImages && d.galleryImages[0]) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500'} 
+                        alt={d.name} 
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-slate-800 text-[15px] truncate">{d.name}</h3>
+                      <div className="flex items-start gap-1 mt-1 text-slate-500">
+                        <MapPin size={12} className="mt-0.5 shrink-0 text-indigo-500" />
+                        <span className="text-[11px] leading-tight font-medium">{d.address || d.location}{d.city ? `, ${d.city}` : ''}</span>
+                      </div>
+                      
+                      <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
+                        <div className="flex items-center gap-1"><span>Ownership:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
+                        <div className="flex items-center gap-1"><span>Status:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-800 text-[15px] truncate">{d.name}</h3>
-                    <div className="flex items-start gap-1 mt-1 text-slate-500">
-                      <MapPin size={12} className="mt-0.5 shrink-0 text-indigo-500" />
-                      <span className="text-[11px] leading-tight font-medium">{d.address || d.location}{d.city ? `, ${d.city}` : ''}</span>
-                    </div>
-                    
-                    <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
-                      <div className="flex items-center gap-1"><span>Ownership:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
-                      <div className="flex items-center gap-1"><span>Status:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
-                    </div>
+                  
+                  <div className="px-4 pb-4 flex justify-end">
+                    <button 
+                      onClick={() => navigate(`/member/dharmashala/${d._id}`)}
+                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
+                    >
+                      Book Now
+                    </button>
                   </div>
                 </div>
-                
-                <div className="px-4 pb-4 flex justify-end">
-                  <button 
-                    onClick={() => navigate(`/member/dharmashala/${d._id}`)}
-                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
+              ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-2 pb-4">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="px-6 py-2.5 rounded-xl border border-indigo-200 text-indigo-600 font-bold text-xs bg-indigo-50/50 hover:bg-indigo-100/50 transition-colors disabled:opacity-50"
                   >
-                    Book Now
+                    {isLoadingMore ? 'Loading more properties...' : 'Load More Dharmashalas'}
                   </button>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
       </div>

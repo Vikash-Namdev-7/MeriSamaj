@@ -33,6 +33,7 @@ const ProfileCard = ({
             alt={profile.name}
             className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${isBlurred ? 'blur-lg brightness-75' : ''}`}
             loading="lazy"
+            decoding="async"
           />
 
           {/* Top Badges Row */}
@@ -147,6 +148,7 @@ const ProfileCard = ({
             alt={profile.name}
             className={`w-full h-full object-cover ${isBlurred ? 'blur-md brightness-75' : ''}`}
             loading="lazy"
+            decoding="async"
           />
           {profile.online && (
             <div className="absolute bottom-1.5 left-1.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white" />

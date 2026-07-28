@@ -161,6 +161,7 @@ exports.createProperty = async (req, res) => {
 
     const property = new Dharmashala({
       ...payload,
+      community: req.user?.community || payload.community || 'General',
       amenities,
       image,
       galleryImages,
@@ -170,7 +171,8 @@ exports.createProperty = async (req, res) => {
     await property.save();
     res.status(201).json({ status: 'success', data: property });
   } catch (error) {
-    res.status(400).json({ status: 'error', message: error.message });
+    console.error('dharmashala createProperty error:', error);
+    res.status(400).json({ status: 'error', message: error.message || 'Validation error while saving property.' });
   }
 };
 
@@ -378,6 +380,7 @@ exports.getAllBookings = async (req, res) => {
     
     const bookings = await DharmashalaBooking.find(filter)
       .populate('dharmashala')
+      .populate('user', 'name phone email avatar communityId')
       .populate('rooms')
       .sort({ createdAt: -1 });
       
@@ -387,40 +390,73 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-// Update booking status history & assign rooms
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, rooms, remarks, paymentStatus } = req.body;
     
-    const booking = await DharmashalaBooking.findById(id);
+    const booking = await DharmashalaBooking.findById(id).populate('dharmashala');
     if (!booking) return res.status(404).json({ status: 'error', message: 'Booking request not found.' });
 
-    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: booking.dharmashala }));
+    const parentProp = await Dharmashala.findOne(applyScopeFilter(req, { _id: booking.dharmashala?._id || booking.dharmashala }));
     if (!parentProp) return res.status(404).json({ status: 'error', message: 'Booking request not found or unauthorized.' });
     
     const oldStatus = booking.status;
-    booking.status = status;
-    
-    if (remarks) booking.remarks = remarks;
-    if (paymentStatus) booking.paymentStatus = paymentStatus;
+    const terminalStatuses = ['completed', 'cancelled', 'rejected', 'expired'];
+    if (terminalStatuses.includes(oldStatus) && status === 'pending_approval') {
+      return res.status(400).json({ status: 'error', message: `Cannot transition booking from terminal status "${oldStatus}" back to pending_approval.` });
+    }
 
-    // Set 15-Minute Reservation Lock on Approval
+    // Re-verify real-time availability upon approval
     if (status === 'approved') {
-      booking.reservedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+      const activeStatuses = ['approved', 'reserved', 'payment_pending', 'paid', 'confirmed', 'upcoming', 'checked_in'];
+      const conflictingBookings = await DharmashalaBooking.find({
+        _id: { $ne: booking._id },
+        dharmashala: booking.dharmashala._id || booking.dharmashala,
+        status: { $in: activeStatuses },
+        checkIn: { $lt: booking.checkOut },
+        checkOut: { $gt: booking.checkIn }
+      });
+
+      const conflictRoomIds = new Set();
+      conflictingBookings.forEach(cb => (cb.rooms || []).forEach(rId => conflictRoomIds.add(rId.toString())));
+      
+      const targetRooms = (rooms && rooms.length > 0) ? rooms : (booking.rooms || []);
+      const isOverlapped = targetRooms.some(rId => conflictRoomIds.has(rId.toString()));
+      if (isOverlapped) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Double booking conflict! The selected room is already booked for these dates.'
+        });
+      }
+
+      booking.reservedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 mins lock
       booking.approvedBy = req.user?._id;
+      booking.approvedByRole = (req.user?.role || 'HEAD').toUpperCase();
       booking.approvedAt = new Date();
+      booking.paymentStatus = 'Pending';
+
+      if (req.body.finalAmount !== undefined && req.body.finalAmount !== null) {
+        booking.totalAmount = Number(req.body.finalAmount);
+      }
+      if (req.body.baseAmount !== undefined) booking.baseAmount = Number(req.body.baseAmount);
+      if (req.body.additionalCharges !== undefined) booking.additionalCharges = Number(req.body.additionalCharges);
+      if (req.body.discount !== undefined) booking.discount = Number(req.body.discount);
+      if (req.body.pricingNote !== undefined) booking.pricingNote = req.body.pricingNote;
     } else if (status === 'rejected') {
       booking.rejectedBy = req.user?._id;
       booking.rejectedAt = new Date();
       booking.rejectionReason = remarks || 'Request rejected by Head';
     }
     
+    booking.status = status;
+    if (remarks) booking.remarks = remarks;
+    if (paymentStatus) booking.paymentStatus = paymentStatus;
+
     // Room assignments
     if (rooms && rooms.length > 0) {
       booking.rooms = rooms;
       
-      // Update room statuses based on check-in state
       const targetRoomStatus = status === 'checked_in' ? 'Occupied' : 'Booked';
       await DharmashalaRoom.updateMany(
         { _id: { $in: rooms } },
@@ -436,38 +472,54 @@ exports.updateBookingStatus = async (req, res) => {
       );
     }
     
-    // Append Status Audit Log
+    // Append Structured Audit History
     booking.statusHistory.push({
+      action: status.toUpperCase(),
+      previousStatus: oldStatus,
+      newStatus: status,
       status,
+      performedBy: req.user?._id,
+      performedByRole: (req.user?.role || 'HEAD').toUpperCase(),
+      amount: booking.totalAmount,
+      notes: remarks || booking.pricingNote || `Status updated to ${status}`,
       updatedAt: new Date(),
-      updatedBy: req.user?.name || 'Admin/Head'
+      updatedBy: req.user?.name || 'Head'
     });
     
     await booking.save();
 
-    // Socket.io Broadcast
+    // Socket.io Broadcast for real-time synchronization between Head and Admin
     try {
       const io = req.app.get('io');
       if (io) {
         io.emit('dharmashala:booking_status_updated', {
           bookingId: booking._id,
           status,
-          reservedUntil: booking.reservedUntil
+          reservedUntil: booking.reservedUntil,
+          updatedByRole: 'HEAD'
         });
       }
     } catch (sErr) {}
     
-    // ── Notification: notify booking applicant on status change ────────────────────
+    // Notify Member on Status Change
     try {
-      const dName = booking.dharmashala?.name || 'Dharmashala';
+      const dName = parentProp.name || 'Dharmashala';
       if (booking.user && oldStatus !== status) {
-        notifyBookingStatusChanged(booking.user, status, dName, booking._id);
+        notifyBookingStatusChanged(booking.user, status, dName, booking._id, {
+          amount: booking.totalAmount,
+          reason: booking.rejectionReason
+        });
       }
     } catch (notifErr) {
-      console.warn('[Notify] updateBookingStatus booking_status_changed failed:', notifErr.message);
+      console.warn('[Notify] updateBookingStatus booking_status_changed warning:', notifErr.message);
     }
 
-    res.status(200).json({ status: 'success', data: booking });
+    const updatedPopulated = await DharmashalaBooking.findById(booking._id)
+      .populate('dharmashala')
+      .populate('user', 'name phone email avatar communityId')
+      .populate('rooms');
+
+    res.status(200).json({ status: 'success', data: updatedPopulated });
   } catch (error) {
     res.status(400).json({ status: 'error', message: error.message });
   }

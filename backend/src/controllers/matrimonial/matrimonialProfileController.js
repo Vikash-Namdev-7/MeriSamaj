@@ -12,6 +12,7 @@ const { calculateMatchPercentage, calcAge } = require('../../services/matchServi
 const { buildRestrictedProfile, buildFullProfile } = require('../../middleware/matrimonialPrivacy');
 const { notifyProfileViewed, createNotification, notifyProfileSubmittedToAdmin } = require('../../services/notificationService');
 const { getEffectiveFeatures } = require('../../middleware/subscriptionMiddleware');
+const { inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // ─── Completion Calculator ────────────────────────────────────────────────────
 const SECTION_REQUIRED_FIELDS = {
@@ -62,10 +63,12 @@ exports.createProfile = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'You already have a matrimonial profile.' });
     }
 
+    const payload = inheritTenantPayload(req, req.body);
+
     const profileData = {
-      ...req.body,
+      ...payload,
       userId:      req.user._id,
-      communityId: req.communityId,
+      communityId: payload.communityId,
       createdBy:   req.user._id,
       updatedBy:   req.user._id
     };
@@ -351,8 +354,9 @@ exports.searchProfiles = async (req, res) => {
     }
 
     // ─── Name Search ─────────────────────────────────────────────────────────
+    const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (name && name.trim()) {
-      query['personal.fullName'] = new RegExp(name.trim(), 'i');
+      query['personal.fullName'] = new RegExp(escapeRegex(name.trim()), 'i');
     }
 
     // ─── Gender Filter (Strictly Enforce Opposite Gender) ────────────────────
@@ -371,11 +375,6 @@ exports.searchProfiles = async (req, res) => {
       query['personal.gender'] = gender;
     }
 
-    console.log('[searchProfiles Debug] user ID:', req.user._id);
-    console.log('[searchProfiles Debug] myGender resolved to:', myGender);
-    console.log('[searchProfiles Debug] Query Gender set to:', query['personal.gender']);
-    console.log('[searchProfiles Debug] Exclude userId:', query.userId);
-
     // ─── Age Filter (calculated via DOB) ─────────────────────────────────────
     if (ageMin || ageMax) {
       const today = new Date();
@@ -393,19 +392,25 @@ exports.searchProfiles = async (req, res) => {
     if (heightMin) query['personal.height'] = { $gte: Number(heightMin) };
     if (heightMax) query['personal.height'] = { ...(query['personal.height'] || {}), $lte: Number(heightMax) };
 
-    // ─── Profile Attribute Filters ────────────────────────────────────────────
-    if (community)     query['personal.community']               = new RegExp(community, 'i');
-    if (religion)      query['personal.religion']                = new RegExp(religion, 'i');
-    if (maritalStatus) query['personal.maritalStatus']           = new RegExp(maritalStatus, 'i');
-    if (gotra)         query['personal.gotra']                   = new RegExp(gotra, 'i');
-    if (profession)    query['education.profession']             = new RegExp(profession, 'i');
-    if (occupation)    query['education.occupation']             = new RegExp(occupation, 'i');
-    if (education)     query['education.highestQualification']   = new RegExp(education, 'i');
-    if (state)         query['location.state']                   = new RegExp(state, 'i');
-    if (city)          query['location.city']                    = new RegExp(city, 'i');
-    if (country)       query['location.country']                 = new RegExp(country, 'i');
-    if (diet)          query['lifestyle.diet']                   = new RegExp(diet, 'i');
-    if (annualIncome)  query['education.annualIncome']           = new RegExp(annualIncome, 'i');
+    // ─── Profile Attribute Filters (Index-friendly Anchored RegEx) ──────────────
+    const prefixRegex = (val) => new RegExp('^' + escapeRegex(val.trim()), 'i');
+    const exactRegex  = (val) => new RegExp('^' + escapeRegex(val.trim()) + '$', 'i');
+
+    // Free-text / Autocomplete inputs: Prefix-anchored for partial match + index efficiency
+    if (community)     query['personal.community']               = prefixRegex(community);
+    if (religion)      query['personal.religion']                = prefixRegex(religion);
+    if (gotra)         query['personal.gotra']                   = prefixRegex(gotra);
+    if (profession)    query['education.profession']             = prefixRegex(profession);
+    if (occupation)    query['education.occupation']             = prefixRegex(occupation);
+    if (education)     query['education.highestQualification']   = prefixRegex(education);
+    if (state)         query['location.state']                   = prefixRegex(state);
+    if (city)          query['location.city']                    = prefixRegex(city);
+    if (country)       query['location.country']                 = prefixRegex(country);
+    if (annualIncome)  query['education.annualIncome']           = prefixRegex(annualIncome);
+
+    // Dropdown / Select inputs: Exact match
+    if (maritalStatus) query['personal.maritalStatus']           = exactRegex(maritalStatus);
+    if (diet)          query['lifestyle.diet']                   = exactRegex(diet);
 
     // ─── Verified Only ────────────────────────────────────────────────────────
     if (verifiedOnly === 'true' || verifiedOnly === true) {

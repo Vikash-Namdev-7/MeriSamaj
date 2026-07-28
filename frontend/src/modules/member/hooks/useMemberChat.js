@@ -36,13 +36,41 @@ export const useMemberConversations = () => {
   const { isConnected } = useChatSocket({
     onNewMessage: (msg) => {
       setConversations(prev => {
-        const idx = prev.findIndex(c => c._id === msg.conversationId?.toString());
+        const convId = msg.conversationId?.toString();
+        const idx = prev.findIndex(c => c._id === convId);
+        const preview = msg.message || (msg.type === 'image' ? '📷 Photo' : msg.type === 'file' ? '📎 File' : '💬 Message');
+        const msgTime = msg.createdAt || new Date().toISOString();
+
         if (idx === -1) {
-          // Unknown conversation — refresh
-          fetch();
-          return prev;
+          // Construct new conversation entry locally from socket payload
+          const sender = typeof msg.senderId === 'object' && msg.senderId?.name ? msg.senderId : null;
+          const myProfile = user ? { _id: user.id || user._id, name: user.name, avatar: user.avatar } : null;
+          const participants = [];
+          if (sender) participants.push(sender);
+          if (myProfile && (!sender || sender._id?.toString() !== myProfile._id?.toString())) {
+            participants.push(myProfile);
+          }
+
+          const newConversation = {
+            _id: convId,
+            lastMessageAt: msgTime,
+            lastMessagePreview: preview,
+            unreadCount: msg.senderId?._id?.toString() !== (user?.id || user?._id)?.toString() ? 1 : 0,
+            participants,
+            createdAt: msgTime,
+            updatedAt: msgTime
+          };
+          return [newConversation, ...prev];
         }
-        const updated = { ...prev[idx], lastMessageAt: msg.createdAt, lastMessagePreview: msg.message || '📷' };
+
+        const updated = {
+          ...prev[idx],
+          lastMessageAt: msgTime,
+          lastMessagePreview: preview,
+          unreadCount: msg.senderId?._id?.toString() !== (user?.id || user?._id)?.toString() 
+            ? (prev[idx].unreadCount || 0) + 1 
+            : prev[idx].unreadCount || 0
+        };
         const rest = prev.filter((_, i) => i !== idx);
         return [updated, ...rest];
       });

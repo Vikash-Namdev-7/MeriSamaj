@@ -14,6 +14,8 @@ import {
   CalendarDays,
   Clock,
   MapPin,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { AnimatedPage } from '../../components/layout/AnimatedPage';
@@ -45,6 +47,9 @@ const INITIAL_FORM = {
   ritesDate: '',
   ritesTime: '',
   ritesVenue: '',
+  ceremonies: [
+    { type: 'Uthawna / Chautha', date: '', time: '', venue: '' }
+  ],
   showLocation: true,
   // Step 4 — Description & Privacy
   message: 'We request you all to pray for the peace of the departed soul.',
@@ -464,6 +469,10 @@ const CreateShradhanjaliPage = () => {
 
   useEffect(() => {
     if (isEditMode && obituaryToEdit) {
+      const existingCeremonies = (obituaryToEdit.ceremonies && obituaryToEdit.ceremonies.length > 0)
+        ? obituaryToEdit.ceremonies
+        : (obituaryToEdit.funeralDetails ? [obituaryToEdit.funeralDetails] : [{ type: 'Uthawna / Chautha', date: '', time: '', venue: '' }]);
+
       setForm({
         photoUrl: obituaryToEdit.image || '',
         photoFile: null,
@@ -472,10 +481,11 @@ const CreateShradhanjaliPage = () => {
         age: obituaryToEdit.age?.toString() || '',
         birthDate: obituaryToEdit.birthDate || '',
         dateOfPassing: obituaryToEdit.dateOfPassing || '',
-        ritesType: obituaryToEdit.funeralDetails?.type || 'Uthawna / Chautha',
-        ritesDate: obituaryToEdit.funeralDetails?.date || '',
-        ritesTime: obituaryToEdit.funeralDetails?.time || '',
-        ritesVenue: obituaryToEdit.funeralDetails?.venue || '',
+        ritesType: existingCeremonies[0]?.type || 'Uthawna / Chautha',
+        ritesDate: existingCeremonies[0]?.date || '',
+        ritesTime: existingCeremonies[0]?.time || '',
+        ritesVenue: existingCeremonies[0]?.venue || '',
+        ceremonies: existingCeremonies,
         showLocation: true,
         message: obituaryToEdit.message || '',
         privacy: obituaryToEdit.privacy || 'public',
@@ -486,7 +496,7 @@ const CreateShradhanjaliPage = () => {
   }, [id, obituaryToEdit, isEditMode]);
 
   useEffect(() => {
-    if (showCeremonyPicker) {
+    if (showCeremonyPicker !== false && showCeremonyPicker !== null) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -515,8 +525,12 @@ const CreateShradhanjaliPage = () => {
       const dateConfig = settings.fieldConfig?.date || { enabled: true };
       const venueAddressConfig = settings.fieldConfig?.venueAddress || { enabled: true };
 
-      if (dateConfig.enabled && !form.ritesDate) newErrors.ritesDate = 'Ceremony date is required';
-      if (venueAddressConfig.enabled && !form.ritesVenue.trim()) newErrors.ritesVenue = 'Venue is required';
+      const activeCeremonies = form.ceremonies && form.ceremonies.length > 0
+        ? form.ceremonies
+        : [{ type: form.ritesType, date: form.ritesDate, time: form.ritesTime, venue: form.ritesVenue }];
+
+      if (dateConfig.enabled && !activeCeremonies[0]?.date) newErrors.ritesDate = 'Primary ceremony date is required';
+      if (venueAddressConfig.enabled && !activeCeremonies[0]?.venue?.trim()) newErrors.ritesVenue = 'Primary ceremony venue is required';
     }
     if (step === 4) {
       if (!form.message.trim()) newErrors.message = 'Message is required';
@@ -549,16 +563,21 @@ const CreateShradhanjaliPage = () => {
     if (isPosting) return;
     setIsPosting(true);
 
+    const activeCeremonies = form.ceremonies && form.ceremonies.length > 0
+      ? form.ceremonies
+      : [{ type: form.ritesType, date: form.ritesDate, time: form.ritesTime, venue: form.ritesVenue }];
+
     const formData = new FormData();
     formData.append('prefix', form.prefix);
     formData.append('deceasedName', form.deceasedName);
     formData.append('age', form.age);
     formData.append('birthDate', form.birthDate);
     formData.append('dateOfPassing', form.dateOfPassing);
-    formData.append('ritesType', form.ritesType);
-    formData.append('ritesDate', form.ritesDate);
-    formData.append('ritesTime', form.ritesTime);
-    formData.append('ritesVenue', form.ritesVenue);
+    formData.append('ritesType', activeCeremonies[0]?.type || form.ritesType);
+    formData.append('ritesDate', activeCeremonies[0]?.date || form.ritesDate);
+    formData.append('ritesTime', activeCeremonies[0]?.time || form.ritesTime);
+    formData.append('ritesVenue', activeCeremonies[0]?.venue || form.ritesVenue);
+    formData.append('ceremonies', JSON.stringify(activeCeremonies));
     formData.append('message', form.message);
     formData.append('privacy', form.privacy);
     formData.append('familyContact', form.familyContact);
@@ -773,26 +792,131 @@ const CreateShradhanjaliPage = () => {
           <p className="text-[13px] text-gray-500">Enter details of the last rites</p>
         </div>
 
-        {/* Type selector — custom mobile bottom-sheet picker */}
-        {ceremonyTypeConfig.enabled && (
-          <div>
-            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">{ceremonyTypeConfig.label}</label>
-            <button
-              type="button"
-              onClick={() => setShowCeremonyPicker(true)}
-              className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-[14px] border outline-none transition-all text-left press-scale"
-              style={{ borderColor: 'rgba(212,175,55,0.4)', background: '#FAFAF8' }}
-            >
-              <span className="font-medium text-gray-900">{form.ritesType}</span>
-              <ChevronDown size={16} className="text-gray-400 shrink-0" />
-            </button>
-          </div>
-        )}
+        {/* Dynamic Ceremonies Block List */}
+        <div className="space-y-6">
+          {(form.ceremonies || []).map((c, index) => (
+            <div key={index} className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/60 space-y-4 relative">
+              <div className="flex items-center justify-between border-b border-amber-100 pb-2">
+                <span className="text-xs font-black uppercase text-amber-800 tracking-wider">
+                  Ceremony #{index + 1}
+                </span>
+                {form.ceremonies.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = form.ceremonies.filter((_, i) => i !== index);
+                      setForm(f => ({ ...f, ceremonies: updated }));
+                    }}
+                    className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                    title="Remove Ceremony"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+
+              {/* Type selector */}
+              {ceremonyTypeConfig.enabled && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                    {ceremonyTypeConfig.label}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCeremonyPicker(index)}
+                    className="w-full flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] border outline-none bg-white transition-all text-left"
+                    style={{ borderColor: 'rgba(212,175,55,0.4)' }}
+                  >
+                    <span className="font-medium text-gray-900">{c.type || 'Select Type'}</span>
+                    <ChevronDown size={16} className="text-gray-400 shrink-0" />
+                  </button>
+                </div>
+              )}
+
+              {/* Date + Time */}
+              {(dateConfig.enabled || timeConfig.enabled) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {dateConfig.enabled && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <span className="flex items-center gap-1"><CalendarDays size={10} /> {dateConfig.label} {index === 0 && <span className="text-red-400">*</span>}</span>
+                      </label>
+                      <CalendarInput
+                        value={c.date}
+                        onChange={val => {
+                          const updated = [...form.ceremonies];
+                          updated[index] = { ...updated[index], date: val };
+                          setForm(f => ({ ...f, ceremonies: updated, ritesDate: updated[0].date }));
+                        }}
+                        placeholder="YYYY-MM-DD"
+                        error={index === 0 && errors.ritesDate}
+                      />
+                      {index === 0 && errors.ritesDate && <p className="text-[11px] text-red-500 mt-1">{errors.ritesDate}</p>}
+                    </div>
+                  )}
+                  {timeConfig.enabled && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <span className="flex items-center gap-1"><Clock size={10} /> {timeConfig.label}</span>
+                      </label>
+                      <TimeInput
+                        value={c.time}
+                        onChange={val => {
+                          const updated = [...form.ceremonies];
+                          updated[index] = { ...updated[index], time: val };
+                          setForm(f => ({ ...f, ceremonies: updated, ritesTime: updated[0].time }));
+                        }}
+                        placeholder="Select time"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Venue */}
+              {venueAddressConfig.enabled && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                    <span className="flex items-center gap-1"><MapPin size={10} /> {venueAddressConfig.label} {index === 0 && <span className="text-red-400">*</span>}</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={c.venue}
+                    onChange={e => {
+                      const updated = [...form.ceremonies];
+                      updated[index] = { ...updated[index], venue: e.target.value };
+                      setForm(f => ({ ...f, ceremonies: updated, ritesVenue: updated[0].venue }));
+                    }}
+                    placeholder="e.g. Swarg Mandir, M.G. Road, Indore"
+                    className="w-full rounded-xl px-4 py-2.5 text-[13px] border outline-none bg-white transition-all"
+                    style={{ borderColor: index === 0 && errors.ritesVenue ? '#EF4444' : '#E5E7EB' }}
+                  />
+                  {index === 0 && errors.ritesVenue && <p className="text-[11px] text-red-500 mt-1">{errors.ritesVenue}</p>}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Add Another Ceremony Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const updated = [
+                ...(form.ceremonies || []),
+                { type: 'Tehravi / Prayers', date: '', time: '', venue: '' }
+              ];
+              setForm(f => ({ ...f, ceremonies: updated }));
+            }}
+            className="w-full py-3 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-800 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Plus size={16} /> + Add Another Ceremony (कार्यक्रम जोड़े)
+          </button>
+        </div>
 
         {/* Ceremony type bottom-sheet picker */}
         {createPortal(
           <AnimatePresence>
-            {showCeremonyPicker && (
+            {showCeremonyPicker !== false && showCeremonyPicker !== null && (
               <motion.div
                 key="ceremony-picker"
                 initial={{ opacity: 0 }}
@@ -800,7 +924,7 @@ const CreateShradhanjaliPage = () => {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[9999] flex items-end justify-center"
                 style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', touchAction: 'none' }}
-                onClick={() => setShowCeremonyPicker(false)}
+                onClick={() => setShowCeremonyPicker(null)}
                 onWheel={e => e.stopPropagation()}
                 onTouchMove={e => e.stopPropagation()}
               >
@@ -825,7 +949,7 @@ const CreateShradhanjaliPage = () => {
                 >
                   <h3 className="text-[16px] font-bold" style={{ color: '#7C5C2E' }}>Select Ceremony Type</h3>
                   <button
-                    onClick={() => setShowCeremonyPicker(false)}
+                    onClick={() => setShowCeremonyPicker(null)}
                     className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center press-scale"
                   >
                     <X size={14} className="text-gray-500" />
@@ -835,7 +959,8 @@ const CreateShradhanjaliPage = () => {
                 {/* Options list */}
                 <div className="py-2 pb-8">
                   {CEREMONY_TYPES.map((type, idx) => {
-                    const isSelected = form.ritesType === type;
+                    const activeIndex = typeof showCeremonyPicker === 'number' ? showCeremonyPicker : 0;
+                    const isSelected = form.ceremonies?.[activeIndex]?.type === type;
                     return (
                       <motion.button
                         key={type}
@@ -843,7 +968,14 @@ const CreateShradhanjaliPage = () => {
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.04 }}
-                        onClick={() => { set('ritesType', type); setShowCeremonyPicker(false); }}
+                        onClick={() => {
+                          const updated = [...(form.ceremonies || [])];
+                          if (updated[activeIndex]) {
+                            updated[activeIndex] = { ...updated[activeIndex], type };
+                          }
+                          setForm(f => ({ ...f, ceremonies: updated, ritesType: updated[0]?.type || type }));
+                          setShowCeremonyPicker(null);
+                        }}
                         className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors press-scale"
                         style={{
                           background: isSelected ? 'rgba(212,175,55,0.08)' : 'transparent',
@@ -874,56 +1006,6 @@ const CreateShradhanjaliPage = () => {
             )}
           </AnimatePresence>,
           document.body
-        )}
-
-        {/* Date + Time */}
-        {(dateConfig.enabled || timeConfig.enabled) && (
-          <div className="grid grid-cols-2 gap-3">
-            {dateConfig.enabled && (
-              <div>
-                <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-                  <span className="flex items-center gap-1"><CalendarDays size={10} /> {dateConfig.label} <span className="text-red-400">*</span></span>
-                </label>
-                <CalendarInput
-                  value={form.ritesDate}
-                  onChange={val => set('ritesDate', val)}
-                  placeholder="YYYY-MM-DD"
-                  error={errors.ritesDate}
-                />
-                {errors.ritesDate && <p className="text-[12px] text-red-500 mt-1">{errors.ritesDate}</p>}
-              </div>
-            )}
-            {timeConfig.enabled && (
-              <div>
-                <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-                  <span className="flex items-center gap-1"><Clock size={10} /> {timeConfig.label}</span>
-                </label>
-                <TimeInput
-                  value={form.ritesTime}
-                  onChange={val => set('ritesTime', val)}
-                  placeholder="Select time"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Venue */}
-        {venueAddressConfig.enabled && (
-          <div>
-            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-              <span className="flex items-center gap-1"><MapPin size={10} /> {venueAddressConfig.label} <span className="text-red-400">*</span></span>
-            </label>
-            <input
-              type="text"
-              value={form.ritesVenue}
-              onChange={e => set('ritesVenue', e.target.value)}
-              placeholder="e.g. Swarg Mandir, M.G. Road, Indore"
-              className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
-              style={{ borderColor: errors.ritesVenue ? '#EF4444' : '#E5E7EB' }}
-            />
-            {errors.ritesVenue && <p className="text-[12px] text-red-500 mt-1">{errors.ritesVenue}</p>}
-          </div>
         )}
 
       </div>

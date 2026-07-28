@@ -249,6 +249,13 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   }
 };
 
+// Compound Indexes for fast Admin & Member queries
+userSchema.index({ role: 1, accountStatus: 1, createdAt: -1 });
+userSchema.index({ role: 1, verificationStatus: 1, createdAt: -1 });
+userSchema.index({ role: 1, communityId: 1, createdAt: -1 });
+userSchema.index({ role: 1, city: 1, createdAt: -1 });
+userSchema.index({ role: 1, accountStatus: 1, communityId: 1, designation: 1 });
+
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;

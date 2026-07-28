@@ -102,6 +102,18 @@ export default function ProfessionalDirectoryManagement() {
     loadListings();
   }, [searchQuery, status, category, city, credentialStatus, currentPage, sortBy, sortOrder]);
 
+  // Lock background scroll when detail modal popup is active
+  useEffect(() => {
+    if (isDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDrawerOpen]);
+
   const clearAllFilters = () => {
     setSearchQuery('');
     setStatus('');
@@ -465,12 +477,12 @@ export default function ProfessionalDirectoryManagement() {
         </div>
       )}
 
-      {/* DETAIL DRAWER */}
+      {/* DETAIL MODAL POPUP */}
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex justify-end">
-          <div className="flex-1" onClick={() => setIsDrawerOpen(false)} />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0" onClick={() => setIsDrawerOpen(false)} />
           
-          <div className="w-full max-w-xl bg-white border-l border-slate-250 shadow-2xl h-screen flex flex-col overflow-hidden relative">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden relative z-10 animate-scale-up">
             {drawerLoading ? (
               <div className="flex-1 flex flex-col items-center justify-center">
                 <div className="w-10 h-10 border-4 border-slate-200 border-t-[#7C3AED] rounded-full animate-spin mb-3" />
@@ -665,7 +677,7 @@ export default function ProfessionalDirectoryManagement() {
                     )}
                     <button 
                       onClick={() => handleDelete(selectedListing.id)}
-                      className="bg-red-605 hover:bg-red-705 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
                     >
                       Delete
                     </button>

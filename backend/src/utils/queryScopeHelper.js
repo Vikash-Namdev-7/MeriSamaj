@@ -47,7 +47,20 @@ const applyScopeFilter = (req, baseFilter = {}, options = {}) => {
     ? new mongoose.Types.ObjectId(rawCommunityId.toString())
     : (rawCommunityId ? rawCommunityId : new mongoose.Types.ObjectId('000000000000000000000000'));
 
-  if (options.includeCampaignTargeting) {
+  if (options.includeGlobalScope) {
+    const globalScopeCondition = [
+      { scope: 'GLOBAL' },
+      { scope: 'COMMUNITY', communityId: targetCommId }
+    ];
+    if (filter.$or) {
+      const existingOr = filter.$or;
+      delete filter.$or;
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: existingOr }, { $or: globalScopeCondition });
+    } else {
+      filter.$or = globalScopeCondition;
+    }
+  } else if (options.includeCampaignTargeting) {
     const campaignTargetingCondition = [
       { communityId: targetCommId },
       { isGlobalCampaign: true },

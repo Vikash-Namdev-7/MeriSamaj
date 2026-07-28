@@ -66,11 +66,12 @@ exports.getUsers = async (req, res) => {
 
     // Search
     if (search && search.trim()) {
-      const s = search.trim();
+      const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       query.$or = [
-        { name: { $regex: s, $options: 'i' } },
-        { email: { $regex: s, $options: 'i' } },
-        { phone: { $regex: s, $options: 'i' } },
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
       ];
     }
 

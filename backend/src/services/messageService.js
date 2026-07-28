@@ -75,7 +75,8 @@ const getMessages = async (conversationId, requestingUserId, page = 1, limit = 5
     .skip((page - 1) * limit)
     .limit(limit)
     .populate('senderId', 'name avatar _id')
-    .populate('replyTo', 'message type senderId mediaUrl');
+    .populate('replyTo', 'message type senderId mediaUrl')
+    .lean();
 
   return { messages: messages.reverse(), total, page };
 };

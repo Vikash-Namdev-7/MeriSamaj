@@ -7,7 +7,8 @@ import { useData } from '../../context/DataProvider';
 export default function DharmashalaBookingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addNotification, user } = useData();
+  const { addNotification, user, currentUser } = useData();
+  const activeUser = currentUser || user;
   
   const [dh, setDh] = useState(null);
   const [days, setDays] = useState([]);
@@ -21,7 +22,39 @@ export default function DharmashalaBookingPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [checkInTime, setCheckInTime] = useState('10:00');
   const [checkOutTime, setCheckOutTime] = useState('10:00');
+  const [guestCount, setGuestCount] = useState(1);
+  const [purpose, setPurpose] = useState('Personal Stay');
+  const [memberNotes, setMemberNotes] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const formatTime12Hr = (time24) => {
+    if (!time24) return '';
+    const [hStr, mStr] = time24.split(':');
+    let hours = parseInt(hStr, 10);
+    const minutes = mStr || '00';
+    if (isNaN(hours)) return time24;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    return `${formattedHours}:${minutes} ${ampm}`;
+  };
+
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const hh = String(h).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        const val = `${hh}:${mm}`;
+        options.push({
+          value: val,
+          label: `${formatTime12Hr(val)}`
+        });
+      }
+    }
+    return options;
+  }, []);
 
   const fetchDharmashalaDetails = async () => {
     setIsLoading(true);
@@ -109,9 +142,19 @@ export default function DharmashalaBookingPage() {
   const handleConfirmBooking = async () => {
     if (!dh || !selectedDate) return;
 
-    // Check-in and check-out dates
-    const checkInDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${selectedDate.day.toString().padStart(2, '0')}`;
-    const checkOutDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${(selectedDate.day + 1).toString().padStart(2, '0')}`;
+    // Safe ISO date string construction using local date components
+    const checkInDateObj = new Date(currentYear, currentMonth - 1, selectedDate.day);
+    const checkOutDateObj = new Date(currentYear, currentMonth - 1, selectedDate.day + 1);
+
+    const formatYMD = (d) => {
+      const yr = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, '0');
+      const da = String(d.getDate()).padStart(2, '0');
+      return `${yr}-${mo}-${da}`;
+    };
+
+    const checkInDateStr = formatYMD(checkInDateObj);
+    const checkOutDateStr = formatYMD(checkOutDateObj);
 
     try {
       const res = await dharmashalaService.createBooking({
@@ -121,8 +164,11 @@ export default function DharmashalaBookingPage() {
         roomType: dh.hasAcRooms ? 'AC' : 'General',
         checkInTime,
         checkOutTime,
-        bookedBy: user?.name || 'Default Member',
-        phone: user?.phone || '9999999999'
+        guestCount,
+        purpose,
+        memberNotes,
+        bookedBy: activeUser?.name || 'Samaj Member',
+        phone: activeUser?.phone || '9999999999'
       });
 
       if (res.status === 'success') {
@@ -177,22 +223,48 @@ export default function DharmashalaBookingPage() {
       <div className="flex-1 p-4 space-y-4">
         {/* Dharmashala Image Gallery */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="relative h-48 w-full bg-slate-100">
+          <div className="relative h-52 w-full bg-slate-100 group">
             {galleryImages.length > 0 ? (
-              <img src={galleryImages[activeImageIndex]} alt="Dharmashala" className="w-full h-full object-cover transition-opacity duration-300" />
+              <img 
+                src={galleryImages[activeImageIndex]} 
+                alt="Dharmashala" 
+                className="w-full h-full object-cover transition-all duration-300" 
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold bg-slate-200">No Image</div>
+              <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold bg-slate-200">No Image Available</div>
             )}
+
+            {/* Left & Right Slide Navigation Arrows */}
             {galleryImages.length > 1 && (
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md">
-                {galleryImages.map((_, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setActiveImageIndex(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${activeImageIndex === i ? 'bg-white scale-110' : 'bg-white/50'}`} 
-                  />
-                ))}
-              </div>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1))}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-all press-scale cursor-pointer"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1))}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-all press-scale cursor-pointer"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRight size={20} />
+                </button>
+
+                {/* Bottom Pagination Dots */}
+                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md">
+                  {galleryImages.map((_, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => setActiveImageIndex(i)}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${activeImageIndex === i ? 'w-5 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'}`} 
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
           <div className="p-4">
@@ -213,7 +285,13 @@ export default function DharmashalaBookingPage() {
           )}
           
           <div className="flex items-center justify-between mb-6">
-            <button onClick={handlePrevMonth} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronLeft size={20} /></button>
+            <button 
+              disabled={currentYear < new Date().getFullYear() || (currentYear === new Date().getFullYear() && currentMonth <= new Date().getMonth() + 1)}
+              onClick={handlePrevMonth} 
+              className="w-8 h-8 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600"
+            >
+              <ChevronLeft size={20} />
+            </button>
             <h3 className="font-bold text-[15px] text-indigo-700">{getMonthName(currentMonth)} {currentYear}</h3>
             <button onClick={handleNextMonth} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"><ChevronRight size={20} /></button>
           </div>
@@ -228,16 +306,30 @@ export default function DharmashalaBookingPage() {
               <div key={`empty-${i}`} className="text-[11px] text-slate-300 flex items-center justify-center aspect-square" />
             ))}
 
-            {days.map(d => (
-              <div key={d.day} className="flex items-center justify-center">
-                <button 
-                  onClick={() => setSelectedDate(d)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-all ${getStatusColor(d.status)} ${selectedDate?.day === d.day ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
-                >
-                  {d.day}
-                </button>
-              </div>
-            ))}
+            {days.map(d => {
+              const cellDate = new Date(currentYear, currentMonth - 1, d.day);
+              cellDate.setHours(23, 59, 59, 999);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const isPast = cellDate < today;
+
+              return (
+                <div key={d.day} className="flex items-center justify-center">
+                  <button 
+                    disabled={isPast || d.status === 'booked'}
+                    onClick={() => !isPast && d.status !== 'booked' && setSelectedDate(d)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-all ${
+                      isPast 
+                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-150 opacity-60' 
+                        : getStatusColor(d.status)
+                    } ${selectedDate?.day === d.day ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
+                    title={isPast ? 'Past date cannot be booked' : undefined}
+                  >
+                    {d.day}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap justify-between gap-2 text-[10px] font-bold text-slate-500">
@@ -272,30 +364,85 @@ export default function DharmashalaBookingPage() {
             )}
 
             {selectedDate.status !== 'booked' && (
-              <div className="pt-3 border-t border-indigo-100 flex gap-3">
-                <div className="flex-1">
-                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-in Time</label>
-                  <div className="relative">
+              <>
+                <div className="pt-3 border-t border-indigo-100 flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-in Time</label>
+                    <div className="relative">
+                      <select 
+                        value={checkInTime}
+                        onChange={(e) => setCheckInTime(e.target.value)}
+                        className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400 appearance-none cursor-pointer pr-9 shadow-sm"
+                      >
+                        {timeOptions.map((slot) => (
+                          <option key={`in-${slot.value}`} value={slot.value}>
+                            {slot.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Clock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-out Time</label>
+                    <div className="relative">
+                      <select 
+                        value={checkOutTime}
+                        onChange={(e) => setCheckOutTime(e.target.value)}
+                        className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400 appearance-none cursor-pointer pr-9 shadow-sm"
+                      >
+                        {timeOptions.map((slot) => (
+                          <option key={`out-${slot.value}`} value={slot.value}>
+                            {slot.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Clock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guest count, purpose, and notes */}
+                <div className="pt-3 border-t border-indigo-100/60 space-y-3">
+                  <div className="flex gap-3">
+                    <div className="w-1/3">
+                      <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Guests</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={guestCount}
+                        onChange={(e) => setGuestCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Purpose of Stay</label>
+                      <select 
+                        value={purpose}
+                        onChange={(e) => setPurpose(e.target.value)}
+                        className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400 cursor-pointer"
+                      >
+                        <option value="Personal Stay">Personal Stay / Pilgrimage</option>
+                        <option value="Family Function">Family Function / Event</option>
+                        <option value="Marriage">Marriage / Wedding</option>
+                        <option value="Medical / Health">Medical / Health Visit</option>
+                        <option value="Other">Other Purpose</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Additional Notes (Optional)</label>
                     <input 
-                      type="time" 
-                      value={checkInTime}
-                      onChange={(e) => setCheckInTime(e.target.value)}
-                      className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400"
+                      type="text"
+                      placeholder="e.g. Ground floor preferred, late arrival..."
+                      value={memberNotes}
+                      onChange={(e) => setMemberNotes(e.target.value)}
+                      className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-[12px] font-medium text-slate-800 outline-none focus:border-indigo-400 placeholder:text-slate-400"
                     />
                   </div>
                 </div>
-                <div className="flex-1">
-                  <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Check-out Time</label>
-                  <div className="relative">
-                    <input 
-                      type="time" 
-                      value={checkOutTime}
-                      onChange={(e) => setCheckOutTime(e.target.value)}
-                      className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2.5 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400"
-                    />
-                  </div>
-                </div>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -311,7 +458,7 @@ export default function DharmashalaBookingPage() {
               </div>
               <h3 className="text-xl font-black text-slate-800 mb-2">Confirm Booking</h3>
               <p className="text-[13px] text-slate-500 leading-relaxed font-medium px-2 mb-4">
-                Do you want to confirm booking for {selectedDate?.day} {getMonthName(currentMonth)} {currentYear} from <strong className="text-slate-700">{checkInTime}</strong> to <strong className="text-slate-700">{checkOutTime}</strong>?
+                Do you want to confirm booking for {selectedDate?.day} {getMonthName(currentMonth)} {currentYear} from <strong className="text-slate-700">{formatTime12Hr(checkInTime)}</strong> to <strong className="text-slate-700">{formatTime12Hr(checkOutTime)}</strong>?
               </p>
             </div>
             

@@ -22,8 +22,15 @@ export default function AdminDharmashalaManagement() {
   // Override modal
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideBooking, setOverrideBooking] = useState(null);
-  const [overrideStatus, setOverrideStatus] = useState('confirmed');
+  const [overrideStatus, setOverrideStatus] = useState('approved');
   const [overrideRemarks, setOverrideRemarks] = useState('');
+
+  // Pricing states for approval
+  const [baseAmount, setBaseAmount] = useState(0);
+  const [additionalCharges, setAdditionalCharges] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+  const [pricingNote, setPricingNote] = useState('');
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -46,6 +53,21 @@ export default function AdminDharmashalaManagement() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    try {
+      const io = window.socketInstance || null;
+      if (io) {
+        const handleRefresh = () => fetchDashboardData();
+        io.on('dharmashala:booking_created', handleRefresh);
+        io.on('dharmashala:booking_status_updated', handleRefresh);
+        io.on('dharmashala:payment_completed', handleRefresh);
+        return () => {
+          io.off('dharmashala:booking_created', handleRefresh);
+          io.off('dharmashala:booking_status_updated', handleRefresh);
+          io.off('dharmashala:payment_completed', handleRefresh);
+        };
+      }
+    } catch (e) {}
   }, [search, selectedCity, selectedStatus]);
 
   const handleToggleStatus = async (propertyId) => {
@@ -60,6 +82,21 @@ export default function AdminDharmashalaManagement() {
     }
   };
 
+  const openOverrideModal = (b) => {
+    setOverrideBooking(b);
+    setOverrideStatus(b.status || 'approved');
+    setOverrideRemarks('');
+    const base = b.baseAmount || b.totalAmount || 1000;
+    const add = b.additionalCharges || 0;
+    const disc = b.discount || 0;
+    setBaseAmount(base);
+    setAdditionalCharges(add);
+    setDiscount(disc);
+    setFinalAmount(b.totalAmount || (base + add - disc));
+    setPricingNote(b.pricingNote || '');
+    setShowOverrideModal(true);
+  };
+
   const handleApplyOverride = async (e) => {
     e.preventDefault();
     if (!overrideBooking) return;
@@ -67,7 +104,12 @@ export default function AdminDharmashalaManagement() {
       const res = await adminDharmashalaService.overrideBookingStatus(overrideBooking._id || overrideBooking.id, {
         status: overrideStatus,
         remarks: overrideRemarks,
-        paymentStatus: overrideStatus === 'confirmed' ? 'Paid' : overrideBooking.paymentStatus
+        paymentStatus: (overrideStatus === 'confirmed' || overrideStatus === 'upcoming') ? 'Paid' : overrideBooking.paymentStatus,
+        baseAmount,
+        additionalCharges,
+        discount,
+        finalAmount,
+        pricingNote
       });
 
       if (res.status === 'success') {
@@ -251,15 +293,10 @@ export default function AdminDharmashalaManagement() {
                       </td>
                       <td className="p-4 text-right">
                         <button 
-                          onClick={() => {
-                            setOverrideBooking(b);
-                            setOverrideStatus(b.status);
-                            setOverrideRemarks('');
-                            setShowOverrideModal(true);
-                          }}
-                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-lg text-[11px]"
+                          onClick={() => openOverrideModal(b)}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-lg text-[11px] cursor-pointer"
                         >
-                          Override
+                          Review & Action
                         </button>
                       </td>
                     </tr>
@@ -271,42 +308,149 @@ export default function AdminDharmashalaManagement() {
         </div>
       )}
 
-      {/* OVERRIDE MODAL */}
-      {showOverrideModal && (
+      {/* OVERRIDE & APPROVAL MODAL */}
+      {showOverrideModal && overrideBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-black text-slate-800">Admin Emergency Override</h3>
-            <p className="text-xs text-slate-500">Override status for Booking #{overrideBooking?.bookingId}</p>
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider">Admin Booking Action</span>
+                <h3 className="text-lg font-black text-slate-800">Booking #{overrideBooking.bookingId}</h3>
+              </div>
+              <button onClick={() => setShowOverrideModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-700">✕</button>
+            </div>
+
+            {/* Member & Property Summary */}
+            <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Guest:</span>
+                <span className="font-bold text-slate-800">{overrideBooking.bookedBy} ({overrideBooking.phone})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Property:</span>
+                <span className="font-bold text-slate-800">{overrideBooking.dharmashala?.name || 'Dharmashala'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Dates:</span>
+                <span className="font-bold text-indigo-600">{new Date(overrideBooking.checkIn).toLocaleDateString()} - {new Date(overrideBooking.checkOut).toLocaleDateString()} ({overrideBooking.nights} Nights)</span>
+              </div>
+              {overrideBooking.guestCount && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Guests & Purpose:</span>
+                  <span className="font-bold text-slate-800">{overrideBooking.guestCount} Guests • {overrideBooking.purpose || 'Personal Stay'}</span>
+                </div>
+              )}
+            </div>
 
             <form onSubmit={handleApplyOverride} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Select New Status</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Select Action / Status</label>
                 <select 
                   value={overrideStatus}
                   onChange={(e) => setOverrideStatus(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
                 >
-                  <option value="confirmed">Confirmed (Paid)</option>
-                  <option value="approved">Approved (Awaiting Payment)</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled & Refunded</option>
+                  <option value="approved">Approve (Awaiting Payment)</option>
+                  <option value="confirmed">Confirmed (Force Paid)</option>
+                  <option value="rejected">Decline / Reject Request</option>
+                  <option value="cancelled">Cancel Booking</option>
                 </select>
               </div>
 
+              {/* Pricing Breakdown for Approval */}
+              {overrideStatus === 'approved' && (
+                <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-2xl space-y-3">
+                  <p className="text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider">Pricing Calculator</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Base Amount</label>
+                      <input 
+                        type="number"
+                        value={baseAmount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setBaseAmount(val);
+                          setFinalAmount(val + additionalCharges - discount);
+                        }}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Additional</label>
+                      <input 
+                        type="number"
+                        value={additionalCharges}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setAdditionalCharges(val);
+                          setFinalAmount(baseAmount + val - discount);
+                        }}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Discount</label>
+                      <input 
+                        type="number"
+                        value={discount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setDiscount(val);
+                          setFinalAmount(baseAmount + additionalCharges - val);
+                        }}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Final Payable Amount (₹)</label>
+                    <input 
+                      type="number"
+                      value={finalAmount}
+                      onChange={(e) => setFinalAmount(Number(e.target.value) || 0)}
+                      className="w-full p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm font-black outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Pricing Explanation / Note</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. ₹1000/night + ₹200 maintenance"
+                      value={pricingNote}
+                      onChange={(e) => setPricingNote(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Override Remarks</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Remarks / Audit Note</label>
                 <textarea 
-                  rows="3" 
+                  rows="2" 
                   value={overrideRemarks}
                   onChange={(e) => setOverrideRemarks(e.target.value)}
-                  placeholder="Reason for master admin override..."
+                  placeholder="Reason / note for this action..."
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-500"
                 />
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowOverrideModal(false)} className="px-4 py-2.5 font-bold text-xs text-slate-500">Cancel</button>
-                <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-indigo-700">Apply Override</button>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowOverrideModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/20"
+                >
+                  Submit Action
+                </button>
               </div>
             </form>
           </div>

@@ -54,8 +54,9 @@ exports.getCommunityLeadership = async (req, res) => {
     if (designation && designation !== 'all') {
       baseSubFilter.designation = designation;
     }
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
+    if (search && search.trim()) {
+      const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       baseSubFilter.$or = [
         { name: searchRegex },
         { designation: searchRegex },

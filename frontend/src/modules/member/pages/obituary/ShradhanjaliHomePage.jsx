@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, X, Eye, MessageCircle, Bell } from 'lucide-react';
+import { Plus, Search, X, Eye, MessageCircle, Bell, Menu } from 'lucide-react';
 import { useData } from '../../context/DataProvider';
 import { AnimatedPage } from '../../components/layout/AnimatedPage';
 
@@ -175,7 +175,7 @@ const MemorialCard = ({ obituary, index }) => {
 /* ─── Page ─── */
 const ShradhanjaliHomePage = () => {
   const navigate = useNavigate();
-  const { obituaries, obituariesLoading, obituariesError, loadObituaries, getUnreadCountForModule, currentUser } = useData();
+  const { obituaries, obituariesLoading, obituariesError, loadObituaries, hasMoreObituaries, loadMoreObituaries, getUnreadCountForModule, currentUser, setMobileMenuOpen } = useData();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [showSearch, setShowSearch] = useState(false);
@@ -305,12 +305,21 @@ const ShradhanjaliHomePage = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex items-center gap-2 flex-1"
               >
-                <span className="text-[20px]">🪔</span>
-                <div>
-                  <h1 className="text-[16px] font-bold leading-tight" style={{ color: '#7C5C2E' }}>
-                    Obituary
-                  </h1>
-                  <p className="text-[10px] text-gray-400">Om Shanti</p>
+                <div className="flex items-center gap-2.5">
+                  <button 
+                    onClick={() => setMobileMenuOpen && setMobileMenuOpen(true)}
+                    className="p-1.5 -ml-1 rounded-xl bg-amber-900/5 hover:bg-amber-900/10 text-amber-900 transition-colors press-scale"
+                    aria-label="Open Navigation Menu"
+                  >
+                    <Menu size={20} style={{ color: '#7C5C2E' }} />
+                  </button>
+                  <span className="text-[20px]">🪔</span>
+                  <div>
+                    <h1 className="text-[16px] font-bold leading-tight" style={{ color: '#7C5C2E' }}>
+                      Obituary
+                    </h1>
+                    <p className="text-[10px] text-gray-400">Om Shanti</p>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -367,8 +376,8 @@ const ShradhanjaliHomePage = () => {
         </div>
       </div>
 
-      {/* ─── All posts as full memorial cards ─── */}
-      <div className="pt-[116px] pb-32 px-4 max-w-lg mx-auto space-y-5">
+      {/* ─── Cards List ─── */}
+      <div className="pt-[116px] pb-32 px-4 max-w-lg mx-auto space-y-7">
         {obituariesLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <motion.div
@@ -402,9 +411,24 @@ const ShradhanjaliHomePage = () => {
               </div>
             )}
 
-            {filtered.map((ob, idx) => (
-              <MemorialCard key={ob.id} obituary={ob} index={idx} />
-            ))}
+            <div className="space-y-8">
+              {filtered.map((ob, idx) => (
+                <MemorialCard key={ob.id} obituary={ob} index={idx} />
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {hasMoreObituaries && filtered.length > 0 && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={loadMoreObituaries}
+                  disabled={obituariesLoading}
+                  className="px-6 py-2.5 rounded-xl border border-[#7C5C2E]/20 text-[#7C5C2E] font-bold text-xs bg-amber-50/50 hover:bg-amber-100/50 transition-colors disabled:opacity-50"
+                >
+                  {obituariesLoading ? 'Loading more tributes...' : 'Load More Tributes'}
+                </button>
+              </div>
+            )}
 
             {/* Empty state */}
             {filtered.length === 0 && (

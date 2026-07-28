@@ -109,8 +109,13 @@ exports.getGlobalBookings = async (req, res) => {
     }
 
     const bookings = await DharmashalaBooking.find(filter)
-      .populate('dharmashala', 'name city address communityId')
-      .populate('user', 'name phone email')
+      .populate({
+        path: 'dharmashala',
+        select: 'name city address communityId image',
+        populate: { path: 'communityId', select: 'name city state' }
+      })
+      .populate('user', 'name phone email avatar communityId')
+      .populate('communityId', 'name city state')
       .populate('rooms')
       .sort({ createdAt: -1 })
       .lean();
@@ -130,22 +135,63 @@ exports.adminOverrideBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status, remarks, paymentStatus } = req.body;
 
-    let booking = await DharmashalaBooking.findById(id);
+    let booking = await DharmashalaBooking.findById(id).populate('dharmashala');
     if (!booking) {
-      booking = await DharmashalaBooking.findOne({ bookingId: id });
+      booking = await DharmashalaBooking.findOne({ bookingId: id }).populate('dharmashala');
     }
     if (!booking) {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
-    booking.status = status;
-    if (remarks) booking.remarks = `[Admin Override] ${remarks}`;
-    if (paymentStatus) booking.paymentStatus = paymentStatus;
+    const oldStatus = booking.status;
+    const terminalStatuses = ['completed', 'cancelled', 'rejected', 'expired'];
+    if (terminalStatuses.includes(oldStatus) && status === 'pending_approval') {
+      return res.status(400).json({ status: 'error', message: `Cannot transition booking from terminal status "${oldStatus}" back to pending_approval.` });
+    }
 
-    if (status === 'confirmed' || status === 'upcoming') {
+    // Re-verify real-time availability upon Admin approval
+    if (status === 'approved') {
+      const activeStatuses = ['approved', 'reserved', 'payment_pending', 'paid', 'confirmed', 'upcoming', 'checked_in'];
+      const conflictingBookings = await DharmashalaBooking.find({
+        _id: { $ne: booking._id },
+        dharmashala: booking.dharmashala?._id || booking.dharmashala,
+        status: { $in: activeStatuses },
+        checkIn: { $lt: booking.checkOut },
+        checkOut: { $gt: booking.checkIn }
+      });
+
+      const conflictRoomIds = new Set();
+      conflictingBookings.forEach(cb => (cb.rooms || []).forEach(rId => conflictRoomIds.add(rId.toString())));
+      
+      const isOverlapped = (booking.rooms || []).some(rId => conflictRoomIds.has(rId.toString()));
+      if (isOverlapped) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Double booking conflict! The selected room is already booked for these dates.'
+        });
+      }
+
+      booking.reservedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      booking.approvedBy = req.user?._id;
+      booking.approvedByRole = (req.user?.role || 'ADMIN').toUpperCase();
+      booking.approvedAt = new Date();
+      booking.paymentStatus = 'Pending';
+
+      if (req.body.finalAmount !== undefined && req.body.finalAmount !== null) {
+        booking.totalAmount = Number(req.body.finalAmount);
+      }
+      if (req.body.baseAmount !== undefined) booking.baseAmount = Number(req.body.baseAmount);
+      if (req.body.additionalCharges !== undefined) booking.additionalCharges = Number(req.body.additionalCharges);
+      if (req.body.discount !== undefined) booking.discount = Number(req.body.discount);
+      if (req.body.pricingNote !== undefined) booking.pricingNote = req.body.pricingNote;
+    } else if (status === 'confirmed' || status === 'upcoming') {
       booking.paymentStatus = 'Paid';
       booking.paidAt = booking.paidAt || new Date();
       booking.qrCodeData = booking.qrCodeData || `DH-QR-${booking.bookingId}-${Date.now().toString().slice(-6)}`;
+    } else if (status === 'rejected') {
+      booking.rejectedBy = req.user?._id;
+      booking.rejectedAt = new Date();
+      booking.rejectionReason = remarks || 'Request rejected by Admin';
     } else if (status === 'cancelled') {
       booking.cancelledBy = req.user._id;
       booking.cancelledAt = new Date();
@@ -156,23 +202,58 @@ exports.adminOverrideBookingStatus = async (req, res) => {
       }
     }
 
+    booking.status = status;
+    if (remarks) booking.remarks = `[Admin Override] ${remarks}`;
+    if (paymentStatus) booking.paymentStatus = paymentStatus;
+
     booking.statusHistory.push({
+      action: status.toUpperCase(),
+      previousStatus: oldStatus,
+      newStatus: status,
       status,
+      performedBy: req.user?._id,
+      performedByRole: (req.user?.role || 'ADMIN').toUpperCase(),
+      amount: booking.totalAmount,
+      notes: remarks || booking.pricingNote || `Admin updated status to ${status}`,
       updatedAt: new Date(),
       updatedBy: `Master Admin (${req.user?.name || 'Admin'})`
     });
 
     await booking.save();
 
-    // Broadcast socket
+    // Broadcast socket for real-time synchronization between Admin and Head
     try {
       const io = req.app.get('io');
       if (io) {
-        io.emit('dharmashala:booking_status_updated', { bookingId: booking._id, status, adminOverride: true });
+        io.emit('dharmashala:booking_status_updated', {
+          bookingId: booking._id,
+          status,
+          reservedUntil: booking.reservedUntil,
+          adminOverride: true
+        });
       }
     } catch (e) {}
 
-    res.status(200).json({ status: 'success', message: 'Admin override applied successfully', data: booking });
+    // Notify Member on Status Change
+    try {
+      const { notifyBookingStatusChanged } = require('../../services/notificationService');
+      const dName = booking.dharmashala?.name || 'Dharmashala';
+      if (booking.user && oldStatus !== status) {
+        notifyBookingStatusChanged(booking.user, status, dName, booking._id, {
+          amount: booking.totalAmount,
+          reason: booking.rejectionReason
+        });
+      }
+    } catch (notifErr) {
+      console.warn('[Notify] adminOverrideBookingStatus notification warning:', notifErr.message);
+    }
+
+    const updatedPopulated = await DharmashalaBooking.findById(booking._id)
+      .populate('dharmashala')
+      .populate('user', 'name phone email avatar communityId')
+      .populate('rooms');
+
+    res.status(200).json({ status: 'success', message: 'Admin action applied successfully', data: updatedPopulated });
   } catch (error) {
     console.error('adminOverrideBookingStatus error:', error);
     res.status(500).json({ status: 'error', message: error.message });

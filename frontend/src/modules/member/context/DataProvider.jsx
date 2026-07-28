@@ -30,68 +30,71 @@ const getCommunitySurname = (community) => {
   return 'Agrawal';
 };
 
+const mapSingleObituaryFromBackend = (ob, currentUserId) => {
+  if (!ob) return null;
+  // Calculate garland count
+  const malaArpanCount = Array.isArray(ob.malaArpanUsers)
+    ? ob.malaArpanUsers.reduce((sum, item) => sum + (item.count || 0), 0)
+    : 0;
+
+  const userHasMalaArpan = Array.isArray(ob.malaArpanUsers)
+    ? ob.malaArpanUsers.some(item => (item.user?._id || item.user || '').toString() === (currentUserId || '').toString() && item.count > 0)
+    : false;
+
+  // Comments mapping
+  const comments = Array.isArray(ob.comments) ? ob.comments.map(c => ({
+    id: c._id || c.id,
+    name: c.name || 'Anonymous',
+    initials: c.initials || (c.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+    text: c.text,
+    timestamp: c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now',
+    likes: Array.isArray(c.likes) ? c.likes.length : 0,
+    isLiked: Array.isArray(c.likes) ? c.likes.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false
+  })) : [];
+
+  const creatorId = ob.creatorId?._id || ob.creatorId;
+  const authorInitials = ob.creatorId?.initials || (ob.creatorId?.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+  return {
+    id: ob._id || ob.id,
+    deceasedName: ob.deceasedName,
+    deceasedNameEn: ob.deceasedNameEn || '',
+    prefix: ob.prefix || '',
+    age: ob.age || 0,
+    birthDate: ob.birthDate || '',
+    dateOfPassing: ob.dateOfPassing,
+    funeralDetails: ob.funeralDetails || {},
+    message: ob.message,
+    image: ob.image || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800',
+    author: {
+      id: creatorId,
+      name: ob.creatorId?.name || 'Samaj Member',
+      initials: authorInitials,
+      relation: ob.relation,
+      email: ob.creatorId?.email || '',
+      phone: ob.creatorId?.phone || ''
+    },
+    shraddhanjaliCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
+    hasOfferedShraddhanjali: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+    haathJodeCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
+    malaArpanCount,
+    userHasHaathJode: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+    userHasMalaArpan,
+    views: ob.views || 0,
+    shares: ob.shares || 0,
+    saves: Array.isArray(ob.saves) ? ob.saves.length : 0,
+    isSaved: Array.isArray(ob.saves) ? ob.saves.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
+    privacy: ob.privacy || 'public',
+    familyContact: ob.familyContact || '',
+    timestamp: ob.createdAt ? new Date(ob.createdAt).toLocaleDateString() : 'Just now',
+    status: ob.status || 'Approved',
+    comments
+  };
+};
+
 const mapObituariesFromBackend = (data, currentUserId) => {
   if (!Array.isArray(data)) return [];
-  return data.map(ob => {
-    // Calculate garland count
-    const malaArpanCount = Array.isArray(ob.malaArpanUsers)
-      ? ob.malaArpanUsers.reduce((sum, item) => sum + (item.count || 0), 0)
-      : 0;
-
-    const userHasMalaArpan = Array.isArray(ob.malaArpanUsers)
-      ? ob.malaArpanUsers.some(item => (item.user?._id || item.user || '').toString() === (currentUserId || '').toString() && item.count > 0)
-      : false;
-
-    // Comments mapping
-    const comments = Array.isArray(ob.comments) ? ob.comments.map(c => ({
-      id: c._id || c.id,
-      name: c.name || 'Anonymous',
-      initials: c.initials || (c.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
-      text: c.text,
-      timestamp: c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now',
-      likes: Array.isArray(c.likes) ? c.likes.length : 0,
-      isLiked: Array.isArray(c.likes) ? c.likes.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false
-    })) : [];
-
-    const creatorId = ob.creatorId?._id || ob.creatorId;
-    const authorInitials = ob.creatorId?.initials || (ob.creatorId?.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-
-    return {
-      id: ob._id || ob.id,
-      deceasedName: ob.deceasedName,
-      deceasedNameEn: ob.deceasedNameEn || '',
-      prefix: ob.prefix || '',
-      age: ob.age || 0,
-      birthDate: ob.birthDate || '',
-      dateOfPassing: ob.dateOfPassing,
-      funeralDetails: ob.funeralDetails || {},
-      message: ob.message,
-      image: ob.image || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800',
-      author: {
-        id: creatorId,
-        name: ob.creatorId?.name || 'Samaj Member',
-        initials: authorInitials,
-        relation: ob.relation,
-        email: ob.creatorId?.email || '',
-        phone: ob.creatorId?.phone || ''
-      },
-      shraddhanjaliCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
-      hasOfferedShraddhanjali: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
-      haathJodeCount: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.length : 0,
-      malaArpanCount,
-      userHasHaathJode: Array.isArray(ob.haathJodeUsers) ? ob.haathJodeUsers.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
-      userHasMalaArpan,
-      views: ob.views || 0,
-      shares: ob.shares || 0,
-      saves: Array.isArray(ob.saves) ? ob.saves.length : 0,
-      isSaved: Array.isArray(ob.saves) ? ob.saves.some(uId => (uId?._id || uId || '').toString() === (currentUserId || '').toString()) : false,
-      privacy: ob.privacy || 'public',
-      familyContact: ob.familyContact || '',
-      timestamp: ob.createdAt ? new Date(ob.createdAt).toLocaleDateString() : 'Just now',
-      status: ob.status || 'Approved',
-      comments
-    };
-  });
+  return data.map(ob => mapSingleObituaryFromBackend(ob, currentUserId)).filter(Boolean);
 };
 
 const mapBackendProfileToFrontend = (p) => {
@@ -871,19 +874,46 @@ export const DataProvider = ({ children }) => {
   }, [auth.isAuthenticated, headAuth?.isAuthenticated]);
 
   // Obituaries Load
-  const loadObituaries = async () => {
+  const [obituariesPage, setObituariesPage] = useState(1);
+  const [hasMoreObituaries, setHasMoreObituaries] = useState(true);
+
+  const loadObituaries = async (params = { page: 1, limit: 15 }) => {
     setObituariesLoading(true);
     setObituariesError(null);
     try {
-      const data = await obituaryService.getObituaries();
-      const formatted = mapObituariesFromBackend(data, currentUser?.id || currentUser?._id);
-      setObituaries(formatted);
+      const page = params?.page || 1;
+      const limit = params?.limit || 15;
+      const data = await obituaryService.getObituaries({ ...params, page, limit });
+      const rawList = Array.isArray(data) ? data : (data.data || []);
+      const formatted = mapObituariesFromBackend(rawList, currentUser?.id || currentUser?._id);
+
+      if (rawList.length < limit) {
+        setHasMoreObituaries(false);
+      } else {
+        setHasMoreObituaries(true);
+      }
+
+      if (page > 1) {
+        setObituaries(prev => {
+          const existingIds = new Set(prev.map(o => o.id));
+          const newItems = formatted.filter(o => !existingIds.has(o.id));
+          return [...prev, ...newItems];
+        });
+      } else {
+        setObituaries(formatted);
+      }
+      setObituariesPage(page);
     } catch (error) {
       console.error('Failed to load obituaries', error);
       setObituariesError(error.response?.data?.message || 'Failed to fetch obituaries');
     } finally {
       setObituariesLoading(false);
     }
+  };
+
+  const loadMoreObituaries = async () => {
+    if (obituariesLoading || !hasMoreObituaries) return;
+    await loadObituaries({ page: obituariesPage + 1, limit: 15 });
   };
 
   const loadMatrimonialProfiles = async () => {
@@ -2881,6 +2911,8 @@ export const DataProvider = ({ children }) => {
     obituariesLoading,
     obituariesError,
     loadObituaries,
+    hasMoreObituaries,
+    loadMoreObituaries,
     addObituary,
     updateObituary,
     updateObituaryStatus,

@@ -113,7 +113,8 @@ exports.getPosts = async (req, res) => {
         .populate('cityId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Post.countDocuments(filter)
     ]);
 
@@ -587,9 +588,10 @@ exports.getComments = async (req, res) => {
     if (status) filter.status = status;
 
     const comments = await Comment.find(filter)
-      .populate('userId', 'name avatar')
-      .populate('postId', 'content')
-      .sort({ createdAt: -1 });
+      .populate('userId', 'name avatar role email')
+      .populate('postId', 'content title')
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({ success: true, data: comments });
   } catch (error) {
@@ -888,8 +890,13 @@ exports.deleteCategory = async (req, res) => {
 // @route   GET /api/v1/admin/social/reports
 exports.getReports = async (req, res) => {
   try {
-    const reportedPosts = await Post.find({ status: 'reported', isDeleted: false }).populate('userId', 'name');
-    const reportedComments = await Comment.find({ status: 'reported', isDeleted: false }).populate('userId', 'name');
+    const reportedPosts = await Post.find({ status: 'reported', isDeleted: false })
+      .populate('userId', 'name avatar role email phone')
+      .populate('authorId', 'name avatar role email phone')
+      .lean();
+    const reportedComments = await Comment.find({ status: 'reported', isDeleted: false })
+      .populate('userId', 'name avatar role email')
+      .lean();
 
     res.json({
       success: true,

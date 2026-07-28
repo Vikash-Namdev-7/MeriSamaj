@@ -6,12 +6,16 @@ import { professionalService } from '../../../core/api/professionalService';
 //  useProfessionalDirectory — API Custom Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
-const useProfessionalDirectory = (communityId) => {
+const useProfessionalDirectory = (communityId, filterParams = {}) => {
   const [listings, setListings] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cities, setCities] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 50, pages: 1 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Serialize filterParams for stable dependency tracking
+  const filterParamsKey = JSON.stringify(filterParams);
 
   useEffect(() => {
     const loadData = async () => {
@@ -19,8 +23,27 @@ const useProfessionalDirectory = (communityId) => {
       setError(null);
 
       try {
-        const res = await professionalService.getProfessionals();
+        const fetchCitiesPromise = (async () => {
+          try {
+            const { axiosPublic } = await import('../../../core/api/axiosConfig');
+            const res = await axiosPublic.get('/auth/cities');
+            return res.data?.success ? res.data.data.map(c => c.name) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+        // Parallel execution of all independent API calls
+        const [res, catRes, apiCityNames] = await Promise.all([
+          professionalService.getProfessionals(filterParams),
+          professionalService.getCategories(),
+          fetchCitiesPromise
+        ]);
+
         const apiListings = res.success ? res.data : [];
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
 
         // Enrich listings with card colors
         const enriched = apiListings.map((item, idx) => ({
@@ -28,8 +51,6 @@ const useProfessionalDirectory = (communityId) => {
           color: item.color || cardColors[idx % cardColors.length],
         }));
 
-        // Fetch active categories dynamically from backend
-        const catRes = await professionalService.getCategories();
         const apiCategories = catRes.success ? catRes.data : [];
 
         const colorPalette = [
@@ -60,18 +81,8 @@ const useProfessionalDirectory = (communityId) => {
           derivedCategories.push(othersCat);
         }
 
-        // Derive unique cities dynamically from data and API fallback
-        let uniqueCities = ['All Cities', ...new Set(enriched.map(p => p.city).filter(Boolean).sort())];
-        try {
-          const { axiosPublic } = await import('../../../core/api/axiosConfig');
-          const citiesRes = await axiosPublic.get('/auth/cities');
-          if (citiesRes.data.success) {
-            const apiCityNames = citiesRes.data.data.map(c => c.name);
-            uniqueCities = ['All Cities', ...new Set([...uniqueCities, ...apiCityNames]).sort()];
-          }
-        } catch (cityErr) {
-          console.error('Failed to fetch API cities for directory:', cityErr);
-        }
+        // Derive unique cities dynamically from listings and API fallback
+        let uniqueCities = ['All Cities', ...Array.from(new Set([...enriched.map(p => p.city).filter(Boolean), ...apiCityNames])).sort()];
 
         setListings(enriched);
         setCategories(derivedCategories);
@@ -86,9 +97,9 @@ const useProfessionalDirectory = (communityId) => {
     };
 
     loadData();
-  }, [communityId]);
+  }, [communityId, filterParamsKey]);
 
-  return { listings, categories, cities, isLoading, error };
+  return { listings, categories, cities, pagination, isLoading, error };
 };
 
 export default useProfessionalDirectory;

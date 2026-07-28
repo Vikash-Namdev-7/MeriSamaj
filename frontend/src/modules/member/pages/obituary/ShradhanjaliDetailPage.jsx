@@ -228,7 +228,7 @@ const ShradhanjaliDetailPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <CeremonySection funeralDetails={obituary.funeralDetails} />
+            <CeremonySection funeralDetails={obituary.funeralDetails} ceremonies={obituary.ceremonies} />
           </motion.div>
 
           {/* ── Interaction Buttons ── */}

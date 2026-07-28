@@ -75,6 +75,11 @@ const leadershipSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Compound Indexes for fast multi-tenant Leadership Directory queries
+leadershipSchema.index({ communityId: 1, isActive: 1, displayOrder: 1 });
+leadershipSchema.index({ communityId: 1, isActive: 1, city: 1, role: 1 });
+leadershipSchema.index({ communityId: 1, isActive: 1, role: 1 });
+
 const Leadership = mongoose.model('Leadership', leadershipSchema);
 
 module.exports = Leadership;

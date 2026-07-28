@@ -29,4 +29,8 @@ const fundSchema = new mongoose.Schema({
   timestamps: true
 });
 
+fundSchema.index({ communityId: 1, createdAt: -1 });
+fundSchema.index({ scope: 1, communityId: 1 });
+
 module.exports = mongoose.model('Fund', fundSchema);
+

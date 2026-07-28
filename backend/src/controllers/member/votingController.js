@@ -1,53 +1,62 @@
 const Voting = require('../../models/Voting');
 const Vote = require('../../models/Vote');
+const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
-/**
- * Update voting statuses dynamically based on dates
- */
-const updateVotingStatuses = async (communityId) => {
-  const now = new Date();
-  
-  // Update to Active if start date reached and still Upcoming
-  await Voting.updateMany(
-    { communityId, status: 'Upcoming', startDate: { $lte: now } },
-    { $set: { status: 'Active' } }
-  );
+const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
 
-  // Update to Completed if end date passed and still Active
-  await Voting.updateMany(
-    { communityId, status: 'Active', endDate: { $lt: now } },
-    { $set: { status: 'Completed' } }
-  );
+// Helper to check if a voting election belongs to the requester's community (or if requester is admin)
+const isSameCommunity = (doc, req) => {
+  if (!doc) return false;
+  const userRole = (req?.user?.role || '').toLowerCase();
+  if (ADMIN_ROLES.includes(userRole)) return true; // Admin: global access
+
+  const docCommId = doc.communityId?._id ?? doc.communityId;
+  const reqCommId = req?.communityId || (req?.user?.communityId?._id || req?.user?.communityId);
+
+  if (reqCommId && docCommId) {
+    return docCommId.toString() === reqCommId.toString();
+  }
+  return false;
 };
 
 /**
- * Get all votings for the user's community
+ * Derive election status dynamically based on start/end dates
+ */
+const deriveVotingStatus = (voting) => {
+  if (!voting) return 'Upcoming';
+  if (voting.status === 'Cancelled') return 'Cancelled';
+  const now = new Date();
+  const start = new Date(voting.startDate);
+  const end = new Date(voting.endDate);
+  if (now < start) return 'Upcoming';
+  if (now > end) return 'Completed';
+  return 'Active';
+};
+
+/**
+ * Get all votings for the user's community (or global for Admin)
  */
 exports.getVotings = async (req, res) => {
   try {
-    const communityId = req.communityId;
-    if (!communityId) {
-      return res.status(403).json({ status: 'error', message: 'User is not assigned to a community' });
-    }
-    
-    // Auto-update statuses based on current date
-    await updateVotingStatuses(communityId);
+    const query = applyScopeFilter(req, {});
 
-    const votings = await Voting.find({ communityId }).sort({ createdAt: -1 }).lean();
+    const votings = await Voting.find(query).sort({ createdAt: -1 }).lean();
 
     // Fetch user's votes to return which ones they've voted on
-    const userVotes = await Vote.find({ user: req.user._id, communityId }).lean();
+    const userVoteFilter = { user: req.user._id };
+    if (query.communityId) {
+      userVoteFilter.communityId = query.communityId;
+    }
+    const userVotes = await Vote.find(userVoteFilter).lean();
     const userVotedMap = userVotes.reduce((acc, vote) => {
       acc[vote.voting.toString()] = vote.candidateId;
       return acc;
     }, {});
 
-    // For each voting, we might need total votes if it's completed, or for the frontend structure.
-    // The frontend expects `totalVotesCast` and candidates with `initialVotes` (which are actual votes).
-    
-    // Let's get vote counts for all these votings
+    // Aggregate vote counts matching query.communityId if scoped
+    const matchStage = query.communityId ? { communityId: query.communityId } : {};
     const voteCounts = await Vote.aggregate([
-      { $match: { communityId } },
+      ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
       { $group: {
           _id: { voting: "$voting", candidateId: "$candidateId" },
           count: { $sum: 1 }
@@ -75,12 +84,15 @@ exports.getVotings = async (req, res) => {
         initialVotes: counts[c._id.toString()] || 0
       }));
 
+      const effectiveStatus = deriveVotingStatus(v);
+
       return {
         ...v,
         id: vId,
+        status: effectiveStatus,
         startDate: new Date(v.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         endDate: new Date(v.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        closesIn: v.status === 'Completed' ? 'Ended' : v.status,
+        closesIn: effectiveStatus === 'Completed' ? 'Ended' : effectiveStatus,
         totalVotesCast: counts.total,
         candidates: candidatesWithVotes,
         userVotedCandidateId: userVotedMap[vId] || null
@@ -103,20 +115,14 @@ exports.getVotings = async (req, res) => {
 exports.getVotingById = async (req, res) => {
   try {
     const votingId = req.params.id;
-    const communityId = req.communityId;
-    if (!communityId) {
-      return res.status(403).json({ status: 'error', message: 'User is not assigned to a community' });
-    }
-
-    await updateVotingStatuses(communityId);
 
     const voting = await Voting.findOne({ _id: votingId }).lean();
     if (!voting) {
       return res.status(404).json({ status: 'error', message: 'Voting not found' });
     }
 
-    // Community Isolation Guard
-    if (voting.communityId && !voting.communityId.equals(communityId)) {
+    // Community Isolation Guard with Admin Bypass
+    if (!isSameCommunity(voting, req)) {
       return res.status(403).json({ status: 'error', message: 'Access denied. This election belongs to another community.' });
     }
 
@@ -143,12 +149,15 @@ exports.getVotingById = async (req, res) => {
       initialVotes: countsMap[c._id.toString()] || 0
     }));
 
+    const effectiveStatus = deriveVotingStatus(voting);
+
     const formattedVoting = {
       ...voting,
       id: voting._id.toString(),
+      status: effectiveStatus,
       startDate: new Date(voting.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       endDate: new Date(voting.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      closesIn: voting.status === 'Completed' ? 'Ended' : voting.status,
+      closesIn: effectiveStatus === 'Completed' ? 'Ended' : effectiveStatus,
       totalVotesCast: totalVotes,
       candidates: candidatesWithVotes,
       userVotedCandidateId: userVote ? userVote.candidateId : null
@@ -177,8 +186,6 @@ exports.castVote = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'User is not assigned to a community' });
     }
 
-    await updateVotingStatuses(communityId);
-
     const voting = await Voting.findOne({ _id: votingId });
     if (!voting) {
       return res.status(404).json({ status: 'error', message: 'Voting not found' });
@@ -189,7 +196,8 @@ exports.castVote = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Access denied. You cannot vote in an election of another community.' });
     }
 
-    if (voting.status !== 'Active') {
+    const effectiveStatus = deriveVotingStatus(voting);
+    if (effectiveStatus !== 'Active') {
       return res.status(400).json({ status: 'error', message: 'Voting is not active' });
     }
 

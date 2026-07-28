@@ -30,6 +30,11 @@ const dharmashalaService = {
     return response.data;
   },
 
+  getMyBookings: async () => {
+    const response = await axiosPrivate.get(`${API_URL}/bookings`);
+    return response.data;
+  },
+
   payBooking: async (id) => {
     const response = await axiosPrivate.post(`${API_URL}/bookings/${id}/pay`);
     return response.data;

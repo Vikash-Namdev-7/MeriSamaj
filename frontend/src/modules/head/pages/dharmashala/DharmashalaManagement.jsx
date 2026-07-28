@@ -25,7 +25,7 @@ export default function DharmashalaManagement() {
   const [propertyForm, setPropertyForm] = useState({
     name: '', description: '', address: '', city: '', state: '', pincode: '',
     googleMapsUrl: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '',
-    alternateContact: '', email: '', website: '', status: 'Active', isFeatured: false,
+    alternateContact: '', email: '', website: '', pricePerDay: 1000, status: 'Active', isFeatured: false,
     rules: '', checkInTime: '10:00', checkOutTime: '10:00', amenities: [],
     image: '',
     coverFile: null,
@@ -45,6 +45,13 @@ export default function DharmashalaManagement() {
   const [activeBooking, setActiveBooking] = useState(null);
   const [bookingRemarks, setBookingRemarks] = useState('');
   const [assignedRoomIds, setAssignedRoomIds] = useState([]);
+
+  // Pricing Approval States
+  const [baseAmount, setBaseAmount] = useState(0);
+  const [additionalCharges, setAdditionalCharges] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+  const [pricingNote, setPricingNote] = useState('');
 
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [maintenanceForm, setMaintenanceForm] = useState({
@@ -93,6 +100,21 @@ export default function DharmashalaManagement() {
 
   useEffect(() => {
     fetchData();
+
+    try {
+      const io = window.socketInstance || null;
+      if (io) {
+        const handleRefresh = () => fetchData();
+        io.on('dharmashala:booking_created', handleRefresh);
+        io.on('dharmashala:booking_status_updated', handleRefresh);
+        io.on('dharmashala:payment_completed', handleRefresh);
+        return () => {
+          io.off('dharmashala:booking_created', handleRefresh);
+          io.off('dharmashala:booking_status_updated', handleRefresh);
+          io.off('dharmashala:payment_completed', handleRefresh);
+        };
+      }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -101,9 +123,33 @@ export default function DharmashalaManagement() {
     }
   }, [selectedPropertyId]);
 
-  // Property Submission
+  // Property Submit with Phone & Email Validation
   const handlePropertySubmit = async (e) => {
     e.preventDefault();
+
+    // 1. Phone number validation (must be exactly 10 digits)
+    const cleanPhone = (propertyForm.contactNumber || '').replace(/[^0-9]/g, '');
+    if (cleanPhone.length !== 10) {
+      alert('Manager Phone number must be exactly 10 digits.');
+      return;
+    }
+
+    // 2. Pincode validation (must be exactly 6 digits)
+    const cleanPincode = (propertyForm.pincode || '').replace(/[^0-9]/g, '');
+    if (cleanPincode.length !== 6) {
+      alert('Pincode must be exactly 6 digits.');
+      return;
+    }
+
+    // 3. Email format validation (must contain valid email pattern with @)
+    if (propertyForm.email && propertyForm.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(propertyForm.email.trim())) {
+        alert('Please enter a valid Email Address containing @ (e.g. example@gmail.com).');
+        return;
+      }
+    }
+
     const formData = new FormData();
     Object.keys(propertyForm).forEach(key => {
       if (key === 'amenities' || key === 'galleryImages') {
@@ -131,7 +177,7 @@ export default function DharmashalaManagement() {
         res = await headDharmashalaService.createProperty(formData);
       }
 
-      if (res.status === 'success') {
+      if (res && res.status === 'success') {
         setShowPropertyModal(false);
         fetchData();
         addNotification?.({
@@ -139,9 +185,13 @@ export default function DharmashalaManagement() {
           title: propertyEditId ? 'Property Updated' : 'Property Registered',
           message: `${propertyForm.name} details saved successfully.`
         });
+      } else {
+        alert(res?.message || 'Failed to save property. Please check all required fields.');
       }
     } catch (err) {
       console.error("Property action failed", err);
+      const serverMsg = err.response?.data?.message || err.message || 'Error occurred while saving property.';
+      alert(`Property Save Failed: ${serverMsg}`);
     }
   };
 
@@ -162,6 +212,7 @@ export default function DharmashalaManagement() {
       alternateContact: prop.alternateContact || '',
       email: prop.email || '',
       website: prop.website || '',
+      pricePerDay: prop.pricePerDay || 1000,
       status: prop.status || 'Active',
       isFeatured: prop.isFeatured || false,
       rules: prop.rules || '',
@@ -256,10 +307,18 @@ export default function DharmashalaManagement() {
   // Booking Update Actions
   const handleBookingAction = async (booking, nextStatus) => {
     if (nextStatus === 'approved') {
-      // Load available rooms for assigning
+      // Load available rooms for assigning and calculate initial ref price
       setActiveBooking(booking);
       setBookingRemarks('');
       setAssignedRoomIds([]);
+
+      const propRefPrice = booking.dharmashala?.pricePerDay || 1000;
+      const calculatedBase = (booking.nights || 1) * propRefPrice;
+      setBaseAmount(calculatedBase);
+      setAdditionalCharges(0);
+      setDiscount(0);
+      setFinalAmount(calculatedBase);
+      setPricingNote('');
       setShowBookingModal(true);
       return;
     }
@@ -284,7 +343,12 @@ export default function DharmashalaManagement() {
       const res = await headDharmashalaService.updateBookingStatus(activeBooking._id, {
         status: 'approved',
         rooms: assignedRoomIds,
-        remarks: bookingRemarks
+        remarks: bookingRemarks,
+        baseAmount,
+        additionalCharges,
+        discount,
+        finalAmount,
+        pricingNote
       });
       if (res.status === 'success') {
         setShowBookingModal(false);
@@ -294,7 +358,7 @@ export default function DharmashalaManagement() {
         addNotification?.({
           type: 'community',
           title: 'Booking Request Approved',
-          message: `Booking has been confirmed and rooms assigned for ${activeBooking.bookedBy}.`
+          message: `Booking approved for ${activeBooking.bookedBy} with Final Amount: ₹${finalAmount}.`
         });
       }
     } catch (err) {
@@ -364,7 +428,6 @@ export default function DharmashalaManagement() {
         {[
           { id: 'overview', label: 'Overview & Statistics' },
           { id: 'properties', label: 'Properties Directory' },
-          { id: 'rooms', label: 'Room Inventory' },
           { id: 'bookings', label: 'Booking Requests' },
           { id: 'maintenance', label: 'Maintenance Locks' }
         ].map(tab => (
@@ -773,14 +836,26 @@ export default function DharmashalaManagement() {
             
             <form onSubmit={handlePropertySubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-slate-600">
               <div className="grid grid-cols-2 gap-4 text-xs font-bold">
-                <div className="col-span-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Dharmashala Name</label>
-                  <input 
-                    type="text" required
-                    value={propertyForm.name}
-                    onChange={(e) => setPropertyForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
-                  />
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Dharmashala Name</label>
+                    <input 
+                      type="text" required
+                      value={propertyForm.name}
+                      onChange={(e) => setPropertyForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Reference Price Per Day (₹)</label>
+                    <input 
+                      type="number" required
+                      placeholder="e.g. 1000"
+                      value={propertyForm.pricePerDay}
+                      onChange={(e) => setPropertyForm(prev => ({ ...prev, pricePerDay: Number(e.target.value) || 0 }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white font-bold"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -816,9 +891,17 @@ export default function DharmashalaManagement() {
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Pincode</label>
                   <input 
-                    type="text" required
+                    type="tel" 
+                    required
+                    maxLength={6}
+                    placeholder="6 digit pincode"
                     value={propertyForm.pincode}
-                    onChange={(e) => setPropertyForm(prev => ({ ...prev, pincode: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val.length <= 6) {
+                        setPropertyForm(prev => ({ ...prev, pincode: val }));
+                      }
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
                   />
                 </div>
@@ -836,9 +919,17 @@ export default function DharmashalaManagement() {
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Manager Phone</label>
                   <input 
-                    type="text" required
+                    type="tel" 
+                    required
+                    maxLength={10}
+                    placeholder="10 digit mobile number"
                     value={propertyForm.contactNumber}
-                    onChange={(e) => setPropertyForm(prev => ({ ...prev, contactNumber: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val.length <= 10) {
+                        setPropertyForm(prev => ({ ...prev, contactNumber: val }));
+                      }
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
                   />
                 </div>
@@ -847,6 +938,7 @@ export default function DharmashalaManagement() {
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Email Address</label>
                   <input 
                     type="email"
+                    placeholder="example@gmail.com"
                     value={propertyForm.email}
                     onChange={(e) => setPropertyForm(prev => ({ ...prev, email: e.target.value }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
@@ -1153,10 +1245,69 @@ export default function DharmashalaManagement() {
                 <span className="text-[9px] text-slate-450 mt-1 block font-semibold">Hold Ctrl key to assign multiple rooms.</span>
               </div>
 
+              {/* Pricing & Final Amount Entry */}
+              <div className="bg-indigo-50/70 border border-indigo-100 p-3.5 rounded-2xl space-y-3">
+                <div className="flex justify-between items-center text-[10px] font-black text-indigo-900 uppercase">
+                  <span>Pricing Approval</span>
+                  <span>{activeBooking.nights || 1} Night(s)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Base Price (₹)</label>
+                    <input 
+                      type="number" 
+                      value={baseAmount}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setBaseAmount(val);
+                        setFinalAmount((val + additionalCharges) - discount);
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Extra Charges (₹)</label>
+                    <input 
+                      type="number" 
+                      value={additionalCharges}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setAdditionalCharges(val);
+                        setFinalAmount((baseAmount + val) - discount);
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Discount (₹)</label>
+                    <input 
+                      type="number" 
+                      value={discount}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setDiscount(val);
+                        setFinalAmount((baseAmount + additionalCharges) - val);
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-rose-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-extrabold text-indigo-700 uppercase block mb-1">Final Amount (₹)</label>
+                    <input 
+                      type="number" 
+                      value={finalAmount}
+                      onChange={(e) => setFinalAmount(Number(e.target.value) || 0)}
+                      className="w-full bg-indigo-600 text-white font-black border border-indigo-700 rounded-lg px-2.5 py-1.5 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Remarks / Note</label>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Remarks / Pricing Note</label>
                 <input 
                   type="text"
+                  placeholder="Optional pricing explanation"
                   value={bookingRemarks}
                   onChange={(e) => setBookingRemarks(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500"
@@ -1167,10 +1318,10 @@ export default function DharmashalaManagement() {
                 <button onClick={() => setShowBookingModal(false)} className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-xl">Cancel</button>
                 <button 
                   onClick={handleConfirmApproval}
-                  disabled={assignedRoomIds.length === 0}
-                  className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-50 text-white font-bold rounded-xl shadow-sm"
+                  disabled={finalAmount <= 0}
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer"
                 >
-                  Confirm Approval
+                  Confirm &amp; Approve (₹{finalAmount})
                 </button>
               </div>
             </div>

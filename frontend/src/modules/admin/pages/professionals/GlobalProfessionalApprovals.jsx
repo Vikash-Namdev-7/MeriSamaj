@@ -81,7 +81,19 @@ export default function GlobalProfessionalApprovals() {
 
   useEffect(() => {
     loadData();
-  }, [searchQuery, filters.category, filters.city, filters.community]);
+  }, [searchQuery, filters]);
+
+  // Lock background scroll when detail modal popup is active
+  useEffect(() => {
+    if (isDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDrawerOpen]);
 
   const viewDetails = async (id) => {
     setDrawerLoading(true);
@@ -298,12 +310,12 @@ export default function GlobalProfessionalApprovals() {
         </div>
       </div>
 
-      {/* DETAIL DRAWER */}
+      {/* DETAIL MODAL POPUP */}
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex justify-end">
-          <div className="flex-1" onClick={() => setIsDrawerOpen(false)} />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0" onClick={() => setIsDrawerOpen(false)} />
           
-          <div className="w-full max-w-xl bg-white border-l border-slate-250 shadow-2xl h-screen flex flex-col overflow-hidden relative">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden relative z-10 animate-scale-up">
             {drawerLoading ? (
               <div className="flex-1 flex flex-col items-center justify-center">
                 <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-650 rounded-full animate-spin mb-3" />
@@ -410,7 +422,7 @@ export default function GlobalProfessionalApprovals() {
                 <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
                   <button 
                     onClick={() => handleApprove(selectedListing.id)}
-                    className="flex-1 bg-emerald-650 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-100"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-100"
                   >
                     <Check size={14} /> Approve Request
                   </button>

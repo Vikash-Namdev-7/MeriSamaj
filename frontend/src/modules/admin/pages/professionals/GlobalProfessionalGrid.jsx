@@ -120,6 +120,18 @@ export default function GlobalProfessionalGrid() {
     credentialStatus, fromDate, toDate, currentPage, sortBy, sortOrder
   ]);
 
+  // Lock background scroll when detail modal popup is active
+  useEffect(() => {
+    if (isDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDrawerOpen]);
+
   const clearAllFilters = () => {
     setSearchQuery('');
     setStatus('');
@@ -302,21 +314,8 @@ export default function GlobalProfessionalGrid() {
 
       {/* Advanced Filter controls */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-3.5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search business, owner, city..." 
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400 focus:bg-white text-slate-800"
-            />
-          </div>
-
+        {/* Row 1: 4 Dropdowns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-1">
             <select 
               value={status}
@@ -356,9 +355,7 @@ export default function GlobalProfessionalGrid() {
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
             <select 
               value={community}
@@ -371,28 +368,30 @@ export default function GlobalProfessionalGrid() {
               ))}
             </select>
           </div>
+        </div>
 
-          <div className="space-y-1">
-            <select 
-              value={credentialStatus}
-              onChange={(e) => { setCredentialStatus(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none text-slate-800"
-            >
-              <option value="">All Credentials</option>
-              <option value="PENDING">Pending</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+        {/* Row 2: Search input on left, Clear All Filters button on right */}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+            <Search size={16} className="absolute left-3 top-3.5 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search business, owner, city..." 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400 focus:bg-white text-slate-800"
+            />
           </div>
 
-          <div className="flex items-center justify-end">
-            <button 
-              onClick={clearAllFilters}
-              className="text-[10px] font-black text-rose-600 hover:text-rose-700 uppercase tracking-wider cursor-pointer bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-250 transition-colors"
-            >
-              Clear All Filters
-            </button>
-          </div>
+          <button 
+            onClick={clearAllFilters}
+            className="w-full sm:w-auto text-[10px] font-black text-rose-600 hover:text-rose-700 uppercase tracking-wider cursor-pointer bg-slate-50 hover:bg-rose-50 px-5 py-2.5 rounded-xl border border-slate-250 hover:border-rose-200 transition-colors shrink-0"
+          >
+            Clear All Filters
+          </button>
         </div>
 
         {/* Active Filter Chips */}
@@ -507,12 +506,12 @@ export default function GlobalProfessionalGrid() {
         </div>
       )}
 
-      {/* DETAIL DRAWER */}
+      {/* DETAIL MODAL POPUP */}
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex justify-end">
-          <div className="flex-1" onClick={() => setIsDrawerOpen(false)} />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0" onClick={() => setIsDrawerOpen(false)} />
           
-          <div className="w-full max-w-xl bg-white border-l border-slate-250 shadow-2xl h-screen flex flex-col overflow-hidden relative">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden relative z-10 animate-scale-up">
             {drawerLoading ? (
               <div className="flex-1 flex flex-col items-center justify-center">
                 <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-650 rounded-full animate-spin mb-3" />
@@ -683,7 +682,7 @@ export default function GlobalProfessionalGrid() {
                         </button>
                         <button 
                           onClick={() => setActionType('reject')}
-                          className="bg-rose-650 hover:bg-rose-750 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
+                          className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md"
                         >
                           <XCircle size={14} /> Reject
                         </button>
@@ -692,7 +691,7 @@ export default function GlobalProfessionalGrid() {
                     {selectedListing.status === 'Approved' && (
                       <button 
                         onClick={() => handleSuspend(selectedListing.id)}
-                        className="bg-slate-650 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                        className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
                       >
                         <ToggleLeft size={15} /> Suspend Listing
                       </button>
@@ -700,7 +699,7 @@ export default function GlobalProfessionalGrid() {
                     {selectedListing.status === 'Suspended' && (
                       <button 
                         onClick={() => handleReactivate(selectedListing.id)}
-                        className="bg-emerald-650 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
                       >
                         <ToggleRight size={15} /> Reactivate Listing
                       </button>

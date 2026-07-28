@@ -20,6 +20,7 @@ const dharmashalaSchema = new mongoose.Schema({
   status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   isFeatured: { type: Boolean, default: false },
   amenities: [{ type: String }], // WiFi, Lift, CCTV, RO Water, etc.
+  pricePerDay: { type: Number, default: 0 },
   rules: { type: String },
   checkInTime: { type: String, default: '10:00' },
   checkOutTime: { type: String, default: '10:00' },
@@ -34,9 +35,14 @@ const dharmashalaSchema = new mongoose.Schema({
     default: null,
   },
   // @deprecated — use communityId (ObjectId) instead.
-  community: { type: String, required: true }
+  community: { type: String }
 }, {
   timestamps: true
 });
+
+dharmashalaSchema.index({ communityId: 1, status: 1, createdAt: -1 });
+dharmashalaSchema.index({ communityId: 1, status: 1, city: 1, createdAt: -1 });
+dharmashalaSchema.index({ communityId: 1, status: 1, amenities: 1 });
+dharmashalaSchema.index({ name: 'text', city: 'text', address: 'text', description: 'text' });
 
 module.exports = mongoose.model('Dharmashala', dharmashalaSchema);

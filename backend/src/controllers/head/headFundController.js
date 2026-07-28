@@ -3,6 +3,7 @@ const Contribution = require('../../models/Contribution');
 const FundExpense = require('../../models/FundExpense');
 const User = require('../../models/User');
 const { notifyFundCreated } = require('../../services/notificationService');
+const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 const formatDate = (date) => {
   if (!date) return '';
@@ -15,21 +16,18 @@ const getCommunityId = (req) => {
   if (req.user?.assignedCommunityIds && req.user.assignedCommunityIds.length > 0) {
     return req.user.assignedCommunityIds[0];
   }
+  // Legacy fallback: string-name community kept for backward compatibility with unmigrated user records
   if (req.user?.community) {
     return req.user.community;
   }
   return null;
 };
 
-// 1. Get Head Panel Funds (Scoped to Head's communityId)
+// 1. Get Head Panel Funds (Scoped to Head's communityId via applyScopeFilter)
 exports.getFunds = async (req, res) => {
   try {
-    const communityId = getCommunityId(req);
-    if (!communityId) {
-      return res.status(403).json({ success: false, message: 'Access Denied. No community assigned.' });
-    }
-
-    const funds = await Fund.find({ communityId, scope: 'COMMUNITY' })
+    const scopeFilter = applyScopeFilter(req, { scope: 'COMMUNITY' });
+    const funds = await Fund.find(scopeFilter)
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
 
@@ -121,7 +119,8 @@ exports.getFundById = async (req, res) => {
 // 3. Create Fund
 exports.createFund = async (req, res) => {
   try {
-    const communityId = getCommunityId(req);
+    const payload = inheritTenantPayload(req, req.body);
+    const communityId = payload.communityId || getCommunityId(req);
     if (!communityId) {
       return res.status(403).json({ success: false, message: 'Access Denied. No community assigned.' });
     }
@@ -315,7 +314,8 @@ exports.getFundExpenses = async (req, res) => {
 // 8. Add Expense
 exports.addExpense = async (req, res) => {
   try {
-    const communityId = getCommunityId(req);
+    const payload = inheritTenantPayload(req, req.body);
+    const communityId = payload.communityId || getCommunityId(req);
     const fund = await Fund.findOne({ _id: req.params.id, communityId });
     if (!fund) {
       return res.status(403).json({ success: false, message: 'Access Denied.' });

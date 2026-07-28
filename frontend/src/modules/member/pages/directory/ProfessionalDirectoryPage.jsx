@@ -34,11 +34,6 @@ const ProfessionalDirectoryPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useData();
 
-  // Custom hook logic (100% preserved)
-  const { listings, categories, cities, isLoading, error } = useProfessionalDirectory(
-    currentUser?.communityId || 'default'
-  );
-
   // State (100% preserved)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -47,6 +42,27 @@ const ProfessionalDirectoryPage = () => {
 
   const [tempCategory, setTempCategory] = useState('All');
   const [tempCity, setTempCity] = useState('All Cities');
+
+  // 250ms debounced search query to maintain instant live-as-you-type feel while querying server
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const filterParams = useMemo(() => {
+    const params = {};
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (selectedCategory !== 'All') params.category = selectedCategory;
+    if (selectedCity !== 'All Cities') params.city = selectedCity;
+    return params;
+  }, [debouncedSearch, selectedCategory, selectedCity]);
+
+  // Custom hook logic with server-side filtering
+  const { listings, categories, cities, isLoading, error } = useProfessionalDirectory(
+    currentUser?.communityId || 'default',
+    filterParams
+  );
 
   // Filter handlers
   const openFilter = () => {
@@ -76,7 +92,7 @@ const ProfessionalDirectoryPage = () => {
     (selectedCategory !== 'All' ? 1 : 0) +
     (selectedCity !== 'All Cities' ? 1 : 0);
 
-  // Preserved filtering logic
+  // Preserved fallback filtering logic
   const filteredListings = useMemo(() => {
     return listings.filter(item => {
       if (searchQuery.trim()) {

@@ -332,17 +332,38 @@ exports.reactivateListing = async (req, res) => {
 // 7. Get filter options dynamically
 exports.getFilterOptions = async (req, res) => {
   try {
-    const categories = await Professional.distinct('category');
-    const cities = await Professional.distinct('city');
-    
+    const Category = require('../../models/Category');
+    const professionalCategories = await Professional.distinct('category');
+    const masterCategories = await Category.find({ isActive: true }).select('name');
+    const masterCategoryNames = masterCategories.map(c => c.name);
+
+    const combinedCategories = Array.from(
+      new Set([
+        ...professionalCategories.filter(Boolean),
+        ...masterCategoryNames.filter(Boolean)
+      ])
+    ).sort();
+
+    const professionalCities = await Professional.distinct('city');
+    const City = require('../../models/City');
+    const masterCities = await City.find({ isActive: true }).select('name');
+    const masterCityNames = masterCities.map(c => c.name);
+
+    const combinedCities = Array.from(
+      new Set([
+        ...professionalCities.filter(Boolean), 
+        ...masterCityNames.filter(Boolean)
+      ])
+    ).sort();
+
     const Community = require('../../models/Community');
     const communities = await Community.find({}).select('name');
 
     res.status(200).json({
       success: true,
       data: {
-        categories: categories.filter(Boolean),
-        cities: cities.filter(Boolean),
+        categories: combinedCategories,
+        cities: combinedCities,
         communities: communities.map(c => ({ id: c._id.toString(), name: c.name }))
       }
     });

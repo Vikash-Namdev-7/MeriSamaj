@@ -68,6 +68,24 @@ const obituarySchema = new mongoose.Schema({
       trim: true
     }
   },
+  ceremonies: [{
+    type: {
+      type: String,
+      trim: true
+    },
+    date: {
+      type: String,
+      trim: true
+    },
+    time: {
+      type: String,
+      trim: true
+    },
+    venue: {
+      type: String,
+      trim: true
+    }
+  }],
   message: {
     type: String,
     required: true,
@@ -150,6 +168,11 @@ const obituarySchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+obituarySchema.index({ communityId: 1, status: 1, createdAt: -1 });
+obituarySchema.index({ communityId: 1, creatorId: 1, createdAt: -1 });
+obituarySchema.index({ communityId: 1, 'funeralDetails.type': 1, createdAt: -1 });
+obituarySchema.index({ deceasedName: 'text', message: 'text' });
 
 const Obituary = mongoose.model('Obituary', obituarySchema);
 

@@ -20,14 +20,13 @@ exports.getDashboard = async (req, res) => {
     const userId = req.user._id;
     const now    = new Date();
 
-    // Run all in parallel for performance
+    // Run all in parallel for performance — duplicate MatrimonialProfile.findOne removed
     const [
       myProfile,
       subscription,
       interestStats,
       shortlistCount,
-      recentChatsCount,
-      myProfile_visitors
+      recentChatsCount
     ] = await Promise.all([
       MatrimonialProfile.findOne({ userId, isDeleted: false }),
       UserSubscription.findOne({ userId, status: { $in: ['active', 'grace'] }, endDate: { $gte: now } }).sort({ endDate: -1 }),
@@ -45,8 +44,7 @@ exports.getDashboard = async (req, res) => {
         }
       ]),
       Shortlist.countDocuments({ userId }),
-      Conversation.countDocuments({ participants: userId, type: 'matrimonial', isActive: true, isDeleted: false }),
-      MatrimonialProfile.findOne({ userId, isDeleted: false }).select('totalProfileViews monthlyProfileViews weeklyProfileViews')
+      Conversation.countDocuments({ participants: userId, type: 'matrimonial', isActive: true, isDeleted: false })
     ]);
 
     const interests = interestStats[0] || { sent: 0, received: 0, accepted: 0, pending: 0, rejected: 0 };
@@ -71,9 +69,9 @@ exports.getDashboard = async (req, res) => {
         rejected: interests.rejected
       },
       visitors: {
-        total:   myProfile_visitors?.totalProfileViews  || 0,
-        monthly: myProfile_visitors?.monthlyProfileViews || 0,
-        weekly:  myProfile_visitors?.weeklyProfileViews  || 0
+        total:   myProfile?.totalProfileViews   || 0,
+        monthly: myProfile?.monthlyProfileViews || 0,
+        weekly:  myProfile?.weeklyProfileViews  || 0
       },
       shortlist:    shortlistCount,
       recentChats:  recentChatsCount
@@ -96,18 +94,22 @@ const getRecommendations = async (userId, myProfile, subscription) => {
     return { recommendedMatches: [], newMembers: [], recentlyActive: [], premiumMembers: [], nearYou: [] };
   }
 
-  const settings = await MatrimonialSettings.findOne().lean();
-  const userDoc  = await User.findById(userId).select('gender').lean();
-  const limit    = settings?.maxRecommendationsPerCategory || 10;
+  // Pre-fetch settings, user doc, and blocks in a single parallel step
+  const [settings, userDoc, blocks] = await Promise.all([
+    MatrimonialSettings.findOne().lean(),
+    User.findById(userId).select('gender').lean(),
+    UserBlock.find({ $or: [{ userId }, { blockedUserId: userId }] }).lean()
+  ]);
 
-  // ─── Completion threshold (env-driven) ───────────────────────────────────
+  const matchWeights = settings?.matchWeights;
+  const limit = settings?.maxRecommendationsPerCategory || 10;
   const completionRequired = parseInt(process.env.MATRIMONIAL_MIN_COMPLETION) ||
     (settings?.profileCompletionRequired ?? 50);
 
-  // ─── Block filter ─────────────────────────────────────────────────────────
-  const blockedByMe  = await UserBlock.find({ userId }).distinct('blockedUserId');
-  const whoBlockedMe = await UserBlock.find({ blockedUserId: userId }).distinct('userId');
-  const excludeUsers = [...blockedByMe, ...whoBlockedMe];
+  // Consolidate block list cleanly
+  const excludeUsers = blocks.map(b =>
+    b.userId.toString() === userId.toString() ? b.blockedUserId : b.userId
+  );
 
   const mongoose = require('mongoose');
   const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -165,11 +167,11 @@ const getRecommendations = async (userId, myProfile, subscription) => {
     }).sort({ createdAt: -1 }).limit(limit).populate('userId', 'name avatar').lean({ virtuals: true })
   ]);
 
-  // Enrich recommended matches with match %
+  // Enrich recommended matches with match % using pre-fetched matchWeights (0 extra DB calls!)
   const enriched = await Promise.all(
     recommendedMatches.map(async (profile) => {
       const result = myProfile
-        ? await calculateMatchPercentage(myProfile, profile)
+        ? await calculateMatchPercentage(myProfile, profile, matchWeights)
         : { matchPercentage: 0, matchedCriteria: [] };
       return { ...buildRestrictedProfile(profile), ...result };
     })

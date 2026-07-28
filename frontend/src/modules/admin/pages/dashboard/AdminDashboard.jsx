@@ -4,7 +4,7 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { 
   Users, Building2, MapPin, ShieldCheck, 
   Heart, Calendar, Briefcase, Activity, 
-  IndianRupee, TrendingUp, TrendingDown 
+  IndianRupee, TrendingUp, TrendingDown, Flame 
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -244,6 +244,19 @@ export const AdminDashboard = () => {
               <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest mb-2">Social Posts</p>
               <h4 className="text-4xl font-black">{data.engagement?.posts || 0}</h4>
               <p className="text-xs text-indigo-100 mt-2">Across all communities</p>
+            </div>
+            <div 
+              onClick={() => navigate('/admin/obituaries')}
+              className="p-5 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">Obituary Desk</p>
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-700">
+                  <Flame size={16} />
+                </div>
+              </div>
+              <h4 className="text-2xl font-black text-amber-900 mt-2">Memorial Desk</h4>
+              <p className="text-xs font-bold text-amber-700 mt-1">Supervise all obituary posts →</p>
             </div>
             <div className="p-5 rounded-xl border border-slate-100 bg-white shadow-sm flex flex-col justify-between">
               <div>
