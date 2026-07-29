@@ -85,5 +85,9 @@ router.post('/notifications/broadcast', adminNotificationController.sendAdminBro
 const adminReportsRoutes = require('./adminReportsRoutes');
 router.use('/reports', adminReportsRoutes);
 
+// Referral & Rewards Management Routes
+const adminReferralRoutes = require('./adminReferralRoutes');
+router.use('/referrals', adminReferralRoutes);
+
 module.exports = router;
 

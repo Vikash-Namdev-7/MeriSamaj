@@ -643,15 +643,39 @@ const MyProfilePage = () => {
                   {profileUser.isPrivate && <span className="text-xs" title="Private Account">🔒</span>}
                   {profileUser.isVerified && <CheckCircle size={18} className="text-emerald-500 fill-emerald-50 shrink-0" />}
                 </h2>
-                {profileUser.isPremium ? (
-                  <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
-                    👑 {profileUser.membershipPlan || 'PRO'}
-                  </span>
-                ) : (
-                  <span className="bg-purple-50 text-brand-primary text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded border border-purple-100/50 tracking-wider">
-                    Member
-                  </span>
-                )}
+                {(() => {
+                  const rawRole = (profileUser.role || '').toLowerCase();
+                  const rawDes = profileUser.designation || '';
+                  const isElevated = rawRole === 'head' || rawRole === 'sub_head' || (rawDes && rawDes.toLowerCase() !== 'member');
+                  
+                  if (isElevated) {
+                    const badgeLabel = (rawRole === 'head' || rawDes.toLowerCase() === 'community head' || rawDes.toLowerCase() === 'president')
+                      ? 'COMMUNITY HEAD'
+                      : (rawRole === 'sub_head' || rawDes.toLowerCase() === 'sub head')
+                      ? 'SUB HEAD'
+                      : rawDes.toUpperCase();
+
+                    return (
+                      <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm tracking-wider flex items-center gap-1 border border-amber-400/30">
+                        <Crown size={12} className="text-amber-200 fill-amber-200" /> {badgeLabel}
+                      </span>
+                    );
+                  }
+
+                  if (profileUser.isPremium) {
+                    return (
+                      <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm tracking-wider flex items-center gap-0.5 border border-amber-400/20">
+                        👑 {profileUser.membershipPlan || 'PRO'}
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <span className="bg-purple-50 text-brand-primary text-[9px] sm:text-[10px] font-black uppercase px-2.5 py-1 rounded border border-purple-100/50 tracking-wider">
+                      Member
+                    </span>
+                  );
+                })()}
               </div>
 
               {profileUser.bio && (
@@ -664,7 +688,10 @@ const MyProfilePage = () => {
               <div className="text-[12px] sm:text-[14.5px] font-semibold text-slate-500 flex flex-col gap-2 mt-2.5">
                 <p className="flex items-center gap-2">
                   <Briefcase size={14} className="text-slate-400 shrink-0" /> 
-                  <span>{profileUser.profession || 'Community Member'}{profileUser.company ? ` at ${profileUser.company}` : ''}</span>
+                  <span>
+                    {profileUser.profession || (['head', 'sub_head'].includes((profileUser.role || '').toLowerCase()) ? (profileUser.designation || 'Community Leadership') : 'Community Member')}
+                    {profileUser.company ? ` at ${profileUser.company}` : ''}
+                  </span>
                 </p>
                 {(profileUser.city || profileUser.state) && (
                   <p className="flex items-center gap-2">

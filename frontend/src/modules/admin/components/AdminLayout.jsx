@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone, Landmark, Flame, Crown, CheckSquare, BarChart3
+  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone, Landmark, Flame, Crown, CheckSquare, BarChart3, Gift
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { Avatar } from '../../member/components/common/Avatar';
@@ -167,6 +167,11 @@ export const AdminLayout = () => {
             { name: 'Notifications', path: '/admin/subscriptions', search: '?tab=notifications' },
             { name: 'Settings', path: '/admin/subscriptions', search: '?tab=settings' }
           ]
+        },
+        {
+          name: 'Referrals & Rewards',
+          path: '/admin/referrals',
+          icon: Gift
         },
         { 
           name: 'Reports & Analytics', 

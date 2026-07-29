@@ -16,7 +16,7 @@ exports.getCommunityLeadership = async (req, res) => {
       ? new mongoose.Types.ObjectId(rawCommunityId.toString())
       : (rawCommunityId ? rawCommunityId : new mongoose.Types.ObjectId('000000000000000000000000'));
 
-    // 1. Fetch Main Community Head (Strictly scoped to targetCommunityId, NO global fallback)
+    // 1. Fetch Main Community Head (Strictly scoped to targetCommunityId, NO city restriction)
     const headQuery = {
       role: 'head',
       accountStatus: 'active',
@@ -25,9 +25,6 @@ exports.getCommunityLeadership = async (req, res) => {
         { assignedCommunityIds: targetCommunityId }
       ]
     };
-    if (city && city !== 'all') {
-      headQuery.city = new RegExp(`^${city.trim()}$`, 'i');
-    }
 
     const communityHeadUser = await User.findOne(headQuery)
       .select('name email phone city state designation bio avatar cover socialLinks termYears createdAt')
@@ -43,15 +40,15 @@ exports.getCommunityLeadership = async (req, res) => {
       initials: communityHeadUser.name ? communityHeadUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CH',
       designation: headDesignation,
       role: headDesignation,
-      city: communityHeadUser.city || 'Indore',
-      state: communityHeadUser.state || 'Madhya Pradesh',
+      city: communityHeadUser.city || '',
+      state: communityHeadUser.state || '',
       phone: communityHeadUser.phone || '',
       email: communityHeadUser.email || '',
-      bio: communityHeadUser.bio || 'Leading community governance and member welfare.',
+      bio: communityHeadUser.bio || '',
       avatar: communityHeadUser.avatar || '',
       cover: communityHeadUser.cover || '',
       socialLinks: communityHeadUser.socialLinks || {},
-      termYears: communityHeadUser.termYears || '2024-2027',
+      termYears: communityHeadUser.termYears || '',
       isHead: true
     } : null;
 
@@ -83,9 +80,9 @@ exports.getCommunityLeadership = async (req, res) => {
       initials: u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'SL',
       designation: u.designation || 'Executive Member',
       role: u.designation || 'Executive Member',
-      department: u.department || 'General Governance',
-      city: u.city || 'Indore',
-      state: u.state || 'Madhya Pradesh',
+      department: u.department || '',
+      city: u.city || '',
+      state: u.state || '',
       phone: u.phone || '',
       email: u.email || '',
       bio: u.bio || '',
@@ -110,13 +107,13 @@ exports.getCommunityLeadership = async (req, res) => {
       initials: l.initials || (l.name ? l.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'LD'),
       designation: l.role || 'Committee Member',
       role: l.role || 'Committee Member',
-      city: l.city || 'Indore',
-      state: l.state || 'Madhya Pradesh',
+      city: l.city || '',
+      state: l.state || '',
       phone: l.phone || '',
       email: l.email || '',
       bio: l.bio || '',
       avatar: l.avatar || '',
-      termYears: l.termYears || '2024-2027',
+      termYears: l.termYears || '',
       isHead: false
     }));
 

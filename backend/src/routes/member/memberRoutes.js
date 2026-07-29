@@ -87,4 +87,8 @@ router.use('/leadership', leadershipRoutes);
 const censusRoutes = require('./censusRoutes');
 router.use('/census', censusRoutes);
 
+// ─── Referral & Rewards Module ──────────────────────────────────────────────
+const referralRoutes = require('./referralRoutes');
+router.use('/referral', referralRoutes);
+
 module.exports = router;

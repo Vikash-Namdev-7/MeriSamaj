@@ -79,7 +79,7 @@ const LeaderHeroBanner = ({ leader, city, onBack, navigate, hideHeader = false, 
   const title = city ? `${cityHindi} शहर` : 'समाज नेतृत्व';
   const subtitle = city ? `${city.toUpperCase()} CITY LEADERSHIP` : 'हमारा नेतृत्व, हमारा गौरव';
 
-  const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80';
+  const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=800&q=80';
   const avatarUrl = (leader.avatar && !leader.avatar.includes('ui-avatars.com')) 
     ? leader.avatar 
     : defaultLeaderPhoto;
@@ -143,9 +143,16 @@ const LeaderHeroBanner = ({ leader, city, onBack, navigate, hideHeader = false, 
               <h4 className="text-white text-[15.5px] font-black leading-tight tracking-tight drop-shadow-sm">
                 {leader.name}
               </h4>
-              <p className="text-purple-200/90 text-[11px] font-bold mt-1">
-                {leader.city || 'Indore'}, {leader.state || 'Madhya Pradesh'} • Term: {leader.termYears || '2024-2027'}
-              </p>
+              {(() => {
+                const loc = [leader.city, leader.state].filter(Boolean).join(', ');
+                const term = leader.termYears ? `Term: ${leader.termYears}` : '';
+                const meta = [loc, term].filter(Boolean).join(' • ');
+                return meta ? (
+                  <p className="text-purple-200/90 text-[11px] font-bold mt-1">
+                    {meta}
+                  </p>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>
@@ -213,7 +220,12 @@ const CabinetMemberCard = ({ member, navigate, activeCityDetail }) => {
             {hindiRole}
           </span>
           <h4 className="text-[11.5px] font-black text-slate-800 truncate mt-0.5 leading-tight">{member.name}</h4>
-          <p className="text-[9.5px] text-slate-400 font-semibold">{member.city} • {member.department || 'Governance'}</p>
+          {(() => {
+            const subMeta = [member.city, member.department].filter(Boolean).join(' • ');
+            return subMeta ? (
+              <p className="text-[9.5px] text-slate-400 font-semibold truncate">{subMeta}</p>
+            ) : null;
+          })()}
         </div>
       </div>
       

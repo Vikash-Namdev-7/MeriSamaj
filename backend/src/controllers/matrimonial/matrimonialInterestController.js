@@ -20,12 +20,18 @@ exports.sendInterest = async (req, res) => {
     const { receiverProfileId, message } = req.body;
     const senderId = req.user._id;
 
-    // Fetch receiver's profile to get their userId
-    const receiverProfile = await MatrimonialProfile.findOne({
-      _id: receiverProfileId,
-      status: 'active',
-      isDeleted: false
-    });
+    const mongoose = require('mongoose');
+    const isValidId = mongoose.Types.ObjectId.isValid(receiverProfileId);
+
+    // Fetch receiver's profile by profile _id OR userId
+    let receiverProfile = null;
+    if (isValidId) {
+      receiverProfile = await MatrimonialProfile.findOne({
+        $or: [{ _id: receiverProfileId }, { userId: receiverProfileId }],
+        isDeleted: false
+      });
+    }
+
     if (!receiverProfile) {
       return res.status(404).json({ status: 'error', message: 'Profile not found or not available.' });
     }

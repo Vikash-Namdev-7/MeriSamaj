@@ -122,6 +122,7 @@ const HomePage = () => {
   const [totalFundsAmount, setTotalFundsAmount] = useState(0);
   const [liveCommunityHead, setLiveCommunityHead] = useState(null);
   const [liveSubLeaders, setLiveSubLeaders] = useState([]);
+  const [leadershipLoading, setLeadershipLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -137,11 +138,14 @@ const HomePage = () => {
     axiosPrivate.get('/member/leadership')
       .then(res => {
         if (isMounted && res.data?.success && res.data?.data) {
-          if (res.data.data.communityHead) setLiveCommunityHead(res.data.data.communityHead);
+          setLiveCommunityHead(res.data.data.communityHead || null);
           if (Array.isArray(res.data.data.subLeaders)) setLiveSubLeaders(res.data.data.subLeaders);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLeadershipLoading(false);
+      });
 
     donationService.getStats()
       .then(res => {
@@ -1063,7 +1067,6 @@ const HomePage = () => {
       {/* ─── YOUR LEADERS (Samaj Netrutva) ─── */}
       <div className="px-3 mb-8">
         {(() => {
-          const fallbackPresident = mockAdmins.find(a => a.role === 'President') || mockAdmins[1];
           const rawRole = liveCommunityHead?.designation || liveCommunityHead?.role;
           const headRole = (!rawRole || rawRole.toLowerCase() === 'member') ? 'Community Head' : rawRole;
 
@@ -1071,17 +1074,14 @@ const HomePage = () => {
             id: liveCommunityHead._id,
             name: liveCommunityHead.name,
             role: headRole,
-            city: liveCommunityHead.city || 'Indore',
-            state: liveCommunityHead.state || 'Madhya Pradesh',
+            city: liveCommunityHead.city || '',
+            state: liveCommunityHead.state || '',
             phone: liveCommunityHead.phone || '',
-            avatar: liveCommunityHead.avatar || liveCommunityHead.cover || ''
-          } : {
-            ...fallbackPresident,
-            role: (!fallbackPresident.role || fallbackPresident.role.toLowerCase() === 'member') ? 'Community Head' : fallbackPresident.role
-          };
+            avatar: liveCommunityHead.avatar || liveCommunityHead.cover || (currentUser?.role === 'head' ? currentUser?.avatar : '')
+          } : null;
 
-          const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80';
-          const leaderAvatarPhoto = (president.avatar && !president.avatar.includes('ui-avatars.com'))
+          const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=800&q=80';
+          const leaderAvatarPhoto = (president?.avatar && !president.avatar.includes('ui-avatars.com'))
             ? president.avatar
             : defaultLeaderPhoto;
 
@@ -1089,10 +1089,10 @@ const HomePage = () => {
             id: sl._id || sl.id,
             name: sl.name,
             role: sl.designation || sl.role || 'Executive Member',
-            city: sl.city || 'Indore',
+            city: sl.city || '',
             phone: sl.phone || '',
             avatar: sl.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sl.name)}&background=6C3BFF&color=ffffff&bold=true`
-          })) : mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role));
+          })) : [];
 
           return (
             <div className="flex flex-col gap-5">
@@ -1108,76 +1108,106 @@ const HomePage = () => {
               </div>
 
               {/* President / Community Head Section */}
-              <div 
-                onClick={() => navigate('/member/leadership', { state: { selectedId: president.id } })}
-                className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] shadow-xl shadow-purple-500/10 border border-purple-400/10 overflow-hidden p-5 shrink-0 cursor-pointer active:scale-[0.99] transition-all duration-300 min-h-[170px]"
-              >
-                {/* Full-height blended portrait photo on right (Image 2 style) */}
-                <img 
-                  src={leaderAvatarPhoto} 
-                  className="absolute right-0 top-0 bottom-0 w-[58%] h-full object-cover object-[center_20%] pointer-events-none z-0" 
-                  style={{
-                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)',
-                    maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)'
-                  }}
-                  alt={president.name} 
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = defaultLeaderPhoto;
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1e1145] via-[#2d1b69]/70 via-[#2d1b69]/15 to-transparent pointer-events-none z-0" />
-
-                {/* Left content */}
-                <div className="relative z-10 flex flex-col justify-between h-full max-w-[62%]">
+              {leadershipLoading ? (
+                <div className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] border border-purple-400/10 p-5 shrink-0 min-h-[170px] flex flex-col justify-between animate-pulse">
                   <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-full border-2 border-amber-400/60 flex items-center justify-center bg-black/20 shadow-sm shrink-0">
-                      <Crown size={16} className="text-amber-400 fill-amber-400" />
-                    </div>
-                    <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30 truncate">
-                      {president.role || 'Community Head'}
-                    </span>
+                    <div className="w-9 h-9 rounded-full bg-white/20" />
+                    <div className="h-4 bg-white/20 rounded-full w-24" />
                   </div>
-
-                  <div className="mt-3.5">
-                    <h4 className="text-white text-[18px] font-bold leading-tight tracking-tight drop-shadow-sm">
-                      {president.name}
-                    </h4>
-                    <p className="text-amber-300/90 text-[11px] font-bold mt-0.5 uppercase tracking-wide">
-                      {president.role || 'Community Head'}
-                    </p>
+                  <div className="space-y-2 mt-4">
+                    <div className="h-5 bg-white/20 rounded-md w-40" />
+                    <div className="h-3 bg-white/10 rounded-md w-28" />
                   </div>
-
-                  {/* Golden Separator */}
-                  <div className="flex items-center gap-1.5 my-3 w-28">
-                    <div className="h-[1px] flex-1 bg-amber-400/25" />
-                    <div className="w-1 h-1 rotate-45 bg-amber-400/60" />
-                    <div className="h-[1px] flex-1 bg-amber-400/25" />
-                  </div>
-
-                  {/* Location */}
-                  <div className="flex items-center gap-2 text-white/90 text-[10px] font-medium mb-3.5">
-                    <MapPin size={11} className="text-white/70 shrink-0" />
-                    <span>{president.city || 'Indore'}, {president.state || 'Madhya Pradesh'}</span>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 w-full" onClick={(e) => e.stopPropagation()}>
-                    <a 
-                      href={`tel:${president.phone || ''}`}
-                      className="flex-1 py-1.5 rounded-xl border border-purple-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-center backdrop-blur-sm"
-                    >
-                      <Phone size={11} /> Call
-                    </a>
-                    <button 
-                      onClick={() => navigate(`/member/chat/member/${president.id}`)}
-                      className="flex-1 py-1.5 rounded-xl border border-emerald-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm"
-                    >
-                      <MessageCircle size={11} /> Chat
-                    </button>
+                  <div className="flex gap-2 w-full mt-4">
+                    <div className="flex-1 h-7 bg-white/15 rounded-xl" />
+                    <div className="flex-1 h-7 bg-white/15 rounded-xl" />
                   </div>
                 </div>
-              </div>
+              ) : !president ? (
+                <div className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] border border-purple-400/10 p-5 shrink-0 min-h-[170px] flex flex-col justify-center items-start shadow-xl shadow-purple-500/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-full border-2 border-amber-400/60 flex items-center justify-center bg-black/20 shrink-0">
+                      <Crown size={16} className="text-amber-400 fill-amber-400" />
+                    </div>
+                    <span className="bg-purple-500/80 text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30">
+                      Community Leadership
+                    </span>
+                  </div>
+                  <h4 className="text-white text-[16px] font-bold leading-tight mt-1">No Head Assigned Yet</h4>
+                  <p className="text-purple-200/70 text-[11px] font-medium mt-1">Community head appointment is currently pending.</p>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => navigate('/member/leadership', { state: { selectedId: president.id } })}
+                  className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] shadow-xl shadow-purple-500/10 border border-purple-400/10 overflow-hidden p-5 shrink-0 cursor-pointer active:scale-[0.99] transition-all duration-300 min-h-[170px]"
+                >
+                  {/* Full-height blended portrait photo on right */}
+                  <img 
+                    src={leaderAvatarPhoto} 
+                    className="absolute right-0 top-0 bottom-0 w-[58%] h-full object-cover object-[center_20%] pointer-events-none z-0" 
+                    style={{
+                      WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)',
+                      maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)'
+                    }}
+                    alt={president.name} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = defaultLeaderPhoto;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#1e1145] via-[#2d1b69]/70 via-[#2d1b69]/15 to-transparent pointer-events-none z-0" />
+
+                  {/* Left content */}
+                  <div className="relative z-10 flex flex-col justify-between h-full max-w-[62%]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-full border-2 border-amber-400/60 flex items-center justify-center bg-black/20 shadow-sm shrink-0">
+                        <Crown size={16} className="text-amber-400 fill-amber-400" />
+                      </div>
+                      <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30 truncate">
+                        {president.role || 'Community Head'}
+                      </span>
+                    </div>
+
+                    <div className="mt-3.5">
+                      <h4 className="text-white text-[18px] font-bold leading-tight tracking-tight drop-shadow-sm">
+                        {president.name}
+                      </h4>
+                      <p className="text-amber-300/90 text-[11px] font-bold mt-0.5 uppercase tracking-wide">
+                        {president.role || 'Community Head'}
+                      </p>
+                    </div>
+
+                    {/* Golden Separator */}
+                    <div className="flex items-center gap-1.5 my-3 w-28">
+                      <div className="h-[1px] flex-1 bg-amber-400/25" />
+                      <div className="w-1 h-1 rotate-45 bg-amber-400/60" />
+                      <div className="h-[1px] flex-1 bg-amber-400/25" />
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center gap-2 text-white/90 text-[10px] font-medium mb-3.5">
+                      <MapPin size={11} className="text-white/70 shrink-0" />
+                      <span>{[president.city, president.state].filter(Boolean).join(', ') || 'Community Head'}</span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 w-full" onClick={(e) => e.stopPropagation()}>
+                      <a 
+                        href={`tel:${president.phone || ''}`}
+                        className="flex-1 py-1.5 rounded-xl border border-purple-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-center backdrop-blur-sm"
+                      >
+                        <Phone size={11} /> Call
+                      </a>
+                      <button 
+                        onClick={() => navigate(`/member/chat/member/${president.id}`)}
+                        className="flex-1 py-1.5 rounded-xl border border-emerald-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm"
+                      >
+                        <MessageCircle size={11} /> Chat
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
                 
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-3 px-3">
                 {coreCommittee.map((member, idx) => {
@@ -1189,7 +1219,7 @@ const HomePage = () => {
                       ? 'bg-[#00a651]'
                       : 'bg-amber-500';
                       
-                    const displayRole = member.role || 'उपसंयोजक';
+                    const displayRole = member.role && member.role !== 'user' ? member.role : 'Executive Member';
 
                     return (
                       <div 

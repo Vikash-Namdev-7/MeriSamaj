@@ -128,8 +128,11 @@ const userSchema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   country: { type: String, default: 'India' },
   
-  // Metadata
-  referralCode: { type: String },
+  // Referral & Rewards Fields
+  referralCode: { type: String, index: true },
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  pointsBalance: { type: Number, default: 0 },
+  totalPointsEarned: { type: Number, default: 0 },
   role: { 
     type: String, 
     enum: ['user', 'admin', 'head', 'sub_head'], 

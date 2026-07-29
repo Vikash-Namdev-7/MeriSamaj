@@ -1,10 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../config/config');
-const { notifyInvitationAccepted, notifyReferralBonusEarned, notifySecurityAlert } = require('../services/notificationService');
+const { notifyInvitationAccepted, notifySecurityAlert } = require('../services/notificationService');
 const { sendPushNotification } = require('../services/pushNotificationService');
-
-const DEFAULT_REFERRAL_BONUS_AMOUNT = 100;
 
 // Centralized production-secure cookie helper
 const getCookieOptions = (maxAgeMs = 7 * 24 * 60 * 60 * 1000) => {
@@ -144,39 +142,19 @@ const registerUser = async (req, res) => {
       userData.email = email;
     }
 
+    // Auto-generate referral code for new user if not provided
+    const referralService = require('../services/referralService');
+    if (!userData.referralCode) {
+      userData.referralCode = await referralService.generateUniqueReferralCode();
+    }
+
     const user = await User.create(userData);
 
     if (user) {
       await user.populate('communityId', 'name slug isActive settings logoUrl description city');
 
-      // ── Notification: notify inviter / referral bonus ────────────────────────────
-      if (referralCode) {
-        try {
-          const mongoose = require('mongoose');
-          const searchOpts = [{ referralCode }, { phone: referralCode }];
-          if (mongoose.isValidObjectId(referralCode)) {
-            searchOpts.push({ _id: referralCode });
-          }
-          const inviter = await User.findOne({ $or: searchOpts }).select('_id name').lean();
-          if (inviter) {
-            notifyInvitationAccepted(inviter._id, user.name || 'A member');
-            const bonusNotif = await notifyReferralBonusEarned(inviter._id, DEFAULT_REFERRAL_BONUS_AMOUNT);
-            if (bonusNotif) {
-              sendPushNotification({
-                userId: inviter._id,
-                notificationId: bonusNotif._id,
-                type: 'referral_bonus_earned',
-                title: 'Referral Bonus Earned! 🎁',
-                message: `You earned ₹${DEFAULT_REFERRAL_BONUS_AMOUNT} referral bonus because ${user.name || 'A member'} registered using your link!`,
-                icon: '🎁',
-                actionUrl: '/member/invitations'
-              }).catch(err => console.error('[ReferralPushError]', err.message));
-            }
-          }
-        } catch (notifErr) {
-          console.warn('[Notify] registerUser referral notification failed:', notifErr.message);
-        }
-      }
+      // ── Process Referral Points & Single Notification via Referral Service ──────────
+      await referralService.processRegistrationReferral(user, referralCode);
 
       const { accessToken, refreshToken } = generateTokens(user);
       
@@ -516,8 +494,10 @@ const updateProfile = async (req, res) => {
       user.pincode = req.body.pincode || user.pincode;
       user.country = req.body.country || user.country;
 
-      // Leadership / Head-specific fields (safe for all roles — only stored if provided)
-      if (req.body.designation !== undefined) user.designation = req.body.designation;
+      // Role and designation are strictly managed by system admin / role assignments and CANNOT be altered via profile updates
+      delete req.body.role;
+      delete req.body.designation;
+      
       if (req.body.termYears !== undefined) user.termYears = req.body.termYears;
       if (req.body.socialLinks) {
         let parsedLinks = req.body.socialLinks;

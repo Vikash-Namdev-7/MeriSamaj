@@ -95,8 +95,19 @@ export const HeadAuthProvider = ({ children }) => {
     });
   };
 
+  const updateHeadUser = (updatedUserFields) => {
+    setHeadAuth(prev => {
+      const merged = { ...(prev.headUser || {}), ...updatedUserFields };
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(merged));
+      return {
+        ...prev,
+        headUser: merged
+      };
+    });
+  };
+
   return (
-    <HeadAuthContext.Provider value={{ headAuth, headLogin, headLogout }}>
+    <HeadAuthContext.Provider value={{ headAuth, headLogin, headLogout, updateHeadUser }}>
       {children}
     </HeadAuthContext.Provider>
   );

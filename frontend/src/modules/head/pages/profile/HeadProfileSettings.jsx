@@ -10,12 +10,7 @@ import { useHeadAuth } from '../../auth/useHeadAuth';
 import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 import { authService } from '../../../../core/auth/authService';
 
-// ── Designation Options ──
-const DESIGNATION_OPTIONS = [
-  'President', 'Vice President', 'Secretary', 'Joint Secretary',
-  'Treasurer', 'Coordinator', 'Executive Member', 'Patron',
-  'General Secretary', 'Committee Member', 'Community Head'
-];
+
 
 // ── Indian States ──
 const INDIAN_STATES = [
@@ -105,7 +100,7 @@ const LeadershipPreviewCard = ({ formData }) => (
 // ════════════════════════════════════════════════════════════════════
 const HeadProfileSettings = () => {
   const navigate = useNavigate();
-  const { headAuth } = useHeadAuth();
+  const { headAuth, updateHeadUser } = useHeadAuth();
   const headUser = headAuth?.headUser;
 
   const [formData, setFormData] = useState({
@@ -223,7 +218,6 @@ const HeadProfileSettings = () => {
         payload.append('name', formData.name);
         payload.append('email', formData.email);
         payload.append('bio', formData.bio);
-        payload.append('designation', formData.designation);
         payload.append('city', formData.city);
         payload.append('state', formData.state);
         payload.append('termYears', formData.termYears);
@@ -233,7 +227,6 @@ const HeadProfileSettings = () => {
           name: formData.name,
           email: formData.email,
           bio: formData.bio,
-          designation: formData.designation,
           city: formData.city,
           state: formData.state,
           termYears: formData.termYears,
@@ -244,12 +237,16 @@ const HeadProfileSettings = () => {
 
       const result = await authService.updateProfile(payload);
 
-      // Update local storage with fresh user data so sidebar reflects changes immediately
+      // Update local storage and auth context state so sidebar and UI reflect changes immediately
       if (result?.user || result?._id) {
         const updatedUser = result.user || result;
-        const storedUser = JSON.parse(localStorage.getItem('head_auth_user') || '{}');
-        const merged = { ...storedUser, ...updatedUser };
-        localStorage.setItem('head_auth_user', JSON.stringify(merged));
+        if (updateHeadUser) {
+          updateHeadUser(updatedUser);
+        } else {
+          const storedUser = JSON.parse(localStorage.getItem('head_auth_user') || '{}');
+          const merged = { ...storedUser, ...updatedUser };
+          localStorage.setItem('head_auth_user', JSON.stringify(merged));
+        }
       }
 
       setAvatarFile(null);
@@ -395,20 +392,13 @@ const HeadProfileSettings = () => {
               />
             </FormField>
 
-            <FormField label="Designation / पद" icon={Shield}>
-              <div className="relative">
-                <select 
-                  value={formData.designation} 
-                  onChange={e => handleChange('designation', e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">Select Designation</option>
-                  {DESIGNATION_OPTIONS.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
+            <FormField label="Designation / पद" icon={Shield} hint="Designation is assigned based on system role and cannot be changed">
+              <input 
+                type="text" 
+                value={formData.designation || 'Community Head'} 
+                readOnly
+                className={`${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`}
+              />
             </FormField>
           </div>
 

@@ -292,6 +292,12 @@ exports.createDonation = async (req, res) => {
     });
     await campaign.save();
 
+    // Process Referral Side-Effect (Non-blocking)
+    if (req.user?._id) {
+      const { processReferralEvent } = require('../../services/referralService');
+      processReferralEvent('DONATION', req.user._id, paymentRecord._id).catch(err => console.error('[DonationReferralError]', err.message));
+    }
+
     const dDate = new Date();
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const formattedDate = `${dDate.getDate()} ${months[dDate.getMonth()]} ${dDate.getFullYear()}`;
@@ -471,6 +477,12 @@ exports.verifyRazorpayPayment = async (req, res) => {
           }
         }
       });
+    }
+
+    // Process Referral Side-Effect (Non-blocking)
+    if (req.user?._id) {
+      const { processReferralEvent } = require('../../services/referralService');
+      processReferralEvent('DONATION', req.user._id, donationRecord._id).catch(err => console.error('[DonationReferralError]', err.message));
     }
 
     if (campaign && req.user) {

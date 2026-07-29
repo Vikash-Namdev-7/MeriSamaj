@@ -143,6 +143,10 @@ exports.verifyAndActivate = async (req, res) => {
     // Notify user
     notifySubscriptionActivated(req.user._id, plan.name);
 
+    // Process Referral Side-Effect (Non-blocking)
+    const { processReferralEvent } = require('../../services/referralService');
+    processReferralEvent('SUBSCRIPTION', req.user._id, sub._id).catch(err => console.error('[SubReferralError]', err.message));
+
     res.json({ status: 'success', message: 'Subscription activated!', data: { subscription: sub } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });

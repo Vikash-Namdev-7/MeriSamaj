@@ -246,7 +246,15 @@ const DirectoryPage = () => {
                       <span className="text-sm font-extrabold text-text-primary leading-tight group-hover:text-brand-primary transition-colors duration-200">{member.name}</span>
                       {member.verificationStatus === 'verified' && <CheckCircle size={14} className="text-emerald-500 fill-emerald-50 shrink-0" />}
                     </div>
-                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mt-0.5">{member.profession || member.role || 'Member'}</p>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mt-0.5">
+                      {(() => {
+                        const r = (member.role || '').toLowerCase();
+                        const d = member.designation || '';
+                        if (r === 'head' || d.toLowerCase() === 'community head' || d.toLowerCase() === 'president') return 'Community Head';
+                        if (r === 'sub_head' || d.toLowerCase() === 'sub head') return 'Sub Head';
+                        return member.profession || (member.role && member.role !== 'user' ? member.role : 'Member');
+                      })()}
+                    </p>
                     <p className="text-[9.5px] font-semibold text-text-muted mt-0.5 flex items-center gap-1">
                       <MapPin size={9} className="text-purple-300" /> {member.city || 'Location not specified'}
                     </p>

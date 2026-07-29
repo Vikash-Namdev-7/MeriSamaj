@@ -186,9 +186,11 @@ const MatrimonialHomePage = () => {
   const [conversationsLoading, setConversationsLoading] = useState(false);
 
   // Advanced Filter state
-  const [ageRange, setAgeRange] = useState({ min: 18, max: 40 });
-  const [selectedGotra, setSelectedGotra] = useState('All');
+  const [ageRange, setAgeRange] = useState({ min: 18, max: 50 });
+  const [selectedMaritalStatus, setSelectedMaritalStatus] = useState('All');
   const [selectedDiet, setSelectedDiet] = useState('All');
+  const [verifiedOnlyFilter, setVerifiedOnlyFilter] = useState(false);
+  const [withPhotoOnlyFilter, setWithPhotoOnlyFilter] = useState(false);
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
@@ -323,11 +325,16 @@ const MatrimonialHomePage = () => {
       if (profile.age !== null && profile.age !== undefined) {
         if (profile.age < ageRange.min || profile.age > ageRange.max) return false;
       }
-      if (selectedGotra !== 'All' && profile.gotra !== selectedGotra) return false;
-      if (selectedDiet  !== 'All' && profile.diet  !== selectedDiet)  return false;
+      if (selectedMaritalStatus !== 'All') {
+        const ms = profile.maritalStatus || profile.personal?.maritalStatus || '';
+        if (ms.toLowerCase() !== selectedMaritalStatus.toLowerCase()) return false;
+      }
+      if (selectedDiet !== 'All' && (profile.diet || profile.lifestyle?.diet || '').toLowerCase() !== selectedDiet.toLowerCase()) return false;
+      if (verifiedOnlyFilter && !profile.verifiedStatus) return false;
+      if (withPhotoOnlyFilter && !profile.avatar && (!profile.photos || profile.photos.length === 0)) return false;
       return true;
     });
-  }, [feedProfiles, ignoredIds, activeFilterPill, searchText, ageRange, selectedGotra, selectedDiet, currentUser]);
+  }, [feedProfiles, ignoredIds, activeFilterPill, searchText, ageRange, selectedMaritalStatus, selectedDiet, verifiedOnlyFilter, withPhotoOnlyFilter, currentUser]);
 
   // ─── dynamicVisitors — from real visitors API ─────────────────────────────
   const dynamicVisitors = useMemo(() => {
@@ -2258,18 +2265,18 @@ const MatrimonialHomePage = () => {
                   <input 
                     type="range" 
                     min="18" 
-                    max="45" 
+                    max="60" 
                     value={ageRange.min}
-                    onChange={(e) => setAgeRange(prev => ({ ...prev, min: parseInt(e.target.value) }))}
-                    className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                    onChange={(e) => setAgeRange(prev => ({ ...prev, min: Math.min(parseInt(e.target.value), prev.max) }))}
+                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-500"
                   />
                   <input 
                     type="range" 
                     min="18" 
-                    max="45" 
+                    max="60" 
                     value={ageRange.max}
-                    onChange={(e) => setAgeRange(prev => ({ ...prev, max: parseInt(e.target.value) }))}
-                    className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                    onChange={(e) => setAgeRange(prev => ({ ...prev, max: Math.max(parseInt(e.target.value), prev.min) }))}
+                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-500"
                   />
                 </div>
                 <div className="flex justify-between text-[9.5px] text-slate-400 font-bold mt-1.5 uppercase">
@@ -2278,23 +2285,67 @@ const MatrimonialHomePage = () => {
                 </div>
               </div>
 
-              {/* Gotra Selection */}
+              {/* Marital Status Selection */}
               <div>
-                <label className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wide block mb-2">Gotra Preference</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['All', 'Garg', 'Bansal', 'Mittal', 'Goyal', 'Jindal', 'Dodiya', 'Saini', 'Jatav'].map(g => (
+                <label className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wide block mb-2">Marital Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['All', 'Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'].map(ms => (
                     <button
-                      key={g}
-                      onClick={() => setSelectedGotra(g)}
-                      className={`py-2 text-[11px] font-extrabold rounded-xl border transition-all ${
-                        selectedGotra === g 
+                      key={ms}
+                      onClick={() => setSelectedMaritalStatus(ms)}
+                      className={`py-2 px-3 text-[11px] font-extrabold rounded-xl border transition-all text-center ${
+                        selectedMaritalStatus === ms 
                           ? 'bg-rose-50 border-rose-350 text-rose-600 shadow-xs' 
-                          : 'bg-white border-slate-200 text-slate-655 hover:bg-slate-50'
+                          : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
                       }`}
                     >
-                      {g}
+                      {ms}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Quick Toggle Filters (Verified Only & Photo Only) */}
+              <div>
+                <label className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wide block mb-2">Profile Verification & Photos</label>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setVerifiedOnlyFilter(prev => !prev)}
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      verifiedOnlyFilter 
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold' 
+                        : 'bg-white border-slate-200 text-slate-600 font-semibold hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck size={16} className={verifiedOnlyFilter ? 'text-emerald-600' : 'text-slate-400'} />
+                      <span className="text-[12px]">Verified Profiles Only</span>
+                    </div>
+                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${
+                      verifiedOnlyFilter ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'
+                    }`}>
+                      {verifiedOnlyFilter && <Check size={11} strokeWidth={3} />}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setWithPhotoOnlyFilter(prev => !prev)}
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      withPhotoOnlyFilter 
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold' 
+                        : 'bg-white border-slate-200 text-slate-600 font-semibold hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Image size={16} className={withPhotoOnlyFilter ? 'text-rose-600' : 'text-slate-400'} />
+                      <span className="text-[12px]">Profiles With Photo Only</span>
+                    </div>
+                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${
+                      withPhotoOnlyFilter ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-300'
+                    }`}>
+                      {withPhotoOnlyFilter && <Check size={11} strokeWidth={3} />}
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -2302,14 +2353,14 @@ const MatrimonialHomePage = () => {
               <div>
                 <label className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wide block mb-2">Diet Preference</label>
                 <div className="flex gap-2">
-                  {['All', 'Vegetarian', 'Non-Vegetarian'].map(d => (
+                  {['All', 'Vegetarian', 'Non-Vegetarian', 'Eggetarian'].map(d => (
                     <button
                       key={d}
                       onClick={() => setSelectedDiet(d)}
-                      className={`flex-1 py-2 text-[11px] font-extrabold rounded-xl border transition-all ${
+                      className={`flex-1 py-2 text-[10.5px] font-extrabold rounded-xl border transition-all ${
                         selectedDiet === d 
                           ? 'bg-rose-50 border-rose-350 text-rose-600 shadow-xs' 
-                          : 'bg-white border-slate-200 text-slate-655 hover:bg-slate-50'
+                          : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
                       }`}
                     >
                       {d}
@@ -2323,9 +2374,11 @@ const MatrimonialHomePage = () => {
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
               <button 
                 onClick={() => {
-                  setAgeRange({ min: 18, max: 40 });
-                  setSelectedGotra('All');
+                  setAgeRange({ min: 18, max: 50 });
+                  setSelectedMaritalStatus('All');
                   setSelectedDiet('All');
+                  setVerifiedOnlyFilter(false);
+                  setWithPhotoOnlyFilter(false);
                   showToast('Filters reset to default.');
                 }}
                 className="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-[12.5px] font-black text-slate-500 uppercase tracking-wider active:scale-95 transition-transform"
