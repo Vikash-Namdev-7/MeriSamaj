@@ -147,7 +147,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
   }, [messages, conversationId]); // eslint-disable-line
 
   // Derive display info for the other user
-  const myId = user?._id?.toString();
+  const myId = (user?.id || user?._id)?.toString();
 
   const getOtherUser = useCallback(() => {
     if (otherUser) return otherUser;
@@ -349,88 +349,94 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
 
       {/* ── HEADER ── */}
       {isSelectionMode ? (
-        <div className="bg-brand-primary text-white pb-3 px-3 flex items-center justify-between shrink-0 shadow-md z-30"
+        <div className="bg-white/85 backdrop-blur-xl border-b border-purple-100/30 text-slate-800 pb-3 px-4 flex items-center justify-between shrink-0 shadow-[0_2px_12px_rgba(124,58,237,0.03)] z-30"
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 12px, 12px)' }}>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedMessages([])} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2">
-              <ArrowLeft size={22} />
+            <button onClick={() => setSelectedMessages([])} className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale">
+              <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
-            <span className="font-bold text-[18px]">{selectedMessages.length}</span>
+            <span className="font-extrabold text-[16px] text-slate-800">{selectedMessages.length} selected</span>
           </div>
           <div className="flex items-center gap-1">
             {selectedMessages.length === 1 && (
               <button onClick={() => { setReplyTarget(messages.find(m => m._id === selectedMessages[0])); setSelectedMessages([]); }}
-                className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10">
-                <Reply size={20} />
+                className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale">
+                <Reply size={18} />
               </button>
             )}
             <button onClick={() => showConfirm('Delete for me?', () => handleDeleteSelected('me'))}
-              className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 text-red-200">
-              <Trash2 size={20} />
+              className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/60 flex items-center justify-center text-rose-600 hover:bg-rose-100 transition-colors press-scale">
+              <Trash2 size={18} />
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-brand-primary text-white pb-3 px-3 flex items-center justify-between shrink-0 shadow-md z-30"
+        <div className="bg-white/85 backdrop-blur-xl border-b border-purple-100/30 text-slate-800 pb-3 px-4 flex items-center justify-between shrink-0 shadow-[0_2px_12px_rgba(124,58,237,0.03)] z-30"
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 12px, 12px)' }}>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <button onClick={handleBack} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -ml-2 shrink-0">
-              <ArrowLeft size={22} />
+            <button onClick={handleBack} className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale shrink-0">
+              <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
-            <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 hover:bg-white/5 p-1 rounded-xl transition-colors">
+            <div className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0 hover:bg-purple-50/40 p-1 rounded-2xl transition-colors">
               <div className="relative shrink-0">
-                <Avatar src={chatAvatar} initials={initials} size="md" color="bg-white text-brand-primary" />
-                {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-[2.5px] border-brand-primary rounded-full" />}
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200/70 shadow-2xs">
+                  {chatAvatar ? (
+                    <img src={chatAvatar} alt={chatName} className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-xs" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-[17px] font-bold truncate leading-tight">{chatName}</h2>
-                <p className="text-white/80 text-[13px] truncate font-medium">
+              <div className="flex-1 min-w-0 text-left">
+                <h2 className="text-[15px] font-extrabold text-slate-800 truncate leading-tight">{chatName}</h2>
+                <p className="text-slate-400 text-[11px] truncate font-semibold">
                   {isTyping
-                    ? <span className="text-green-300 font-bold animate-pulse">typing...</span>
+                    ? <span className="text-purple-600 font-extrabold animate-pulse">typing...</span>
                     : isOnline ? 'Online' : isConnected ? 'Available' : 'Last seen recently'
                   }
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setShowMenu(p => !p); }}
-                className="w-10 h-10 rounded-full flex items-center justify-center active:bg-white/10 -mr-2">
-                <MoreVertical size={20} />
+                className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale">
+                <MoreVertical size={18} />
               </button>
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => { setShowMenu(false); setShowMoreMenu(false); }} />
-                  <div className="absolute top-11 right-2 bg-white text-gray-800 rounded-3xl shadow-2xl py-2 w-[220px] z-50 border border-gray-100 overflow-hidden animate-scale-up">
+                  <div className="absolute top-11 right-0 bg-white text-slate-800 rounded-3xl shadow-2xl py-2 w-[220px] z-50 border border-slate-200/80 overflow-hidden animate-scale-in text-left">
                     {!showMoreMenu ? (
                       <>
                         <button onClick={(e) => { e.stopPropagation(); setIsSearchOpen(true); setShowMenu(false); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 transition-colors">
-                          Search
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-slate-700 hover:bg-purple-50/50 transition-colors">
+                          Search Messages
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowMuteDialog(true); setShowMenu(false); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 transition-colors">
-                          Mute notifications
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-slate-700 hover:bg-purple-50/50 transition-colors">
+                          Mute Notifications
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowWallpaperDialog(true); setShowMenu(false); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 transition-colors">
-                          Wallpaper
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-slate-700 hover:bg-purple-50/50 transition-colors">
+                          Wallpaper Theme
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(true); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-slate-700 hover:bg-purple-50/40 transition-colors border-t border-gray-100 mt-1 flex items-center justify-between">
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-slate-700 hover:bg-purple-50/50 transition-colors border-t border-slate-100 mt-1 flex items-center justify-between">
                           <span>More</span><span className="text-slate-400">→</span>
                         </button>
                       </>
                     ) : (
                       <>
                         <button onClick={(e) => { e.stopPropagation(); setShowMoreMenu(false); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-brand-primary flex items-center gap-2 hover:bg-purple-50/40 transition-colors border-b border-gray-100 mb-1">
-                          <ArrowLeft size={18} /> Back
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-purple-600 flex items-center gap-2 hover:bg-purple-50/50 transition-colors border-b border-slate-100 mb-1">
+                          <ArrowLeft size={16} /> Back
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); showConfirm('Clear all messages?', async () => {}); }}
-                          className="w-full text-left px-5 py-3 text-[14.5px] font-bold text-red-500 hover:bg-red-50/40 transition-colors">
-                          Clear chat
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-extrabold text-rose-600 hover:bg-rose-50/50 transition-colors">
+                          Clear Chat
                         </button>
                       </>
                     )}
@@ -536,8 +542,8 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
 
           const msg     = item;
           const sender  = msg.senderId;
-          const sId     = (sender?._id || sender || '').toString();
-          const isMine  = sId === myId;
+          const sId     = (sender?._id || sender?.id || sender || '').toString();
+          const isMine  = !!(sId && myId && sId === myId);
           const isSelected = selectedMessages.includes(msg._id);
           const repliedMsg = msg.replyTo ? messages.find(m => m._id === (msg.replyTo?._id || msg.replyTo)) : null;
 
@@ -565,7 +571,7 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
 
           return (
             <div key={msg._id}
-              className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} pb-1 ${isSelected ? 'bg-brand-primary/10 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
+              className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} pb-1 ${isSelected ? 'bg-purple-100/50 rounded-lg p-1 transition-colors' : 'transition-colors'}`}
               onMouseDown={e => handlePressStart(e, msg._id)}
               onTouchStart={e => handlePressStart(e, msg._id)}
               onMouseMove={handlePressMove}
@@ -573,19 +579,19 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
               onMouseUp={e => handlePressEnd(e, msg._id)}
               onTouchEnd={e => handlePressEnd(e, msg._id)}
             >
-              <div className="relative max-w-[80%]">
+              <div className="relative max-w-[82%]">
                 <div onClick={e => handleMessageClick(e, msg._id)}
-                  className={`px-3 py-2 rounded-2xl shadow-sm relative cursor-pointer select-none border ${
-                    isMine ? 'bg-[#d9fdd3] rounded-tr-sm border-[#c8e6c9] text-gray-900' : 'bg-white rounded-tl-sm border-gray-100 text-gray-900'
+                  className={`px-3.5 py-2.5 rounded-2xl shadow-2xs relative cursor-pointer select-none border text-left ${
+                    isMine ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-tr-xs border-purple-500/30' : 'bg-white rounded-tl-xs border-slate-200/80 text-slate-800'
                   }`}
                 >
                   {/* Reply preview */}
                   {repliedMsg && (
-                    <div className="bg-black/5 rounded-lg p-2 mb-1.5 border-l-4 border-brand-primary">
-                      <p className="text-[12px] font-bold text-brand-primary mb-0.5">
+                    <div className={`rounded-xl p-2 mb-1.5 border-l-4 ${isMine ? 'bg-white/15 border-white text-white' : 'bg-purple-50 border-purple-600 text-slate-800'}`}>
+                      <p className={`text-[11px] font-extrabold mb-0.5 ${isMine ? 'text-purple-200' : 'text-purple-700'}`}>
                         {(repliedMsg.senderId?._id || repliedMsg.senderId)?.toString() === myId ? 'You' : repliedMsg.senderId?.name || 'Member'}
                       </p>
-                      <p className="text-[13px] text-gray-600 truncate">{repliedMsg.message || 'Attachment'}</p>
+                      <p className="text-[12px] truncate opacity-90">{repliedMsg.message || 'Attachment'}</p>
                     </div>
                   )}
 
@@ -595,11 +601,11 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
                   )}
 
                   {/* Text */}
-                  {msg.message && <p className="text-[15px] leading-relaxed pr-14">{msg.message}</p>}
+                  {msg.message && <p className="text-[14px] leading-relaxed pr-14 font-medium">{msg.message}</p>}
 
                   {/* Timestamp + Status */}
-                  <div className={`absolute bottom-1 right-2 flex items-center gap-1 ${msg.message ? '' : 'bg-black/30 px-1.5 rounded-full'}`}>
-                    <span className={`text-[10px] font-medium ${msg.message ? 'text-gray-500' : 'text-white'}`}>
+                  <div className={`absolute bottom-1.5 right-2.5 flex items-center gap-1 ${msg.message ? '' : 'bg-black/30 px-1.5 rounded-full'}`}>
+                    <span className={`text-[9.5px] font-bold ${isMine ? 'text-purple-200' : 'text-slate-400'}`}>
                       {formatMsgTime(msg.createdAt || msg.timestamp)}
                     </span>
                     {isMine && (
@@ -616,12 +622,12 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
                 {reactionTarget === msg._id && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={e => { e.stopPropagation(); setReactionTarget(null); }} />
-                    <div className={`absolute z-50 ${isMine ? 'right-0' : 'left-0'} bg-white border border-gray-150 rounded-full px-3 py-2 shadow-xl flex items-center gap-3 animate-fade-in ${
+                    <div className={`absolute z-50 ${isMine ? 'right-0' : 'left-0'} bg-white border border-slate-200 rounded-full px-3 py-1.5 shadow-xl flex items-center gap-2.5 animate-scale-in ${
                       reactionPosition === 'bottom' ? 'top-full mt-1.5' : '-top-12'
                     }`}>
                       {EMOJI_REACTIONS.map(emoji => (
                         <button key={emoji} onClick={e => { e.stopPropagation(); setReactionTarget(null); }}
-                          className="text-[22px] hover:scale-125 transition-transform opacity-90">
+                          className="text-[20px] hover:scale-125 transition-transform opacity-90 press-scale">
                           {emoji}
                         </button>
                       ))}
@@ -638,49 +644,49 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
       </div>
 
       {/* ── INPUT AREA ── */}
-      <div className="bg-transparent px-2 pb-4 pt-1 flex flex-col gap-1.5 z-10 shrink-0" onClick={e => e.stopPropagation()}>
+      <div className="bg-white/85 backdrop-blur-xl border-t border-purple-100/30 px-3 py-2 flex flex-col gap-1.5 z-20 shrink-0 select-none shadow-[0_-2px_12px_rgba(124,58,237,0.03)]" onClick={e => e.stopPropagation()}>
         <input type="file" ref={imageInputRef} accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
         <input type="file" ref={docInputRef} onChange={handleDocChange} style={{ display: 'none' }} />
 
         {/* Reply preview */}
         {replyTarget && (
-          <div className="mx-1 flex items-center gap-3 bg-white/95 backdrop-blur rounded-xl px-3 py-2.5 border-l-4 border-brand-primary shadow-sm">
-            <CornerUpLeft size={16} className="text-brand-primary shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-brand-primary mb-0.5">
+          <div className="mx-1 flex items-center gap-3 bg-purple-50/70 rounded-xl px-3 py-2 border-l-4 border-purple-600 shadow-2xs">
+            <CornerUpLeft size={16} className="text-purple-600 shrink-0" />
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[11px] font-extrabold text-purple-700 mb-0.5">
                 {(replyTarget.senderId?._id || replyTarget.senderId)?.toString() === myId ? 'You' : replyTarget.senderId?.name || 'Member'}
               </p>
-              <p className="text-[13px] font-medium text-gray-600 truncate">{replyTarget.message || 'Attachment'}</p>
+              <p className="text-[12px] font-medium text-slate-600 truncate">{replyTarget.message || 'Attachment'}</p>
             </div>
-            <button onClick={() => setReplyTarget(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-              <X size={16} />
+            <button onClick={() => setReplyTarget(null)} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-purple-100 text-slate-400 press-scale">
+              <X size={15} />
             </button>
           </div>
         )}
 
         {/* Attachment preview */}
         {pendingAttachment && (
-          <div className="mx-1 flex items-center gap-3 bg-white/95 backdrop-blur rounded-xl px-3 py-2 shadow-sm border border-gray-100">
+          <div className="mx-1 flex items-center gap-3 bg-purple-50/70 rounded-xl px-3 py-2 shadow-2xs border border-purple-100/60">
             {pendingAttachment.type === 'image'
-              ? <img src={pendingAttachment.url} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" />
-              : <div className="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0"><FileText size={20} className="text-indigo-500" /></div>}
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-bold text-gray-800 truncate">{pendingAttachment.name}</p>
-              <p className="text-[12px] text-gray-500">Ready to send</p>
+              ? <img src={pendingAttachment.url} alt="" className="w-10 h-10 rounded-lg object-cover border border-purple-100 shrink-0" />
+              : <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0"><FileText size={18} className="text-purple-600" /></div>}
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[13px] font-extrabold text-slate-800 truncate">{pendingAttachment.name}</p>
+              <p className="text-[11px] font-medium text-purple-600">Ready to send</p>
             </div>
-            <button onClick={() => setPendingAttachment(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-              <X size={16} />
+            <button onClick={() => setPendingAttachment(null)} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-purple-100 text-slate-400 press-scale">
+              <X size={15} />
             </button>
           </div>
         )}
 
         {/* Emoji Picker */}
         {showEmojiPicker && (
-          <div className="mx-2 mb-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-y-auto max-h-[200px]">
-            <div className="grid grid-cols-8 gap-2">
+          <div className="mx-1 mb-2 bg-white rounded-2xl p-3 shadow-xl border border-slate-200/80 overflow-y-auto max-h-[180px]">
+            <div className="grid grid-cols-8 gap-1.5">
               {['😀','😃','😄','😁','😅','😂','🤣','🥲','😊','😇','🙂','😍','🥰','😘','😋','😎','🤩','🥳','🤗','🤔','🤫','😤','😢','😭','😡','🤬','😱','😨','😰','🙏','👍','❤️','🔥','✨','🎉','💌'].map(emoji => (
                 <button key={emoji} onClick={() => setNewMessage(p => p + emoji)}
-                  className="text-[22px] hover:bg-gray-100 rounded-lg flex justify-center items-center h-10 w-10 transition-colors">
+                  className="text-[20px] hover:bg-purple-50 rounded-lg flex justify-center items-center h-9 w-9 transition-colors press-scale">
                   {emoji}
                 </button>
               ))}
@@ -688,33 +694,33 @@ const ChatRoomPage = ({ chatType = 'member', openByUserId = false }) => {
           </div>
         )}
 
-        {/* Input */}
-        <div className="flex items-end gap-2">
-          <div className="flex-1 bg-white rounded-3xl min-h-[50px] flex items-end py-1 px-2 shadow-sm border border-gray-200">
+        {/* Input Bar */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-slate-100/80 border border-slate-200/80 rounded-2xl min-h-[44px] flex items-center py-1 px-2.5 focus-within:bg-white focus-within:border-purple-500/50 transition-all">
             <button onClick={() => setShowEmojiPicker(p => !p)}
-              className={`w-10 h-[42px] rounded-full flex items-center justify-center shrink-0 hover:bg-gray-50 transition-colors ${showEmojiPicker ? 'text-brand-primary' : 'text-gray-500'}`}>
-              <Smile size={24} />
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 hover:bg-purple-50 transition-colors ${showEmojiPicker ? 'text-purple-600' : 'text-slate-400'}`}>
+              <Smile size={20} />
             </button>
             <textarea
               ref={inputRef}
               value={newMessage}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Message"
+              placeholder="Type a message..."
               rows={1}
-              className="flex-1 bg-transparent py-2.5 px-1.5 text-[15px] focus:outline-none text-gray-900 placeholder-gray-400 resize-none max-h-24"
+              className="flex-1 bg-transparent py-2 px-2 text-[14px] font-medium focus:outline-none text-slate-800 placeholder-slate-400 resize-none max-h-20"
             />
             <button onClick={() => imageInputRef.current?.click()}
-              className="w-[38px] h-[42px] rounded-full flex items-center justify-center text-gray-500 shrink-0 hover:bg-gray-50 mr-1">
-              <Camera size={22} />
+              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 shrink-0 hover:bg-purple-50 transition-colors">
+              <Camera size={19} />
             </button>
           </div>
           <button 
             onClick={handleSend} 
             disabled={(!newMessage.trim() && !pendingAttachment) || sending}
-            className={`w-[50px] h-[50px] rounded-full text-white flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-transform disabled:opacity-60 ${newMessage.trim() || pendingAttachment ? 'bg-[#00a884]' : 'bg-gray-300 cursor-not-allowed'}`}
+            className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center shadow-md shrink-0 press-scale transition-all disabled:opacity-50 ${newMessage.trim() || pendingAttachment ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-slate-300 cursor-not-allowed'}`}
           >
-            {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="ml-1" />}
+            {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="ml-0.5" strokeWidth={2.5} />}
           </button>
         </div>
       </div>

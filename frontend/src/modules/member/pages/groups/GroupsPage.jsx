@@ -34,67 +34,67 @@ const CATEGORY_COLORS = {
 
 const GroupCard = ({ group, onJoin, onLeave, onOpen, joiningId }) => {
   const initials   = (group.name || '').substring(0, 2).toUpperCase();
-  const colorClass = CATEGORY_COLORS[group.category] || 'bg-indigo-100 text-indigo-700';
+  const colorClass = CATEGORY_COLORS[group.category] || 'bg-purple-100 text-purple-700';
   const memberCount = group.memberCount || group.members?.length || 0;
   const isLoading  = joiningId === group._id;
 
   return (
     <div
-      className="flex items-center gap-3.5 px-4 py-3 bg-white border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer"
+      className="bg-white rounded-[24px] border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_25px_rgba(124,58,237,0.08)] p-4 flex items-center justify-between gap-3.5 transition-all cursor-pointer mb-3.5 hover:-translate-y-0.5 group text-left select-none"
       onClick={() => onOpen(group._id)}
     >
       {/* Avatar */}
       <div className="relative shrink-0">
         {group.avatar ? (
-          <img src={group.avatar} alt={group.name} className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100" />
+          <img src={group.avatar} alt={group.name} className="w-12 h-12 rounded-2xl object-cover shadow-xs border border-slate-100" />
         ) : (
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm border border-white ${colorClass.split(' ')[0].replace('text', 'bg')}/20 text-brand-primary`}>
-            <Users size={20} className={colorClass.split(' ')[1]} />
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 font-extrabold text-sm flex items-center justify-center border border-purple-100/60 shadow-2xs">
+            <Users size={20} className="text-purple-600" />
           </div>
         )}
         {group.type !== 'public' && !group.isJoined && (
-          <div className="absolute bottom-0 right-0 w-4 h-4 bg-gray-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-            <Lock size={8} />
+          <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 bg-slate-700 text-white rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+            <Lock size={9} />
           </div>
         )}
       </div>
 
       {/* Details */}
       <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-start mb-0.5">
-          <h3 className="font-bold text-gray-900 text-[15px] leading-tight truncate pr-2">{group.name}</h3>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${colorClass}`}>
+        <div className="flex justify-between items-start mb-0.5 gap-2">
+          <h3 className="font-extrabold text-slate-800 text-[14.5px] leading-tight truncate group-hover:text-purple-700 transition-colors">{group.name}</h3>
+          <span className={`text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full whitespace-nowrap uppercase tracking-wider ${colorClass}`}>
             {group.category || 'Group'}
           </span>
         </div>
         
-        <p className="text-[13px] text-gray-500 truncate mb-1">
-          {group.description || `A ${group.category || 'community'} group`}
+        <p className="text-[12px] text-slate-500 font-medium truncate mb-1.5 leading-snug">
+          {group.description || `A ${group.category || 'community'} group for members`}
         </p>
         
-        <div className="flex items-center justify-between mt-1.5">
-          <div className="flex items-center gap-1.5 text-gray-400">
-            <Users size={12} />
-            <span className="text-[11.5px] font-medium">{memberCount.toLocaleString()} members</span>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <Users size={13} className="text-slate-400" />
+            <span className="text-[11px] font-extrabold text-slate-500">{memberCount.toLocaleString()} members</span>
           </div>
 
           <div className="flex items-center gap-2">
             {group.isJoined ? (
-              <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+              <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
                 <CheckCheck size={12} />
-                <span className="text-[11px] font-bold">Joined</span>
+                <span className="text-[10.5px] font-extrabold">Joined</span>
               </div>
             ) : group.type === 'public' ? (
               <button
                 disabled={isLoading}
                 onClick={e => { e.stopPropagation(); onJoin(group._id); }}
-                className="flex items-center gap-1 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary px-3 py-1 rounded-full text-[12px] font-bold transition-colors disabled:opacity-60"
+                className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60 px-3 py-1 rounded-full text-[11.5px] font-extrabold transition-all press-scale disabled:opacity-60 shadow-2xs"
               >
-                {isLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                {isLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} strokeWidth={2.5} />}
                 Join
               </button>
             ) : (
-              <span className="text-[11px] font-medium text-gray-400 border border-gray-200 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-extrabold text-slate-500 bg-slate-50 border border-slate-200/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 Private
               </span>
             )}
@@ -173,9 +173,9 @@ const CreateGroupSheet = ({ onClose, onCreated, communityPolicy }) => {
     && user?.role !== 'head' && user?.role !== 'admin';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] my-auto border border-purple-100/30 animate-scale-in">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
           {step > 1 ? (
             <button onClick={() => setStep(step - 1)} className="text-brand-primary font-semibold text-[15px]">← Back</button>
@@ -472,21 +472,21 @@ const GroupsPage = ({ isHub = false }) => {
         )}
 
         {/* Search */}
-        <div className="relative mb-3">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative mb-3 px-4 pt-3 select-none">
+          <Search size={16} className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text" value={searchText} onChange={e => setSearchText(e.target.value)}
             placeholder="Search groups..."
-            className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-10 pr-4 py-2.5 text-[13.5px] text-gray-800 focus:outline-none focus:border-brand-primary/40 focus:bg-white transition-all placeholder:text-gray-400"
+            className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-10 pr-4 py-2.5 text-[13px] font-extrabold text-slate-800 focus:outline-none focus:border-purple-500/50 focus:bg-white transition-all placeholder:text-slate-400"
           />
         </div>
 
         {/* Category Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-3 px-4 scrollbar-hide select-none">
           {CATEGORIES.map(cat => (
             <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap transition-all shrink-0 ${
-                activeCategory === cat.id ? 'bg-brand-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-3.5 py-1.5 rounded-full text-[12px] font-extrabold whitespace-nowrap transition-all shrink-0 press-scale ${
+                activeCategory === cat.id ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
               }`}>
               {cat.label}
             </button>
@@ -496,8 +496,8 @@ const GroupsPage = ({ isHub = false }) => {
 
       {/* Toast Messages */}
       {(successMsg || joinError) && (
-        <div className={`mx-4 mt-3 px-4 py-2.5 rounded-xl text-[13.5px] font-semibold flex items-center gap-2 shadow-sm ${
-          successMsg ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'
+        <div className={`mx-4 mt-3 px-4 py-2.5 rounded-2xl text-[13px] font-extrabold flex items-center gap-2 shadow-2xs ${
+          successMsg ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' : 'bg-rose-50 text-rose-700 border border-rose-200/60'
         }`}>
           {successMsg || joinError}
         </div>
@@ -505,39 +505,39 @@ const GroupsPage = ({ isHub = false }) => {
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mt-3 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-[13px] font-medium flex items-center gap-2">
+        <div className="mx-4 mt-3 px-4 py-3 bg-rose-50 border border-rose-200/60 rounded-2xl text-rose-700 text-[13px] font-extrabold flex items-center gap-2">
           <AlertTriangle size={15} /> {error}
           <button onClick={refresh} className="ml-auto underline text-[12px]">Retry</button>
         </div>
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-4 pt-2">
         
         {/* Pending Invitations */}
         {invitations.length > 0 && !searchText && (
-          <div className="px-4 py-3 border-b border-gray-100 bg-brand-primary/5">
-            <h3 className="text-[13px] font-black text-brand-primary uppercase tracking-wider mb-3">Pending Invitations ({invitations.length})</h3>
+          <div className="mb-4 p-4 rounded-[24px] bg-purple-50/60 border border-purple-100/80">
+            <h3 className="text-[11px] font-extrabold text-purple-900 uppercase tracking-wider mb-3">Pending Invitations ({invitations.length})</h3>
             <div className="space-y-3">
               {invitations.map(inv => (
-                <div key={inv._id} className="bg-white rounded-2xl p-4 shadow-sm border border-brand-primary/20 flex flex-col gap-3">
+                <div key={inv._id} className="bg-white rounded-2xl p-3.5 shadow-2xs border border-purple-100/60 flex flex-col gap-2.5 text-left">
                   <div className="flex items-center gap-3">
-                    <Avatar src={inv.group?.avatarUrl} initials={(inv.group?.name || '').substring(0,2).toUpperCase()} size="md" color="bg-brand-primary/10 text-brand-primary" />
+                    <Avatar src={inv.group?.avatarUrl} initials={(inv.group?.name || '').substring(0,2).toUpperCase()} size="md" color="bg-purple-100 text-purple-700" />
                     <div>
-                      <h4 className="text-[15px] font-bold text-gray-900">{inv.group?.name}</h4>
-                      <p className="text-[12px] text-gray-500">Invited by <span className="font-semibold text-gray-700">{inv.invitedBy?.name}</span></p>
+                      <h4 className="text-[14px] font-extrabold text-slate-800">{inv.group?.name}</h4>
+                      <p className="text-[11.5px] text-slate-500 font-medium">Invited by <span className="font-extrabold text-slate-700">{inv.invitedBy?.name}</span></p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <button 
                       onClick={() => handleInvitation(inv._id, 'decline')}
-                      className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-xl text-[13px] font-bold hover:bg-gray-200"
+                      className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-[12px] font-extrabold hover:bg-slate-200 press-scale"
                     >
                       Decline
                     </button>
                     <button 
                       onClick={() => handleInvitation(inv._id, 'accept')}
-                      className="flex-1 py-2 bg-brand-primary text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-brand-primary/90"
+                      className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-[12px] font-extrabold shadow-2xs press-scale"
                     >
                       Accept
                     </button>
@@ -550,14 +550,13 @@ const GroupsPage = ({ isHub = false }) => {
 
         {/* Loading Skeleton */}
         {loading && groups.length === 0 && (
-          <div className="grid grid-cols-2 gap-3 p-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl h-40 animate-pulse border border-gray-100 overflow-hidden">
-                <div className="h-12 bg-gray-200" />
-                <div className="p-3 space-y-2">
-                  <div className="h-3.5 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-full" />
-                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+          <div className="space-y-3.5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white rounded-[24px] h-24 animate-pulse border border-slate-100 p-4 flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-slate-100 rounded-md w-3/4" />
+                  <div className="h-3 bg-slate-50 rounded-md w-full" />
                 </div>
               </div>
             ))}
@@ -582,21 +581,23 @@ const GroupsPage = ({ isHub = false }) => {
 
         {/* Empty */}
         {!loading && groups.length === 0 && !error && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
-              <Users size={28} className="text-gray-400" />
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6 bg-white rounded-[28px] border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] my-4">
+            <div className="w-14 h-14 bg-purple-50 text-purple-600 border border-purple-100/60 rounded-2xl flex items-center justify-center shadow-2xs">
+              <Users size={26} />
             </div>
             <div>
-              <p className="text-gray-800 font-bold text-[15px] mb-1">
-                {activeCategory === 'my' ? 'No joined groups' : 'No groups found'}
+              <p className="text-slate-800 font-extrabold text-[15px] mb-1">
+                {activeCategory === 'my' ? 'No Joined Groups' : 'No Groups Found'}
               </p>
-              <p className="text-gray-400 text-[13px]">
-                {activeCategory === 'my' ? 'Discover and join community groups.' : 'Be the first to create a group!'}
+              <p className="text-slate-400 font-medium text-[12px] max-w-xs">
+                {activeCategory === 'my' ? 'Discover and join community groups in your samaj.' : 'Be the first to create a community group!'}
               </p>
             </div>
-            <button onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-primary text-white text-[13px] font-bold rounded-xl shadow-sm">
-              <Plus size={15} /> Create Group
+            <button 
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[12px] font-extrabold rounded-xl shadow-sm press-scale mt-1"
+            >
+              <Plus size={15} strokeWidth={2.5} /> Create Group
             </button>
           </div>
         )}

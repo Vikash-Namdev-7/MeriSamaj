@@ -289,8 +289,27 @@ export const CensusPage = () => {
   // States
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, males, females, kids, joint-families, nuclear-families, family-details
   const [selectedFamily, setSelectedFamily] = useState(null);
-  const [realMembers, setRealMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [censusData, setCensusData] = useState({
+    summary: {
+      totalMembers: 0,
+      malesCount: 0,
+      femalesCount: 0,
+      kidsCount: 0,
+      totalFamiliesCount: 0,
+      jointFamiliesCount: 0,
+      nuclearFamiliesCount: 0,
+      activeCitiesCount: 0,
+      eventsCount: 0
+    },
+    males: [],
+    females: [],
+    kids: [],
+    families: [],
+    citiesBreakdown: [],
+    ageBrackets: { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '50+': 0 }
+  });
+  const [loadingCensus, setLoadingCensus] = useState(true);
+  const [censusError, setCensusError] = useState(null);
 
   useEffect(() => {
     if (location.state?.view) {
@@ -298,73 +317,45 @@ export const CensusPage = () => {
     }
   }, [location.state]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchRealCensusMembers = async () => {
-      try {
-        setLoadingMembers(true);
-        const res = await axiosPrivate.get('/member/members?limit=500');
-        if (isMounted && res.data?.data && Array.isArray(res.data.data)) {
-          setRealMembers(res.data.data);
-        }
-      } catch (err) {
-        console.warn('[Census API] Falling back to default community data:', err.message);
-      } finally {
-        if (isMounted) setLoadingMembers(false);
+  const fetchLiveCensusData = async () => {
+    try {
+      setLoadingCensus(true);
+      setCensusError(null);
+      const res = await axiosPrivate.get('/member/census/summary');
+      if (res.data && res.data.data) {
+        setCensusData(res.data.data);
       }
-    };
-    fetchRealCensusMembers();
-    return () => { isMounted = false; };
+    } catch (err) {
+      console.error('[Census Live API Error]', err);
+      setCensusError(err.response?.data?.message || err.message || 'Failed to load census data');
+    } finally {
+      setLoadingCensus(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveCensusData();
   }, []);
-  
-  // Data
-  const mockData = getMockData(surname, currentUser?.city);
-  const males = realMembers.length > 0 
-    ? realMembers.filter(m => m.gender === 'Male' || m.gender === 'M').map(m => ({
-        id: m._id || m.id,
-        name: m.name,
-        fatherName: m.familyMembers?.find(f => f.relation?.toLowerCase().includes('father'))?.name || `${surname} Family`,
-        age: m.dob ? Math.floor((new Date() - new Date(m.dob)) / 31557600000) : 35,
-        city: m.city || currentUser?.city || 'Indore',
-        phone: m.phone || '',
-        maritalStatus: m.maritalStatus || 'Married',
-        active: m.accountStatus === 'active',
-        relation: 'Member',
-        education: m.qualification || 'Graduate',
-        profession: m.profession || 'Professional'
-      }))
-    : mockData.males;
 
-  const females = realMembers.length > 0 
-    ? realMembers.filter(m => m.gender === 'Female' || m.gender === 'F').map(m => ({
-        id: m._id || m.id,
-        name: m.name,
-        fatherName: m.familyMembers?.find(f => f.relation?.toLowerCase().includes('father'))?.name || `${surname} Family`,
-        age: m.dob ? Math.floor((new Date() - new Date(m.dob)) / 31557600000) : 32,
-        city: m.city || currentUser?.city || 'Indore',
-        phone: m.phone || '',
-        maritalStatus: m.maritalStatus || 'Married',
-        active: m.accountStatus === 'active',
-        relation: 'Member',
-        education: m.qualification || 'Graduate',
-        profession: m.profession || 'Homemaker'
-      }))
-    : mockData.females;
-
-  const kids = mockData.kids;
-  const families = mockData.families;
+  const males = censusData.males || [];
+  const females = censusData.females || [];
+  const kids = censusData.kids || [];
+  const families = censusData.families || [];
+  const summary = censusData.summary || {};
+  const citiesBreakdown = censusData.citiesBreakdown || [];
+  const ageBrackets = censusData.ageBrackets || { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '50+': 0 };
 
   // Dynamic Demographic Stats
-  const totalMembers = males.length + females.length + kids.length;
+  const totalMembers = summary.totalMembers || (males.length + females.length + kids.length);
   const malePercent = totalMembers > 0 ? (males.length / totalMembers) * 100 : 0;
   const femalePercent = totalMembers > 0 ? (females.length / totalMembers) * 100 : 0;
   const kidsPercent = totalMembers > 0 ? (kids.length / totalMembers) * 100 : 0;
 
-  const totalFamiliesCount = families.length;
-  const jointFamiliesCount = families.filter(f => f.type === 'Joint').length;
-  const nuclearFamiliesCount = families.filter(f => f.type === 'Nuclear').length;
+  const totalFamiliesCount = summary.totalFamiliesCount || families.length;
+  const jointFamiliesCount = summary.jointFamiliesCount || families.filter(f => f.type === 'Joint').length;
+  const nuclearFamiliesCount = summary.nuclearFamiliesCount || families.filter(f => f.type === 'Nuclear').length;
   const otherFamiliesCount = totalFamiliesCount - (jointFamiliesCount + nuclearFamiliesCount);
-  
+
   const jointPercent = totalFamiliesCount > 0 ? (jointFamiliesCount / totalFamiliesCount) * 100 : 0;
   const nuclearPercent = totalFamiliesCount > 0 ? (nuclearFamiliesCount / totalFamiliesCount) * 100 : 0;
   const otherPercent = totalFamiliesCount > 0 ? (otherFamiliesCount / totalFamiliesCount) * 100 : 0;
@@ -498,25 +489,31 @@ export const CensusPage = () => {
     }, 2800);
   };
 
-  const handleUpdateSubmit = (e) => {
+  const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (!updateForm.memberName || !updateForm.newValue || !updateForm.reason) {
       alert('Please fill out all required fields.');
       return;
     }
-    setUpdateSubmitted(true);
-    setTimeout(() => {
+    try {
+      setUpdateSubmitted(true);
+      await axiosPrivate.post('/member/census/update-request', updateForm);
+      setTimeout(() => {
+        setUpdateSubmitted(false);
+        setIsUpdateModalOpen(false);
+        setUpdateForm({
+          memberName: '',
+          relation: 'Self',
+          phone: '',
+          fieldToUpdate: 'Name',
+          newValue: '',
+          reason: ''
+        });
+      }, 1500);
+    } catch (err) {
       setUpdateSubmitted(false);
-      setIsUpdateModalOpen(false);
-      setUpdateForm({
-        memberName: '',
-        relation: 'Self',
-        phone: '',
-        fieldToUpdate: 'Name',
-        newValue: '',
-        reason: ''
-      });
-    }, 2500);
+      alert(err.response?.data?.message || err.message || 'Failed to submit update request.');
+    }
   };
 
   // Reset all filters
@@ -798,7 +795,7 @@ export const CensusPage = () => {
                   </div>
                   <div>
                     <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Active Cities' : 'सक्रिय शहर'}</span>
-                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-orange-600 transition-colors">12 {language === 'en' ? 'Cities' : 'शहर'}</h4>
+                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-orange-600 transition-colors">{citiesBreakdown.length} {language === 'en' ? 'Cities' : 'शहर'}</h4>
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
@@ -816,7 +813,7 @@ export const CensusPage = () => {
                   </div>
                   <div>
                     <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Events (Month)' : 'इस महीने'}</span>
-                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-blue-600 transition-colors">4 {language === 'en' ? 'Events' : 'आयोजन'}</h4>
+                    <h4 className="text-[17px] font-black text-slate-800 leading-none mt-1 group-hover:text-blue-600 transition-colors">{summary.eventsCount || 0} {language === 'en' ? 'Events' : 'आयोजन'}</h4>
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
@@ -834,7 +831,9 @@ export const CensusPage = () => {
                   </div>
                   <div>
                     <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase">{language === 'en' ? 'Matrimony Profiles' : 'विवाह हेतु रुचि'}</span>
-                    <h4 className="text-[16px] font-black text-slate-800 leading-none mt-1.5 group-hover:text-rose-600 transition-colors">186 {language === 'en' ? 'Verified Profiles' : 'प्रकार के बायोडाटा'}</h4>
+                    <h4 className="text-[16px] font-black text-slate-800 leading-none mt-1.5 group-hover:text-rose-600 transition-colors">
+                      {males.length + females.length} {language === 'en' ? 'Community Profiles' : 'समुदाय बायोडाटा'}
+                    </h4>
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-slate-300 group-hover:text-rose-500 group-hover:translate-x-1 transition-all" />
@@ -911,89 +910,46 @@ export const CensusPage = () => {
                 
                 {/* Custom CSS Bar Graph */}
                 <div className="flex justify-between items-end h-32 px-4 pb-2 border-b border-gray-100">
-                  {/* Bar 1: 18-25 */}
-                  <div className="flex flex-col items-center gap-2 w-10">
-                    <span className="text-[10px] font-bold text-gray-500">230</span>
-                    <div className="w-5.5 bg-gradient-to-t from-[#4f46e5] to-[#818cf8] rounded-t-xl hover:opacity-90 transition-opacity shadow-sm shadow-indigo-150/50" style={{ height: `${(230/410)*100}px` }} />
-                    <span className="text-[10px] font-extrabold text-gray-600 mt-1 whitespace-nowrap">18-25</span>
-                  </div>
-                  {/* Bar 2: 26-35 */}
-                  <div className="flex flex-col items-center gap-2 w-10">
-                    <span className="text-[10px] font-bold text-gray-500">350</span>
-                    <div className="w-5.5 bg-gradient-to-t from-[#4f46e5] to-[#818cf8] rounded-t-xl hover:opacity-90 transition-opacity shadow-sm shadow-indigo-150/50" style={{ height: `${(350/410)*100}px` }} />
-                    <span className="text-[10px] font-extrabold text-gray-600 mt-1 whitespace-nowrap">26-35</span>
-                  </div>
-                  {/* Bar 3: 36-50 */}
-                  <div className="flex flex-col items-center gap-2 w-10">
-                    <span className="text-[10px] font-bold text-gray-500 font-serif">410</span>
-                    <div className="w-5.5 bg-gradient-to-t from-[#4f46e5] to-[#818cf8] rounded-t-xl hover:opacity-90 transition-opacity shadow-sm shadow-indigo-150/50" style={{ height: `${(410/410)*100}px` }} />
-                    <span className="text-[10px] font-extrabold text-gray-600 mt-1 whitespace-nowrap">36-50</span>
-                  </div>
-                  {/* Bar 4: 50+ */}
-                  <div className="flex flex-col items-center gap-2 w-10">
-                    <span className="text-[10px] font-bold text-gray-500">257</span>
-                    <div className="w-5.5 bg-gradient-to-t from-[#4f46e5] to-[#818cf8] rounded-t-xl hover:opacity-90 transition-opacity shadow-sm shadow-indigo-150/50" style={{ height: `${(257/410)*100}px` }} />
-                    <span className="text-[10px] font-extrabold text-gray-600 mt-1 whitespace-nowrap">50+</span>
-                  </div>
+                  {['0-17', '18-25', '26-35', '36-50', '50+'].map((bracket) => {
+                    const val = ageBrackets[bracket] || 0;
+                    const maxVal = Math.max(...Object.values(ageBrackets), 1);
+                    const barHeight = Math.max((val / maxVal) * 80, 8);
+                    return (
+                      <div key={bracket} className="flex flex-col items-center gap-2 w-10">
+                        <span className="text-[10px] font-bold text-gray-500">{val}</span>
+                        <div className="w-5.5 bg-gradient-to-t from-[#4f46e5] to-[#818cf8] rounded-t-xl hover:opacity-90 transition-opacity shadow-sm shadow-indigo-150/50" style={{ height: `${barHeight}px` }} />
+                        <span className="text-[10px] font-extrabold text-gray-600 mt-1 whitespace-nowrap">{bracket}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Chart 3: City-wise Report horizontal progress list */}
               <div className="bg-gradient-to-br from-white to-gray-50/20 border border-gray-150/80 rounded-[28px] p-5 shadow-sm/5 transition-all hover:border-indigo-200">
                 <h4 className="text-[14.5px] font-black text-gray-900">{language === 'en' ? 'Active Regional Hubs' : 'शहरवार सदस्यता रिपोर्ट'}</h4>
-                <p className="text-[11px] text-gray-500 font-semibold mb-4">{language === 'en' ? 'Cities with active members list' : 'शीर्ष 5 सक्रिय शहर'}</p>
+                <p className="text-[11px] text-gray-500 font-semibold mb-4">{language === 'en' ? 'Cities with active members list' : 'शीर्ष सक्रिय शहर'}</p>
                 
                 <div className="flex flex-col gap-3.5">
-                  {/* City 1: Indore */}
-                  <div>
-                    <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
-                      <span>Indore (इन्दौर)</span>
-                      <span className="font-bold text-gray-900">350</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full" style={{ width: '85%' }} />
-                    </div>
-                  </div>
-                  {/* City 2: Sanawad */}
-                  <div>
-                    <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
-                      <span>Sanawad (सनावद)</span>
-                      <span className="font-bold text-gray-900">210</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full" style={{ width: '60%' }} />
-                    </div>
-                  </div>
-                  {/* City 3: Khargone */}
-                  <div>
-                    <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
-                      <span>Khargone (खरगोन)</span>
-                      <span className="font-bold text-gray-900">180</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full" style={{ width: '51%' }} />
-                    </div>
-                  </div>
-                  {/* City 4: Dhamnod */}
-                  <div>
-                    <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
-                      <span>Dhamnod (धामनोद)</span>
-                      <span className="font-bold text-gray-900">120</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full" style={{ width: '34%' }} />
-                    </div>
-                  </div>
-                  {/* City 5: Other */}
-                  <div>
-                    <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
-                      <span>Other Cities (अन्य)</span>
-                      <span className="font-bold text-gray-900">387</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full" style={{ width: '92%' }} />
-                    </div>
-                  </div>
+                  {citiesBreakdown.length > 0 ? (
+                    citiesBreakdown.slice(0, 5).map((c, idx) => {
+                      const maxCityCount = Math.max(...citiesBreakdown.map(b => b.count), 1);
+                      const percent = Math.min((c.count / maxCityCount) * 100, 100);
+                      return (
+                        <div key={c.name || idx}>
+                          <div className="flex justify-between items-center text-[12px] font-semibold text-gray-700 mb-1">
+                            <span>{c.name}</span>
+                            <span className="font-bold text-gray-900">{c.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full" style={{ width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-[12px] text-gray-400 text-center py-2">No regional data available</p>
+                  )}
                 </div>
               </div>
 
@@ -1081,12 +1037,12 @@ export const CensusPage = () => {
         {(printPreviewMode) && (
           <div className="bg-white p-4 text-black font-sans print:p-0">
             <div className="text-center border-b-2 border-gray-800 pb-5 mb-6">
-              <h1 className="text-[26px] font-serif font-black text-gray-900">{currentUser.community} Census Report</h1>
-              <p className="text-[13px] text-gray-600 mt-1">Comprehensive demographic registry for the active chapter: {currentUser.city}</p>
+              <h1 className="text-[26px] font-serif font-black text-gray-900">{currentUser?.community || 'Samaj'} Census Report</h1>
+              <p className="text-[13px] text-gray-600 mt-1">Comprehensive demographic registry for the active chapter: {currentUser?.city || 'Indore'}</p>
               <div className="flex justify-center gap-6 mt-3 text-[12px] font-semibold text-gray-800">
-                <span>Total Members: 1,247</span>
-                <span>Families: 425</span>
-                <span>Active Cities: 12</span>
+                <span>Total Members: {totalMembers}</span>
+                <span>Families: {totalFamiliesCount}</span>
+                <span>Active Cities: {citiesBreakdown.length}</span>
                 <span>Report Generated: {new Date().toLocaleDateString()}</span>
               </div>
             </div>
@@ -1105,27 +1061,27 @@ export const CensusPage = () => {
               <tbody>
                 <tr>
                   <td className="border border-gray-300 p-2">Male Members (पुरुष सदस्य)</td>
-                  <td className="border border-gray-300 p-2">520</td>
-                  <td className="border border-gray-300 p-2">41.7%</td>
-                  <td className="border border-gray-300 p-2">Active: 498, Inactive: 22</td>
+                  <td className="border border-gray-300 p-2">{males.length}</td>
+                  <td className="border border-gray-300 p-2">{((males.length / (totalMembers || 1)) * 100).toFixed(1)}%</td>
+                  <td className="border border-gray-300 p-2">Active: {males.filter(m => m.active !== false).length}, Inactive: {males.filter(m => m.active === false).length}</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-300 p-2">Female Members (महिला सदस्य)</td>
-                  <td className="border border-gray-300 p-2">480</td>
-                  <td className="border border-gray-300 p-2">38.5%</td>
-                  <td className="border border-gray-300 p-2">Active: 460, Inactive: 20</td>
+                  <td className="border border-gray-300 p-2">{females.length}</td>
+                  <td className="border border-gray-300 p-2">{((females.length / (totalMembers || 1)) * 100).toFixed(1)}%</td>
+                  <td className="border border-gray-300 p-2">Active: {females.filter(f => f.active !== false).length}, Inactive: {females.filter(f => f.active === false).length}</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-300 p-2">Children (0-17 yrs) (बच्चे)</td>
-                  <td className="border border-gray-300 p-2">247</td>
-                  <td className="border border-gray-300 p-2">19.8%</td>
-                  <td className="border border-gray-300 p-2">Boys: 136, Girls: 111</td>
+                  <td className="border border-gray-300 p-2">{kids.length}</td>
+                  <td className="border border-gray-300 p-2">{((kids.length / (totalMembers || 1)) * 100).toFixed(1)}%</td>
+                  <td className="border border-gray-300 p-2">Boys: {kids.filter(k => k.gender === 'Boy' || k.gender === 'Male').length}, Girls: {kids.filter(k => k.gender === 'Girl' || k.gender === 'Female').length}</td>
                 </tr>
                 <tr className="font-bold">
                   <td className="border border-gray-300 p-2">Total Community Registry</td>
-                  <td className="border border-gray-300 p-2">1,247</td>
+                  <td className="border border-gray-300 p-2">{totalMembers}</td>
                   <td className="border border-gray-300 p-2">100%</td>
-                  <td className="border border-gray-300 p-2">Database Version 2.0</td>
+                  <td className="border border-gray-300 p-2">Database Live Sync</td>
                 </tr>
               </tbody>
             </table>
@@ -1143,19 +1099,21 @@ export const CensusPage = () => {
               <tbody>
                 <tr>
                   <td className="border border-gray-300 p-2">Joint Families (संयुक्त परिवार)</td>
-                  <td className="border border-gray-300 p-2">118</td>
-                  <td className="border border-gray-300 p-2">28%</td>
+                  <td className="border border-gray-300 p-2">{jointFamiliesCount}</td>
+                  <td className="border border-gray-300 p-2">{totalFamiliesCount > 0 ? ((jointFamiliesCount / totalFamiliesCount) * 100).toFixed(0) : 0}%</td>
                 </tr>
                 <tr>
                   <td className="border border-gray-300 p-2">Nuclear Families (एकल परिवार)</td>
-                  <td className="border border-gray-300 p-2">307</td>
-                  <td className="border border-gray-300 p-2">68%</td>
+                  <td className="border border-gray-300 p-2">{nuclearFamiliesCount}</td>
+                  <td className="border border-gray-300 p-2">{totalFamiliesCount > 0 ? ((nuclearFamiliesCount / totalFamiliesCount) * 100).toFixed(0) : 0}%</td>
                 </tr>
-                <tr>
-                  <td className="border border-gray-300 p-2">Other Sizes (अन्य)</td>
-                  <td className="border border-gray-300 p-2">5</td>
-                  <td className="border border-gray-300 p-2">4%</td>
-                </tr>
+                {otherFamiliesCount > 0 && (
+                  <tr>
+                    <td className="border border-gray-300 p-2">Other Sizes (अन्य)</td>
+                    <td className="border border-gray-300 p-2">{otherFamiliesCount}</td>
+                    <td className="border border-gray-300 p-2">{totalFamiliesCount > 0 ? ((otherFamiliesCount / totalFamiliesCount) * 100).toFixed(0) : 0}%</td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
@@ -1187,92 +1145,133 @@ export const CensusPage = () => {
               </div>
 
               {/* Inner details Grid */}
-              <div className="grid grid-cols-3 gap-2 text-center mb-4">
-                <div className="bg-gray-50 rounded-xl p-2">
-                  <span className="text-[9px] font-bold text-gray-400 block">{language === 'en' ? 'Total' : 'कुल संख्या'}</span>
-                  <span className="text-[15px] font-black text-gray-800">{currentView === 'males' ? males.length : females.length}</span>
-                </div>
-                <div className="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100/30">
-                  <span className="text-[9px] font-bold text-emerald-500 block">{language === 'en' ? 'Active' : 'सक्रिय'}</span>
-                  <span className="text-[15px] font-black text-emerald-700">{currentView === 'males' ? 12 : 9}</span>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-2">
-                  <span className="text-[9px] font-bold text-gray-400 block">{language === 'en' ? 'Inactive' : 'निष्क्रिय'}</span>
-                  <span className="text-[15px] font-black text-gray-600">2</span>
-                </div>
-              </div>
+              {(() => {
+                const currentList = currentView === 'males' ? males : females;
+                const activeCount = currentList.filter(m => m.active !== false).length;
+                const inactiveCount = currentList.filter(m => m.active === false).length;
 
-              {/* Age Range Progress Indicators */}
-              <h4 className="text-[11.5px] font-black text-gray-500 mb-2 uppercase tracking-wide">
-                {language === 'en' ? 'Age division' : 'आयु वर्ग अनुसार वर्गीकरण'}
-              </h4>
-              <div className="flex flex-col gap-2 border-b border-gray-50 pb-3.5 mb-3">
-                <div>
-                  <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
-                    <span>18-25 Yrs (वर्ष)</span>
-                    <span>{currentView === 'males' ? '120' : '110'}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${currentView === 'males' ? 'bg-blue-500' : 'bg-pink-500'}`} style={{ width: currentView === 'males' ? '45%' : '40%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
-                    <span>26-35 Yrs (वर्ष)</span>
-                    <span>{currentView === 'males' ? '180' : '170'}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${currentView === 'males' ? 'bg-blue-500' : 'bg-pink-500'}`} style={{ width: currentView === 'males' ? '75%' : '70%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
-                    <span>36-50 Yrs (वर्ष)</span>
-                    <span>{currentView === 'males' ? '145' : '140'}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${currentView === 'males' ? 'bg-blue-500' : 'bg-pink-500'}`} style={{ width: currentView === 'males' ? '60%' : '58%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
-                    <span>50+ Yrs (वर्ष)</span>
-                    <span>{currentView === 'males' ? '75' : '60'}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${currentView === 'males' ? 'bg-blue-500' : 'bg-pink-500'}`} style={{ width: currentView === 'males' ? '30%' : '25%' }} />
-                  </div>
-                </div>
-              </div>
+                const b18_25 = currentList.filter(m => m.age >= 18 && m.age <= 25).length;
+                const b26_35 = currentList.filter(m => m.age >= 26 && m.age <= 35).length;
+                const b36_50 = currentList.filter(m => m.age >= 36 && m.age <= 50).length;
+                const b50plus = currentList.filter(m => m.age > 50).length;
+                const maxBracket = Math.max(b18_25, b26_35, b36_50, b50plus, 1);
+
+                const barColor = currentView === 'males' ? 'bg-blue-500' : 'bg-pink-500';
+
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                      <div className="bg-gray-50 rounded-xl p-2">
+                        <span className="text-[9px] font-bold text-gray-400 block">{language === 'en' ? 'Total' : 'कुल संख्या'}</span>
+                        <span className="text-[15px] font-black text-gray-800">{currentList.length}</span>
+                      </div>
+                      <div className="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100/30">
+                        <span className="text-[9px] font-bold text-emerald-500 block">{language === 'en' ? 'Active' : 'सक्रिय'}</span>
+                        <span className="text-[15px] font-black text-emerald-700">{activeCount}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-2">
+                        <span className="text-[9px] font-bold text-gray-400 block">{language === 'en' ? 'Inactive' : 'निष्क्रिय'}</span>
+                        <span className="text-[15px] font-black text-gray-600">{inactiveCount}</span>
+                      </div>
+                    </div>
+
+                    {/* Age Range Progress Indicators */}
+                    <h4 className="text-[11.5px] font-black text-gray-500 mb-2 uppercase tracking-wide">
+                      {language === 'en' ? 'Age division' : 'आयु वर्ग अनुसार वर्गीकरण'}
+                    </h4>
+                    <div className="flex flex-col gap-2 border-b border-gray-50 pb-3.5 mb-3">
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
+                          <span>18-25 Yrs (वर्ष)</span>
+                          <span>{b18_25}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round((b18_25 / maxBracket) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
+                          <span>26-35 Yrs (वर्ष)</span>
+                          <span>{b26_35}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round((b26_35 / maxBracket) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
+                          <span>36-50 Yrs (वर्ष)</span>
+                          <span>{b36_50}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round((b36_50 / maxBracket) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-0.5">
+                          <span>50+ Yrs (वर्ष)</span>
+                          <span>{b50plus}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.round((b50plus / maxBracket) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Marital Status chart representation */}
               <h4 className="text-[11.5px] font-black text-gray-500 mb-2.5 uppercase tracking-wide">
                 {language === 'en' ? 'Marital Status' : 'वैवाहिक स्थिति'}
               </h4>
-              <div className="flex items-center gap-3">
-                <div className="relative w-12 h-12 shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-full h-full">
-                    <circle cx="50" cy="50" r="35" fill="transparent" stroke="#f3f4f6" strokeWidth="12" />
-                    {renderDonutSlice(currentView === 'males' ? 73.1 : 70.8, currentView === 'males' ? '#3b82f6' : '#ec4899', 0)}
-                    {renderDonutSlice(currentView === 'males' ? 23.1 : 20.4, '#e11d48', currentView === 'males' ? 73.1 : 70.8)}
-                    {renderDonutSlice(currentView === 'males' ? 3.8 : 8.8, '#94a3b8', 100 - (currentView === 'males' ? 3.8 : 8.8))}
-                  </svg>
-                </div>
-                <div className="flex-1 grid grid-cols-3 gap-1.5 text-left text-[11px]">
-                  <div>
-                    <span className="font-extrabold text-gray-600 block">{language === 'en' ? 'Single' : 'अविवाहित'}</span>
-                    <span className="font-serif font-black text-gray-900">{currentView === 'males' ? '120' : '98'}</span>
+              {(() => {
+                const currentList = currentView === 'males' ? males : females;
+                const single = currentList.filter(m => m.maritalStatus === 'Single' || m.maritalStatus === 'Unmarried').length;
+                const married = currentList.filter(m => m.maritalStatus === 'Married').length;
+                const other = currentList.filter(m => m.maritalStatus === 'Other').length;
+                const notSpecified = Math.max(0, currentList.length - (single + married + other));
+
+                const total = currentList.length || 1;
+                const sPct = (single / total) * 100;
+                const mPct = (married / total) * 100;
+                const oPct = (other / total) * 100;
+                const nPct = (notSpecified / total) * 100;
+
+                return (
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 shrink-0">
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <circle cx="50" cy="50" r="35" fill="transparent" stroke="#f3f4f6" strokeWidth="12" />
+                        {renderDonutSlice(sPct, currentView === 'males' ? '#3b82f6' : '#ec4899', 0)}
+                        {renderDonutSlice(mPct, '#e11d48', sPct)}
+                        {renderDonutSlice(oPct, '#9333ea', sPct + mPct)}
+                        {renderDonutSlice(nPct, '#94a3b8', sPct + mPct + oPct)}
+                      </svg>
+                    </div>
+                    <div className={`flex-1 grid ${notSpecified > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-1.5 text-left text-[11px]`}>
+                      <div>
+                        <span className="font-extrabold text-gray-600 block">{language === 'en' ? 'Single' : 'अविवाहित'}</span>
+                        <span className="font-serif font-black text-gray-900">{single}</span>
+                      </div>
+                      <div>
+                        <span className="font-extrabold text-gray-600 block">{language === 'en' ? 'Married' : 'विवाहित'}</span>
+                        <span className="font-serif font-black text-gray-900">{married}</span>
+                      </div>
+                      <div>
+                        <span className="font-extrabold text-purple-700 block" title="Divorced / Widowed / Widower">{language === 'en' ? 'Other' : 'विधुर/विधवा'}</span>
+                        <span className="font-serif font-black text-purple-900">{other}</span>
+                      </div>
+                      {notSpecified > 0 && (
+                        <div>
+                          <span className="font-extrabold text-gray-400 block">{language === 'en' ? 'Not Specified' : 'अनिर्दिष्ट'}</span>
+                          <span className="font-serif font-black text-gray-500">{notSpecified}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-extrabold text-gray-600 block">{language === 'en' ? 'Married' : 'विवाहित'}</span>
-                    <span className="font-serif font-black text-gray-900">{currentView === 'males' ? '380' : '340'}</span>
-                  </div>
-                  <div>
-                    <span className="font-extrabold text-gray-600 block">{language === 'en' ? 'Other' : 'विधुर/विधवा'}</span>
-                    <span className="font-serif font-black text-gray-900">{currentView === 'males' ? '30' : '42'}</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             {/* List Header, Search & Filter Button */}
@@ -1334,7 +1333,11 @@ export const CensusPage = () => {
                   onClick={() => navigate('/member/directory/' + member.id)}
                 >
                   <div className="w-13 h-13 rounded-full bg-gray-50 border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center relative shadow-inner">
-                    <img src={`https://i.pravatar.cc/150?u=${member.id}`} className="w-full h-full object-cover" alt="" />
+                    <img 
+                      src={member.avatar || member.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'Member')}&background=1e58b8&color=ffffff&font-size=0.4&bold=true`} 
+                      className="w-full h-full object-cover" 
+                      alt={member.name} 
+                    />
                     {!member.active && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="text-[8px] font-black text-white bg-slate-800 px-1 rounded">Muted</span>
@@ -1397,11 +1400,11 @@ export const CensusPage = () => {
                 </div>
                 <div className="bg-blue-50/50 rounded-xl p-2 border border-blue-100/30">
                   <span className="text-[9px] font-bold text-blue-500 block">{language === 'en' ? 'Boys' : 'लड़के'}</span>
-                  <span className="text-[15px] font-black text-blue-700">136</span>
+                  <span className="text-[15px] font-black text-blue-700">{kids.filter(k => k.gender === 'Boy' || k.gender === 'Male').length}</span>
                 </div>
                 <div className="bg-pink-50/50 rounded-xl p-2 border border-pink-100/30">
                   <span className="text-[9px] font-bold text-pink-500 block">{language === 'en' ? 'Girls' : 'लड़कियां'}</span>
-                  <span className="text-[15px] font-black text-pink-700">111</span>
+                  <span className="text-[15px] font-black text-pink-700">{kids.filter(k => k.gender === 'Girl' || k.gender === 'Female').length}</span>
                 </div>
               </div>
 
@@ -1410,42 +1413,54 @@ export const CensusPage = () => {
                 {language === 'en' ? 'Age limits distribution' : 'आयु समूहानुसार बच्चे'}
               </h4>
               <div className="flex flex-col gap-2">
-                <div>
-                  <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
-                    <span>0 - 5 Yrs (नवजात/शिशु)</span>
-                    <span>62</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: '45%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
-                    <span>6 - 10 Yrs (बालक/बालिका)</span>
-                    <span>75</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: '58%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
-                    <span>11 - 14 Yrs (किशोर)</span>
-                    <span>68</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: '51%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
-                    <span>15 - 17 Yrs (तरुण)</span>
-                    <span>42</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: '30%' }} />
-                  </div>
-                </div>
+                {(() => {
+                  const k0_5 = kids.filter(k => k.age >= 0 && k.age <= 5).length;
+                  const k6_10 = kids.filter(k => k.age >= 6 && k.age <= 10).length;
+                  const k11_14 = kids.filter(k => k.age >= 11 && k.age <= 14).length;
+                  const k15_17 = kids.filter(k => k.age >= 15 && k.age <= 17).length;
+                  const maxKidGroup = Math.max(k0_5, k6_10, k11_14, k15_17, 1);
+
+                  return (
+                    <>
+                      <div>
+                        <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
+                          <span>0 - 5 Yrs (नवजात/शिशु)</span>
+                          <span>{k0_5}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((k0_5 / maxKidGroup) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
+                          <span>6 - 10 Yrs (बालक/बालिका)</span>
+                          <span>{k6_10}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((k6_10 / maxKidGroup) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
+                          <span>11 - 14 Yrs (किशोर)</span>
+                          <span>{k11_14}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((k11_14 / maxKidGroup) * 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11.5px] font-bold text-gray-700 mb-0.5">
+                          <span>15 - 17 Yrs (तरुण)</span>
+                          <span>{k15_17}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((k15_17 / maxKidGroup) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1600,7 +1615,11 @@ export const CensusPage = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-[80px] blur-xl" />
               <div className="flex items-center gap-5 relative z-10">
                 <div className="w-18 h-18 rounded-[20px] overflow-hidden shadow-lg bg-gray-50 relative shrink-0 border border-white">
-                  <img src={`https://i.pravatar.cc/150?u=${selectedFamily.headId}`} className="w-full h-full object-cover" alt="" />
+                  <img 
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFamily.headName || 'Head')}&background=8b5cf6&color=ffffff&font-size=0.4&bold=true`} 
+                    className="w-full h-full object-cover" 
+                    alt={selectedFamily.headName} 
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
@@ -1608,7 +1627,15 @@ export const CensusPage = () => {
                   </span>
                   <h4 className="text-[20px] font-black text-slate-900 mt-2 leading-tight">{selectedFamily.headName}</h4>
                   <div className="flex flex-wrap items-center gap-x-2 text-[11px] font-semibold text-slate-500 mt-1.5">
-                    <span className="bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{language === 'en' ? 'Age' : 'उम्र'}: 68 {language === 'en' ? 'yrs' : 'वर्ष'}</span>
+                    {(() => {
+                      const headMember = males.find(m => m.id === selectedFamily.headId) || selectedFamily.members?.males?.[0];
+                      const headAge = headMember?.age || 45;
+                      return (
+                        <span className="bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">
+                          {language === 'en' ? 'Age' : 'उम्र'}: {headAge} {language === 'en' ? 'yrs' : 'वर्ष'}
+                        </span>
+                      );
+                    })()}
                     <span className="text-slate-300">•</span>
                     <span className="bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{selectedFamily.city}</span>
                   </div>
@@ -1736,52 +1763,51 @@ export const CensusPage = () => {
                   <MapPin size={20} />
                 </div>
                 <div>
-                  <h3 className="text-[18px] font-black text-slate-900 leading-tight">{language === 'en' ? 'Active Cities (12)' : 'सक्रिय शहर विवरण'}</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{language === 'en' ? 'Members active per regional chapter' : 'सक्रिय क्षेत्रीय इकाइयाँ'}</p>
+                  <h3 className="text-[18px] font-black text-slate-900 leading-tight">
+                    {language === 'en' ? `Active Cities (${citiesBreakdown.length})` : `सक्रिय शहर विवरण (${citiesBreakdown.length})`}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                    {language === 'en' ? 'Members active per regional chapter' : 'सक्रिय क्षेत्रीय इकाइयाँ'}
+                  </p>
                 </div>
               </div>
               <p className="text-[11.5px] text-gray-400 font-semibold mb-4 leading-relaxed">
-                {language === 'en' ? 'Below are the 12 active cities within our Samaj directory. Click on any city to set it as a filter and view regional member registers.' : 'हमारे समाज में सक्रिय कुल 12 शहर नीचे सूचीबद्ध हैं। किसी भी शहर पर क्लिक करके आप उस शहर के सदस्यों को फ़िल्टर कर सकते हैं।'}
+                {language === 'en' 
+                  ? `Below are the ${citiesBreakdown.length} active cities within our Samaj directory. Click on any city to set it as a filter and view regional member registers.`
+                  : `हमारे समाज में सक्रिय कुल ${citiesBreakdown.length} शहर नीचे सूचीबद्ध हैं। किसी भी शहर पर क्लिक करके आप उस शहर के सदस्यों को फ़िल्टर कर सकते हैं।`}
               </p>
 
               <div className="grid grid-cols-1 gap-2.5">
-                {[
-                  { name: 'Indore', count: 350, region: 'Madhya Pradesh' },
-                  { name: 'Sanawad', count: 210, region: 'Madhya Pradesh' },
-                  { name: 'Khargone', count: 180, region: 'Madhya Pradesh' },
-                  { name: 'Dhamnod', count: 120, region: 'Madhya Pradesh' },
-                  { name: 'Dhar', count: 95, region: 'Madhya Pradesh' },
-                  { name: 'Jaipur', count: 85, region: 'Rajasthan' },
-                  { name: 'Bhopal', count: 65, region: 'Madhya Pradesh' },
-                  { name: 'Ujjain', count: 55, region: 'Madhya Pradesh' },
-                  { name: 'Dewas', count: 40, region: 'Madhya Pradesh' },
-                  { name: 'Ratlam', count: 25, region: 'Madhya Pradesh' },
-                  { name: 'Khategaon', count: 15, region: 'Madhya Pradesh' },
-                  { name: 'Maheshwar', count: 12, region: 'Madhya Pradesh' }
-                ].map((city, idx) => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.01, x: 4 }} whileTap={{ scale: 0.98 }}
-                    key={idx}
-                    onClick={() => {
-                      setSelectedCity(city.name);
-                      setCurrentView('males'); // Switch to males view with selected city filter applied
-                    }}
-                    className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100/50 hover:bg-white hover:border-orange-200 hover:shadow-[0_8px_20px_rgb(249,115,22,0.08)] rounded-2xl cursor-pointer transition-all group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="text-[13px] font-black text-slate-300 w-6 text-center group-hover:text-orange-300 transition-colors">{idx + 1}.</span>
-                      <div>
-                        <h4 className="text-[15px] font-black text-slate-800 leading-none group-hover:text-orange-600 transition-colors">{city.name}</h4>
-                        <span className="text-[10px] font-bold text-slate-400 mt-1.5 block tracking-wide uppercase">{city.region}</span>
+                {citiesBreakdown.length > 0 ? (
+                  citiesBreakdown.map((city, idx) => (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
+                      whileHover={{ scale: 1.01, x: 4 }} whileTap={{ scale: 0.98 }}
+                      key={city.name || idx}
+                      onClick={() => {
+                        setSelectedCity(city.name);
+                        setCurrentView('males'); // Switch to males view with selected city filter applied
+                      }}
+                      className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100/50 hover:bg-white hover:border-orange-200 hover:shadow-[0_8px_20px_rgb(249,115,22,0.08)] rounded-2xl cursor-pointer transition-all group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-[13px] font-black text-slate-300 w-6 text-center group-hover:text-orange-300 transition-colors">{idx + 1}.</span>
+                        <div>
+                          <h4 className="text-[15px] font-black text-slate-800 leading-none group-hover:text-orange-600 transition-colors">{city.name}</h4>
+                          <span className="text-[10px] font-bold text-slate-400 mt-1.5 block tracking-wide uppercase">Active Regional Hub</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[12px] font-bold text-slate-600 bg-white border border-slate-150 rounded-[10px] px-3 py-1 shadow-sm group-hover:border-orange-100 group-hover:text-orange-700 transition-colors">{city.count} {language === 'en' ? 'Members' : 'सदस्य'}</span>
-                      <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[12px] font-bold text-slate-600 bg-white border border-slate-150 rounded-[10px] px-3 py-1 shadow-sm group-hover:border-orange-100 group-hover:text-orange-700 transition-colors">{city.count} {language === 'en' ? 'Members' : 'सदस्य'}</span>
+                        <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-slate-400 text-xs font-semibold">
+                    No active cities found.
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -1870,11 +1896,7 @@ export const CensusPage = () => {
                     <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-150 rounded-xl shadow-lg z-50 max-h-[160px] overflow-y-auto p-1 flex flex-col gap-0.5">
                       {[
                         { value: "", label: "All Cities (सभी शहर)" },
-                        { value: "Indore", label: "Indore" },
-                        { value: "Sanawad", label: "Sanawad" },
-                        { value: "Khargone", label: "Khargone" },
-                        { value: "Dhamnod", label: "Dhamnod" },
-                        { value: "Dhar", label: "Dhar" }
+                        ...citiesBreakdown.map(c => ({ value: c.name, label: `${c.name} (${c.count})` }))
                       ].map((item) => (
                         <button
                           key={item.value}
@@ -1966,7 +1988,8 @@ export const CensusPage = () => {
                         ? [
                             { value: "Single", label: "Single (अविवाहित)" },
                             { value: "Married", label: "Married (विवाहित)" },
-                            { value: "Widowed", label: "Widowed (विधुर / विधवा)" }
+                            { value: "Other", label: "Other (विधुर / विधवा / तलाकशुदा)" },
+                            { value: "Not Specified", label: "Not Specified (अनिर्दिष्ट)" }
                           ].find(o => o.value === selectedMaritalStatus)?.label || selectedMaritalStatus
                         : "All Status (सभी)"}
                     </span>
@@ -1978,7 +2001,8 @@ export const CensusPage = () => {
                         { value: "", label: "All Status (सभी)" },
                         { value: "Single", label: "Single (अविवाहित)" },
                         { value: "Married", label: "Married (विवाहित)" },
-                        { value: "Widowed", label: "Widowed (विधुर / विधवा)" }
+                        { value: "Other", label: "Other (विधुर / विधवा / तलाकशुदा)" },
+                        { value: "Not Specified", label: "Not Specified (अनिर्दिष्ट)" }
                       ].map((item) => (
                         <button
                           key={item.value}
@@ -2213,7 +2237,11 @@ export const CensusPage = () => {
                 ].map(member => (
                   <div key={member.id} className="bg-gray-50/60 border border-gray-100 p-3 rounded-2xl flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center border border-gray-200 shadow-inner">
-                      <img src={`https://i.pravatar.cc/150?u=${member.id}`} className="w-full h-full object-cover" alt="" />
+                      <img 
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=3b82f6&color=ffffff&font-size=0.4&bold=true`} 
+                        className="w-full h-full object-cover" 
+                        alt={member.name} 
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-[13px] font-extrabold text-gray-900 truncate leading-tight">{member.name}</h4>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone, Landmark, Flame
+  LayoutDashboard, Users, Heart, Calendar, Settings, LogOut, Menu, X, ShieldAlert, Send, Search, Building2, CreditCard, Globe, ChevronDown, ChevronUp, Network, Briefcase, HeartHandshake, Megaphone, Landmark, Flame, Crown, CheckSquare, BarChart3
 } from 'lucide-react';
 import { useData } from '../../member/context/DataProvider';
 import { Avatar } from '../../member/components/common/Avatar';
 import { useAdminAuth } from '../auth/useAdminAuth';
+import { NotificationBell } from '../../member/components/layout/NotificationBell';
 
 export const AdminLayout = () => {
   const navigate = useNavigate();
@@ -111,6 +112,26 @@ export const AdminLayout = () => {
           name: 'Obituary Desk',
           path: '/admin/obituaries',
           icon: Flame
+        },
+        {
+          name: 'Community Census',
+          path: '/admin/census',
+          icon: Users
+        },
+        {
+          name: 'Leadership Desk',
+          path: '/admin/leadership',
+          icon: Crown
+        },
+        {
+          name: 'Digital Invitations',
+          path: '/admin/invitations',
+          icon: Send
+        },
+        {
+          name: 'Voting & Elections',
+          path: '/admin/voting',
+          icon: CheckSquare
         }
       ]
     },
@@ -146,6 +167,16 @@ export const AdminLayout = () => {
             { name: 'Notifications', path: '/admin/subscriptions', search: '?tab=notifications' },
             { name: 'Settings', path: '/admin/subscriptions', search: '?tab=settings' }
           ]
+        },
+        { 
+          name: 'Reports & Analytics', 
+          path: '/admin/reports', 
+          icon: BarChart3 
+        },
+        { 
+          name: 'Notifications & Push', 
+          path: '/admin/notifications', 
+          icon: Send 
         },
         { 
           name: 'System Config', 
@@ -528,16 +559,8 @@ export const AdminLayout = () => {
             <h2 className="text-gray-800 font-bold text-sm tracking-wide">Master Administration</h2>
           </div>
           <div className="flex items-center gap-5">
-            {/* Notifications Action */}
-            <button 
-              onClick={() => navigate('/admin/announcements')}
-              className="p-2 rounded-xl text-gray-400 hover:text-brand-primary hover:bg-purple-50 transition-all relative"
-              title="Announcements & Notifications"
-            >
-              <Send size={19} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
-            </button>
+            {/* Real-time Notifications Bell */}
+            <NotificationBell />
 
             <div className="h-7 w-[1px] bg-gray-200"></div>
 

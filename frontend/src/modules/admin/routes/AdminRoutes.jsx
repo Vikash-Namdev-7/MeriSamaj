@@ -30,6 +30,12 @@ import { AdminGroupsPage } from '../pages/groups/AdminGroupsPage';
 import SuccessStoriesManagement from '../pages/matrimonial/SuccessStoriesManagement';
 import AdminDharmashalaManagement from '../pages/dharmashala/AdminDharmashalaManagement';
 import { AdminObituaryManagement } from '../pages/obituary/AdminObituaryManagement';
+import { AdminCensusManagement } from '../pages/census/AdminCensusManagement';
+import { AdminLeadershipManagement } from '../pages/leadership/AdminLeadershipManagement';
+import { AdminNotificationsPage } from '../pages/notifications/AdminNotificationsPage';
+import { AdminInvitationManagement } from '../pages/invitation/AdminInvitationManagement';
+import { AdminVotingManagement } from '../pages/voting/AdminVotingManagement';
+import AdminReportsDesk from '../pages/reports/AdminReportsDesk';
 
 export const AdminRoutes = () => {
   return (
@@ -47,6 +53,8 @@ export const AdminRoutes = () => {
         
         {/* Other Admin views */}
         <Route path="users" element={<UserManagement />} />
+        <Route path="census" element={<AdminCensusManagement />} />
+        <Route path="leadership" element={<AdminLeadershipManagement />} />
         <Route path="matrimonial" element={<PlatformMatrimonialManagement />} />
         <Route path="marketing/success-stories" element={<SuccessStoriesManagement />} />
         <Route path="events" element={<EventsDesk />} />
@@ -59,6 +67,7 @@ export const AdminRoutes = () => {
           <Route path=":id" element={<HeadDetailsPage />} />
         </Route>
         <Route path="subscriptions" element={<SubscriptionManagement />} />
+        <Route path="reports" element={<AdminReportsDesk />} />
         <Route path="config" element={<SystemConfig />} />
         <Route path="families" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="professionals">
@@ -90,6 +99,15 @@ export const AdminRoutes = () => {
 
         {/* Global Groups */}
         <Route path="groups" element={<AdminGroupsPage />} />
+        
+        {/* Notifications & Push Delivery Center */}
+        <Route path="notifications" element={<AdminNotificationsPage />} />
+        
+        {/* 📩 Digital Invitations Supervision */}
+        <Route path="invitations" element={<AdminInvitationManagement />} />
+
+        {/* 🗳️ Voting & Elections Supervision */}
+        <Route path="voting" element={<AdminVotingManagement />} />
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

@@ -7,6 +7,7 @@ import {
 import { useData } from '../../../member/context/DataProvider';
 import { useHeadAuth } from '../../auth/useHeadAuth';
 import { useCommunitySettings } from '../settings/hooks/useCommunitySettings';
+import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 import * as LucideIcons from 'lucide-react';
 
 export const HomepageContentManager = () => {
@@ -59,6 +60,13 @@ export const HomepageContentManager = () => {
 
   const handleSave = async () => {
     try {
+      // 1. Sync bannerUrl to MongoDB via backend API
+      const bannerUrl = homepageContent.hero?.backgroundImage || '';
+      if (bannerUrl) {
+        await axiosPrivate.put('/head/dashboard/community/banner', { bannerUrl });
+      }
+
+      // 2. Cache in localStorage for offline/instant local fallback
       localStorage.setItem('merisamaj_global_homepage_content', JSON.stringify(homepageContent));
       if (communityId) {
         const current = localStorage.getItem(`community_settings_${communityId}`);
@@ -69,11 +77,11 @@ export const HomepageContentManager = () => {
       window.dispatchEvent(new Event('merisamaj_homepage_updated'));
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
-      console.error('Failed to sync global homepage content', e);
+      console.error('Failed to sync bannerUrl to MongoDB:', e);
     }
 
     const success = await saveSettings();
-    showToast('Homepage settings saved and published live!');
+    showToast('Community banner and homepage settings saved live to database!');
   };
 
   // Helper to extract homepageContent safely with default structures

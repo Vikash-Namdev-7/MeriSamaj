@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../config/config');
-const { notifyInvitationAccepted, notifyReferralBonusEarned } = require('../services/notificationService');
+const { notifyInvitationAccepted, notifyReferralBonusEarned, notifySecurityAlert } = require('../services/notificationService');
+const { sendPushNotification } = require('../services/pushNotificationService');
 
 const DEFAULT_REFERRAL_BONUS_AMOUNT = 100;
 
@@ -60,6 +61,7 @@ const getUserResponsePayload = (user) => {
     headPermissions: user.headPermissions,
     community: user.communityId?.name || user.community || '',
     communityLogo: user.communityId?.logoUrl || '',
+    communityBanner: user.communityId?.bannerUrl || '',
     communityDescription: user.communityId?.description || '',
     communityCity: user.communityId?.city || '',
     subCommunity: user.subCommunity,
@@ -158,7 +160,18 @@ const registerUser = async (req, res) => {
           const inviter = await User.findOne({ $or: searchOpts }).select('_id name').lean();
           if (inviter) {
             notifyInvitationAccepted(inviter._id, user.name || 'A member');
-            notifyReferralBonusEarned(inviter._id, DEFAULT_REFERRAL_BONUS_AMOUNT);
+            const bonusNotif = await notifyReferralBonusEarned(inviter._id, DEFAULT_REFERRAL_BONUS_AMOUNT);
+            if (bonusNotif) {
+              sendPushNotification({
+                userId: inviter._id,
+                notificationId: bonusNotif._id,
+                type: 'referral_bonus_earned',
+                title: 'Referral Bonus Earned! 🎁',
+                message: `You earned ₹${DEFAULT_REFERRAL_BONUS_AMOUNT} referral bonus because ${user.name || 'A member'} registered using your link!`,
+                icon: '🎁',
+                actionUrl: '/member/invitations'
+              }).catch(err => console.error('[ReferralPushError]', err.message));
+            }
           }
         } catch (notifErr) {
           console.warn('[Notify] registerUser referral notification failed:', notifErr.message);
@@ -252,6 +265,15 @@ const loginUser = async (req, res) => {
       } else {
         res.cookie('member_jwt', refreshToken, cookieOptions);
         res.cookie('jwt', refreshToken, cookieOptions);
+      }
+
+      // New Device Login Security Alert Trigger
+      const deviceToken = req.body.deviceToken || req.headers['user-agent'];
+      if (deviceToken && Array.isArray(user.deviceTokens) && !user.deviceTokens.includes(deviceToken)) {
+        user.deviceTokens.push(deviceToken);
+        user.save().catch(() => {});
+
+        notifySecurityAlert(user._id, `New login detected on your account.`).catch(err => console.warn('[NewDeviceAlertError]', err.message));
       }
 
       res.json({
@@ -451,7 +473,11 @@ const updateProfile = async (req, res) => {
 
       // Avatar & Cover upload handling
       if (req.file) {
-        user.avatar = req.file.path;
+        if (req.file.path) {
+          user.avatar = req.file.path;
+        } else if (req.file.buffer) {
+          user.avatar = `data:${req.file.mimetype || 'image/png'};base64,${req.file.buffer.toString('base64')}`;
+        }
       } else if (req.body.avatar) {
         user.avatar = req.body.avatar;
       }
@@ -489,6 +515,23 @@ const updateProfile = async (req, res) => {
       user.state = req.body.state || user.state;
       user.pincode = req.body.pincode || user.pincode;
       user.country = req.body.country || user.country;
+
+      // Leadership / Head-specific fields (safe for all roles — only stored if provided)
+      if (req.body.designation !== undefined) user.designation = req.body.designation;
+      if (req.body.termYears !== undefined) user.termYears = req.body.termYears;
+      if (req.body.socialLinks) {
+        let parsedLinks = req.body.socialLinks;
+        // Handle JSON string from FormData uploads
+        if (typeof parsedLinks === 'string') {
+          try { parsedLinks = JSON.parse(parsedLinks); } catch (e) { parsedLinks = null; }
+        }
+        if (parsedLinks && typeof parsedLinks === 'object') {
+          user.socialLinks = {
+            ...(user.socialLinks?.toObject?.() || user.socialLinks || {}),
+            ...parsedLinks
+          };
+        }
+      }
 
       // Education & Profession
       user.qualification = req.body.qualification || user.qualification;
@@ -675,6 +718,52 @@ const getPublicCities = async (req, res) => {
   }
 };
 
+// @desc    Change / Update Password
+// @route   POST /api/v1/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required.' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password.' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    // Trigger Security Alert (In-App + Push)
+    const alertNotif = await notifySecurityAlert(user._id, 'Your account password was successfully updated.');
+    if (alertNotif) {
+      sendPushNotification({
+        userId: user._id,
+        notificationId: alertNotif._id,
+        type: 'account_security_alert',
+        title: 'Security Alert 🛡️',
+        message: 'Your account password was successfully updated.',
+        icon: '🛡️',
+        actionUrl: '/member/profile'
+      }).catch(err => console.error('[SecurityAlertPushError]', err.message));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -690,5 +779,6 @@ module.exports = {
   verifyOtp,
   resetPassword,
   getPublicCommunities,
-  getPublicCities
+  getPublicCities,
+  changePassword
 };

@@ -1,8 +1,9 @@
 const User = require('../../models/User');
+const Leadership = require('../../models/Leadership');
 const bcrypt = require('bcryptjs');
 const { inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
-// @desc    Create a new Sub-Leader (Vice President, Secretary, Treasurer, etc.)
+// @desc    Create a new Sub-Leader (App Leader with login OR Offline Board Leader)
 // @route   POST /api/v1/head/leadership/sub-leaders
 // @access  Private (Head/Admin)
 exports.createSubLeader = async (req, res) => {
@@ -12,107 +13,196 @@ exports.createSubLeader = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'No community context found.' });
     }
 
-    const { name, email, phone, password, designation, department, termYears, socialLinks, headPermissions } = payload;
+    const { isAppUser, name, email, phone, password, designation, department, termYears, socialLinks, headPermissions, city, state } = payload;
 
-    if (!name || !phone || !password || !designation) {
-      return res.status(400).json({ status: 'error', message: 'Name, phone, password, and designation are required' });
+    if (!name || !designation) {
+      return res.status(400).json({ status: 'error', message: 'Name and designation are required' });
     }
 
-    // Check duplicate phone/email
-    const existingPhone = await User.findOne({ phone });
-    if (existingPhone) {
-      return res.status(400).json({ status: 'error', message: 'Phone number already registered' });
+    // ── Protection: Head cannot create or mutate Community Head / President accounts ──
+    if (designation === 'President' || designation === 'Community Head') {
+      return res.status(403).json({ status: 'error', message: 'Only Master Admin can manage Community Head / President accounts.' });
     }
 
-    if (email) {
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ status: 'error', message: 'Email address already registered' });
+    if (isAppUser !== false) {
+      // ── TYPE 1: App Leader (User account with login credentials) ──
+      if (!phone || !password) {
+        return res.status(400).json({ status: 'error', message: 'Phone and password are required for App Leaders' });
       }
-    }
 
-    // ── PERMISSION INHERITANCE SAFEGUARD ───────────────────────────────────────
-    // Head can ONLY assign module permissions that Master Admin has granted to the Head!
-    const headGrantedPermissions = req.user.headPermissions || {};
-    const sanitizedPermissions = {};
+      // Check duplicate phone/email
+      const existingPhone = await User.findOne({ phone });
+      if (existingPhone) {
+        return res.status(400).json({ status: 'error', message: 'Phone number already registered' });
+      }
 
-    if (headPermissions && typeof headPermissions === 'object') {
-      Object.keys(headPermissions).forEach(permKey => {
-        if (headPermissions[permKey] === true) {
-          // Admin has full access, otherwise verify Head possesses this permission
-          if (req.user.role === 'admin' || headGrantedPermissions[permKey] === true) {
-            sanitizedPermissions[permKey] = true;
+      if (email) {
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) {
+          return res.status(400).json({ status: 'error', message: 'Email address already registered' });
+        }
+      }
+
+      // ── PERMISSION INHERITANCE SAFEGUARD ───────────────────────────────────────
+      // Head can ONLY assign module permissions that Master Admin has granted to the Head!
+      const headGrantedPermissions = req.user.headPermissions || {};
+      const sanitizedPermissions = {};
+
+      if (headPermissions && typeof headPermissions === 'object') {
+        Object.keys(headPermissions).forEach(permKey => {
+          if (headPermissions[permKey] === true) {
+            if (req.user.role === 'admin' || headGrantedPermissions[permKey] === true) {
+              sanitizedPermissions[permKey] = true;
+            } else {
+              console.warn(`[Permission Safeguard] Head '${req.user.name}' tried to assign ungranted permission '${permKey}' to Sub-Leader '${name}'. Stripped.`);
+              sanitizedPermissions[permKey] = false;
+            }
           } else {
-            console.warn(`[Permission Safeguard] Head '${req.user.name}' tried to assign ungranted permission '${permKey}' to Sub-Leader '${name}'. Stripped.`);
             sanitizedPermissions[permKey] = false;
           }
-        } else {
-          sanitizedPermissions[permKey] = false;
+        });
+      }
+
+      const resolvedCity = city || req.user?.city || (req.user?.workAddress ? req.user.workAddress.split(',').pop().trim() : 'Indore');
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const subLeader = new User({
+        name,
+        email: email || undefined,
+        phone,
+        password: hashedPassword,
+        plainPassword: undefined,
+        role: 'sub_head',
+        parentHeadId: req.user._id,
+        communityId: payload.communityId,
+        assignedCommunityIds: req.user?.assignedCommunityIds || [payload.communityId],
+        city: resolvedCity,
+        state: state || req.user?.state || 'Madhya Pradesh',
+        designation: designation || 'Executive Member',
+        department: department || 'General Governance',
+        termYears: termYears || '2024-2027',
+        joiningDate: new Date(),
+        socialLinks: socialLinks || {},
+        headPermissions: sanitizedPermissions,
+        accountStatus: 'active'
+      });
+
+      await subLeader.save();
+
+      return res.status(201).json({
+        status: 'success',
+        message: 'Sub-leader created successfully with secure credentials.',
+        data: {
+          id: subLeader._id,
+          name: subLeader.name,
+          email: subLeader.email,
+          phone: subLeader.phone,
+          designation: subLeader.designation,
+          permissions: subLeader.headPermissions,
+          isAppUser: true
+        }
+      });
+    } else {
+      // ── TYPE 2: Offline Board Member (Leadership document, no login) ──
+      const docLeader = new Leadership({
+        communityId: payload.communityId,
+        name,
+        email: email || '',
+        phone: phone || '',
+        role: designation || 'Committee Member',
+        city: city || req.user?.city || 'Indore',
+        state: state || req.user?.state || 'Madhya Pradesh',
+        termYears: termYears || '2024-2027',
+        isActive: true
+      });
+
+      await docLeader.save();
+
+      return res.status(201).json({
+        status: 'success',
+        message: 'Offline Board Leader recorded successfully.',
+        data: {
+          id: docLeader._id,
+          name: docLeader.name,
+          designation: docLeader.role,
+          isAppUser: false
         }
       });
     }
-
-    const resolvedCity = payload.city || req.user?.city || (req.user?.workAddress ? req.user.workAddress.split(',').pop().trim() : '');
-    if (!resolvedCity) {
-      return res.status(400).json({ status: 'error', message: 'City is required for sub-leader creation.' });
-    }
-
-    const subLeader = new User({
-      ...payload,
-      name,
-      email: email || undefined,
-      phone,
-      password,
-      plainPassword: password,
-      role: 'sub_head',
-      parentHeadId: req.user._id,
-      communityId: payload.communityId,
-      assignedCommunityIds: req.user?.assignedCommunityIds || [payload.communityId],
-      city: resolvedCity,
-      state: payload.state || req.user?.state || 'Madhya Pradesh',
-      designation: designation || 'Executive Member',
-      department: department || 'General Governance',
-      termYears: termYears || '2024-2027',
-      joiningDate: new Date(),
-      socialLinks: socialLinks || {},
-      headPermissions: sanitizedPermissions,
-      accountStatus: 'active'
-    });
-
-    await subLeader.save();
-
-    res.status(201).json({
-      status: 'success',
-      message: 'Sub-leader created successfully',
-      data: {
-        id: subLeader._id,
-        name: subLeader.name,
-        email: subLeader.email,
-        phone: subLeader.phone,
-        designation: subLeader.designation,
-        permissions: subLeader.headPermissions
-      }
-    });
   } catch (error) {
     console.error('createSubLeader error:', error);
     res.status(500).json({ status: 'error', message: error.message || 'Failed to create sub-leader' });
   }
 };
 
-// @desc    Get all sub-leaders created by current Head
+// @desc    Get all sub-leaders created by current Head (User sub-heads + Leadership docs for head's community)
 // @route   GET /api/v1/head/leadership/sub-leaders
 // @access  Private (Head/Admin)
 exports.getSubLeaders = async (req, res) => {
   try {
-    const subLeaders = await User.find({ parentHeadId: req.user._id, role: 'sub_head' })
+    const communityId = req.user.communityId || req.communityId;
+
+    // Fetch User sub-heads linked to head
+    const subHeadUsers = await User.find({ parentHeadId: req.user._id, role: 'sub_head' })
       .select('name email phone city state designation department avatar headPermissions accountStatus joiningDate createdAt')
       .sort({ createdAt: -1 })
       .lean();
 
+    const formattedUserSubLeaders = subHeadUsers.map(u => ({
+      _id: u._id,
+      id: u._id,
+      name: u.name,
+      email: u.email || '',
+      phone: u.phone || '',
+      city: u.city || 'Indore',
+      state: u.state || 'Madhya Pradesh',
+      designation: u.designation || 'Executive Member',
+      department: u.department || 'General Governance',
+      avatar: u.avatar || '',
+      headPermissions: u.headPermissions || {},
+      accountStatus: u.accountStatus || 'active',
+      isActive: u.accountStatus === 'active',
+      joiningDate: u.joiningDate,
+      isAppUser: true
+    }));
+
+    // Fetch Leadership docs for head's community
+    const docLeaders = await Leadership.find({ communityId })
+      .sort({ displayOrder: 1, createdAt: -1 })
+      .lean();
+
+    const formattedDocSubLeaders = docLeaders.map(l => ({
+      _id: l._id,
+      id: l._id,
+      name: l.name,
+      email: l.email || '',
+      phone: l.phone || '',
+      city: l.city || 'Indore',
+      state: l.state || 'Madhya Pradesh',
+      designation: l.role || 'Committee Member',
+      department: 'Offline Board',
+      avatar: l.avatar || '',
+      accountStatus: l.isActive ? 'active' : 'inactive',
+      isActive: l.isActive !== false,
+      isAppUser: false
+    }));
+
+    // Read-time deduplication
+    const combinedSubLeaders = [...formattedUserSubLeaders];
+    formattedDocSubLeaders.forEach(doc => {
+      const isDup = combinedSubLeaders.some(u => 
+        (u.phone && doc.phone && u.phone.trim() === doc.phone.trim()) ||
+        (u.name.toLowerCase() === doc.name.toLowerCase() && u.city.toLowerCase() === doc.city.toLowerCase())
+      );
+      if (!isDup) {
+        combinedSubLeaders.push(doc);
+      }
+    });
+
     res.status(200).json({
       status: 'success',
-      count: subLeaders.length,
-      data: subLeaders
+      count: combinedSubLeaders.length,
+      data: combinedSubLeaders
     });
   } catch (error) {
     console.error('getSubLeaders error:', error);
@@ -126,95 +216,163 @@ exports.getSubLeaders = async (req, res) => {
 exports.updateSubLeader = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, designation, department, headPermissions, password } = req.body;
+    const { isAppUser, name, email, phone, designation, department, headPermissions, password, city, state } = req.body;
 
-    const subLeader = await User.findOne({ _id: id, parentHeadId: req.user._id, role: 'sub_head' });
-    if (!subLeader) {
-      return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
+    if (designation === 'President' || designation === 'Community Head') {
+      return res.status(403).json({ status: 'error', message: 'Only Master Admin can manage Community Head / President accounts.' });
     }
 
-    if (name) subLeader.name = name;
-    if (email) subLeader.email = email;
-    if (phone) subLeader.phone = phone;
-    if (designation) subLeader.designation = designation;
-    if (department) subLeader.department = department;
-    if (password) {
-      subLeader.password = password;
-      subLeader.plainPassword = password;
-    }
+    if (isAppUser !== false) {
+      const subLeader = await User.findOne({ _id: id, parentHeadId: req.user._id, role: 'sub_head' });
+      if (!subLeader) {
+        return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
+      }
 
-    // Permission Inheritance Safeguard
-    if (headPermissions && typeof headPermissions === 'object') {
-      const headGrantedPermissions = req.user.headPermissions || {};
-      const updatedPermissions = { ...subLeader.headPermissions };
+      if (name) subLeader.name = name;
+      if (email) subLeader.email = email;
+      if (phone) subLeader.phone = phone;
+      if (designation) subLeader.designation = designation;
+      if (department) subLeader.department = department;
+      if (city) subLeader.city = city;
+      if (state) subLeader.state = state;
+      if (password) {
+        subLeader.password = await bcrypt.hash(password, 10);
+        subLeader.plainPassword = undefined;
+      }
 
-      Object.keys(headPermissions).forEach(permKey => {
-        if (headPermissions[permKey] === true) {
-          if (req.user.role === 'admin' || headGrantedPermissions[permKey] === true) {
-            updatedPermissions[permKey] = true;
+      // Permission Inheritance Safeguard
+      if (headPermissions && typeof headPermissions === 'object') {
+        const headGrantedPermissions = req.user.headPermissions || {};
+        const updatedPermissions = { ...subLeader.headPermissions };
+
+        Object.keys(headPermissions).forEach(permKey => {
+          if (headPermissions[permKey] === true) {
+            if (req.user.role === 'admin' || headGrantedPermissions[permKey] === true) {
+              updatedPermissions[permKey] = true;
+            } else {
+              updatedPermissions[permKey] = false;
+            }
           } else {
             updatedPermissions[permKey] = false;
           }
-        } else {
-          updatedPermissions[permKey] = false;
-        }
+        });
+        subLeader.headPermissions = updatedPermissions;
+      }
+
+      await subLeader.save();
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Sub-leader updated successfully',
+        data: subLeader
       });
-      subLeader.headPermissions = updatedPermissions;
+    } else {
+      const docLeader = await Leadership.findOne({ _id: id, communityId: req.user.communityId });
+      if (!docLeader) {
+        return res.status(404).json({ status: 'error', message: 'Board Leader not found or unauthorized' });
+      }
+
+      if (name) docLeader.name = name;
+      if (email) docLeader.email = email;
+      if (phone) docLeader.phone = phone;
+      if (designation) docLeader.role = designation;
+      if (city) docLeader.city = city;
+      if (state) docLeader.state = state;
+
+      await docLeader.save();
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Board Leader updated successfully',
+        data: docLeader
+      });
     }
-
-    await subLeader.save();
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Sub-leader updated successfully',
-      data: subLeader
-    });
   } catch (error) {
     console.error('updateSubLeader error:', error);
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
 
-// @desc    Enable/Disable Sub-Leader status
+// @desc    Enable/Disable Sub-Leader status (type-aware)
 // @route   PATCH /api/v1/head/leadership/sub-leaders/:id/status
 // @access  Private (Head/Admin)
 exports.toggleSubLeaderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const subLeader = await User.findOne({ _id: id, parentHeadId: req.user._id, role: 'sub_head' });
-    if (!subLeader) {
-      return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
+    const { isAppUser } = req.body;
+
+    if (isAppUser !== false) {
+      const subLeader = await User.findOne({ _id: id, parentHeadId: req.user._id, role: 'sub_head' });
+      if (!subLeader) {
+        return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
+      }
+
+      subLeader.accountStatus = subLeader.accountStatus === 'active' ? 'inactive' : 'active';
+      await subLeader.save();
+
+      return res.status(200).json({
+        status: 'success',
+        message: `Sub-leader account status updated to ${subLeader.accountStatus}`,
+        data: { id: subLeader._id, status: subLeader.accountStatus, isActive: subLeader.accountStatus === 'active' }
+      });
+    } else {
+      const docLeader = await Leadership.findOne({ _id: id, communityId: req.user.communityId });
+      if (!docLeader) {
+        return res.status(404).json({ status: 'error', message: 'Board Leader not found or unauthorized' });
+      }
+
+      docLeader.isActive = !docLeader.isActive;
+      await docLeader.save();
+
+      return res.status(200).json({
+        status: 'success',
+        message: `Board Leader active status updated to ${docLeader.isActive}`,
+        data: { id: docLeader._id, status: docLeader.isActive ? 'active' : 'inactive', isActive: docLeader.isActive }
+      });
     }
-
-    subLeader.accountStatus = subLeader.accountStatus === 'active' ? 'inactive' : 'active';
-    await subLeader.save();
-
-    res.status(200).json({
-      status: 'success',
-      message: `Sub-leader account status updated to ${subLeader.accountStatus}`,
-      data: { id: subLeader._id, status: subLeader.accountStatus }
-    });
   } catch (error) {
     console.error('toggleSubLeaderStatus error:', error);
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
 
-// @desc    Delete Sub-Leader
+// @desc    Safe Soft-Deactivation of Sub-Leader
 // @route   DELETE /api/v1/head/leadership/sub-leaders/:id
 // @access  Private (Head/Admin)
 exports.deleteSubLeader = async (req, res) => {
   try {
     const { id } = req.params;
-    const subLeader = await User.findOneAndDelete({ _id: id, parentHeadId: req.user._id, role: 'sub_head' });
-    if (!subLeader) {
-      return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
-    }
+    const { isAppUser } = req.query;
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Sub-leader deleted successfully'
-    });
+    if (isAppUser === 'true') {
+      const subLeader = await User.findOneAndUpdate(
+        { _id: id, parentHeadId: req.user._id, role: 'sub_head' },
+        { $set: { accountStatus: 'inactive' } },
+        { new: true }
+      );
+      if (!subLeader) {
+        return res.status(404).json({ status: 'error', message: 'Sub-leader not found or unauthorized' });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Sub-leader account deactivated successfully'
+      });
+    } else {
+      const docLeader = await Leadership.findOneAndUpdate(
+        { _id: id, communityId: req.user.communityId },
+        { $set: { isActive: false } },
+        { new: true }
+      );
+      if (!docLeader) {
+        return res.status(404).json({ status: 'error', message: 'Board Leader not found or unauthorized' });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Board Leader deactivated successfully'
+      });
+    }
   } catch (error) {
     console.error('deleteSubLeader error:', error);
     res.status(500).json({ status: 'error', message: error.message });

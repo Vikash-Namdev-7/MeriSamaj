@@ -8,6 +8,7 @@ import { useData } from '../../context/DataProvider';
 import { PostSkeleton } from '../../components/common/Skeleton';
 import { StoryViewer } from '../../components/common/StoryViewer';
 import { useDraggableScroll } from '../../../../hooks/useDraggableScroll';
+import socialService from '../../../../core/api/socialService';
 
 // Local translation dictionary for Feed Redesign
 const localT = {
@@ -341,11 +342,58 @@ const MultiImageGrid = ({ images, onClick }) => {
   );
 };
 
-const PostCard = ({ post, index, lang, onShareClick }) => {
+const PostCard = ({ post, index, lang, onShareClick, onPostUpdated, onPostDeleted }) => {
   const navigate = useNavigate();
-  const { togglePostLike, togglePostSave, members, admins } = useData();
+  const { togglePostLike, togglePostSave, members, admins, currentUser } = useData();
   const styles = getCategoryStyles(post.category, lang);
   const [doubleHeart, setDoubleHeart] = useState(false);
+
+  // Action Menu & Edit / Delete States
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isAuthor = (post.authorId || post.userId || post.author?.id) === currentUser?._id || post.author?.name === currentUser?.name;
+  const isAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(currentUser?.role);
+  const isHead = currentUser?.role === 'head' && (currentUser?.communityId === post.communityId || currentUser?.community === post.community);
+  const canDelete = isAuthor || isHead || isAdmin;
+  const canEdit = isAuthor;
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      const postId = post.id || post._id;
+      const res = await socialService.updatePost(postId, { content: editContent.trim() });
+      if (res && res.success) {
+        setIsEditing(false);
+        if (onPostUpdated) onPostUpdated(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to update post:', err);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const postId = post.id || post._id;
+      const res = await socialService.deletePost(postId);
+      if (res && res.success) {
+        setShowDeleteConfirm(false);
+        if (onPostDeleted) onPostDeleted(postId);
+      }
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const matchedMember = members.find(m => m.name === post.author.name) || admins.find(a => a.name === post.author.name);
 
@@ -381,7 +429,64 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
       className="bg-white border-b border-slate-150/60 transition-all duration-300 relative overflow-hidden"
       style={{ animationDelay: `${index * 80}ms` }}
     >
+      {/* Edit Post Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 space-y-4">
+            <h3 className="text-base font-black text-slate-900">✏️ Edit Post</h3>
+            <textarea
+              rows={4}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="Edit post text..."
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit || !editContent.trim()}
+                className="px-4 py-2 bg-purple-700 text-white rounded-xl text-xs font-bold hover:bg-purple-800 disabled:opacity-50"
+              >
+                {isSavingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* Delete Post Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-100 space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle size={24} />
+            </div>
+            <h3 className="text-base font-black text-slate-900">Delete Post?</h3>
+            <p className="text-xs text-slate-500 font-medium">Are you sure you want to remove this post? This action will remove it from all feeds.</p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete Post'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Author Header */}
       <div className="flex items-center justify-between px-3 pt-4.5 pb-3">
@@ -403,19 +508,57 @@ const PostCard = ({ post, index, lang, onShareClick }) => {
               <span className="text-blue-500 font-bold">{post.community}</span>
               <span className="text-slate-350">•</span>
               <span>{post.timestamp}</span>
+              {post.isEdited && (
+                <span className="text-[10px] text-slate-400 font-bold italic ml-1">(edited)</span>
+              )}
             </p>
           </div>
         </div>
         
-        {/* Category Badge on right */}
-        <div className="flex flex-col items-end gap-1.5">
-          <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-sm/5 ${styles.badge}`}>
-            {styles.label}
-          </span>
-          {post.isPinned && (
-            <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
-              <AlertCircle size={10} /> PINNED
+        {/* Action Dropdown & Category Badge on right */}
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-1.5">
+            <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-sm/5 ${styles.badge}`}>
+              {styles.label}
             </span>
+            {post.isPinned && (
+              <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                <AlertCircle size={10} /> PINNED
+              </span>
+            )}
+          </div>
+
+          {/* Three-Dot Menu Options */}
+          {(canEdit || canDelete) && (
+            <div className="relative">
+              <button 
+                onClick={() => setShowMenu(!showMenu)} 
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 top-8 z-30 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 w-36 overflow-hidden animate-fade-in">
+                  {canEdit && (
+                    <button
+                      onClick={() => { setShowMenu(false); setIsEditing(true); }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2"
+                    >
+                      ✏️ Edit Post
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                    >
+                      🗑️ Delete Post
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

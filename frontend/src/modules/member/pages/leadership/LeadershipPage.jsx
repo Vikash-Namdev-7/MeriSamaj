@@ -60,11 +60,12 @@ const MISSION_PILLARS = [
 const LeaderHeroBanner = ({ leader, city, onBack, navigate, hideHeader = false, activeCityDetail }) => {
   if (!leader) return null;
 
-  const designation = leader.designation || leader.role || 'Community Head';
+  const rawDesignation = leader.designation || leader.role;
+  const designation = (!rawDesignation || rawDesignation.toLowerCase() === 'member') ? 'Community Head' : rawDesignation;
   const isPresident = designation === 'President' || designation === 'Community Head';
   const isPatron = designation === 'Patron';
 
-  const roleDisplay = isPresident ? 'PRESIDENT' : isPatron ? 'PATRON' : designation.toUpperCase();
+  const roleDisplay = isPresident ? 'COMMUNITY HEAD' : isPatron ? 'PATRON' : designation.toUpperCase();
 
   const cityHindiMap = {
     'Indore': 'इंदौर',
@@ -78,7 +79,10 @@ const LeaderHeroBanner = ({ leader, city, onBack, navigate, hideHeader = false, 
   const title = city ? `${cityHindi} शहर` : 'समाज नेतृत्व';
   const subtitle = city ? `${city.toUpperCase()} CITY LEADERSHIP` : 'हमारा नेतृत्व, हमारा गौरव';
 
-  const avatarUrl = leader.avatar || `https://i.pravatar.cc/300?u=${leader.initials || leader.name}`;
+  const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80';
+  const avatarUrl = (leader.avatar && !leader.avatar.includes('ui-avatars.com')) 
+    ? leader.avatar 
+    : defaultLeaderPhoto;
 
   return (
     <div className={`relative overflow-hidden ${city ? 'mx-[-8px] sm:mx-0 sm:rounded-[32px]' : ''}`} style={{ background: 'linear-gradient(135deg, #120b32 0%, #1e1145 50%, #2e1a6c 100%)' }}>
@@ -118,6 +122,10 @@ const LeaderHeroBanner = ({ leader, city, onBack, navigate, hideHeader = false, 
               maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 15%, black 45%)'
             }}
             alt={leader.name} 
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = defaultLeaderPhoto;
+            }}
           />
 
           {/* Left content */}
@@ -334,6 +342,12 @@ const LeadershipPage = () => {
   const [loading, setLoading] = useState(true);
   const [communityHead, setCommunityHead] = useState(null);
   const [subLeaders, setSubLeaders] = useState([]);
+  const [liveStats, setLiveStats] = useState({
+    totalMembers: 0,
+    totalStates: 0,
+    totalDistricts: 0,
+    totalVillageUnits: 0
+  });
 
   // Sliders refs
   const cityLeadersSliderRef = useRef(null);
@@ -355,6 +369,9 @@ const LeadershipPage = () => {
         if (isMounted && res.data?.success && res.data?.data) {
           setCommunityHead(res.data.data.communityHead);
           setSubLeaders(res.data.data.subLeaders || []);
+          if (res.data.data.stats) {
+            setLiveStats(res.data.data.stats);
+          }
         }
       } catch (err) {
         console.error("Failed to load live leadership payload:", err.message);
@@ -551,7 +568,10 @@ const LeadershipPage = () => {
           <div>
             <SectionHeader titleHi="समाज की ताकत" subtitleEn="Community Strength" />
             <div className="grid grid-cols-2 gap-3">
-              {STATS_DATA.map(stat => <StatCard key={stat.id} stat={stat} />)}
+              <StatCard stat={{ id: 'members', labelHi: 'कुल सदस्य', labelEn: 'Total Members', value: liveStats.totalMembers || 1, suffix: '', icon: Users, color: 'from-purple-500 to-violet-600' }} />
+              <StatCard stat={{ id: 'states', labelHi: 'राज्य', labelEn: 'States', value: liveStats.totalStates || 1, suffix: '', icon: Globe, color: 'from-orange-500 to-amber-600' }} />
+              <StatCard stat={{ id: 'districts', labelHi: 'जिले', labelEn: 'Districts', value: liveStats.totalDistricts || 1, suffix: '', icon: Landmark, color: 'from-blue-500 to-cyan-600' }} />
+              <StatCard stat={{ id: 'units', labelHi: 'ग्राम इकाइयाँ', labelEn: 'Village Units', value: liveStats.totalVillageUnits || 1, suffix: '', icon: Home, color: 'from-emerald-500 to-teal-600' }} />
             </div>
           </div>
 

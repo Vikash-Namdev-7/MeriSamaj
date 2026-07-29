@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Menu, Filter, Loader } from 'lucide-react';
+import { Search, MapPin, Menu, Filter, Loader, ArrowRight, Home, Shield, Check } from 'lucide-react';
 import dharmashalaService from '../../../../core/api/dharmashalaService';
 import { useData } from '../../context/DataProvider';
 
@@ -8,6 +8,12 @@ export default function DharmashalaHomePage() {
   const navigate = useNavigate();
   const { setMobileMenuOpen } = useData();
   const [searchQuery, setSearchQuery] = useState('');
+  const [dharamshalas, setDharamshalas] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedFacilities, setSelectedFacilities] = useState({ ac: false, food: false });
+  const [tempLocation, setTempLocation] = useState('all');
+  const [tempFacilities, setTempFacilities] = useState({ ac: false, food: false });
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -138,38 +144,76 @@ export default function DharmashalaHomePage() {
           ) : (
             <>
               {dharamshalas.map(d => (
-                <div key={d._id} className="card-neo overflow-hidden flex flex-col">
-                  <div className="flex p-4 gap-4">
-                    <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
-                      <img 
-                        src={d.image || (d.galleryImages && d.galleryImages[0]) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500'} 
-                        alt={d.name} 
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover" 
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-slate-800 text-[15px] truncate">{d.name}</h3>
-                      <div className="flex items-start gap-1 mt-1 text-slate-500">
-                        <MapPin size={12} className="mt-0.5 shrink-0 text-indigo-500" />
-                        <span className="text-[11px] leading-tight font-medium">{d.address || d.location}{d.city ? `, ${d.city}` : ''}</span>
-                      </div>
-                      
-                      <div className="mt-3 grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] font-bold text-slate-600">
-                        <div className="flex items-center gap-1"><span>Ownership:</span> <span className="text-slate-800">{d.community || 'Samaj Property'}</span></div>
-                        <div className="flex items-center gap-1"><span>Status:</span> <span className="text-emerald-600 font-extrabold">{d.status || 'Active'}</span></div>
-                      </div>
+                <div 
+                  key={d._id} 
+                  className="bg-white rounded-[24px] border border-slate-200/80 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_32px_rgba(124,58,237,0.08)] hover:border-purple-200 transition-all duration-300 flex flex-col sm:flex-row gap-4 relative overflow-hidden group"
+                >
+                  {/* Property Image & Location Badge */}
+                  <div className="relative w-full sm:w-32 h-36 sm:h-32 rounded-[18px] overflow-hidden shrink-0 bg-slate-100 border border-slate-100">
+                    <img 
+                      src={d.image || (d.galleryImages && d.galleryImages[0]) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500'} 
+                      alt={d.name} 
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                      <span className="bg-black/60 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                        {d.city || 'Indore'}
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="px-4 pb-4 flex justify-end">
-                    <button 
-                      onClick={() => navigate(`/member/dharmashala/${d._id}`)}
-                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl shadow-sm transition-all active:scale-95"
-                    >
-                      Book Now
-                    </button>
+
+                  {/* Content Details */}
+                  <div className="flex-1 flex flex-col justify-between min-w-0">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-extrabold text-slate-800 text-[15px] truncate tracking-tight">{d.name}</h3>
+                        <span className="shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          {d.status || 'Active'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mt-1 text-slate-500">
+                        <MapPin size={12} className="shrink-0 text-purple-600" />
+                        <span className="text-[11px] font-medium text-slate-600 truncate">{d.address || d.location || 'Samaj Premises'}</span>
+                      </div>
+
+                      {/* Property Metadata Chips — Clean Flex, NO Overlap */}
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        <div className="bg-purple-50 border border-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <span className="text-purple-400 font-medium">Ownership:</span>
+                          <span className="truncate max-w-[120px]">{d.community || 'Samaj Trust'}</span>
+                        </div>
+                        {d.ac && (
+                          <div className="bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                            AC Rooms
+                          </div>
+                        )}
+                        {d.food && (
+                          <div className="bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                            Food Service
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer CTA & Pricing */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                      <div className="flex flex-col">
+                        <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">Rate / Day</span>
+                        <span className="text-[13.5px] font-black text-purple-700 tracking-tight">
+                          ₹{d.pricePerNight || d.ratePerDay || '500'}<span className="text-[9.5px] font-bold text-slate-400">/day</span>
+                        </span>
+                      </div>
+
+                      <button 
+                        onClick={() => navigate(`/member/dharmashala/${d._id}`)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11.5px] font-bold rounded-xl shadow-sm shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-1"
+                      >
+                        Booking <ArrowRight size={13} strokeWidth={2.5} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

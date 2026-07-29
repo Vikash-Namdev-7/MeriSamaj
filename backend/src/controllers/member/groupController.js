@@ -28,6 +28,7 @@ const {
   notifyMemberPromoted,
   notifyMemberDemoted
 } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 
 // ─── Helper: Verify group community access ─────────────────────────────────────
 const canAccessGroup = (group, req) => {
@@ -37,7 +38,7 @@ const canAccessGroup = (group, req) => {
 
   // Admin roles retain global access
   const userRole = (req.user?.role || '').toLowerCase();
-  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(userRole)) {
+  if (['admin', 'super_admin', 'master_admin', 'master'].includes(userRole)) {
     return true;
   }
 
@@ -620,8 +621,19 @@ exports.joinGroup = async (req, res) => {
 
       // Optionally notify admins
       const adminIds = group.members.filter(m => ['admin', 'head'].includes(m.role)).map(m => m.userId);
-      adminIds.forEach(adminId => {
-        notifyGroupJoinRequest(adminId, req.user.name, group._id, group.name);
+      adminIds.forEach(async adminId => {
+        const notifReq = await notifyGroupJoinRequest(adminId, req.user.name, group._id, group.name);
+        if (notifReq) {
+          sendPushNotification({
+            userId: adminId,
+            notificationId: notifReq._id,
+            type: 'group_join_request',
+            title: 'Group Join Request 👥',
+            message: `${req.user.name} requested to join "${group.name}".`,
+            icon: '👥',
+            actionUrl: '/member/chat/groups'
+          }).catch(err => console.error('[GroupJoinRequestPushError]', err.message));
+        }
       });
 
       return res.json({ status: 'success', message: 'Join request sent successfully. Pending approval.', data: { status: 'pending' } });

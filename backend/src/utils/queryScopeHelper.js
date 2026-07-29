@@ -20,11 +20,12 @@ const mongoose = require('mongoose');
  *   @param {boolean} options.forceCommunityId - Force community restriction even if role is admin
  * @returns {Object} Updated Mongoose query filter object
  */
+const adminRoles = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
+
 const applyScopeFilter = (req, baseFilter = {}, options = {}) => {
   const filter = { ...baseFilter };
   const user = req?.user;
   const userRole = (user?.role || '').toLowerCase();
-  const adminRoles = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
   const isAdmin = adminRoles.includes(userRole);
 
   const cityField = options.cityField || 'city';
@@ -118,5 +119,6 @@ const inheritTenantPayload = (req, payload = {}, options = {}) => {
 
 module.exports = {
   applyScopeFilter,
-  inheritTenantPayload
+  inheritTenantPayload,
+  adminRoles
 };

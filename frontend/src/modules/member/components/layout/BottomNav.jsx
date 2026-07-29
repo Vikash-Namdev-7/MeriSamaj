@@ -1,11 +1,9 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Users, Heart, MessageCircle, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-const tabPaths = ['/member/home', '/member/social', '/member/matrimonial', '/member/chat', '/member/profile'];
-
-// Sub-pages where bottom nav should be hidden
+// Sub-pages where bottom nav should be hidden (Matrimonial has its own dedicated navigation)
 const hiddenPaths = ['/member/events', '/member/groups', '/member/notifications', '/member/splash', '/member/login', '/member/setup-profile', '/member/select-community', '/member/verify-otp', '/member/chat/room', '/member/chat/call', '/member/matrimonial'];
 
 export const BottomNav = ({ isVisible = true }) => {
@@ -13,122 +11,91 @@ export const BottomNav = ({ isVisible = true }) => {
   
   // Hide on onboarding and sub-pages
   const shouldHide = hiddenPaths.some(p => location.pathname.startsWith(p));
-  // Also hide if we're on a detail page (more than 2 segments, e.g. /member/social/123)
   const pathSegments = location.pathname.split('/').filter(Boolean);
   if (shouldHide || pathSegments.length > 2) {
     return null;
   }
 
   const navItems = [
-    { name: 'Home', path: '/member/home', icon: Home },
-    { name: 'Social', path: '/member/social', icon: Users },
-    { name: 'Matrimony', path: '/member/matrimonial', icon: Heart },
-    { name: 'Chat', path: '/member/chat', icon: MessageCircle },
-    { name: 'Profile', path: '/member/profile', icon: User },
+    { name: 'Home', path: '/member/home', icon: Home, activeColor: '#7C3AED' },
+    { name: 'Social', path: '/member/social', icon: Users, activeColor: '#2563EB' },
+    { name: 'Matrimony', path: '/member/matrimonial', icon: Heart, activeColor: '#E11D48' },
+    { name: 'Chat', path: '/member/chat', icon: MessageCircle, activeColor: '#059669' },
+    { name: 'Profile', path: '/member/profile', icon: User, activeColor: '#D97706' },
   ];
-
-  const getActiveColor = (itemName) => {
-    if (itemName === 'Social') return { hex: '#3B82F6', shadow: 'rgba(59,130,246,0.35)', bg: 'rgba(59,130,246,0.1)' };
-    if (itemName === 'Matrimony') return { hex: '#F43F5E', shadow: 'rgba(244,63,94,0.35)', bg: 'rgba(244,63,94,0.1)' };
-    return { hex: '#7C3AED', shadow: 'rgba(124,58,237,0.35)', bg: 'rgba(124,58,237,0.1)' };
-  };
 
   return (
     <div 
-      className={`responsive-fixed-bottom z-40 md:hidden transition-all duration-300 ease-in-out ${
+      className={`responsive-fixed-bottom z-50 md:hidden transition-all duration-300 ease-in-out ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
       }`}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)' }}
     >
-      {/* Premium glass nav container */}
-      <div className="mx-3 mb-2.5 rounded-[26px] overflow-hidden"
+      {/* ── Sleek Production Glassmorphism Floating Capsule (High Transparency) ── */}
+      <div 
+        className="mx-4 rounded-full relative overflow-hidden transition-all duration-300"
         style={{
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(30px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.65)',
-          boxShadow: '0 -2px 24px rgba(124,58,237,0.07), 0 4px 24px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)',
+          background: 'rgba(255, 255, 255, 0.42)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.55)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)',
         }}
       >
-        {/* Thin gradient top line */}
-        <div className="h-[1.5px] w-full" 
-          style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(124,58,237,0.15) 50%, transparent 90%)' }} 
-        />
-        
-        <div className="flex items-center justify-around h-[64px] px-1">
+        <div className="flex items-center justify-around h-[58px] px-2 relative">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            const colors = getActiveColor(item.name);
+            const Icon = item.icon;
+
             return (
               <NavLink 
                 key={item.name}
                 to={item.path}
                 replace
-                className="flex flex-col items-center justify-center w-full h-full relative group"
+                className="flex flex-col items-center justify-center flex-1 h-full relative cursor-pointer select-none"
               >
-                {/* Active pill background with spring animation */}
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div 
-                      layoutId="nav-pill"
-                      className="absolute inset-x-1.5 top-2 bottom-2 rounded-[16px]"
-                      style={{ backgroundColor: colors.bg }}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </AnimatePresence>
-                
-                {/* Icon */}
+                {/* Sleek Top Active Accent Line */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="active-top-bar"
+                    className="absolute top-0 w-7 h-[3px] rounded-b-full pointer-events-none"
+                    style={{ 
+                      backgroundColor: item.activeColor,
+                      boxShadow: `0 2px 8px ${item.activeColor}60`
+                    }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+
+                {/* Animated Icon */}
                 <motion.div 
-                  className="relative z-10"
+                  whileTap={{ scale: 0.88 }}
                   animate={{ 
                     y: isActive ? -1 : 0,
-                    scale: isActive ? 1.1 : 1,
+                    scale: isActive ? 1.08 : 1,
                   }}
                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className="flex items-center justify-center"
                 >
-                  {/* Glow behind active icon */}
-                  {isActive && (
-                    <div 
-                      className="absolute inset-0 rounded-full blur-md scale-150 opacity-30 pointer-events-none"
-                      style={{ background: colors.hex }}
-                    />
-                  )}
-                  <item.icon 
-                    size={isActive ? 22 : 21} 
-                    strokeWidth={isActive ? 2.5 : 1.8}
-                    style={{ color: isActive ? colors.hex : '#A0AEC0' }}
+                  <Icon 
+                    size={20} 
+                    strokeWidth={isActive ? 2.4 : 1.75}
+                    style={{ color: isActive ? item.activeColor : '#64748B' }}
                     fill={isActive && (item.icon === Heart || item.icon === Home) ? 'currentColor' : 'none'}
-                    className="transition-colors duration-200 relative z-10"
+                    className="transition-colors duration-200"
                   />
                 </motion.div>
 
                 {/* Label */}
-                <motion.span 
-                  className="text-[9.5px] mt-0.5 relative z-10 font-semibold"
-                  animate={{ color: isActive ? colors.hex : '#B0BAC9' }}
-                  transition={{ duration: 0.2 }}
-                  style={{ fontWeight: isActive ? 700 : 500 }}
+                <span 
+                  className="text-[9.5px] mt-0.5 tracking-tight transition-colors duration-200"
+                  style={{ 
+                    color: isActive ? item.activeColor : '#64748B',
+                    fontWeight: isActive ? 700 : 500
+                  }}
                 >
                   {item.name}
-                </motion.span>
-                
-                {/* Active top indicator dot */}
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div 
-                      className="absolute -top-0 w-6 h-[3px] rounded-full"
-                      style={{ background: `linear-gradient(90deg, transparent, ${colors.hex}, transparent)` }}
-                      initial={{ opacity: 0, scaleX: 0 }}
-                      animate={{ opacity: 1, scaleX: 1 }}
-                      exit={{ opacity: 0, scaleX: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                </AnimatePresence>
+                </span>
               </NavLink>
             );
           })}
@@ -137,3 +104,5 @@ export const BottomNav = ({ isVisible = true }) => {
     </div>
   );
 };
+
+export default BottomNav;

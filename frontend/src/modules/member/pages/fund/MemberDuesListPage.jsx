@@ -84,46 +84,46 @@ export default function MemberDuesListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-10 select-none">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-100 px-4 h-14 flex items-center justify-between sticky top-0 z-30 shadow-sm shrink-0">
+    <div className="min-h-screen bg-slate-50/70 flex flex-col font-sans pb-16 select-none">
+      {/* Header — Glassmorphism */}
+      <div className="bg-white/85 backdrop-blur-xl border-b border-purple-100/30 px-4 h-14 flex items-center justify-between sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.03)] shrink-0">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate(-1)} 
-            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors press-scale"
           >
-            <ChevronLeft size={22} />
+            <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
-          <div className="flex flex-col">
-            <h1 className="text-[16px] font-black text-slate-800 leading-tight">Members</h1>
-            <p className="text-[10px] text-slate-500 font-bold leading-none uppercase tracking-wider">{fund.name}</p>
+          <div className="flex flex-col text-left">
+            <h1 className="text-[16px] font-extrabold text-slate-800 leading-tight tracking-tight">Member Dues & Status</h1>
+            <p className="text-[10px] text-purple-600 font-extrabold leading-none uppercase tracking-wider">{fund.name}</p>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {/* Search Bar & Filters */}
-        <div className="p-4 bg-white border-b border-slate-100 sticky top-0 z-20 space-y-3">
+        <div className="p-4 bg-white/80 backdrop-blur-md border-b border-purple-100/20 sticky top-0 z-20 space-y-3 shadow-xs">
           <div className="relative">
             <input 
               type="text" 
-              placeholder="Search member..." 
+              placeholder="Search member by name or phone..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-[14px] font-bold outline-none focus:border-indigo-400 transition-colors text-slate-800"
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-[13.5px] font-bold outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/10 transition-all text-slate-800 placeholder-slate-400"
             />
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500" />
           </div>
           
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             {['All', 'Paid', 'Partial', 'Pending'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-bold whitespace-nowrap transition-colors border ${
+                className={`px-4 py-1.5 rounded-xl text-[11.5px] font-bold whitespace-nowrap transition-all press-scale border ${
                   filter === f 
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-600 shadow-md shadow-purple-500/20' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-purple-50/50 hover:border-purple-200'
                 }`}
               >
                 {f} {f === 'Paid' ? `(${paidMembers})` : f === 'Partial' ? `(${partialMembers})` : f === 'Pending' ? `(${pendingMembers})` : `(${totalMembers})`}
@@ -132,16 +132,16 @@ export default function MemberDuesListPage() {
           </div>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-4xl mx-auto w-full">
           {/* Banner Summary */}
-          <div className="flex bg-white rounded-[24px] shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden text-slate-800 divide-x divide-slate-100">
-            <div className="flex-1 py-4 px-3 text-center bg-emerald-50/30">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Collected</p>
-              <p className="text-[16px] font-black text-emerald-600">₹{totalCollectedAmount.toLocaleString('en-IN')}</p>
+          <div className="flex bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80 overflow-hidden text-slate-800 divide-x divide-slate-100">
+            <div className="flex-1 py-3.5 px-4 text-center bg-emerald-50/40">
+              <p className="text-[9.5px] font-extrabold text-emerald-600 uppercase tracking-wider mb-1">Total Collected</p>
+              <p className="text-[17px] font-black text-emerald-700 leading-none">₹{totalCollectedAmount.toLocaleString('en-IN')}</p>
             </div>
-            <div className="flex-1 py-4 px-3 text-center bg-rose-50/30">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pending</p>
-              <p className="text-[16px] font-black text-rose-600">₹{totalDueAmount.toLocaleString('en-IN')}</p>
+            <div className="flex-1 py-3.5 px-4 text-center bg-rose-50/40">
+              <p className="text-[9.5px] font-extrabold text-rose-500 uppercase tracking-wider mb-1">Total Pending</p>
+              <p className="text-[17px] font-black text-rose-600 leading-none">₹{totalDueAmount.toLocaleString('en-IN')}</p>
             </div>
           </div>
 
@@ -151,56 +151,53 @@ export default function MemberDuesListPage() {
               <div 
                 key={member.memberId}
                 onClick={() => navigate(`/member/fund/${fundId}/member/${member.memberId}`)}
-                className="bg-white rounded-[20px] p-4 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden"
+                className="bg-white rounded-[24px] p-4.5 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_26px_rgba(124,58,237,0.07)] hover:border-purple-200 transition-all duration-300 cursor-pointer relative overflow-hidden group"
               >
-                <div className="flex items-center gap-3 mb-4 relative z-10">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 font-bold text-[14px] flex items-center justify-center border border-slate-200 shrink-0">
-                    {member.profilePic || member.name?.substring(0, 2).toUpperCase()}
+                <div className="flex items-center gap-3 mb-3.5 relative z-10">
+                  <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 text-slate-700 font-black text-[13px] flex items-center justify-center border border-slate-200/80 shrink-0 shadow-2xs">
+                    {member.avatar || member.profilePic ? (
+                      <img src={member.avatar || member.profilePic} alt={member.name} className="w-full h-full object-cover" />
+                    ) : (
+                      member.name?.substring(0, 2).toUpperCase() || 'M'
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-[15px] font-black text-slate-800 leading-tight mb-0.5">{member.name}</h3>
-                    <p className="text-[11px] font-medium text-slate-500">{member.phone}</p>
+                  <div className="flex-1 text-left min-w-0">
+                    <h3 className="text-[15px] font-extrabold text-slate-800 leading-tight mb-0.5 truncate group-hover:text-purple-700 transition-colors tracking-tight">{member.name}</h3>
+                    <p className="text-[11px] font-semibold text-slate-400 truncate">{member.phone}</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border flex items-center ${getStatusColor(member.status)}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center shrink-0 ${getStatusColor(member.status)}`}>
                     {getStatusIcon(member.status)}
                     {member.status}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-50 relative z-10">
+                <div className="grid grid-cols-3 gap-2 py-3 px-3 bg-slate-50/70 border border-slate-100 rounded-2xl relative z-10 text-left">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Assigned</p>
-                    <p className="text-[13px] font-black text-slate-700">₹{member.assignedAmount}</p>
+                    <p className="text-[9.5px] font-extrabold text-slate-400 mb-0.5 uppercase tracking-wider">Assigned</p>
+                    <p className="text-[13px] font-black text-slate-800">₹{member.assignedAmount}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Paid</p>
+                    <p className="text-[9.5px] font-extrabold text-slate-400 mb-0.5 uppercase tracking-wider">Paid</p>
                     <p className="text-[13px] font-black text-emerald-600">₹{member.paidAmount}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Balance</p>
-                    <p className={`text-[13px] font-black ${member.due > 0 ? 'text-rose-600' : 'text-slate-700'}`}>₹{member.due}</p>
+                    <p className="text-[9.5px] font-extrabold text-slate-400 mb-0.5 uppercase tracking-wider">Balance</p>
+                    <p className={`text-[13px] font-black ${member.due > 0 ? 'text-rose-600' : 'text-slate-800'}`}>₹{member.due}</p>
                   </div>
                 </div>
 
                 {member.status !== 'Pending' && member.lastPaymentDate && (
-                  <p className="text-[10px] font-semibold text-slate-400 mt-3 relative z-10 text-right">
+                  <p className="text-[10px] font-bold text-slate-400 mt-2.5 relative z-10 text-right">
                     Last Payment: {member.lastPaymentDate}
                   </p>
-                )}
-                
-                {/* Background Decor */}
-                {member.status === 'Paid' && (
-                  <div className="absolute -right-4 -bottom-4 text-emerald-50 opacity-50 z-0">
-                    <CheckCircle2 size={80} />
-                  </div>
                 )}
               </div>
             ))}
 
             {filtered.length === 0 && (
-              <div className="text-center py-10">
-                <AlertCircle size={32} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-[14px] font-bold text-slate-500">No members found matching your search</p>
+              <div className="bg-white rounded-[28px] border border-slate-200/80 p-8 text-center shadow-xs">
+                <AlertCircle size={32} className="mx-auto text-purple-400 mb-2" />
+                <p className="text-[14px] font-extrabold text-slate-700">No members found matching your search</p>
               </div>
             )}
           </div>

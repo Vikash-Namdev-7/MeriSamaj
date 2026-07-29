@@ -89,15 +89,36 @@ exports.deleteNotification = async (req, res) => {
   }
 };
 
-// ─── Clear All ────────────────────────────────────────────────────────────────
-exports.clearAll = async (req, res) => {
-  try {
-    const { module } = req.body;
-    const query = { userId: req.user._id };
-    if (module) query.module = module;
+const { registerPushToken, unregisterPushToken } = require('../services/pushNotificationService');
 
-    await UserNotification.deleteMany(query);
-    res.json({ status: 'success', message: 'All notifications cleared.' });
+// ─── Register Push Token ──────────────────────────────────────────────────────
+exports.registerPushToken = async (req, res) => {
+  try {
+    const { fcmToken, deviceType = 'web' } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ status: 'error', message: 'fcmToken is required.' });
+    }
+
+    const tokenDoc = await registerPushToken({
+      userId: req.user._id,
+      fcmToken,
+      deviceType
+    });
+
+    res.json({ status: 'success', message: 'Push token registered successfully.', data: tokenDoc });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};
+
+// ─── Unregister Push Token ────────────────────────────────────────────────────
+exports.unregisterPushToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    if (fcmToken) {
+      await unregisterPushToken({ userId: req.user._id, fcmToken });
+    }
+    res.json({ status: 'success', message: 'Push token unregistered successfully.' });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }

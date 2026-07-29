@@ -1,15 +1,14 @@
-/**
- * notificationService.js
- * Centralized service for creating UserNotification documents.
- * Used by all modules: matrimonial, events, donations, voting, chat, groups, announcements.
- */
+const mongoose         = require('mongoose');
+const User             = require('../models/User');
 const UserNotification = require('../models/UserNotification');
-const { getIO } = require('./socketRegistry');
+const { getIO }        = require('./socketRegistry');
 
 /**
- * @param {Object} params
+ * Single Recipient Notification Creator
+ * @param {Object}          params
  * @param {string|ObjectId} params.userId       - Recipient's user ID
- * @param {string}          params.module       - Module name (matrimonial, events…)
+ * @param {string|ObjectId} [params.communityId]- Optional community ID scope
+ * @param {string}          params.module       - Module name (census, matrimonial, events…)
  * @param {string}          params.type         - Notification type key
  * @param {string}          params.title        - Notification title
  * @param {string}          params.message      - Notification body
@@ -23,6 +22,7 @@ const createNotification = async (params) => {
   try {
     const notification = await UserNotification.create({
       userId:        params.userId,
+      communityId:   params.communityId   || null,
       module:        params.module,
       type:          params.type,
       title:         params.title,
@@ -34,12 +34,183 @@ const createNotification = async (params) => {
       referenceType: params.referenceType || null,
       isRead:        false
     });
+
     const io = getIO();
-    if (io) { io.to(`user:${params.userId}`).emit('notification:new', notification); }
+    if (io) {
+      // Emit to recipient's user room
+      io.to(`user:${params.userId}`).emit('notification:new', notification);
+    }
     return notification;
   } catch (err) {
-    // Non-critical — log but don't crash the main flow
     console.error('[NotificationService] Failed to create notification:', err.message);
+  }
+};
+
+/**
+ * Community-Wide Broadcast Notification Creator (Fan-Out on Write)
+ * Inserts in background batches of 500 without blocking HTTP lifecycle.
+ * Emits live socket alert to `community:${communityId}` room.
+ *
+ * @param {Object}          params
+ * @param {string|ObjectId} params.communityId  - Target community ID
+ * @param {string}          params.module       - Module name
+ * @param {string}          params.type         - Notification type key
+ * @param {string}          params.title        - Notification title
+ * @param {string}          params.message      - Notification body
+ * @param {string}          [params.icon]       - Emoji or icon string
+ * @param {string}          [params.priority]   - low | normal | high | urgent
+ * @param {string}          [params.actionUrl]  - Deep link URL
+ * @param {ObjectId}        [params.referenceId]
+ * @param {string}          [params.referenceType]
+ */
+const createBroadcastNotification = async (params) => {
+  try {
+    if (!params.communityId) {
+      console.warn('[NotificationService] Broadcast missing communityId.');
+      return;
+    }
+
+    // 1. Emit instant live socket event to all online community members
+    const io = getIO();
+    if (io) {
+      io.to(`community:${params.communityId}`).emit('notification:new', {
+        _id: new mongoose.Types.ObjectId(),
+        communityId: params.communityId,
+        module: params.module,
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        icon: params.icon || '📢',
+        priority: params.priority || 'high',
+        actionUrl: params.actionUrl || null,
+        referenceId: params.referenceId || null,
+        referenceType: params.referenceType || null,
+        isRead: false,
+        createdAt: new Date()
+      });
+    }
+
+    // 2. Fetch all active members of the community
+    const users = await User.find({
+      communityId: params.communityId,
+      accountStatus: 'active',
+      isBlocked: { $ne: true }
+    }).select('_id').lean();
+
+    if (!users || users.length === 0) return;
+
+    // 3. Prepare documents for bulk fan-out
+    const docs = users.map(u => ({
+      userId:        u._id,
+      communityId:   params.communityId,
+      module:        params.module,
+      type:          params.type,
+      title:         params.title,
+      message:       params.message,
+      icon:          params.icon          || '📢',
+      priority:      params.priority      || 'high',
+      actionUrl:     params.actionUrl     || null,
+      referenceId:   params.referenceId   || null,
+      referenceType: params.referenceType || null,
+      isRead:        false
+    }));
+
+    // 4. Batch insert in background (500 per batch)
+    (async () => {
+      try {
+        const batchSize = 500;
+        for (let i = 0; i < docs.length; i += batchSize) {
+          const batch = docs.slice(i, i + batchSize);
+          await UserNotification.insertMany(batch, { ordered: false });
+        }
+      } catch (batchErr) {
+        console.error('[NotificationService] Broadcast insertMany error:', batchErr.message);
+      }
+    })();
+  } catch (err) {
+    console.error('[NotificationService] Failed to dispatch broadcast notification:', err.message);
+  }
+};
+
+/**
+ * Aggregated / Debounced Notification Creator
+ * Emits `notification:update` if an unread notification exists for target reference entity,
+ * or `notification:new` if creating a fresh notification doc.
+ *
+ * @param {Object}          params
+ * @param {string|ObjectId} params.userId       - Recipient ID
+ * @param {string}          params.module       - Module name
+ * @param {string}          params.type         - Notification type key
+ * @param {string}          params.title        - Notification title
+ * @param {string}          params.message      - Notification body
+ * @param {string}          [params.icon]       - Emoji string
+ * @param {string}          [params.priority]   - Priority level
+ * @param {string}          [params.actionUrl]  - Deep link URL
+ * @param {ObjectId}        [params.referenceId]- Target entity ID (e.g. post, obituary, profile)
+ * @param {string}          [params.referenceType]
+ * @param {string}          [params.actorName]  - Name of the user performing the action
+ * @param {ObjectId}        [params.actorId]    - User ID performing action
+ */
+const createAggregatedNotification = async (params) => {
+  try {
+    const query = {
+      userId: params.userId,
+      type: params.type,
+      isRead: false
+    };
+
+    if (params.referenceId) query.referenceId = params.referenceId;
+
+    let existing = await UserNotification.findOne(query);
+
+    if (existing) {
+      // Don't aggregate if the same actor performs action again within short window
+      if (params.actorId && existing.lastActorId?.toString() === params.actorId.toString()) {
+        existing.updatedAt = new Date();
+        await existing.save();
+        return existing;
+      }
+
+      existing.aggregateCount += 1;
+      existing.lastActorId = params.actorId || null;
+
+      // Construct aggregate text dynamically based on notification type
+      if (params.type === 'matrimonial_profile_viewed') {
+        existing.title   = 'Profile Views Update 👀';
+        existing.message = `${existing.aggregateCount} people viewed your matrimonial profile today.`;
+      } else if (params.type === 'post_comment') {
+        existing.title   = 'New Comments on your Post 💬';
+        existing.message = params.actorName
+          ? `${params.actorName} and ${existing.aggregateCount - 1} others commented on your post.`
+          : `${existing.aggregateCount} new comments on your post.`;
+      } else if (params.type === 'condolence_received') {
+        existing.title   = 'New Condolence Tributes 🕊️';
+        existing.message = params.actorName
+          ? `${params.actorName} and ${existing.aggregateCount - 1} others posted condolence messages.`
+          : `${existing.aggregateCount} new condolence messages received.`;
+      } else {
+        existing.message = `${params.message} (${existing.aggregateCount} updates)`;
+      }
+
+      existing.updatedAt = new Date();
+      await existing.save();
+
+      // Emit `notification:update` event so frontend dropdown updates live
+      const io = getIO();
+      if (io) {
+        io.to(`user:${params.userId}`).emit('notification:update', existing);
+      }
+      return existing;
+    } else {
+      // No existing unread notification -> Create fresh notification
+      return createNotification({
+        ...params,
+        aggregateCount: 1,
+        actorId: params.actorId
+      });
+    }
+  } catch (err) {
+    console.error('[NotificationService] Failed to create aggregated notification:', err.message);
   }
 };
 
@@ -744,6 +915,18 @@ const notifyHeadAssigned = (userId, communityName) =>
     actionUrl:'/head/dashboard'
   });
 
+const notifySecurityAlert = (userId, alertMessage) =>
+  createNotification({
+    userId,
+    module:   'account',
+    type:     'account_security_alert',
+    title:    'Security Alert 🛡️',
+    message:  alertMessage || 'A security event occurred on your account (e.g. password changed).',
+    icon:     '🛡️',
+    priority: 'urgent',
+    actionUrl:'/member/profile'
+  });
+
 // ─── Matrimonial Extra Notification Helpers ───────────────────────────────────
 
 const notifyProfileSubmittedToAdmin = (adminIds, memberName, profileId) => {
@@ -1004,6 +1187,8 @@ const notifyProfileClosed = (userId) =>
 module.exports = {
 
   createNotification,
+  createBroadcastNotification,
+  createAggregatedNotification,
   notifyInterestReceived,
   notifyInterestAccepted,
   notifyInterestRejected,
@@ -1052,6 +1237,7 @@ module.exports = {
   notifyUserBlocked,
   notifyUserActivated,
   notifyHeadAssigned,
+  notifySecurityAlert,
   // ─── Matrimonial Extras ───────────────────────────────────────────────────────
   notifyProfileSubmittedToAdmin,
   notifyProfileSuspended,

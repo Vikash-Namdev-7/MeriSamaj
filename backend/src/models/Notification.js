@@ -22,7 +22,7 @@ const notificationSchema = new mongoose.Schema(
     // Scalable polymorphic entity references
     entityType: {
       type: String,
-      enum: ['Post', 'Story', 'Comment'],
+      enum: ['Post', 'Story', 'Comment', 'User'],
       required: true,
     },
     entityId: {

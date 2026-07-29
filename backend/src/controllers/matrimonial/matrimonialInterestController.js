@@ -12,6 +12,7 @@ const {
   notifyInterestAccepted,
   notifyInterestRejected
 } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 
 // ─── Send Interest ────────────────────────────────────────────────────────────
 exports.sendInterest = async (req, res) => {
@@ -105,7 +106,18 @@ exports.sendInterest = async (req, res) => {
     await MatrimonialProfile.findOneAndUpdate({ userId: senderId }, { lastActiveAt: new Date() });
 
     // Notify receiver
-    notifyInterestReceived(receiverId, req.user.name, interest._id);
+    const notifReceived = await notifyInterestReceived(receiverId, req.user.name, interest._id);
+    if (notifReceived) {
+      sendPushNotification({
+        userId: receiverId,
+        notificationId: notifReceived._id,
+        type: 'matrimonial_interest_received',
+        title: 'New Interest Received! 💌',
+        message: `${req.user.name} has sent you an interest request.`,
+        icon: '💌',
+        actionUrl: '/member/matrimonial/interests'
+      }).catch(err => console.error('[PushError]', err.message));
+    }
 
     res.status(201).json({ status: 'success', message: 'Interest sent successfully.', data: { interest } });
   } catch (err) {
@@ -152,7 +164,18 @@ exports.acceptInterest = async (req, res) => {
     );
 
     // Notify sender
-    notifyInterestAccepted(interest.senderId, req.user.name, interest._id);
+    const notifAccepted = await notifyInterestAccepted(interest.senderId, req.user.name, interest._id);
+    if (notifAccepted) {
+      sendPushNotification({
+        userId: interest.senderId,
+        notificationId: notifAccepted._id,
+        type: 'matrimonial_interest_accepted',
+        title: 'Interest Accepted! 🎉',
+        message: `${req.user.name} has accepted your interest request. You can now chat!`,
+        icon: '🎉',
+        actionUrl: '/member/matrimonial/interests'
+      }).catch(err => console.error('[PushError]', err.message));
+    }
 
     res.json({
       status: 'success',

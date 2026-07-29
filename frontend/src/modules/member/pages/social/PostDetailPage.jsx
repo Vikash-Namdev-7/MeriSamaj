@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Heart, Share2, MoreHorizontal, Send, ArrowLeft, Check, Camera, Smile, ThumbsUp, Calendar, Phone, Eye, MessageCircle, ChevronDown, Clock, X, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../components/common/Avatar';
 import { useData } from '../../context/DataProvider';
+import socialService from '../../../../core/api/socialService';
 
 const categoryColors = {
   Notice: 'text-emerald-700 bg-emerald-500 border-emerald-500',
@@ -527,9 +528,12 @@ const PostDetailPage = () => {
                       <p className="text-[13px] text-slate-655 font-medium leading-relaxed">{comment.text}</p>
                     </div>
                     
-                    {/* Like / Reply Action buttons under comment */}
+                    {/* Like / Reply / Edit / Delete Action buttons under comment */}
                     <div className="flex items-center gap-4.5 mt-1.5 px-1.5 text-[11px] font-extrabold text-slate-400">
                       <span>{comment.time || 'Just now'}</span>
+                      {comment.isEdited && (
+                        <span className="text-[10px] text-slate-400 font-bold italic">(edited)</span>
+                      )}
                       <button 
                         onClick={() => toggleCommentLike(post.id, commentKey)}
                         className={`font-extrabold transition-colors flex items-center gap-1 cursor-pointer ${comment.isLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
@@ -543,6 +547,46 @@ const PostDetailPage = () => {
                       >
                         Reply
                       </button>
+
+                      {/* Comment Edit/Delete Actions */}
+                      {((comment.userId?._id || comment.userId) === currentUser?._id || author.name === currentUser?.name) && (
+                        <button
+                          onClick={async () => {
+                            const newText = prompt('Edit comment:', comment.text);
+                            if (newText && newText.trim() && comment._id) {
+                              try {
+                                await socialService.updateComment(comment._id, { text: newText.trim() });
+                                setRawComments(prev => prev.map(c => c._id === comment._id ? { ...c, text: newText.trim(), isEdited: true } : c));
+                              } catch (err) {
+                                console.error('Failed to update comment:', err);
+                              }
+                            }
+                          }}
+                          className="hover:text-purple-600 cursor-pointer transition-colors"
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {(((comment.userId?._id || comment.userId) === currentUser?._id || author.name === currentUser?.name || (post.userId?._id || post.authorId) === currentUser?._id || ['admin','super_admin','master_admin','head'].includes(currentUser?.role))) && (
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Delete this comment?') && comment._id) {
+                              try {
+                                const res = await socialService.deleteComment(comment._id);
+                                const decCount = res.deletedCount || 1;
+                                setRawComments(prev => prev.filter(c => c._id !== comment._id));
+                                setPost(prev => prev ? { ...prev, commentsCount: Math.max(0, (prev.commentsCount || 0) - decCount) } : prev);
+                              } catch (err) {
+                                console.error('Failed to delete comment:', err);
+                              }
+                            }
+                          }}
+                          className="hover:text-rose-600 cursor-pointer transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
 
                     {/* Comment Thread Replies */}

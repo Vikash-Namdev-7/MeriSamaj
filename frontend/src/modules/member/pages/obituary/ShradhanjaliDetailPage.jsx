@@ -115,18 +115,18 @@ const ShradhanjaliDetailPage = () => {
         <div className="flex items-center justify-between h-14 px-4">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full press-scale"
-            style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: '#D4AF37' }}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full press-scale"
+            style={{ background: 'rgba(20,12,0,0.65)', backdropFilter: 'blur(14px)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}
           >
             <ArrowLeft size={18} />
-            <span className="text-[13px] font-bold">Tribute</span>
+            <span className="text-[12.5px] font-extrabold">Tribute</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => saveShradhanjali && saveShradhanjali(id)}
               className="w-9 h-9 rounded-full flex items-center justify-center press-scale"
-              style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: obituary.isSaved ? '#D4AF37' : 'rgba(212,175,55,0.6)' }}
+              style={{ background: 'rgba(20,12,0,0.65)', backdropFilter: 'blur(14px)', color: obituary.isSaved ? '#D4AF37' : 'rgba(212,175,55,0.6)', border: '1px solid rgba(212,175,55,0.3)' }}
             >
               {obituary.isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
             </button>
@@ -135,15 +135,15 @@ const ShradhanjaliDetailPage = () => {
                 <button
                   onClick={() => navigate(`/member/shradhanjali/edit/${id}`)}
                   className="w-9 h-9 rounded-full flex items-center justify-center press-scale"
-                  style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)', color: '#D4AF37' }}
+                  style={{ background: 'rgba(20,12,0,0.65)', backdropFilter: 'blur(14px)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}
                   title="Edit"
                 >
                   <Edit size={16} />
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-9 h-9 rounded-full flex items-center justify-center press-scale text-red-400"
-                  style={{ background: 'rgba(20,12,0,0.6)', backdropFilter: 'blur(12px)' }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center press-scale text-rose-400"
+                  style={{ background: 'rgba(20,12,0,0.65)', backdropFilter: 'blur(14px)', border: '1px solid rgba(244,63,94,0.3)' }}
                   title="Delete"
                 >
                   <Trash2 size={16} />
@@ -156,7 +156,7 @@ const ShradhanjaliDetailPage = () => {
       </div>
 
       {/* ── Scrollable Content ── */}
-      <div className="pb-28 max-w-lg mx-auto">
+      <div className="pb-28 max-w-lg mx-auto select-none">
 
         {/* Hero Image */}
         <TributeHeroImage
@@ -173,12 +173,11 @@ const ShradhanjaliDetailPage = () => {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="card-elevated text-center px-5 py-6"
+            className="bg-white rounded-[28px] border border-amber-200/70 shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-center p-6 text-left"
           >
             {/* Name */}
             <h1
-              className="text-[22px] font-bold leading-tight mb-1"
-              style={{ color: '#1A1A1A', fontFamily: 'Outfit, serif' }}
+              className="text-[22px] font-extrabold leading-tight mb-1 text-center text-slate-900 tracking-tight"
             >
               {obituary.deceasedName}
             </h1>
@@ -186,36 +185,35 @@ const ShradhanjaliDetailPage = () => {
             {/* Age divider */}
             <div className="flex items-center justify-center gap-2 mb-3">
               <div className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(to right, transparent, rgba(212,175,55,0.5))' }} />
-              <span className="text-[13px] font-semibold text-gray-500">Age: {obituary.age} Years</span>
+              <span className="text-[12.5px] font-extrabold text-amber-900/70">Age: {obituary.age} Years</span>
               <div className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(to left, transparent, rgba(212,175,55,0.5))' }} />
             </div>
 
             {/* Quote */}
             <p
-              className="text-[13px] leading-relaxed italic text-gray-600 mb-4 px-2"
-              style={{ fontFamily: 'Outfit, serif' }}
+              className="text-[13px] leading-relaxed italic text-slate-600 mb-4 px-2 text-center font-medium"
             >
               "{obituary.message}"
             </p>
 
             {/* Birth / Death dates */}
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex items-center justify-center gap-6 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100/70">
               <div className="text-center">
                 <div className="flex items-center gap-1.5 justify-center">
                   <Flower size={13} style={{ color: '#7C5C2E' }} />
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Birth</span>
+                  <span className="text-[10px] font-extrabold text-amber-900/60 uppercase tracking-wider">Birth</span>
                 </div>
-                <p className="text-[13px] font-semibold text-gray-800 mt-0.5">
+                <p className="text-[13px] font-black text-slate-800 mt-0.5">
                   {obituary.birthDate || '—'}
                 </p>
               </div>
-              <div className="w-px h-10 bg-gray-100" />
+              <div className="w-px h-8 bg-amber-200/60" />
               <div className="text-center">
                 <div className="flex items-center gap-1.5 justify-center">
                   <span className="text-[13px]">🕊️</span>
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Passing</span>
+                  <span className="text-[10px] font-extrabold text-amber-900/60 uppercase tracking-wider">Passing</span>
                 </div>
-                <p className="text-[13px] font-semibold text-gray-800 mt-0.5">
+                <p className="text-[13px] font-black text-slate-800 mt-0.5">
                   {obituary.dateOfPassing}
                 </p>
               </div>
@@ -254,13 +252,15 @@ const ShradhanjaliDetailPage = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
-              className="card-std px-4 py-3 flex items-center justify-between"
+              className="bg-white rounded-[24px] border border-amber-200/70 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <Avatar initials={obituary.author.initials} size="sm" />
-                <div>
-                  <p className="text-[13px] font-bold text-gray-900">{obituary.author.name}</p>
-                  <p className="text-[11px] text-gray-500">
+                <div className="w-10 h-10 rounded-full bg-amber-100/70 text-amber-900 font-extrabold text-[12.5px] flex items-center justify-center border border-amber-200/80 shrink-0">
+                  {obituary.author.initials || obituary.author.name?.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="text-left">
+                  <p className="text-[13.5px] font-extrabold text-slate-800 leading-tight">{obituary.author.name}</p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
                     {obituary.author.relation} &bull; {obituary.timestamp}
                   </p>
                 </div>
@@ -268,14 +268,14 @@ const ShradhanjaliDetailPage = () => {
               {obituary.familyContact && (
                 <a
                   href={`tel:${obituary.familyContact}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold press-scale"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11.5px] font-extrabold press-scale shrink-0"
                   style={{
                     background: 'linear-gradient(135deg, rgba(124,92,46,0.1) 0%, rgba(212,175,55,0.1) 100%)',
                     color: '#7C5C2E',
                     border: '1px solid rgba(212,175,55,0.3)'
                   }}
                 >
-                  <Phone size={12} />
+                  <Phone size={13} />
                   Contact
                 </a>
               )}

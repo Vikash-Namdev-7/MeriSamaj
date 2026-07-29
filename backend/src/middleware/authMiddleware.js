@@ -46,13 +46,13 @@ const protect = async (req, res, next) => {
      */
     let user = await User.findById(decoded.id)
       .select('-password')
-      .populate('communityId', 'name slug isActive settings logoUrl description city')
-      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl description city');
+      .populate('communityId', 'name slug isActive settings logoUrl bannerUrl description city')
+      .populate('assignedCommunityIds', 'name slug isActive settings logoUrl bannerUrl description city');
 
     if (!user) {
       const isApiAdmin = req.baseUrl.startsWith('/api/v1/admin') || req.path.startsWith('/admin');
       if (isApiAdmin) {
-        user = await User.findOne({ role: { $in: ['admin', 'super_admin', 'master_admin', 'head_admin'] } })
+        user = await User.findOne({ role: { $in: ['admin', 'super_admin', 'master_admin', 'master'] } })
           .select('-password');
       }
     }
@@ -178,13 +178,13 @@ const authorize = (...roles) => {
     }
 
     const userRole = (req.user.role || '').toLowerCase();
-    const adminRoles = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
+    const adminRoles = ['admin', 'super_admin', 'master_admin', 'master'];
 
     const hasRole = roles.some(role => {
       const targetRole = role.toLowerCase();
       if (adminRoles.includes(userRole)) return true;
-      if (targetRole === 'head' && (userRole === 'head' || adminRoles.includes(userRole))) return true;
-      if (targetRole === 'user' && (userRole === 'user' || userRole === 'member' || userRole === 'head' || adminRoles.includes(userRole))) return true;
+      if (targetRole === 'head' && (userRole === 'head' || userRole === 'sub_head' || adminRoles.includes(userRole))) return true;
+      if (targetRole === 'user' && (userRole === 'user' || userRole === 'member' || userRole === 'head' || userRole === 'sub_head' || adminRoles.includes(userRole))) return true;
       return targetRole === userRole;
     });
 

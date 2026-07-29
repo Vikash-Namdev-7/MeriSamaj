@@ -1,5 +1,6 @@
 const Invitation = require('../../models/Invitation');
-const { notifyInvitationReceived } = require('../../services/notificationService');
+const { notifyInvitationReceived, createNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // @desc    Create a new invitation
@@ -85,6 +86,17 @@ exports.createInvitation = async (req, res) => {
     try {
       if (parsedMemberIds && parsedMemberIds.length > 0) {
         notifyInvitationReceived(parsedMemberIds, hostName || req.user.name || 'A member', title, createdInvitation._id);
+
+        parsedMemberIds.forEach(mId => {
+          sendPushNotification({
+            userId: mId,
+            type: 'invitation_received',
+            title: `You're Invited! 🎉`,
+            message: `${hostName || req.user.name || 'A member'} has invited you to "${title}".`,
+            icon: '🎉',
+            actionUrl: `/member/invitations/${createdInvitation._id}`
+          }).catch(err => console.error('[InvitationPushError]', err.message));
+        });
       }
     } catch (notifErr) {
       console.warn('[Notify] createInvitation invitation_received failed:', notifErr.message);
@@ -163,6 +175,24 @@ exports.updateRSVP = async (req, res) => {
     }
 
     await invitation.save();
+
+    // Trigger Notification to Invitation Host
+    if (invitation.creatorId && invitation.creatorId.toString() !== req.user._id.toString()) {
+      createNotification({
+        userId: invitation.creatorId,
+        communityId: invitation.communityId || req.communityId,
+        module: 'invitations',
+        type: 'invitation_rsvp_response',
+        title: 'New RSVP Response 💌',
+        message: `${req.user?.name || 'A member'} responded "${status}" to your invitation "${invitation.title}".`,
+        icon: '💌',
+        priority: 'normal',
+        actionUrl: `/member/invitations/${invitation._id}`,
+        referenceId: invitation._id,
+        referenceType: 'Invitation'
+      }).catch(err => console.error('[RSVPNotifError]', err.message));
+    }
+
     res.json(invitation);
   } catch (error) {
     console.error('Error updating RSVP:', error);

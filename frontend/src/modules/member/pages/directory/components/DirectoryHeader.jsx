@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 const DirectoryHeader = ({ onBack, onAddBusiness }) => {
   return (
-    <div className="w-full flex items-center justify-between py-3">
+    <div className="w-full flex items-center justify-between py-2.5">
       {/* Left & Title section */}
       <div className="flex items-center gap-3">
         <motion.button
@@ -11,16 +11,16 @@ const DirectoryHeader = ({ onBack, onAddBusiness }) => {
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
           aria-label="Go Back"
-          className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-xs flex items-center justify-center text-slate-800 hover:text-indigo-600 hover:border-indigo-200 transition-colors shrink-0"
+          className="w-9 h-9 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center text-slate-700 hover:text-purple-700 hover:bg-purple-50 transition-colors shrink-0 press-scale"
         >
-          <ArrowLeft className="w-5 h-5 stroke-[2]" />
+          <ArrowLeft className="w-4.5 h-4.5 stroke-[2.5]" />
         </motion.button>
 
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-tight">
+        <div className="text-left">
+          <h1 className="text-[18px] sm:text-xl font-extrabold text-slate-800 tracking-tight leading-tight">
             Professional Directory
           </h1>
-          <p className="text-xs font-medium text-slate-500 mt-0.5">
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
             Discover trusted professionals near you
           </p>
         </div>
@@ -31,7 +31,7 @@ const DirectoryHeader = ({ onBack, onAddBusiness }) => {
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.96 }}
         onClick={onAddBusiness}
-        className="rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 font-semibold text-xs sm:text-sm shadow-sm hover:shadow flex items-center gap-1.5 shrink-0"
+        className="rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3.5 py-2.5 sm:px-4 sm:py-2.5 font-bold text-[11.5px] sm:text-xs shadow-md shadow-purple-500/20 flex items-center gap-1.5 shrink-0 transition-all press-scale"
       >
         <Plus className="w-4 h-4 stroke-[2.5]" />
         <span>Add Business</span>

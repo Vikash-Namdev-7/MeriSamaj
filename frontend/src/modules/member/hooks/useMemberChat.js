@@ -128,18 +128,34 @@ export const useMemberChat = (conversationId) => {
   }, [fetchMessages, hasMore, loading, page]);
 
   // ── Socket integration ────────────────────────────────────────────────────
-  const { sendSocketMessage, startTyping, stopTyping, markSeen, isConnected, isUserOnline } = useChatSocket({
+  const { startTyping, stopTyping, markSeen, isConnected, isUserOnline } = useChatSocket({
     conversationId,
 
     onNewMessage: (msg) => {
       if (msg.conversationId !== conversationId) return;
+      const currentUserId = (user?.id || user?._id)?.toString();
+
       setMessages(prev => {
-        // Deduplicate by _id
+        // Direct deduplication check by _id
         if (prev.some(m => m._id === msg._id)) return prev;
+
+        // If the socket message is from the current user, check if there's a pending optimistic temp_ message to replace
+        const msgSenderId = (msg.senderId?._id || msg.senderId?.id || msg.senderId)?.toString();
+        if (msgSenderId && currentUserId && msgSenderId === currentUserId) {
+          const tempIndex = prev.findIndex(m => typeof m._id === 'string' && m._id.startsWith('temp_'));
+          if (tempIndex !== -1) {
+            const updated = [...prev];
+            updated[tempIndex] = { ...msg, status: 'sent' };
+            return updated;
+          }
+        }
+
         return [...prev, msg];
       });
-      // Auto mark as seen
-      if (msg.senderId?._id !== (user?.id || user?._id)) {
+
+      // Auto mark as seen if message is from another user
+      const msgSenderId = (msg.senderId?._id || msg.senderId?.id || msg.senderId)?.toString();
+      if (msgSenderId && currentUserId && msgSenderId !== currentUserId) {
         markSeen([msg._id]);
       }
     },
@@ -223,15 +239,16 @@ export const useMemberChat = (conversationId) => {
       }
 
       const saved = res.data?.data?.message;
-      // Replace optimistic with real message
-      setMessages(prev => prev.map(m => m._id === tempId ? { ...saved, status: 'sent' } : m));
-
-      // Also emit via socket for real-time delivery to other user
-      sendSocketMessage({
-        message: saved.message,
-        type: saved.type,
-        mediaUrl: saved.mediaUrl
-      });
+      if (saved && saved._id) {
+        setMessages(prev => {
+          const alreadyHasReal = prev.some(m => m._id === saved._id);
+          if (alreadyHasReal) {
+            return prev.filter(m => m._id !== tempId);
+          } else {
+            return prev.map(m => m._id === tempId ? { ...saved, status: 'sent' } : m);
+          }
+        });
+      }
     } catch (err) {
       // Mark as failed
       setMessages(prev => prev.map(m => m._id === tempId ? { ...m, status: 'failed' } : m));
@@ -239,7 +256,7 @@ export const useMemberChat = (conversationId) => {
     } finally {
       setSending(false);
     }
-  }, [conversationId, user, sendSocketMessage]);
+  }, [conversationId, user]);
 
   // ── Delete message ─────────────────────────────────────────────────────────
   const deleteMessage = useCallback(async (messageId, deleteFor = 'me') => {

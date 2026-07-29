@@ -42,4 +42,20 @@ router.use('/matrimonial', headMatrimonialRoutes);
 const headLeadershipRoutes = require('./headLeadershipRoutes');
 router.use('/leadership', headLeadershipRoutes);
 
+// Census Management Routes
+const headCensusRoutes = require('./censusRoutes');
+router.use('/census', headCensusRoutes);
+
+// Head Dashboard Stats Routes
+const headDashboardRoutes = require('./headDashboardRoutes');
+router.use('/dashboard', headDashboardRoutes);
+
+// Digital Invitations Routes
+const headInvitationRoutes = require('./headInvitationRoutes');
+router.use('/invitations', headInvitationRoutes);
+
+// Obituary Community Routes
+const headObituaryRoutes = require('./headObituaryRoutes');
+router.use('/obituaries', headObituaryRoutes);
+
 module.exports = router;

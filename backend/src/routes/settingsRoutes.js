@@ -7,7 +7,7 @@ const router = express.Router();
 // GET settings (available to any authenticated user in the community)
 router.get('/obituary', protect, getObituarySettings);
 
-// PUT settings (only available to community heads and admins)
-router.put('/obituary', protect, authorize('head', 'head_admin', 'admin', 'super_admin', 'master_admin'), updateObituarySettings);
+// PUT settings (only available to community main heads and admins — sub_head excluded)
+router.put('/obituary', protect, authorize('head', 'admin', 'super_admin', 'master_admin'), updateObituarySettings);
 
 module.exports = router;

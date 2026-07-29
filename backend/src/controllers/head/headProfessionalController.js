@@ -1,6 +1,7 @@
 const Professional = require('../../models/Professional');
 const User = require('../../models/User');
 const { notifyListingApproved, notifyListingRejected } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // 1. Get filter options dynamically scoped to Head's community
@@ -222,7 +223,18 @@ exports.approveListing = async (req, res) => {
     // ── Notification: notify listing owner ─────────────────────────────────────
     try {
       if (updated.ownerId) {
-        notifyListingApproved(updated.ownerId, updated.companyName, updated._id);
+        const notifDoc = await notifyListingApproved(updated.ownerId, updated.companyName, updated._id);
+        if (notifDoc) {
+          sendPushNotification({
+            userId: updated.ownerId,
+            notificationId: notifDoc._id,
+            type: 'listing_approved',
+            title: 'Listing Approved ✅',
+            message: `Your professional listing "${updated.companyName}" has been approved and is now visible.`,
+            icon: '✅',
+            actionUrl: `/member/professional/${updated._id}`
+          }).catch(err => console.error('[ListingPushError]', err.message));
+        }
       }
     } catch (notifErr) {
       console.warn('[Notify] head approveListing listing_approved failed:', notifErr.message);

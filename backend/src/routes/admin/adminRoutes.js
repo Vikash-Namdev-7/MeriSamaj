@@ -57,5 +57,33 @@ router.use('/donations', adminDonationRoutes);
 const adminDharmashalaRoutes = require('./adminDharmashalaRoutes');
 router.use('/dharmashala', adminDharmashalaRoutes);
 
+// Obituary Management Routes
+const adminObituaryRoutes = require('./adminObituaryRoutes');
+router.use('/obituaries', adminObituaryRoutes);
+
+// Census Management Routes
+const adminCensusRoutes = require('./adminCensusRoutes');
+router.use('/census', adminCensusRoutes);
+
+// Leadership Governance Routes
+const adminLeadershipRoutes = require('./adminLeadershipRoutes');
+router.use('/leadership', adminLeadershipRoutes);
+
+// Digital Invitations Routes
+const adminInvitationRoutes = require('./adminInvitationRoutes');
+router.use('/invitations', adminInvitationRoutes);
+
+// Voting & Elections Routes
+const adminVotingRoutes = require('./adminVotingRoutes');
+router.use('/voting', adminVotingRoutes);
+
+// Notification & Broadcast Routes
+const adminNotificationController = require('../../controllers/admin/adminNotificationController');
+router.get('/notifications/push-analytics', adminNotificationController.getPushDeliveryAnalytics);
+router.post('/notifications/broadcast', adminNotificationController.sendAdminBroadcast);
+// Reports & Analytics Routes
+const adminReportsRoutes = require('./adminReportsRoutes');
+router.use('/reports', adminReportsRoutes);
+
 module.exports = router;
 

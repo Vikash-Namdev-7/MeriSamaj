@@ -83,4 +83,8 @@ router.use('/notifications', notificationRoutes);
 const leadershipRoutes = require('./leadershipRoutes');
 router.use('/leadership', leadershipRoutes);
 
+// ─── Community Census Module ──────────────────────────────────────────────────
+const censusRoutes = require('./censusRoutes');
+router.use('/census', censusRoutes);
+
 module.exports = router;

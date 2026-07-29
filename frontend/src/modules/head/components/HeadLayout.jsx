@@ -7,6 +7,7 @@ import { useData } from '../../member/context/DataProvider';
 import { useHeadAuth } from '../auth/useHeadAuth';
 import { Avatar } from '../../member/components/common/Avatar';
 import { filterMembersForHead } from '../utils/headCommunityFilter';
+import { NotificationBell } from '../../member/components/layout/NotificationBell';
 
 export const HeadLayout = () => {
   const { headAuth, headLogout } = useHeadAuth();
@@ -46,6 +47,11 @@ export const HeadLayout = () => {
           icon: LayoutDashboard,
           permKey: 'canViewDashboard',
           badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null
+        },
+        { 
+          name: 'My Profile', 
+          path: '/head/profile', 
+          icon: User,
         }
       ]
     },
@@ -68,6 +74,7 @@ export const HeadLayout = () => {
           permKey: 'canViewMembers',
           children: [
             { name: 'All Members', path: '/head/members', search: '?tab=list' },
+            { name: 'Community Census', path: '/head/census' },
             { name: 'Verifications', path: '/head/members', search: '?tab=verification', badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null },
             { name: 'Samaj Analytics', path: '/head/members', search: '?tab=analytics' }
           ]
@@ -516,6 +523,8 @@ export const HeadLayout = () => {
             <h2 className="text-slate-800 font-semibold text-sm tracking-wide">Council Workspace</h2>
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell />
+            <div className="h-6 w-[1px] bg-slate-200" />
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-850 leading-none">{headUser?.name || 'Community Head'}</p>

@@ -319,28 +319,35 @@ const MyProfilePage = () => {
     setMembersSearchQuery('');
   }, [membersListModalType]);
 
-  // Fetch target user follows list dynamically if !isMe
+  // Fetch target user follows list dynamically for both self and other user
   useEffect(() => {
     const fetchTargetFollows = async () => {
-      if (!isMe && membersListModalType && memberId) {
+      const targetId = isMe ? (currentUser?._id || currentUser?.id) : memberId;
+      if (membersListModalType && targetId) {
         setLoadingFollows(true);
         try {
           if (membersListModalType === 'followers') {
-            const res = await socialService.getFollowers(memberId);
+            const res = await socialService.getFollowers(targetId);
             if (res.success && res.data) {
               const mapped = res.data.map(m => ({
                 ...m,
                 id: m._id || m.id,
+                name: m.name || 'Member',
+                avatar: m.avatar,
+                city: m.city || 'Indore',
                 initials: m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
               }));
               setTargetFollowersList(mapped);
             }
           } else if (membersListModalType === 'following') {
-            const res = await socialService.getFollowing(memberId);
+            const res = await socialService.getFollowing(targetId);
             if (res.success && res.data) {
               const mapped = res.data.map(m => ({
                 ...m,
                 id: m._id || m.id,
+                name: m.name || 'Member',
+                avatar: m.avatar,
+                city: m.city || 'Indore',
                 initials: m.name ? m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'
               }));
               setTargetFollowingList(mapped);
@@ -354,7 +361,7 @@ const MyProfilePage = () => {
       }
     };
     fetchTargetFollows();
-  }, [membersListModalType, memberId, isMe]);
+  }, [membersListModalType, memberId, isMe, currentUser]);
 
   useEffect(() => {
     if (showSocialModal || showPrivacyModal || membersListModalType || showBlockedModal || showActivityDashboard || showHighlightSelectionModal || showHighlightCreationModal || showNotificationsModal || showLanguageModal || showThemeModal || showHelpModal || showAboutModal) {
@@ -494,7 +501,7 @@ const MyProfilePage = () => {
   return (
     <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden">
       {/* Header Bar — Glass morphism */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
+      <div className="bg-white/85 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.03)]">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => {
@@ -506,11 +513,11 @@ const MyProfilePage = () => {
                 navigate(-1);
               }
             }} 
-            className="p-1 -ml-1 press-scale"
+            className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale"
           >
-            <ArrowLeft size={22} className="text-text-primary" />
+            <ArrowLeft size={18} />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">
+          <h1 className="text-[17px] font-extrabold text-slate-800 tracking-tight leading-tight">
             {isMe ? 'My Profile' : (profileUser?.name || 'Member Profile')}
           </h1>
         </div>
@@ -518,35 +525,31 @@ const MyProfilePage = () => {
           {isMe && (
             <button 
               onClick={() => navigate('/member/settings')}
-              className="p-2 rounded-full transition-all duration-300 press-scale text-text-primary hover:bg-slate-100/60"
+              className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-all press-scale"
             >
-              <SettingsIcon size={20} />
+              <SettingsIcon size={18} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto sm:px-4 py-0 sm:py-6 space-y-4">
+      <div className="max-w-4xl mx-auto sm:px-4 py-0 sm:py-6 space-y-4 text-left select-none">
         
         {/* ─── PROFILE HEADER CARD ─── */}
-        <div className="bg-white sm:rounded-[28px] overflow-hidden border-b sm:border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.04)] relative">
+        <div className="bg-white sm:rounded-[28px] overflow-hidden border-b sm:border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] relative">
           {/* Cover photo banner */}
-          <div className="h-56 sm:h-72 w-full relative bg-gradient-to-br from-purple-900/15 via-[#25175a]/10 to-[#1e1145]/15 overflow-hidden">
+          <div className="h-44 sm:h-64 w-full relative bg-gradient-to-br from-[#2A0E5C] via-[#3B1578] to-[#5B21B6] overflow-hidden">
             <img 
               src={profileUser.cover || "https://images.unsplash.com/photo-1609234656388-0ff363383899?auto=format&fit=crop&w=800&q=80"} 
               alt="Cover" 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-80"
             />
             {/* Gradient cover overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
-            
-            {/* Floating decoration bubbles for 3D depth */}
-            <div className="absolute top-10 left-10 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse" />
-            <div className="absolute bottom-6 right-20 w-32 h-32 bg-pink-500/5 rounded-full blur-2xl animate-bounce" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-black/20" />
             
             {/* Cover Upload Trigger (only when isMe) */}
             {isMe && (
-              <label className="absolute top-3.5 right-3.5 w-8.5 h-8.5 bg-black/40 hover:bg-black/65 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/25 cursor-pointer transition-all press-scale shadow-md z-10">
+              <label className="absolute top-3.5 right-3.5 w-8 h-8 bg-black/40 hover:bg-black/60 backdrop-blur-md text-white rounded-xl flex items-center justify-center border border-white/20 cursor-pointer transition-all press-scale shadow-md z-10">
                 <Camera size={13} />
                 <input 
                   type="file" 
@@ -568,27 +571,22 @@ const MyProfilePage = () => {
           </div>
 
           {/* Profile details block */}
-          <div className="px-4.5 pb-3.5 pt-3 relative flex flex-row-reverse items-stretch justify-between gap-4 sm:gap-6">
+          <div className="px-4.5 pb-4 pt-3 relative flex flex-row-reverse items-stretch justify-between gap-4 sm:gap-6">
             
-            {/* Overlapping Avatar */}
+            {/* Overlapping Clean Neutral Avatar */}
             <div className="shrink-0 z-10 mr-1 sm:mr-3 flex flex-col items-center justify-between pb-1 self-stretch">
-              <div className="-mt-[70px] sm:-mt-[88px] relative">
-                {/* Glowing ring */}
-                <div className={`w-[110px] h-[110px] sm:w-[135px] sm:h-[135px] rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-300 p-[3px] bg-white border ${
-                  profileUser.isPremium 
-                    ? 'border-amber-400 bg-gradient-to-tr from-amber-500 to-yellow-350 shadow-[0_8px_20px_rgba(245,158,11,0.25)]' 
-                    : 'border-brand-primary/25 bg-gradient-to-tr from-purple-500 to-indigo-400 shadow-[0_8px_20px_rgba(124,58,237,0.15)]'
-                }`}>
-                  <div className="w-full h-full rounded-full overflow-hidden bg-white border border-white">
-                    <Avatar initials={profileUser.initials} src={profileUser.avatar} size="xl" className="w-full h-full object-cover rounded-full" />
-                  </div>
+              <div className="-mt-[55px] sm:-mt-[70px] relative">
+                <div className="w-[95px] h-[95px] sm:w-[120px] sm:h-[120px] rounded-full overflow-hidden bg-slate-100 text-slate-700 font-black text-[22px] flex items-center justify-center border-4 border-white shadow-md">
+                  {profileUser.avatar ? (
+                    <img src={profileUser.avatar} alt={profileUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    profileUser.initials || (profileUser.name ? profileUser.name.substring(0, 2).toUpperCase() : '?')
+                  )}
                 </div>
 
                 {/* Avatar Camera trigger (only when isMe) */}
                 {isMe && (
-                  <label className={`absolute bottom-0.5 right-0.5 w-8.5 h-8.5 text-white rounded-full shadow-md flex items-center justify-center press-scale border-[1.5px] border-white cursor-pointer transition-all ${
-                    profileUser.isPremium ? 'bg-amber-500 hover:bg-amber-600' : 'bg-brand-primary hover:bg-brand-dark'
-                  }`}>
+                  <label className="absolute bottom-0 right-0 w-7.5 h-7.5 text-slate-700 bg-white rounded-full shadow-md flex items-center justify-center press-scale border-2 border-slate-200 cursor-pointer transition-all hover:bg-slate-50">
                     <Camera size={12} />
                     <input 
                       type="file" 
@@ -610,29 +608,29 @@ const MyProfilePage = () => {
               </div>
 
               {/* Follow count statistics bar */}
-              <div className="flex-1 flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-bold text-slate-500 mt-4 sm:mt-6 text-center whitespace-nowrap">
+              <div className="flex-1 flex items-center justify-center gap-2 text-[12px] sm:text-[13px] font-extrabold text-slate-500 mt-3 sm:mt-5 text-center whitespace-nowrap">
                 <button 
                   onClick={() => {
                     if (isMe || canAccess) setMembersListModalType('followers');
                   }} 
-                  className="hover:text-brand-primary transition-colors press-scale"
+                  className="hover:text-purple-600 transition-colors press-scale"
                   disabled={!isMe && !canAccess}
                 >
                   <span className="font-extrabold text-slate-800">
-                    {profileStats.followersCount || (isMe ? myFollowers.length : targetFollowersList.length)}
-                  </span> <span className="text-slate-400 font-medium">followers</span>
+                    {typeof profileStats?.followersCount === 'number' ? profileStats.followersCount : (isMe ? myFollowers.length : targetFollowersList.length)}
+                  </span> <span className="text-slate-400 font-semibold">followers</span>
                 </button>
                 <span className="text-slate-300">•</span>
                 <button 
                   onClick={() => {
                     if (isMe || canAccess) setMembersListModalType('following');
                   }} 
-                  className="hover:text-brand-primary transition-colors press-scale"
+                  className="hover:text-purple-600 transition-colors press-scale"
                   disabled={!isMe && !canAccess}
                 >
                   <span className="font-extrabold text-slate-800">
-                    {profileStats.followingCount || (isMe ? myFollowing.length : targetFollowingList.length)}
-                  </span> <span className="text-slate-400 font-medium">following</span>
+                    {typeof profileStats?.followingCount === 'number' ? profileStats.followingCount : (isMe ? myFollowing.length : targetFollowingList.length)}
+                  </span> <span className="text-slate-400 font-semibold">following</span>
                 </button>
               </div>
             </div>
@@ -721,7 +719,16 @@ const MyProfilePage = () => {
               ) : isFollowing ? (
                 <>
                   <button
-                    onClick={() => unfollowUser(profileUser.id || profileUser._id)}
+                    onClick={async () => {
+                      const res = await unfollowUser(profileUser.id || profileUser._id);
+                      if (res && res.targetStats) {
+                        setProfileStats(prev => ({
+                          ...prev,
+                          followersCount: res.targetStats.followersCount,
+                          followingCount: res.targetStats.followingCount
+                        }));
+                      }
+                    }}
                     className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
                   >
                     Following
@@ -742,7 +749,16 @@ const MyProfilePage = () => {
                 </button>
               ) : (
                 <button
-                  onClick={() => sendFollowRequest(profileUser.id || profileUser._id)}
+                  onClick={async () => {
+                    const res = await sendFollowRequest(profileUser.id || profileUser._id);
+                    if (res && res.targetStats) {
+                      setProfileStats(prev => ({
+                        ...prev,
+                        followersCount: res.targetStats.followersCount,
+                        followingCount: res.targetStats.followingCount
+                      }));
+                    }
+                  }}
                   className="flex-1 py-2 bg-brand-primary hover:bg-brand-dark text-white rounded-xl text-[13px] font-black shadow-sm press-scale transition-all"
                 >
                   Follow
@@ -1226,37 +1242,54 @@ const MyProfilePage = () => {
             </div>
             
             <div className="overflow-y-auto py-4 space-y-3 flex-1 min-h-[200px]">
-              {(() => {
-                const listToRender = (membersListModalType === 'followers' ? myFollowers : myFollowing)
-                  .filter(m => {
-                    const q = membersSearchQuery.toLowerCase();
-                    return (
-                      m.name?.toLowerCase().includes(q) ||
-                      m.city?.toLowerCase().includes(q) ||
-                      m.profession?.toLowerCase().includes(q) ||
-                      m.subCommunity?.toLowerCase().includes(q)
-                    );
-                  });
+              {loadingFollows ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400">
+                  <Loader2 size={24} className="animate-spin text-brand-primary" />
+                  <span className="text-xs font-semibold">Loading members...</span>
+                </div>
+              ) : (() => {
+                const sourceList = membersListModalType === 'followers'
+                  ? (targetFollowersList.length > 0 ? targetFollowersList : myFollowers)
+                  : (targetFollowingList.length > 0 ? targetFollowingList : myFollowing);
+
+                const listToRender = sourceList.filter(m => {
+                  const q = membersSearchQuery.toLowerCase();
+                  return (
+                    m.name?.toLowerCase().includes(q) ||
+                    m.city?.toLowerCase().includes(q) ||
+                    m.profession?.toLowerCase().includes(q) ||
+                    m.subCommunity?.toLowerCase().includes(q)
+                  );
+                });
+
                 return listToRender.length > 0 ? (
                   listToRender.map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-3.5 bg-purple-50/30 border border-purple-100/20 rounded-2xl shadow-sm">
+                    <div key={m.id || m._id} className="flex items-center justify-between p-3.5 bg-purple-50/30 border border-purple-100/20 rounded-2xl shadow-sm">
                       <div className="flex items-center gap-2.5">
-                        <Avatar initials={m.initials} size="sm" color="bg-purple-100 text-brand-primary font-bold" />
+                        <Avatar src={m.avatar} initials={m.initials} size="sm" color="bg-purple-100 text-brand-primary font-bold" />
                         <div>
                           <h4 className="text-[13px] font-bold text-text-primary leading-none">{m.name}</h4>
-                          <p className="text-[10px] text-text-secondary mt-1">{m.city}</p>
+                          <p className="text-[10px] text-text-secondary mt-1">{m.city || m.community || 'Member'}</p>
                         </div>
                       </div>
                       {membersListModalType === 'followers' ? (
                         <button
-                          onClick={() => removeFollower(m.id)}
+                          onClick={async () => {
+                            await removeFollower(m.id);
+                            setTargetFollowersList(prev => prev.filter(item => (item.id || item._id) !== m.id));
+                            setProfileStats(prev => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 1) - 1) }));
+                          }}
                           className="px-3.5 py-1.5 bg-red-50 text-red-650 hover:bg-red-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
                         >
                           Remove
                         </button>
                       ) : (
                         <button
-                          onClick={() => unfollowUser(m.id)}
+                          onClick={async () => {
+                            await unfollowUser(m.id);
+                            setTargetFollowingList(prev => prev.filter(item => (item.id || item._id) !== m.id));
+                            setProfileStats(prev => ({ ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) }));
+                          }}
                           className="px-3.5 py-1.5 bg-purple-50 text-brand-primary hover:bg-purple-100/60 rounded-xl text-[11px] font-bold press-scale transition-colors"
                         >
                           Unfollow

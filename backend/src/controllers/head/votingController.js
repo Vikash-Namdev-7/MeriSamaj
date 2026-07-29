@@ -1,6 +1,7 @@
 const Voting = require('../../models/Voting');
 const Vote = require('../../models/Vote');
-const { notifyElectionCreated } = require('../../services/notificationService');
+const { notifyElectionCreated, createBroadcastNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // Helper to resolve the community ID for write/bind operations
@@ -162,14 +163,18 @@ exports.createElection = async (req, res) => {
 
     // ── Notification: notify community members about new election ───────────────
     try {
-      const User = require('../../models/User');
-      const members = await User.find({
+      createBroadcastNotification({
         communityId,
-        accountStatus: 'active',
-        verificationStatus: 'verified',
-        _id: { $ne: req.user._id }
-      }).select('_id').lean();
-      notifyElectionCreated(members.map(m => m._id), title, newVoting._id);
+        module: 'voting',
+        type: 'election_created',
+        title: 'New Election 🗳️',
+        message: `A new election "${title}" has been created. Cast your vote!`,
+        icon: '🗳️',
+        priority: 'high',
+        actionUrl: `/member/voting/${newVoting._id}`,
+        referenceId: newVoting._id,
+        referenceType: 'Voting'
+      });
     } catch (notifErr) {
       console.warn('[Notify] createElection election_created failed:', notifErr.message);
     }
@@ -248,7 +253,7 @@ exports.closeElection = async (req, res) => {
 
     const election = await Voting.findOneAndUpdate(
       query,
-      { status: 'Closed' },
+      { status: 'Closed', resultsPublished: true },
       { new: true }
     );
 
@@ -256,9 +261,27 @@ exports.closeElection = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Election not found' });
     }
 
+    // Broadcast Results Published Notification
+    try {
+      createBroadcastNotification({
+        communityId: election.communityId,
+        module: 'voting',
+        type: 'election_results_published',
+        title: 'Election Results Published! 📊',
+        message: `Results for election "${election.title}" have been officially published.`,
+        icon: '📊',
+        priority: 'high',
+        actionUrl: `/member/voting/${election._id}`,
+        referenceId: election._id,
+        referenceType: 'Voting'
+      });
+    } catch (notifErr) {
+      console.warn('[Notify] election_results_published broadcast notice:', notifErr.message);
+    }
+
     res.status(200).json({
       status: 'success',
-      message: 'Election closed successfully',
+      message: 'Election closed and results published successfully',
       data: election
     });
   } catch (error) {

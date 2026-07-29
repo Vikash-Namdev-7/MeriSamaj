@@ -77,6 +77,8 @@ const userSchema = new mongoose.Schema({
     name: String,
     relation: String,
     age: String,
+    dob: Date,
+    gender: String,
     phone: String,
     mobile: String,
     gotra: String

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Donation = require('../models/Donation');
-const Campaign = require('../models/Campaign');
 const { applyScopeFilter } = require('../utils/queryScopeHelper');
 
 const resolveTargeting = (body) => {
@@ -31,7 +30,7 @@ const resolveTargeting = (body) => {
   };
 };
 
-// GET /admin/donations — List all donations & campaigns (Admin global view with optional status, category, communityId filters)
+// GET /admin/donations — List all donation campaigns (Admin global view with optional status, category, communityId filters)
 exports.getAllDonations = async (req, res) => {
   try {
     const { includeDeleted, status, category, communityId } = req.query;
@@ -53,10 +52,6 @@ exports.getAllDonations = async (req, res) => {
       baseFilter.category = category;
     }
 
-    // Community filter logic:
-    // 'all' -> return everything
-    // 'global' -> return only global campaigns
-    // specific communityId -> return campaigns where communityId matches OR targetedCommunities includes communityId
     if (communityId && communityId !== 'all') {
       if (communityId === 'global') {
         baseFilter.$or = [
@@ -72,30 +67,25 @@ exports.getAllDonations = async (req, res) => {
       }
     }
 
-    const [donationDocs, campaignDocs] = await Promise.all([
-      Donation.find(baseFilter)
-        .populate('targetedCommunities', 'name code')
-        .populate('communityId', 'name code')
-        .lean()
-        .catch(() => []),
-      Campaign.find(baseFilter)
-        .populate('targetedCommunities', 'name code')
-        .populate('communityId', 'name code')
-        .lean()
-        .catch(() => [])
-    ]);
+    const donationDocs = await Donation.find(baseFilter)
+      .populate('targetedCommunities', 'name code')
+      .populate('communityId', 'name code')
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Normalize Donation docs with explicit source: "donation"
+    // Normalize Donation docs with consistent DTO shape
     const normalizedDonations = donationDocs.map(d => ({
       _id: d._id,
       id: d._id,
       source: 'donation',
       title: d.title || '',
-      shortDescription: d.description || '',
-      description: d.description || '',
+      shortDescription: d.shortDescription || d.description || '',
+      description: d.description || d.shortDescription || '',
       targetAmount: d.targetAmount || 0,
       raisedAmount: d.raisedAmount || 0,
+      collectedAmount: d.raisedAmount || 0,
       donorCount: d.donorCount || (Array.isArray(d.recentDonations) ? d.recentDonations.length : 0),
+      contributorsCount: d.donorCount || 0,
       category: d.category || 'General',
       status: d.status || 'Active',
       city: d.city || '',
@@ -109,38 +99,9 @@ exports.getAllDonations = async (req, res) => {
       updatedAt: d.updatedAt || new Date()
     }));
 
-    // Normalize Campaign docs (Head-created) with explicit source: "campaign"
-    const normalizedCampaigns = campaignDocs.map(c => ({
-      _id: c._id,
-      id: c._id,
-      source: 'campaign',
-      title: c.title || '',
-      shortDescription: c.shortDescription || c.description || '',
-      description: c.description || c.shortDescription || '',
-      targetAmount: c.targetAmount || 0,
-      raisedAmount: c.collectedAmount || c.raisedAmount || 0,
-      donorCount: c.contributorsCount || c.donorCount || 0,
-      category: c.category || 'General',
-      status: c.status === 'Published' ? 'Active' : (c.status || 'Active'),
-      city: c.city || '',
-      communityId: c.communityId || null,
-      targetedCommunities: c.targetedCommunities || [],
-      isGlobalCampaign: c.isGlobalCampaign || c.visibility === 'All Members',
-      visibility: c.visibility || (c.isGlobalCampaign ? 'All Members' : 'Entire Community'),
-      coverImage: c.bannerImage || '',
-      bannerImage: c.bannerImage || '',
-      createdAt: c.createdAt || new Date(),
-      updatedAt: c.updatedAt || new Date()
-    }));
-
-    // Combine & sort by createdAt descending
-    const combined = [...normalizedDonations, ...normalizedCampaigns].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
     res.status(200).json({
       success: true,
-      data: combined
+      data: normalizedDonations
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -216,6 +177,7 @@ exports.createDonation = async (req, res) => {
 
     const resultData = populatedDonation.toObject();
     resultData.source = 'donation';
+    resultData.bannerImage = resultData.coverImage || '';
 
     res.status(201).json({
       success: true,
@@ -227,10 +189,9 @@ exports.createDonation = async (req, res) => {
   }
 };
 
-// PUT /admin/donations/:id — Update donation fields (source-aware)
+// PUT /admin/donations/:id — Update donation fields
 exports.updateDonation = async (req, res) => {
   try {
-    const source = req.body.source || req.query.source;
     const { isGlobalCampaign, targetedCommunities, visibility } = resolveTargeting(req.body);
 
     const updatePayload = {
@@ -241,9 +202,7 @@ exports.updateDonation = async (req, res) => {
     };
 
     if (req.body.coverImage || req.body.bannerImage) {
-      const img = req.body.coverImage || req.body.bannerImage;
-      updatePayload.coverImage = img;
-      updatePayload.bannerImage = img;
+      updatePayload.coverImage = req.body.coverImage || req.body.bannerImage;
     }
 
     delete updatePayload.source;
@@ -255,43 +214,19 @@ exports.updateDonation = async (req, res) => {
     delete updatePayload.recentDonations;
     delete updatePayload.isDeleted;
 
-    let doc = null;
-
-    if (source === 'campaign') {
-      doc = await Campaign.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: updatePayload },
-        { new: true, runValidators: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-    } else if (source === 'donation') {
-      doc = await Donation.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: updatePayload },
-        { new: true, runValidators: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-    } else {
-      // Fallback: try Donation first, then Campaign
-      doc = await Donation.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: updatePayload },
-        { new: true, runValidators: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-
-      if (!doc) {
-        doc = await Campaign.findOneAndUpdate(
-          { _id: req.params.id, isDeleted: { $ne: true } },
-          { $set: updatePayload },
-          { new: true, runValidators: true }
-        ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-      }
-    }
+    const doc = await Donation.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      { $set: updatePayload },
+      { new: true, runValidators: true }
+    ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
 
     if (!doc) {
-      return res.status(404).json({ success: false, message: 'Donation or Campaign record not found' });
+      return res.status(404).json({ success: false, message: 'Donation record not found' });
     }
 
     const resObj = doc.toObject();
-    resObj.source = source || (doc instanceof Campaign ? 'campaign' : 'donation');
+    resObj.source = 'donation';
+    resObj.bannerImage = resObj.coverImage || '';
 
     res.status(200).json({
       success: true,
@@ -303,42 +238,17 @@ exports.updateDonation = async (req, res) => {
   }
 };
 
-// PATCH /admin/donations/:id/close — Close donation drive (source-aware)
+// PATCH /admin/donations/:id/close — Close donation drive
 exports.closeDonation = async (req, res) => {
   try {
-    const source = req.body?.source || req.query?.source;
-    let doc = null;
-
-    if (source === 'campaign') {
-      doc = await Campaign.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: { status: 'Closed' } },
-        { new: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-    } else if (source === 'donation') {
-      doc = await Donation.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: { status: 'Closed' } },
-        { new: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-    } else {
-      doc = await Donation.findOneAndUpdate(
-        { _id: req.params.id, isDeleted: { $ne: true } },
-        { $set: { status: 'Closed' } },
-        { new: true }
-      ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-
-      if (!doc) {
-        doc = await Campaign.findOneAndUpdate(
-          { _id: req.params.id, isDeleted: { $ne: true } },
-          { $set: { status: 'Closed' } },
-          { new: true }
-        ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
-      }
-    }
+    const doc = await Donation.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      { $set: { status: 'Closed' } },
+      { new: true }
+    ).populate('targetedCommunities', 'name code').populate('communityId', 'name code');
 
     if (!doc) {
-      return res.status(404).json({ success: false, message: 'Donation or Campaign record not found' });
+      return res.status(404).json({ success: false, message: 'Donation record not found' });
     }
 
     res.status(200).json({
@@ -351,42 +261,17 @@ exports.closeDonation = async (req, res) => {
   }
 };
 
-// DELETE /admin/donations/:id — Soft delete donation or campaign (source-aware)
+// DELETE /admin/donations/:id — Soft delete donation
 exports.deleteDonation = async (req, res) => {
   try {
-    const source = req.query?.source || req.body?.source;
-    let doc = null;
-
-    if (source === 'campaign') {
-      doc = await Campaign.findByIdAndUpdate(
-        req.params.id,
-        { $set: { isDeleted: true, deletedAt: new Date() } },
-        { new: true }
-      );
-    } else if (source === 'donation') {
-      doc = await Donation.findByIdAndUpdate(
-        req.params.id,
-        { $set: { isDeleted: true, deletedAt: new Date() } },
-        { new: true }
-      );
-    } else {
-      doc = await Donation.findByIdAndUpdate(
-        req.params.id,
-        { $set: { isDeleted: true, deletedAt: new Date() } },
-        { new: true }
-      );
-
-      if (!doc) {
-        doc = await Campaign.findByIdAndUpdate(
-          req.params.id,
-          { $set: { isDeleted: true, deletedAt: new Date() } },
-          { new: true }
-        );
-      }
-    }
+    const doc = await Donation.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isDeleted: true, deletedAt: new Date() } },
+      { new: true }
+    );
 
     if (!doc) {
-      return res.status(404).json({ success: false, message: 'Donation or Campaign record not found' });
+      return res.status(404).json({ success: false, message: 'Donation record not found' });
     }
 
     res.status(200).json({
@@ -398,4 +283,5 @@ exports.deleteDonation = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 

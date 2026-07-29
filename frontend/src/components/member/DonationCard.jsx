@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Users, ArrowRight } from 'lucide-react';
+import { Heart, Users, ArrowRight, Sparkles } from 'lucide-react';
 
 export const DonationCard = ({
   donation,
@@ -15,24 +15,24 @@ export const DonationCard = ({
   return (
     <div
       onClick={() => onCardClick && onCardClick(donation._id)}
-      className="bg-white rounded-2xl border border-slate-100 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col cursor-pointer group hover:-translate-y-1"
+      className="bg-white rounded-[28px] border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_32px_rgba(124,58,237,0.09)] hover:border-purple-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer group hover:-translate-y-1 text-left"
     >
-      <div className="relative h-44 bg-slate-100 overflow-hidden">
+      <div className="relative h-48 bg-slate-100 overflow-hidden">
         {donation.coverImage ? (
           <img
             src={donation.coverImage}
             alt={donation.title}
             loading="lazy"
             decoding="async"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-indigo-50 to-purple-50">
-            <Heart className="w-12 h-12 text-indigo-300" />
+          <div className="w-full h-full flex items-center justify-center text-emerald-300 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#022C22] p-6 text-center">
+            <Heart className="w-12 h-12 text-emerald-200 opacity-80" />
           </div>
         )}
-        <div className="absolute top-3 left-3">
-          <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-white/90 text-indigo-700 shadow-sm backdrop-blur-md">
+        <div className="absolute top-3.5 left-3.5">
+          <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white/90 text-emerald-800 shadow-sm backdrop-blur-md border border-white/40 uppercase tracking-wider">
             {donation.category || 'General'}
           </span>
         </div>
@@ -40,33 +40,33 @@ export const DonationCard = ({
 
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div>
-          <h3 className="text-base font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+          <h3 className="text-[16px] font-extrabold text-slate-800 line-clamp-1 group-hover:text-emerald-700 transition-colors tracking-tight">
             {donation.title}
           </h3>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-[12px] text-slate-500 mt-1 line-clamp-2 font-medium leading-relaxed">
             {donation.description || 'Join hands to support this noble community cause.'}
           </p>
         </div>
 
         {/* Progress Bar & Amount Metrics */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-baseline text-xs font-bold">
-            <span className="text-indigo-600 font-extrabold text-sm">₹{raised.toLocaleString()}</span>
-            <span className="text-slate-400 font-medium">Goal: ₹{target.toLocaleString()}</span>
+        <div className="space-y-2.5">
+          <div className="flex justify-between items-baseline text-xs font-extrabold">
+            <span className="text-emerald-600 font-black text-[15px]">₹{raised.toLocaleString('en-IN')}</span>
+            <span className="text-slate-400 font-bold text-[11.5px]">Goal: ₹{target.toLocaleString('en-IN')}</span>
           </div>
 
-          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-emerald-50 rounded-full overflow-hidden border border-emerald-100/50">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-300"
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-700"
               style={{ width: `${percentage}%` }}
             />
           </div>
 
-          <div className="flex justify-between text-[11px] font-bold text-slate-500 pt-0.5">
+          <div className="flex justify-between text-[11px] font-extrabold text-slate-500 pt-0.5">
             <span className="flex items-center gap-1 text-slate-600">
-              <Users size={12} className="text-indigo-500" /> {donation.donorCount || 0} Donors
+              <Users size={13} className="text-emerald-600" /> {donation.donorCount || 0} Donors
             </span>
-            <span className="text-indigo-600 font-bold">{percentage}% Funded</span>
+            <span className="text-emerald-700 font-black">{percentage}% Funded</span>
           </div>
         </div>
 
@@ -76,9 +76,9 @@ export const DonationCard = ({
             e.stopPropagation();
             onDonateClick(donation);
           }}
-          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white text-[12px] font-extrabold rounded-2xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale"
         >
-          <Heart size={14} className="fill-white" /> Donate Now <ArrowRight size={14} />
+          <Heart size={14} className="fill-white text-white" /> Donate Now <ArrowRight size={14} />
         </button>
       </div>
     </div>

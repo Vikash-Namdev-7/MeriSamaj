@@ -72,6 +72,7 @@ export default function HeadLeadershipManagement() {
   const openCreateModal = () => {
     setEditId(null);
     setForm({
+      isAppUser: true,
       name: '', email: '', phone: '', password: '', designation: 'Vice President',
       department: 'Executive Governance', termYears: '2024-2027',
       headPermissions: {
@@ -91,6 +92,7 @@ export default function HeadLeadershipManagement() {
   const openEditModal = (leader) => {
     setEditId(leader._id);
     setForm({
+      isAppUser: leader.isAppUser !== false,
       name: leader.name || '',
       email: leader.email || '',
       phone: leader.phone || '',
@@ -98,15 +100,18 @@ export default function HeadLeadershipManagement() {
       designation: leader.designation || 'Vice President',
       department: leader.department || 'Executive Governance',
       termYears: leader.termYears || '2024-2027',
-      headPermissions: leader.headPermissions || {}
+      headPermissions: leader.headPermissions || {
+        canViewDashboard: true,
+        canViewMembers: true
+      }
     });
     setShowModal(true);
   };
 
   const handleTogglePermission = (permKey) => {
-    // Inheritance safeguard check: If Head doesn't have it, block
-    if (user?.role !== 'admin' && !headGrantedPermissions[permKey]) {
-      alert(`Cannot grant '${permKey}' permission because Master Admin has not granted it to your Head account.`);
+    const isGrantedToHead = user?.role === 'admin' || headGrantedPermissions[permKey] === true;
+    if (!isGrantedToHead) {
+      alert(`Permission '${permKey}' is not granted to you by Master Admin.`);
       return;
     }
 
@@ -139,9 +144,10 @@ export default function HeadLeadershipManagement() {
     }
   };
 
-  const handleToggleStatus = async (id) => {
+  const handleToggleStatus = async (leader) => {
     try {
-      const res = await headLeadershipService.toggleSubLeaderStatus(id);
+      const isAppUser = leader.isAppUser !== false;
+      const res = await headLeadershipService.toggleSubLeaderStatus(leader._id, isAppUser);
       if (res.status === 'success') {
         fetchSubLeaders();
       }
@@ -150,10 +156,11 @@ export default function HeadLeadershipManagement() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this team member?")) return;
+  const handleDelete = async (leader) => {
+    if (!window.confirm("Are you sure you want to deactivate this team member?")) return;
     try {
-      const res = await headLeadershipService.deleteSubLeader(id);
+      const isAppUser = leader.isAppUser !== false;
+      const res = await headLeadershipService.deleteSubLeader(leader._id, isAppUser);
       if (res.status === 'success') {
         fetchSubLeaders();
       }
@@ -254,10 +261,10 @@ export default function HeadLeadershipManagement() {
                       </td>
                       <td className="p-4 text-right space-x-2">
                         <button onClick={() => openEditModal(sl)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"><Edit size={14} /></button>
-                        <button onClick={() => handleToggleStatus(sl._id)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
+                        <button onClick={() => handleToggleStatus(sl)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
                           {sl.accountStatus === 'active' ? <XCircle size={14} className="text-rose-500" /> : <CheckCircle2 size={14} className="text-emerald-500" />}
                         </button>
-                        <button onClick={() => handleDelete(sl._id)} className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-600"><Trash2 size={14} /></button>
+                        <button onClick={() => handleDelete(sl)} className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-600"><Trash2 size={14} /></button>
                       </td>
                     </tr>
                   );
@@ -273,7 +280,34 @@ export default function HeadLeadershipManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black text-slate-800">{editId ? 'Edit Sub-Leader Permissions' : 'Appoint Sub-Leader'}</h3>
-            <p className="text-xs text-slate-500">Sub-leaders will log in via Head Panel. Permissions can ONLY be selected from modules granted to you by Master Admin.</p>
+
+            {/* Leader Type Toggle Selector */}
+            {!editId && (
+              <div className="flex gap-3 p-1.5 bg-slate-100 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, isAppUser: true })}
+                  className={`flex-1 py-2 font-bold text-xs rounded-xl transition-all ${
+                    form.isAppUser ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  App Leader (With Mobile Login)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, isAppUser: false })}
+                  className={`flex-1 py-2 font-bold text-xs rounded-xl transition-all ${
+                    !form.isAppUser ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Offline Board Leader (No Login)
+                </button>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500">
+              {form.isAppUser ? 'App sub-leaders can log in to Head Desk with assigned permissions.' : 'Offline board members will display on member leadership pages without app credentials.'}
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -288,9 +322,9 @@ export default function HeadLeadershipManagement() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number {form.isAppUser ? '*' : ''}</label>
                   <input 
-                    type="text" required
+                    type="text" required={form.isAppUser}
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
@@ -307,16 +341,18 @@ export default function HeadLeadershipManagement() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">{editId ? 'New Password (Optional)' : 'Login Password *'}</label>
-                  <input 
-                    type="text" required={!editId}
-                    placeholder={editId ? 'Leave blank to keep unchanged' : 'Password'}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                  />
-                </div>
+                {form.isAppUser && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">{editId ? 'New Password (Optional)' : 'Login Password *'}</label>
+                    <input 
+                      type="text" required={!editId && form.isAppUser}
+                      placeholder={editId ? 'Leave blank to keep unchanged' : 'Password'}
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Designation *</label>

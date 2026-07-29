@@ -8,13 +8,9 @@ import { useData } from '../../../member/context/DataProvider';
 import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 
 export const AdminObituaryManagement = () => {
-  const {
-    obituaries = [],
-    deleteObituary,
-    obituariesLoading,
-    obituariesError,
-    loadObituaries
-  } = useData();
+  const [obituaries, setObituaries] = useState([]);
+  const [obituariesLoading, setObituariesLoading] = useState(true);
+  const [obituariesError, setObituariesError] = useState(null);
 
   const [communities, setCommunities] = useState([]);
   const [selectedObituary, setSelectedObituary] = useState(null);
@@ -28,6 +24,24 @@ export const AdminObituaryManagement = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  const fetchAdminObituaries = async () => {
+    setObituariesLoading(true);
+    setObituariesError(null);
+    try {
+      const res = await axiosPrivate.get('/admin/obituaries');
+      setObituaries(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load admin obituaries:', err);
+      setObituariesError(err.response?.data?.message || err.message || 'Failed to load obituaries');
+    } finally {
+      setObituariesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminObituaries();
+  }, []);
 
   // Lock background scroll when detail modal popup is active
   useEffect(() => {
@@ -131,8 +145,9 @@ export const AdminObituaryManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this obituary post permanently across the platform?')) {
       try {
-        await deleteObituary(id);
-        if (selectedObituary?.id === id) setSelectedObituary(null);
+        await axiosPrivate.delete(`/admin/obituaries/${id}`);
+        setObituaries(prev => prev.filter(ob => (ob.id || ob._id) !== id));
+        if (selectedObituary?.id === id || selectedObituary?._id === id) setSelectedObituary(null);
         showToast('Obituary post deleted successfully');
       } catch (err) {
         showToast(err.response?.data?.message || err.message, 'error');

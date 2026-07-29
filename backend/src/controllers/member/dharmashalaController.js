@@ -2,6 +2,8 @@ const Dharmashala = require('../../models/Dharmashala');
 const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
+const { createNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
 // Get all Dharmashalas (List with filters: Community mandatory + City optional)
@@ -542,8 +544,13 @@ exports.payBooking = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
-    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isPrivilegedAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(userRole);
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId)?.toString();
+    const bookingCommId = (booking.communityId?._id || booking.communityId)?.toString();
+    const isCommunityHeadAdmin = userRole === 'head_admin' && userCommId && bookingCommId && userCommId === bookingCommId;
+
+    if (!isPrivilegedAdmin && !isCommunityHeadAdmin && booking.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
     }
 
@@ -586,8 +593,13 @@ exports.createBookingRazorpayOrder = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
-    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isPrivilegedAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(userRole);
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId)?.toString();
+    const bookingCommId = (booking.communityId?._id || booking.communityId)?.toString();
+    const isCommunityHeadAdmin = userRole === 'head_admin' && userCommId && bookingCommId && userCommId === bookingCommId;
+
+    if (!isPrivilegedAdmin && !isCommunityHeadAdmin && booking.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
     }
 
@@ -657,8 +669,13 @@ exports.verifyRazorpayBookingPayment = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Booking not found' });
     }
 
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
-    if (!isAdmin && booking.user.toString() !== req.user._id.toString()) {
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isPrivilegedAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(userRole);
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId)?.toString();
+    const bookingCommId = (booking.communityId?._id || booking.communityId)?.toString();
+    const isCommunityHeadAdmin = userRole === 'head_admin' && userCommId && bookingCommId && userCommId === bookingCommId;
+
+    if (!isPrivilegedAdmin && !isCommunityHeadAdmin && booking.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({ status: 'error', message: 'Not authorized to access this booking' });
     }
 
@@ -704,7 +721,18 @@ exports.verifyRazorpayBookingPayment = async (req, res) => {
       const dhDoc = await Dharmashala.findById(booking.dharmashala);
       const dName = dhDoc?.name || 'Dharmashala';
 
-      notifyBookingStatusChanged(booking.user, 'confirmed', dName, booking._id, { amount: booking.totalAmount });
+      const confirmNotif = await notifyBookingStatusChanged(booking.user, 'confirmed', dName, booking._id, { amount: booking.totalAmount });
+      if (confirmNotif) {
+        sendPushNotification({
+          userId: booking.user,
+          notificationId: confirmNotif._id,
+          type: 'booking_payment_confirmed',
+          title: 'Booking Confirmed! 🏠',
+          message: `Your payment of ₹${booking.totalAmount} for "${dName}" has been confirmed.`,
+          icon: '🏠',
+          actionUrl: '/member/dharmashala/my-bookings'
+        }).catch(err => console.error('[BookingConfirmPushError]', err.message));
+      }
 
       // Notify Community Heads and Admins
       const User = require('../../models/User');

@@ -12,10 +12,12 @@
  * Event Namespace: chat:*
  */
 
+const User         = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Group        = require('../models/Group');
 const { createMessage, markMessagesSeen, markMessagesDelivered } = require('./messageService');
 const { notifyNewMessage, notifyMention } = require('./notificationService');
+const { sendPushNotification } = require('./pushNotificationService');
 
 // ─── Online Users Registry ────────────────────────────────────────────────────
 // Shared with matrimonialSocket via module scope on app.set('onlineUsers', map)
@@ -49,13 +51,31 @@ const removeOnlineUser = (userId, socketId) => {
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 const chatSocketService = (io) => {
   // We use a dedicated namespace or the default namespace
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const userId = socket.handshake.auth?.userId;
     if (!userId) return socket.disconnect(true);
 
-    // ── Online presence ──────────────────────────────────────────────────────
+    // ── Online presence & Room Scoping ────────────────────────────────────────
     addOnlineUser(userId, socket.id);
     socket.join(`user:${userId}`);
+
+    // Join role & community-scoped rooms (head:<communityId>, admin:global, community:<communityId>)
+    try {
+      const dbUser = await User.findById(userId).select('role communityId').lean();
+      if (dbUser) {
+        if (dbUser.communityId) {
+          socket.join(`community:${dbUser.communityId}`);
+        }
+        if (dbUser.role === 'head' && dbUser.communityId) {
+          socket.join(`head:${dbUser.communityId}`);
+        }
+        if (dbUser.role === 'admin') {
+          socket.join('admin:global');
+        }
+      }
+    } catch (err) {
+      console.error('[ChatSocket] Error joining scoped rooms:', err.message);
+    }
 
     // Broadcast updated online list to all connected clients
     io.emit('chat:online_users', Array.from(onlineUsers.keys()));
@@ -188,14 +208,36 @@ const chatSocketService = (io) => {
             });
           } else {
             // Participant is offline → push notification
-            notifyNewMessage(pid, populatedMsg.senderId?.name || 'Someone', conversationId);
+            const notifMsg = await notifyNewMessage(pid, populatedMsg.senderId?.name || 'Someone', conversationId);
+            if (notifMsg) {
+              sendPushNotification({
+                userId: pid,
+                notificationId: notifMsg._id,
+                type: 'chat_new_message',
+                title: `New message from ${populatedMsg.senderId?.name || 'A member'} 💬`,
+                message: message ? (message.length > 80 ? message.substring(0, 80) + '...' : message) : 'Sent you a media attachment',
+                icon: '💬',
+                actionUrl: '/member/chat'
+              }).catch(err => console.error('[ChatPushError]', err.message));
+            }
           }
         }
 
         // Handle @mentions
         for (const mentionedId of mentionedUsers) {
           if (mentionedId.toString() !== userId.toString()) {
-            notifyMention(mentionedId, populatedMsg.senderId?.name || 'Someone', conversationId);
+            const notifMention = await notifyMention(mentionedId, populatedMsg.senderId?.name || 'Someone', conversationId);
+            if (notifMention) {
+              sendPushNotification({
+                userId: mentionedId,
+                notificationId: notifMention._id,
+                type: 'chat_mention',
+                title: 'You were mentioned in chat 🏷️',
+                message: `${populatedMsg.senderId?.name || 'Someone'} mentioned you in a message.`,
+                icon: '🏷️',
+                actionUrl: '/member/chat'
+              }).catch(err => console.error('[MentionPushError]', err.message));
+            }
           }
         }
       } catch (err) {

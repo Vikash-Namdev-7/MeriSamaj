@@ -3,6 +3,7 @@ const DharmashalaRoom = require('../../models/DharmashalaRoom');
 const DharmashalaBooking = require('../../models/DharmashalaBooking');
 const DharmashalaMaintenance = require('../../models/DharmashalaMaintenance');
 const { notifyBookingStatusChanged } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // 1. Dashboard Analytics Stats
@@ -505,10 +506,23 @@ exports.updateBookingStatus = async (req, res) => {
     try {
       const dName = parentProp.name || 'Dharmashala';
       if (booking.user && oldStatus !== status) {
-        notifyBookingStatusChanged(booking.user, status, dName, booking._id, {
+        const notifObj = await notifyBookingStatusChanged(booking.user, status, dName, booking._id, {
           amount: booking.totalAmount,
           reason: booking.rejectionReason
         });
+
+        if (notifObj && ['approved', 'rejected'].includes(status)) {
+          sendPushNotification({
+            userId: booking.user,
+            notificationId: notifObj._id,
+            type: status === 'approved' ? 'booking_approved' : 'booking_rejected',
+            title: status === 'approved' ? 'Booking Approved ✅' : 'Booking Declined ❌',
+            message: status === 'approved'
+              ? `Your booking for "${dName}" has been approved! Please complete payment.`
+              : `Your booking for "${dName}" was declined.`,
+            actionUrl: '/member/dharmashala/my-bookings'
+          }).catch(err => console.error('[DharmashalaPushError]', err.message));
+        }
       }
     } catch (notifErr) {
       console.warn('[Notify] updateBookingStatus booking_status_changed warning:', notifErr.message);

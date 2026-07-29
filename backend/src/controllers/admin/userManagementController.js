@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const { notifyUserBlocked, notifyUserActivated } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const Community = require('../../models/Community');
 const Post = require('../../models/Post');
 const Donation = require('../../models/Donation');
@@ -354,7 +355,18 @@ exports.blockUser = async (req, res) => {
 
     // ── Notification: notify blocked user ────────────────────────────────────────
     try {
-      notifyUserBlocked(user._id, reason);
+      const notifDoc = await notifyUserBlocked(user._id, reason);
+      if (notifDoc) {
+        sendPushNotification({
+          userId: user._id,
+          notificationId: notifDoc._id,
+          type: 'account_blocked',
+          title: 'Account Blocked 🛑',
+          message: `Your account has been restricted by an administrator. Reason: ${reason || 'Violation of community policies'}`,
+          icon: '🛑',
+          actionUrl: '/member/profile'
+        }).catch(err => console.error('[AccountPushError]', err.message));
+      }
     } catch (notifErr) {
       console.warn('[Notify] blockUser account_blocked failed:', notifErr.message);
     }
@@ -395,7 +407,18 @@ exports.activateUser = async (req, res) => {
 
     // ── Notification: notify activated user ───────────────────────────────────────
     try {
-      notifyUserActivated(user._id);
+      const notifDoc = await notifyUserActivated(user._id);
+      if (notifDoc) {
+        sendPushNotification({
+          userId: user._id,
+          notificationId: notifDoc._id,
+          type: 'account_activated',
+          title: 'Account Activated ✅',
+          message: 'Your account has been restored to active status. Welcome back!',
+          icon: '✅',
+          actionUrl: '/member/home'
+        }).catch(err => console.error('[AccountPushError]', err.message));
+      }
     } catch (notifErr) {
       console.warn('[Notify] activateUser account_activated failed:', notifErr.message);
     }

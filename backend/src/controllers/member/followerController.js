@@ -20,29 +20,64 @@ exports.toggleFollow = async (req, res) => {
     }
 
     const alreadyFollowing = await Follower.findOne({ followerId, followingId });
+    let isFollowing = false;
 
     if (alreadyFollowing) {
       await Follower.deleteOne({ _id: alreadyFollowing._id });
-      res.json({ success: true, status: 'unfollowed' });
+      isFollowing = false;
     } else {
-      // Default auto-accept follow request (or set to pending depending on privacy flags)
-      const follow = await Follower.create({
+      await Follower.create({
         followerId,
         followingId,
         status: 'accepted'
       });
+      isFollowing = true;
 
-      // Send Notification
-      await Notification.create({
-        recipientId: followingId,
-        senderId: followerId,
-        type: 'follow',
-        entityType: 'Post', // Default placeholder entity type required by model constraints
-        entityId: followerId // Links to follower user ID
-      });
+      // Send Notifications (non-blocking)
+      (async () => {
+        try {
+          const followerUser = await User.findById(followerId).select('name avatar');
+          const followerName = followerUser?.name || 'Someone';
 
-      res.json({ success: true, status: 'accepted', data: follow });
+          await Notification.create({
+            recipientId: followingId,
+            senderId: followerId,
+            type: 'follow',
+            entityType: 'User',
+            entityId: followerId
+          });
+
+          const UserNotification = require('../../models/UserNotification');
+          await UserNotification.create({
+            userId: followingId,
+            title: 'New Follower 👤',
+            message: `${followerName} has started following you.`,
+            module: 'social',
+            type: 'follow',
+            data: { followerId, followerName, avatar: followerUser?.avatar },
+            isRead: false
+          });
+        } catch (err) {
+          console.warn('Follow notification creation error:', err.message);
+        }
+      })();
     }
+
+    // Compute fresh real counts from DB for target user and logged-in user
+    const [targetFollowers, targetFollowing, myFollowers, myFollowing] = await Promise.all([
+      Follower.countDocuments({ followingId, status: 'accepted' }),
+      Follower.countDocuments({ followerId: followingId, status: 'accepted' }),
+      Follower.countDocuments({ followingId: followerId, status: 'accepted' }),
+      Follower.countDocuments({ followerId, status: 'accepted' })
+    ]);
+
+    res.json({
+      success: true,
+      status: isFollowing ? 'accepted' : 'unfollowed',
+      isFollowing,
+      targetStats: { followersCount: targetFollowers, followingCount: targetFollowing },
+      myStats: { followersCount: myFollowers, followingCount: myFollowing }
+    });
   } catch (error) {
     console.error('toggleFollow error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -58,7 +93,7 @@ exports.getFollowers = async (req, res) => {
     const followers = await Follower.find({ followingId: userId, status: 'accepted' })
       .populate('followerId', 'name avatar role city community');
 
-    res.json({ success: true, data: followers.map(f => f.followerId) });
+    res.json({ success: true, data: followers.map(f => f.followerId).filter(Boolean) });
   } catch (error) {
     console.error('getFollowers error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -74,7 +109,7 @@ exports.getFollowing = async (req, res) => {
     const following = await Follower.find({ followerId: userId, status: 'accepted' })
       .populate('followingId', 'name avatar role city community');
 
-    res.json({ success: true, data: following.map(f => f.followingId) });
+    res.json({ success: true, data: following.map(f => f.followingId).filter(Boolean) });
   } catch (error) {
     console.error('getFollowing error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

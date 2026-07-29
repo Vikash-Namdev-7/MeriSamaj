@@ -22,59 +22,42 @@ const ConversationCard = ({ conv, onClick }) => {
   
   const initials = title ? title.substring(0, 2).toUpperCase() : 'U';
   
-  // Styling based on type
-  let color = 'bg-gray-100 text-gray-600';
-  let badge = null;
-  
-  if (type === 'direct') {
-    color = 'bg-orange-100 text-orange-600';
-    if (isOnline) {
-      badge = <div className="absolute -bottom-0.5 -right-0.5 w-[14px] h-[14px] bg-green-500 rounded-full border-2 border-white" />;
-    }
-  } else if (type === 'group') {
-    color = 'bg-violet-100 text-violet-600';
-    badge = (
-      <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-brand-primary rounded-full flex items-center justify-center border-2 border-white">
-        <Users size={10} className="text-white" />
-      </div>
-    );
-  } else if (type === 'matrimonial') {
-    color = 'bg-pink-100 text-pink-600';
-    badge = (
-      <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-pink-500 rounded-full flex items-center justify-center border-2 border-white">
-        <Heart size={10} className="text-white" />
-      </div>
-    );
-  }
-
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-3.5 px-4 py-3.5 border-b border-gray-50 bg-white hover:bg-purple-50/20 active:bg-purple-100/20 cursor-pointer transition-colors"
+      className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-100/70 bg-white hover:bg-purple-50/20 active:bg-purple-100/30 cursor-pointer transition-colors text-left select-none"
     >
       <div className="relative shrink-0">
-        <Avatar
-          initials={initials}
-          src={avatar}
-          size="lg"
-          color={color}
-        />
-        {badge}
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200/70 shadow-2xs">
+          {avatar ? (
+            <img src={avatar} alt={title} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        {isOnline && (
+          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-xs" />
+        )}
+        {type === 'matrimonial' && (
+          <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-pink-500 rounded-full flex items-center justify-center border-2 border-white shadow-xs text-white">
+            <Heart size={9} fill="white" />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
-          <h3 className="text-[15.5px] font-semibold text-gray-900 truncate pr-2">{title}</h3>
-          <span className="text-[12px] whitespace-nowrap shrink-0 text-gray-400">
+          <h3 className="text-[14.5px] font-extrabold text-slate-800 truncate pr-2">{title}</h3>
+          <span className="text-[11px] font-bold whitespace-nowrap shrink-0 text-slate-400">
             {formatTime(lastMessageAt)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className={`text-[13.5px] truncate leading-snug ${unreadCount > 0 ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
+          <p className={`text-[12.5px] truncate leading-snug ${unreadCount > 0 ? 'text-slate-900 font-extrabold' : 'text-slate-500 font-medium'}`}>
             {lastMessagePreview || (type === 'group' ? 'Start chatting...' : 'No messages yet')}
           </p>
           {unreadCount > 0 && (
-            <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[11px] font-bold shadow-sm shrink-0">
+            <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black shadow-2xs shrink-0">
               {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           )}

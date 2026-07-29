@@ -43,7 +43,7 @@ const postSchema = new mongoose.Schema(
     // Category Scope
     category: {
       type: String,
-      enum: ['Normal', 'Announcement', 'Event', 'Blood Donation', 'Emergency'],
+      enum: ['Normal', 'Announcement', 'Event', 'Blood Donation', 'Emergency', 'Notice', 'Matrimony', 'Business', 'Obituary', 'Achievement', 'Youth', 'General'],
       index: true,
       default: 'Normal'
     },
@@ -113,6 +113,10 @@ const postSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+    isEdited: {
+      type: Boolean,
+      default: false,
     },
 
     // Post Audit & Scheduling

@@ -1,12 +1,13 @@
 const Post = require('../../models/Post');
 const Community = require('../../models/Community');
 const User = require('../../models/User');
-const { notifyOfficialPost } = require('../../services/notificationService');
+const { notifyOfficialPost, createBroadcastNotification, createAggregatedNotification, createNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 // Helper to verify post community ownership for non-admin actions
 const verifyPostCommunityAccess = (req, post) => {
-  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
+  if (['admin', 'super_admin', 'master_admin', 'master'].includes(req.user?.role)) {
     return true;
   }
   const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
@@ -173,17 +174,19 @@ exports.createPost = async (req, res) => {
 
     // Trigger notification if Announcement or Emergency
     if (['Announcement', 'Emergency'].includes(req.body.category)) {
-      // Find all users in this community/city context to notify
-      const usersToNotify = await User.find({ communityId: targetCommunityId }).select('_id');
-      const memberIds = usersToNotify.map(u => u._id).filter(id => id.toString() !== req.user._id.toString());
-      
-      notifyOfficialPost(
-        memberIds,
-        req.body.category,
-        req.user.name,
-        content.trim(),
-        post._id.toString()
-      );
+      const isEmergency = req.body.category === 'Emergency';
+      createBroadcastNotification({
+        communityId: targetCommunityId,
+        module: 'social',
+        type: isEmergency ? 'emergency_alert' : 'official_announcement',
+        title: isEmergency ? '🚨 EMERGENCY ALERT' : `📢 Announcement from ${req.user.name}`,
+        message: content.trim().substring(0, 100),
+        icon: isEmergency ? '🚨' : '📢',
+        priority: isEmergency ? 'urgent' : 'high',
+        actionUrl: `/member/social/${post._id}`,
+        referenceId: post._id,
+        referenceType: 'Post'
+      });
     }
 
     res.status(201).json({ success: true, data: populated });
@@ -250,8 +253,22 @@ exports.deletePost = async (req, res) => {
     const isAuthor = post.authorId.toString() === req.user._id.toString();
     const isHeadOrAdmin = ['head', 'admin'].includes(req.user.role);
 
-    if (!isAuthor && !isHeadOrAdmin) {
-      return res.status(403).json({ status: 'error', message: 'Not authorized to delete this post' });
+    // Trigger post_moderated notification to author if deleted by moderator
+    if (!isAuthor && isHeadOrAdmin) {
+      const authorId = post.authorId || post.userId;
+      if (authorId) {
+        createNotification({
+          userId: authorId,
+          communityId: post.communityId,
+          module: 'social',
+          type: 'post_moderated',
+          title: 'Post Moderated 🛡️',
+          message: 'Your post was removed by a community moderator.',
+          icon: '🛡️',
+          priority: 'high',
+          actionUrl: '/member/social'
+        }).catch(err => console.error('[PostModeratedNotifError]', err.message));
+      }
     }
 
     await Post.findByIdAndDelete(req.params.id);
@@ -318,6 +335,26 @@ exports.addComment = async (req, res) => {
 
     post.comments.push({ userId: req.user._id, text: text.trim() });
     await post.save();
+
+    // Trigger Aggregated Notification to Post Author if commenter is not author
+    const authorId = post.authorId || post.userId;
+    if (authorId && authorId.toString() !== req.user._id.toString()) {
+      createAggregatedNotification({
+        userId: authorId,
+        communityId: post.communityId,
+        module: 'social',
+        type: 'post_comment',
+        title: 'New Comment on your Post 💬',
+        message: `${req.user.name} commented on your post.`,
+        icon: '💬',
+        priority: 'normal',
+        actionUrl: `/member/social/${post._id}`,
+        referenceId: post._id,
+        referenceType: 'Post',
+        actorId: req.user._id,
+        actorName: req.user.name
+      }).catch(err => console.error('[CommentNotifError]', err.message));
+    }
 
     const updated = await Post.findById(post._id)
       .populate('comments.userId', 'name avatar');

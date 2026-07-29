@@ -120,265 +120,268 @@ export const SettingsPage = () => {
   const blockedMembersIds = blockedUsers?.filter(b => b.blockerId === myId).map(b => b.blockedId) || [];
   const blockedMembersList = members?.filter(m => blockedMembersIds.includes(m.id)) || [];
 
+  
   return (
-    <div className="min-h-screen bg-surface pb-24 relative overflow-x-hidden animate-slide-up">
-      {/* Header Bar */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
+    <div className="min-h-screen bg-slate-50/70 pb-20 font-sans select-none">
+      {/* Header Bar — Glass morphism */}
+      <div className="bg-white/85 backdrop-blur-xl border-b border-purple-100/30 flex items-center justify-between px-4 h-14 sticky top-0 z-30 shadow-[0_2px_12px_rgba(124,58,237,0.03)]">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/member/profile')} className="p-1 -ml-1 press-scale">
-            <ArrowLeft size={22} className="text-text-primary" />
+          <button onClick={() => navigate('/member/profile')} className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale">
+            <ArrowLeft size={18} strokeWidth={2.5} />
           </button>
-          <h1 className="text-base font-bold text-text-primary tracking-tight">Settings</h1>
+          <h1 className="text-[17px] font-extrabold text-slate-800 tracking-tight leading-tight">Settings</h1>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-3.5 py-6 space-y-6">
-        {/* Premium Upgrade Promotion Banner */}
+      <div className="max-w-md mx-auto px-4 py-5 space-y-5 text-left">
+        
+        {/* Premium Upgrade Promotion Banner — Original Compact Style */}
         <div>
           {!currentUser?.isPremium ? (
             <div 
               onClick={() => navigate('/member/profile/upgrade')}
-              className="p-4.5 rounded-[24px] bg-gradient-to-r from-rose-500 via-pink-500 to-[#e62e52] text-white shadow-lg shadow-rose-500/15 flex items-center justify-between cursor-pointer press-scale border border-rose-400/20"
+              className="p-4 rounded-[22px] bg-gradient-to-r from-rose-500 via-pink-500 to-[#e62e52] text-white shadow-[0_6px_20px_rgba(244,63,94,0.2)] flex items-center justify-between cursor-pointer press-scale border border-rose-400/30 group"
             >
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles size={16} className="text-amber-300 fill-amber-300 animate-pulse" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Upgrade Membership</h3>
+                  <Sparkles size={15} className="text-amber-300 fill-amber-300 animate-pulse" />
+                  <h3 className="text-[11.5px] font-extrabold uppercase tracking-wider text-white">Upgrade Membership</h3>
                 </div>
-                <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
+                <p className="text-[10.5px] text-white/90 font-medium leading-normal">
                   Access direct contacts, send 50+ super interests & get a Gold Badge!
                 </p>
               </div>
-              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
+              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2 group-hover:translate-x-0.5 transition-transform" />
             </div>
           ) : (
             <div 
               onClick={() => navigate('/member/profile/upgrade')}
-              className="p-4.5 rounded-[24px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-lg shadow-amber-550/15 flex items-center justify-between cursor-pointer press-scale border border-yellow-400/20"
+              className="p-4 rounded-[22px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-[0_6px_20px_rgba(245,158,11,0.2)] flex items-center justify-between cursor-pointer press-scale border border-yellow-300/30 group"
             >
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={16} className="text-white fill-white/10" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white">{currentUser.membershipPlan || 'Pro Max'} Active</h3>
+                  <ShieldCheck size={16} className="text-white fill-white/20" />
+                  <h3 className="text-[11.5px] font-extrabold uppercase tracking-wider text-white">{currentUser.membershipPlan || 'Pro Max'} Active</h3>
                 </div>
-                <p className="text-[10px] text-white/90 font-semibold leading-relaxed">
+                <p className="text-[10.5px] text-white/90 font-medium leading-normal">
                   Valid plan until: {currentUser.membershipExpiry || 'Till Marriage'} · Enjoy premium matchmaking!
                 </p>
               </div>
-              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2" />
+              <ChevronRight size={18} className="text-white/80 shrink-0 ml-2 group-hover:translate-x-0.5 transition-transform" />
             </div>
           )}
         </div>
+
 
         {/* Profile Menu Actions List */}
         <div className="space-y-4">
           
           {/* Group 1: Account Info */}
-          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Account Information</span>
+          <div className="bg-white rounded-[26px] overflow-hidden border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] divide-y divide-slate-100">
+            <div className="px-4.5 py-3 bg-purple-50/50 border-b border-purple-100/40">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-900/70">Account Information</span>
             </div>
             
             {/* Action 1: Personal Info */}
             <button 
               onClick={() => navigate('/member/profile/edit')}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <User size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Personal Info</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add and update your information</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Personal Info</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Add and update your information</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action 1.5: Family Details */}
             <button 
               onClick={() => navigate('/member/profile/family')}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Users size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Family Details</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage family tree & details</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Family Details</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Manage family tree & details</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action 2: Professional Info */}
             <button 
               onClick={() => navigate('/member/professional/apply')}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Briefcase size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Professional Info</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add business and services</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Professional Info</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Add business and services</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action 3: Services / Products */}
             <button 
               onClick={() => navigate('/member/professional')}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Package size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Services / Products</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Your products and business services</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Services / Products</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Your products and business services</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action 4: Social Media Links */}
             <button 
               onClick={() => setShowSocialModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Globe size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Social Media Links</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Add social media profile links</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Social Media Links</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Add social media profile links</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
           </div>
 
           {/* Group 2: Connections & Privacy */}
-          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Security & Sharing</span>
+          <div className="bg-white rounded-[26px] overflow-hidden border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] divide-y divide-slate-100">
+            <div className="px-4.5 py-3 bg-purple-50/50 border-b border-purple-100/40">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-900/70">Security & Sharing</span>
             </div>
             
             {/* Action: Refer & Earn */}
             <button 
               onClick={() => navigate('/member/referral')}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Gift size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Refer & Earn</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Invite friends and get rewards</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Refer & Earn</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Invite friends and get rewards</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action 5: Privacy Settings */}
             <button 
               onClick={() => setShowPrivacyModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Lock size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Privacy Settings</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage profile privacy</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Privacy Settings</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Manage profile privacy</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action: Blocked Users */}
             <button 
               onClick={() => setShowBlockedModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                  <span className="text-base">🚫</span>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                  <span className="text-sm">🚫</span>
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Blocked Users</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">List of blocked members</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Blocked Users</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">List of blocked members</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action: Notifications */}
             <button 
               onClick={() => setShowNotificationsModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                  <span className="text-base">🔔</span>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                  <Bell size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Notifications</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Manage announcement alerts</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Notifications</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Manage announcement alerts</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
           </div>
 
           {/* Group 2.5: Support & About */}
-          <div className="bg-white rounded-[24px] overflow-hidden border border-purple-100/10 shadow-[0_8px_30px_rgba(124,58,237,0.03)] divide-y divide-purple-100/20">
-            <div className="px-4.5 py-3 bg-purple-50/20 border-b border-purple-100/20">
-              <span className="text-[9.5px] font-black uppercase tracking-widest text-slate-400">Support & Info</span>
+          <div className="bg-white rounded-[26px] overflow-hidden border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] divide-y divide-slate-100">
+            <div className="px-4.5 py-3 bg-purple-50/50 border-b border-purple-100/40">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-900/70">Support & Info</span>
             </div>
 
             {/* Action: Help & Support */}
             <button 
               onClick={() => setShowHelpModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                  <span className="text-base">🛡️</span>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                  <Shield size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">Help & Support</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Contact community admin</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">Help & Support</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Contact community admin</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
             {/* Action: About */}
             <button 
               onClick={() => setShowAboutModal(true)}
-              className="w-full flex items-center justify-between p-4 hover:bg-purple-50/20 transition-colors text-left"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-purple-50/30 transition-colors text-left group"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-brand-primary flex items-center justify-center shrink-0 border border-purple-100/40 shadow-sm">
-                  <span className="text-base">ℹ️</span>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                  <Info size={18} />
                 </div>
                 <div>
-                  <span className="text-[13px] font-bold text-text-primary block">About MeriSamaj</span>
-                  <span className="text-[9.5px] font-medium text-text-secondary mt-0.5 block leading-none">Version info & details</span>
+                  <span className="text-[13px] font-extrabold text-slate-800 group-hover:text-purple-700 transition-colors block">About MeriSamaj</span>
+                  <span className="text-[10.5px] font-semibold text-slate-400 mt-0.5 block leading-none">Version info & details</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-purple-300" />
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </button>
           </div>
 
@@ -386,15 +389,16 @@ export const SettingsPage = () => {
           <div className="pt-2">
             <button 
               onClick={logoutUser}
-              className="w-full bg-white border border-rose-100/60 shadow-[0_4px_12px_rgba(239,68,68,0.03)] p-4 flex items-center justify-center gap-2 rounded-[20px] press-scale cursor-pointer hover:bg-rose-50/20 transition-all duration-200"
+              className="w-full bg-rose-50/80 hover:bg-rose-100/80 border border-rose-200/60 p-3.5 flex items-center justify-center gap-2 rounded-[22px] press-scale cursor-pointer transition-all text-rose-700 font-extrabold text-[13px] shadow-2xs"
             >
               <LogOut size={16} className="text-rose-600" strokeWidth={2.5} />
-              <span className="text-[14px] font-black text-rose-600 uppercase tracking-wider">Log out</span>
+              <span className="uppercase tracking-wider">Log out</span>
             </button>
           </div>
 
         </div>
       </div>
+
 
       {/* ─── MODALS ─── */}
 

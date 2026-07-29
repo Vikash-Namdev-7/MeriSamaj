@@ -245,14 +245,14 @@ const CalendarInput = ({ value, onChange, placeholder, error }) => {
         value={value}
         onClick={handleOpen}
         placeholder={placeholder}
-        className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] cursor-pointer transition-all pr-10"
-        style={{ borderColor: error ? '#EF4444' : '#E5E7EB' }}
+        className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-slate-50/70 cursor-pointer transition-all pr-9 text-slate-800"
+        style={{ borderColor: error ? '#EF4444' : '#E2E8F0' }}
       />
       <div 
         onClick={handleOpen}
-        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer pointer-events-none"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer pointer-events-none"
       >
-        <CalendarDays size={16} />
+        <CalendarDays size={15} />
       </div>
 
       {isOpen && createPortal(
@@ -390,14 +390,14 @@ const TimeInput = ({ value, onChange, placeholder, error }) => {
         value={value}
         onClick={handleOpen}
         placeholder={placeholder}
-        className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] cursor-pointer transition-all pr-10"
-        style={{ borderColor: error ? '#EF4444' : '#E5E7EB' }}
+        className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-slate-50/70 cursor-pointer transition-all pr-9 text-slate-800"
+        style={{ borderColor: error ? '#EF4444' : '#E2E8F0' }}
       />
       <div 
         onClick={handleOpen}
-        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer pointer-events-none"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer pointer-events-none"
       >
-        <Clock size={16} />
+        <Clock size={15} />
       </div>
 
       {isOpen && createPortal(
@@ -608,25 +608,25 @@ const CreateShradhanjaliPage = () => {
   // ── Step content renderers ──
 
   const renderStep1 = () => (
-    <div className="space-y-5">
-      <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-bold text-gray-900">Upload Photo</h2>
-        <p className="text-[13px] text-gray-500">Use a large, clear, and high-quality photo</p>
+    <div className="space-y-4">
+      <div className="text-center space-y-0.5">
+        <h2 className="text-[15px] font-extrabold text-slate-800 tracking-tight">Upload Photo</h2>
+        <p className="text-[11px] font-medium text-slate-400">Use a clear and high-quality photo of deceased</p>
       </div>
 
       {form.photoUrl ? (
-        <div className="relative rounded-2xl overflow-hidden shadow-md max-h-[380px] w-full flex items-center justify-center">
-          <img src={form.photoUrl} alt="preview" className="w-full h-auto max-h-[380px] object-cover rounded-2xl" />
+        <div className="relative rounded-2xl overflow-hidden shadow-sm max-h-[300px] w-full flex items-center justify-center">
+          <img src={form.photoUrl} alt="preview" className="w-full h-auto max-h-[300px] object-cover rounded-2xl" />
           {/* Remove */}
           <button
             onClick={() => setForm(f => ({ ...f, photoUrl: '', photoFile: null }))}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center press-scale z-10"
+            className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center press-scale z-10"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
           {/* Om badge preview */}
           <div
-            className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold z-10"
+            className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold z-10"
             style={{ background: 'rgba(20,12,0,0.75)', color: '#D4AF37' }}
           >
             🪔 Om Shanti
@@ -635,21 +635,21 @@ const CreateShradhanjaliPage = () => {
       ) : (
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 py-14 press-scale transition-all"
-          style={{ borderColor: errors.photoUrl ? '#EF4444' : 'rgba(212,175,55,0.4)', background: 'rgba(212,175,55,0.04)' }}
+          className="w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2.5 py-8 press-scale transition-all"
+          style={{ borderColor: errors.photoUrl ? '#EF4444' : 'rgba(212,175,55,0.4)', background: 'rgba(212,175,55,0.03)' }}
         >
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, rgba(124,92,46,0.1) 0%, rgba(212,175,55,0.15) 100%)' }}
           >
-            <Upload size={28} style={{ color: '#7C5C2E' }} />
+            <Upload size={22} style={{ color: '#7C5C2E' }} />
           </div>
           <div className="text-center">
-            <p className="text-[15px] font-bold" style={{ color: '#7C5C2E' }}>Upload Photo</p>
-            <p className="text-[12px] text-gray-400 mt-0.5">Please use a clear, appropriate photo</p>
+            <p className="text-[13.5px] font-extrabold" style={{ color: '#7C5C2E' }}>Upload Photo</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Please select a clear photo</p>
           </div>
           <div
-            className="px-4 py-2 rounded-full text-[13px] font-bold text-white"
+            className="px-3.5 py-1.5 rounded-full text-[11.5px] font-extrabold text-white shadow-xs"
             style={{ background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)' }}
           >
             Choose Photo
@@ -666,31 +666,31 @@ const CreateShradhanjaliPage = () => {
       />
 
       {errors.photoUrl && (
-        <p className="text-[12px] text-red-500 text-center">{errors.photoUrl}</p>
+        <p className="text-[11px] text-red-500 text-center font-bold">{errors.photoUrl}</p>
       )}
     </div>
   );
 
   const renderStep2 = () => (
-    <div className="space-y-5">
-      <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-bold text-gray-900">Basic Information</h2>
-        <p className="text-[13px] text-gray-500">Enter details of the deceased</p>
+    <div className="space-y-4 text-left">
+      <div className="text-center space-y-0.5">
+        <h2 className="text-[15px] font-extrabold text-slate-800 tracking-tight">Basic Information</h2>
+        <p className="text-[11px] font-medium text-slate-400">Enter details of the deceased</p>
       </div>
 
       {/* Prefix selector */}
       <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">Prefix</label>
-        <div className="flex flex-wrap gap-2">
+        <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Prefix</label>
+        <div className="flex flex-wrap gap-1.5">
           {PREFIXES.map(p => (
             <button
               key={p || 'none'}
               onClick={() => set('prefix', p)}
-              className="px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all press-scale"
+              className="px-3 py-1 rounded-xl text-[11px] font-extrabold border transition-all press-scale"
               style={{
                 background: form.prefix === p ? '#7C5C2E' : 'white',
-                color: form.prefix === p ? 'white' : '#374151',
-                borderColor: form.prefix === p ? '#7C5C2E' : '#E5E7EB'
+                color: form.prefix === p ? 'white' : '#475569',
+                borderColor: form.prefix === p ? '#7C5C2E' : '#E2E8F0'
               }}
             >
               {p || 'None'}
@@ -701,7 +701,7 @@ const CreateShradhanjaliPage = () => {
 
       {/* Full Name */}
       <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+        <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
           Full Name <span className="text-red-400">*</span>
         </label>
         <input
@@ -709,17 +709,17 @@ const CreateShradhanjaliPage = () => {
           value={form.deceasedName}
           onChange={e => set('deceasedName', e.target.value)}
           placeholder="e.g. Kamla Devi Agrawal"
-          className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none transition-all"
+          className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none transition-all text-slate-800"
           style={{
-            borderColor: errors.deceasedName ? '#EF4444' : form.deceasedName ? 'rgba(212,175,55,0.5)' : '#E5E7EB',
-            background: '#FAFAF8'
+            borderColor: errors.deceasedName ? '#EF4444' : form.deceasedName ? 'rgba(212,175,55,0.5)' : '#E2E8F0',
+            background: '#F8FAFC'
           }}
         />
-        {errors.deceasedName && <p className="text-[12px] text-red-500 mt-1">{errors.deceasedName}</p>}
+        {errors.deceasedName && <p className="text-[11px] text-red-500 font-bold mt-1">{errors.deceasedName}</p>}
         {/* Preview */}
         {form.deceasedName && (
-          <p className="text-[12px] text-gray-400 mt-1">
-            Preview: <span className="font-bold text-gray-700">{form.prefix} {form.deceasedName}</span>
+          <p className="text-[11px] text-slate-400 font-medium mt-1">
+            Preview: <span className="font-extrabold text-slate-700">{form.prefix} {form.deceasedName}</span>
           </p>
         )}
       </div>
@@ -727,25 +727,25 @@ const CreateShradhanjaliPage = () => {
       {/* Age + Relation */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Age</label>
+          <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Age</label>
           <input
             type="number"
             value={form.age}
             onChange={e => set('age', e.target.value)}
             placeholder="e.g. 82"
-            className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: '#E5E7EB' }}
+            className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-slate-50/70 transition-all text-slate-800"
+            style={{ borderColor: '#E2E8F0' }}
           />
         </div>
         <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Relation</label>
+          <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Relation</label>
           <input
             type="text"
             value={form.relation}
             onChange={e => set('relation', e.target.value)}
             placeholder="Son / Daughter"
-            className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
-            style={{ borderColor: '#E5E7EB' }}
+            className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-slate-50/70 transition-all text-slate-800"
+            style={{ borderColor: '#E2E8F0' }}
           />
         </div>
       </div>
@@ -753,7 +753,7 @@ const CreateShradhanjaliPage = () => {
       {/* Birth + Death dates */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+          <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
             <span className="flex items-center gap-1"><CalendarDays size={10} /> Date of Birth</span>
           </label>
           <CalendarInput
@@ -763,7 +763,7 @@ const CreateShradhanjaliPage = () => {
           />
         </div>
         <div>
-          <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+          <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
             <span className="flex items-center gap-1"><CalendarDays size={10} /> Date of Passing <span className="text-red-400">*</span></span>
           </label>
           <CalendarInput
@@ -772,7 +772,7 @@ const CreateShradhanjaliPage = () => {
             placeholder="YYYY-MM-DD"
             error={errors.dateOfPassing}
           />
-          {errors.dateOfPassing && <p className="text-[12px] text-red-500 mt-1">{errors.dateOfPassing}</p>}
+          {errors.dateOfPassing && <p className="text-[11px] text-red-500 font-bold mt-1">{errors.dateOfPassing}</p>}
         </div>
       </div>
     </div>
@@ -787,17 +787,17 @@ const CreateShradhanjaliPage = () => {
 
     return (
       <div className="space-y-5">
-        <div className="text-center space-y-1">
-          <h2 className="text-[18px] font-bold text-gray-900">Ceremony Details</h2>
-          <p className="text-[13px] text-gray-500">Enter details of the last rites</p>
+        <div className="text-center space-y-0.5">
+          <h2 className="text-[15px] font-extrabold text-slate-800 tracking-tight">Ceremony Details</h2>
+          <p className="text-[11px] font-medium text-slate-400">Enter details of the last rites</p>
         </div>
 
         {/* Dynamic Ceremonies Block List */}
-        <div className="space-y-6">
+        <div className="space-y-4 text-left">
           {(form.ceremonies || []).map((c, index) => (
-            <div key={index} className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/60 space-y-4 relative">
-              <div className="flex items-center justify-between border-b border-amber-100 pb-2">
-                <span className="text-xs font-black uppercase text-amber-800 tracking-wider">
+            <div key={index} className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200/60 space-y-3 relative">
+              <div className="flex items-center justify-between border-b border-amber-100 pb-1.5">
+                <span className="text-[10px] font-black uppercase text-amber-900/70 tracking-wider">
                   Ceremony #{index + 1}
                 </span>
                 {form.ceremonies.length > 1 && (
@@ -810,7 +810,7 @@ const CreateShradhanjaliPage = () => {
                     className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
                     title="Remove Ceremony"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </button>
                 )}
               </div>
@@ -818,27 +818,27 @@ const CreateShradhanjaliPage = () => {
               {/* Type selector */}
               {ceremonyTypeConfig.enabled && (
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                     {ceremonyTypeConfig.label}
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowCeremonyPicker(index)}
-                    className="w-full flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] border outline-none bg-white transition-all text-left"
+                    className="w-full flex items-center justify-between rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-white transition-all text-left text-slate-800"
                     style={{ borderColor: 'rgba(212,175,55,0.4)' }}
                   >
-                    <span className="font-medium text-gray-900">{c.type || 'Select Type'}</span>
-                    <ChevronDown size={16} className="text-gray-400 shrink-0" />
+                    <span>{c.type || 'Select Type'}</span>
+                    <ChevronDown size={15} className="text-slate-400 shrink-0" />
                   </button>
                 </div>
               )}
 
               {/* Date + Time */}
               {(dateConfig.enabled || timeConfig.enabled) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   {dateConfig.enabled && (
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                         <span className="flex items-center gap-1"><CalendarDays size={10} /> {dateConfig.label} {index === 0 && <span className="text-red-400">*</span>}</span>
                       </label>
                       <CalendarInput
@@ -851,12 +851,12 @@ const CreateShradhanjaliPage = () => {
                         placeholder="YYYY-MM-DD"
                         error={index === 0 && errors.ritesDate}
                       />
-                      {index === 0 && errors.ritesDate && <p className="text-[11px] text-red-500 mt-1">{errors.ritesDate}</p>}
+                      {index === 0 && errors.ritesDate && <p className="text-[11px] text-red-500 font-bold mt-1">{errors.ritesDate}</p>}
                     </div>
                   )}
                   {timeConfig.enabled && (
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                         <span className="flex items-center gap-1"><Clock size={10} /> {timeConfig.label}</span>
                       </label>
                       <TimeInput
@@ -876,7 +876,7 @@ const CreateShradhanjaliPage = () => {
               {/* Venue */}
               {venueAddressConfig.enabled && (
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                     <span className="flex items-center gap-1"><MapPin size={10} /> {venueAddressConfig.label} {index === 0 && <span className="text-red-400">*</span>}</span>
                   </label>
                   <input
@@ -888,10 +888,10 @@ const CreateShradhanjaliPage = () => {
                       setForm(f => ({ ...f, ceremonies: updated, ritesVenue: updated[0].venue }));
                     }}
                     placeholder="e.g. Swarg Mandir, M.G. Road, Indore"
-                    className="w-full rounded-xl px-4 py-2.5 text-[13px] border outline-none bg-white transition-all"
-                    style={{ borderColor: index === 0 && errors.ritesVenue ? '#EF4444' : '#E5E7EB' }}
+                    className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-white transition-all text-slate-800"
+                    style={{ borderColor: index === 0 && errors.ritesVenue ? '#EF4444' : '#E2E8F0' }}
                   />
-                  {index === 0 && errors.ritesVenue && <p className="text-[11px] text-red-500 mt-1">{errors.ritesVenue}</p>}
+                  {index === 0 && errors.ritesVenue && <p className="text-[11px] text-red-500 font-bold mt-1">{errors.ritesVenue}</p>}
                 </div>
               )}
             </div>
@@ -907,9 +907,9 @@ const CreateShradhanjaliPage = () => {
               ];
               setForm(f => ({ ...f, ceremonies: updated }));
             }}
-            className="w-full py-3 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-800 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-800 text-[11.5px] font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer press-scale"
           >
-            <Plus size={16} /> + Add Another Ceremony (कार्यक्रम जोड़े)
+            <Plus size={15} /> + Add Another Ceremony (कार्यक्रम जोड़े)
           </button>
         </div>
 
@@ -939,7 +939,7 @@ const CreateShradhanjaliPage = () => {
                 >
                 {/* Handle */}
                 <div className="flex justify-center pt-3 pb-1">
-                  <div className="w-10 h-1 rounded-full bg-gray-200" />
+                  <div className="w-10 h-1 rounded-full bg-slate-200" />
                 </div>
 
                 {/* Title */}
@@ -947,12 +947,12 @@ const CreateShradhanjaliPage = () => {
                   className="flex items-center justify-between px-5 py-3 border-b"
                   style={{ borderColor: 'rgba(212,175,55,0.15)' }}
                 >
-                  <h3 className="text-[16px] font-bold" style={{ color: '#7C5C2E' }}>Select Ceremony Type</h3>
+                  <h3 className="text-[15px] font-extrabold" style={{ color: '#7C5C2E' }}>Select Ceremony Type</h3>
                   <button
                     onClick={() => setShowCeremonyPicker(null)}
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center press-scale"
+                    className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center press-scale"
                   >
-                    <X size={14} className="text-gray-500" />
+                    <X size={13} className="text-slate-500" />
                   </button>
                 </div>
 
@@ -976,14 +976,14 @@ const CreateShradhanjaliPage = () => {
                           setForm(f => ({ ...f, ceremonies: updated, ritesType: updated[0]?.type || type }));
                           setShowCeremonyPicker(null);
                         }}
-                        className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors press-scale"
+                        className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors press-scale"
                         style={{
                           background: isSelected ? 'rgba(212,175,55,0.08)' : 'transparent',
                           borderBottom: idx < CEREMONY_TYPES.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none'
                         }}
                       >
                         <span
-                          className="text-[15px] font-medium"
+                          className="text-[13.5px] font-extrabold"
                           style={{ color: isSelected ? '#7C5C2E' : '#1A1A1A' }}
                         >
                           {type}
@@ -992,7 +992,7 @@ const CreateShradhanjaliPage = () => {
                           <motion.span
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className="text-[18px]"
+                            className="text-[16px]"
                           >
                             ✓
                           </motion.span>
@@ -1013,35 +1013,35 @@ const CreateShradhanjaliPage = () => {
   };
 
   const renderStep4 = () => (
-    <div className="space-y-5">
-      <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-bold text-gray-900">Write Message</h2>
-        <p className="text-[13px] text-gray-500">Condolence message & privacy settings</p>
+    <div className="space-y-4 text-left">
+      <div className="text-center space-y-0.5">
+        <h2 className="text-[15px] font-extrabold text-slate-800 tracking-tight">Write Message</h2>
+        <p className="text-[11px] font-medium text-slate-400">Condolence message & privacy settings</p>
       </div>
 
       {/* Tribute message */}
       <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+        <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
           Condolence Message <span className="text-red-400">*</span>
         </label>
         <textarea
           value={form.message}
           onChange={e => set('message', e.target.value)}
-          rows={4}
+          rows={3}
           maxLength={300}
           placeholder="Write a message of remembrance..."
-          className="w-full rounded-xl px-4 py-3 text-[14px] border outline-none bg-[#FAFAF8] resize-none transition-all"
-          style={{ borderColor: errors.message ? '#EF4444' : form.message ? 'rgba(212,175,55,0.4)' : '#E5E7EB' }}
+          className="w-full rounded-xl px-3.5 py-2.5 text-[12.5px] font-medium border outline-none bg-slate-50/70 resize-none transition-all text-slate-800"
+          style={{ borderColor: errors.message ? '#EF4444' : form.message ? 'rgba(212,175,55,0.4)' : '#E2E8F0' }}
         />
         <div className="flex justify-between mt-1">
-          {errors.message && <p className="text-[12px] text-red-500">{errors.message}</p>}
-          <span className="text-[11px] text-gray-400 ml-auto">{form.message.length}/300</span>
+          {errors.message && <p className="text-[11px] text-red-500 font-bold">{errors.message}</p>}
+          <span className="text-[10.5px] text-slate-400 font-extrabold ml-auto">{form.message.length}/300</span>
         </div>
       </div>
 
       {/* Family contact */}
       <div>
-        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+        <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
           <span className="flex items-center gap-1"><Phone size={10} /> Family Contact Number</span>
         </label>
         <input
@@ -1050,8 +1050,8 @@ const CreateShradhanjaliPage = () => {
           onChange={e => set('familyContact', e.target.value.replace(/\D/g, '').slice(0, 10))}
           placeholder="9876543210"
           maxLength={10}
-          className="w-full rounded-xl px-4 py-3 text-[15px] border outline-none bg-[#FAFAF8] transition-all"
-          style={{ borderColor: '#E5E7EB' }}
+          className="w-full rounded-xl px-3.5 py-2 text-[12.5px] font-bold border outline-none bg-slate-50/70 transition-all text-slate-800"
+          style={{ borderColor: '#E2E8F0' }}
         />
       </div>
     </div>
@@ -1194,26 +1194,33 @@ const CreateShradhanjaliPage = () => {
       <div
         className="responsive-fixed-top z-40 border-b"
         style={{
-          background: 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(20px)',
-          borderColor: 'rgba(212,175,55,0.15)',
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(24px)',
+          borderColor: 'rgba(212,175,55,0.25)',
+          boxShadow: '0 2px 14px rgba(124,92,46,0.04)',
           paddingTop: 'var(--spacing-safe-top)'
         }}
       >
-        <div className="flex items-center gap-3 h-14 px-4">
-          <button onClick={handleBack} className="p-1.5 -ml-1 rounded-full press-scale text-gray-600">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-[15px] font-bold" style={{ color: '#7C5C2E' }}>Create Condolence Post</h1>
+        <div className="flex items-center justify-between gap-3 h-14 px-4">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleBack} 
+              className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-amber-50 transition-colors press-scale"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="text-left">
+              <h1 className="text-[16px] font-extrabold tracking-tight" style={{ color: '#7C5C2E' }}>Create Condolence Post</h1>
+              <p className="text-[10px] font-extrabold text-amber-900/60 uppercase tracking-wider">Shradhanjali Portal</p>
+            </div>
           </div>
-          <span className="text-[12px] font-semibold text-gray-400">
-            {step}/4
+          <span className="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200/60 px-3 py-1 rounded-full uppercase tracking-wider">
+            Step {step}/4
           </span>
         </div>
 
         {/* Step wizard */}
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-2.5">
           <StepWizard currentStep={step} />
         </div>
       </div>
@@ -1255,20 +1262,20 @@ const CreateShradhanjaliPage = () => {
         {step < 4 ? (
           <button
             onClick={handleNext}
-            className="w-full py-4 rounded-2xl font-bold text-[16px] text-white flex items-center justify-center gap-2 press-scale"
+            className="w-full py-3 rounded-xl font-extrabold text-[13.5px] text-white flex items-center justify-center gap-2 press-scale shadow-md"
             style={{
               background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)',
               boxShadow: '0 4px 16px rgba(124,92,46,0.3)'
             }}
           >
             Proceed
-            <ArrowRight size={18} />
+            <ArrowRight size={16} />
           </button>
         ) : (
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={() => setStep(3)}
-              className="flex-1 py-4 rounded-2xl font-bold text-[15px] border press-scale"
+              className="flex-1 py-3 rounded-xl font-extrabold text-[13px] border press-scale"
               style={{ borderColor: 'rgba(124,92,46,0.3)', color: '#7C5C2E' }}
             >
               Back
@@ -1276,7 +1283,7 @@ const CreateShradhanjaliPage = () => {
             <button
               onClick={handlePost}
               disabled={isPosting}
-              className="flex-2 flex-[2] py-4 rounded-2xl font-bold text-[16px] text-white flex items-center justify-center gap-2 press-scale disabled:opacity-70"
+              className="flex-2 flex-[2] py-3 rounded-xl font-extrabold text-[13.5px] text-white flex items-center justify-center gap-2 press-scale disabled:opacity-70 shadow-md"
               style={{
                 background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)',
                 boxShadow: '0 4px 16px rgba(124,92,46,0.3)'

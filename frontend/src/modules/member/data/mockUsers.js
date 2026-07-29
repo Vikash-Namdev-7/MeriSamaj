@@ -242,24 +242,24 @@ export const mockMembers = [
 
 export const mockAdmins = [
   // Level 0: Patron (Sanrakshak)
-  { id: 'a0', name: 'Seth Govindram Agrawal', initials: 'GA', city: 'Indore', role: 'Patron', avatar: null, phone: '+91 98765 00000' },
-  { id: 'a0_j', name: 'Seth Kirodimal Agrawal', initials: 'KA', city: 'Jaipur', role: 'Patron', avatar: null, phone: '+91 98765 00001' },
+  { id: 'a0', name: 'Seth Govindram Agrawal', initials: 'GA', city: 'Indore', role: 'Patron', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 00000' },
+  { id: 'a0_j', name: 'Seth Kirodimal Agrawal', initials: 'KA', city: 'Jaipur', role: 'Patron', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 00001' },
 
   // Level 1: President (Adhyaksh)
-  { id: 'a1', name: 'Shri Mohan Lal Agrawal', initials: 'MA', city: 'Indore', role: 'President', avatar: null, phone: '+91 98765 43210' },
-  { id: 'a2', name: 'Smt. Kamla Agrawal', initials: 'KA', city: 'Jaipur', role: 'President', avatar: null, phone: '+91 98765 43211' },
+  { id: 'a1', name: 'Shri Mohan Lal Agrawal', initials: 'MA', city: 'Indore', role: 'President', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 43210' },
+  { id: 'a2', name: 'Smt. Kamla Agrawal', initials: 'KA', city: 'Jaipur', role: 'President', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 43211' },
   
   // Level 2: Core Committee (Mukhya Padadhikari)
-  { id: 'a10', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', city: 'Indore', role: 'Vice President', avatar: null, phone: '+91 98765 11111' },
-  { id: 'a11', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', city: 'Indore', role: 'Secretary', avatar: null, phone: '+91 98765 22222' },
-  { id: 'a12b', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', city: 'Indore', role: 'Joint Secretary', avatar: null, phone: '+91 98765 33334' },
-  { id: 'a12', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', city: 'Indore', role: 'Treasurer', avatar: null, phone: '+91 98765 33333' },
+  { id: 'a10', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', city: 'Indore', role: 'Vice President', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 11111' },
+  { id: 'a11', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', city: 'Indore', role: 'Secretary', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 22222' },
+  { id: 'a12b', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', city: 'Indore', role: 'Joint Secretary', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 33334' },
+  { id: 'a12', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', city: 'Indore', role: 'Treasurer', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 33333' },
 
   // Jaipur Core Committee
-  { id: 'a10_j', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', city: 'Jaipur', role: 'Vice President', avatar: null, phone: '+91 98765 11111' },
-  { id: 'a11_j', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', city: 'Jaipur', role: 'Secretary', avatar: null, phone: '+91 98765 22222' },
-  { id: 'a12b_j', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', city: 'Jaipur', role: 'Joint Secretary', avatar: null, phone: '+91 98765 33334' },
-  { id: 'a12_j', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', city: 'Jaipur', role: 'Treasurer', avatar: null, phone: '+91 98765 33333' },
+  { id: 'a10_j', name: 'Shri Ramesh Chand Agrawal', initials: 'RA', city: 'Jaipur', role: 'Vice President', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 11111' },
+  { id: 'a11_j', name: 'Shri Suresh Kumar Agrawal', initials: 'SA', city: 'Jaipur', role: 'Secretary', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 22222' },
+  { id: 'a12b_j', name: 'Shri Dinesh Kumar Agrawal', initials: 'DA', city: 'Jaipur', role: 'Joint Secretary', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 33334' },
+  { id: 'a12_j', name: 'Shri Vinod Kumar Agrawal', initials: 'VA', city: 'Jaipur', role: 'Treasurer', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=800&q=80', phone: '+91 98765 33333' },
 
   // Level 3: Executive Board (Mantrimandal)
   { id: 'a13', name: 'Shri Ashok Kumar Agrawal', initials: 'AA', city: 'Indore', role: 'Minister (Education)', avatar: null, phone: '+91 98765 44444' },

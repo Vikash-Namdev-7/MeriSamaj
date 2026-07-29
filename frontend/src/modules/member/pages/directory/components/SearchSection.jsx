@@ -27,13 +27,13 @@ const SearchSection = ({
       {/* Search Input & Filter Button Container */}
       <div className="flex items-center gap-2.5">
         <div
-          className={`flex-1 h-[54px] rounded-2xl bg-white border px-4 flex items-center gap-3 transition-all shadow-xs ${
+          className={`flex-1 h-[52px] rounded-2xl bg-white border px-4 flex items-center gap-3 transition-all shadow-xs ${
             isFocused
-              ? 'border-indigo-600 ring-2 ring-indigo-600/10'
+              ? 'border-purple-600 ring-2 ring-purple-600/10'
               : 'border-slate-200/80 hover:border-slate-300'
           }`}
         >
-          <Search className={`w-4.5 h-4.5 transition-colors shrink-0 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
+          <Search className={`w-4.5 h-4.5 transition-colors shrink-0 ${isFocused ? 'text-purple-600' : 'text-slate-400'}`} />
 
           <input
             type="text"
@@ -67,16 +67,16 @@ const SearchSection = ({
           onClick={openFilter}
           disabled={isLoading}
           aria-label="Filter Options"
-          className={`relative h-[54px] w-[54px] rounded-2xl flex items-center justify-center border transition-all shadow-xs shrink-0 ${
+          className={`relative h-[52px] w-[52px] rounded-2xl flex items-center justify-center border transition-all shadow-xs shrink-0 press-scale ${
             activeFilterCount > 0
-              ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-600/20'
-              : 'bg-white border-slate-200/80 text-slate-700 hover:bg-slate-50'
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-600 text-white shadow-md shadow-purple-500/20'
+              : 'bg-white border-slate-200/80 text-slate-700 hover:bg-purple-50/50 hover:border-purple-200'
           } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <SlidersHorizontal className="w-4.5 h-4.5 stroke-[2]" />
 
           {activeFilterCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
               {activeFilterCount}
             </span>
           )}

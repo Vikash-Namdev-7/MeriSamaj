@@ -113,7 +113,7 @@ const ADMIN_LOGIN_STYLES = `
     align-items: center;
     justify-content: center;
     background: radial-gradient(circle at top left, #1e1b4b, #0f172a 70%);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Sora', sans-serif;
     padding: 20px;
     box-sizing: border-box;
   }

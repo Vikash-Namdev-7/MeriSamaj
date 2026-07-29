@@ -18,6 +18,7 @@ const {
   notifyMarriageRejected,
   notifyProfileClosed
 } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { getIO } = require('../../services/socketRegistry');
 
 // ─── Send Marriage Confirmation Request ───────────────────────────────────────
@@ -122,7 +123,18 @@ exports.sendMarriageRequest = async (req, res) => {
     }
 
     // ─── Notify receiver ───────────────────────────────────────────────────────
-    notifyMarriageRequestReceived(receiverId, req.user.name, marriageRequest._id);
+    const notifReceived = await notifyMarriageRequestReceived(receiverId, req.user.name, marriageRequest._id);
+    if (notifReceived) {
+      sendPushNotification({
+        userId: receiverId,
+        notificationId: notifReceived._id,
+        type: 'marriage_request_received',
+        title: 'Marriage Request Received 💍',
+        message: `${req.user.name} sent you a marriage confirmation request.`,
+        icon: '💍',
+        actionUrl: '/member/matrimonial/requests'
+      }).catch(err => console.error('[MarriagePushError]', err.message));
+    }
 
     // ─── Socket.IO: real-time notification ────────────────────────────────────
     const io = getIO();
@@ -268,7 +280,18 @@ exports.respondToMarriageRequest = async (req, res) => {
     }
 
     // ─── Notifications to both users ──────────────────────────────────────────
-    notifyMarriageAccepted(marriageRequest.requesterId, req.user.name);
+    const notifAccepted = await notifyMarriageAccepted(marriageRequest.requesterId, req.user.name);
+    if (notifAccepted) {
+      sendPushNotification({
+        userId: marriageRequest.requesterId,
+        notificationId: notifAccepted._id,
+        type: 'marriage_accepted',
+        title: 'Marriage Confirmed! 🎉💍',
+        message: `${req.user.name} accepted your marriage confirmation request! Congratulations!`,
+        icon: '💍',
+        actionUrl: '/member/matrimonial/my-profile'
+      }).catch(err => console.error('[MarriageAcceptedPushError]', err.message));
+    }
     notifyProfileClosed(marriageRequest.requesterId);
     notifyProfileClosed(receiverId);
 

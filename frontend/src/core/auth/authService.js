@@ -128,3 +128,5 @@ export const clearAllUserData = (preserveRegistrationKeys = false) => {
   }
 };
 
+export default authService;
+

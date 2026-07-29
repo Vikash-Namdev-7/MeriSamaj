@@ -28,6 +28,10 @@ const communitySchema = new mongoose.Schema(
     logoUrl: {
       type: String,
     },
+    bannerUrl: {
+      type: String,
+      default: '',
+    },
     city: {
       type: String,
       trim: true,

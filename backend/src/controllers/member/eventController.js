@@ -151,7 +151,7 @@ const canAccessEvent = (event, req) => {
 
   // Admin roles retain global access
   const userRole = (req.user?.role || '').toLowerCase();
-  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(userRole)) {
+  if (['admin', 'super_admin', 'master_admin', 'master'].includes(userRole)) {
     return true;
   }
 

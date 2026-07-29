@@ -128,9 +128,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
         return `Entire ${userCommunity} Community`;
       case 2: // Groups
         return 'Groups';
-      case 3: // Chat
-        return 'Chats';
-      case 4: // Discover
+      case 3: // Discover
         return 'Discover';
       default:
         return 'Social Hub';
@@ -153,7 +151,6 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
     { id: 'city-feed', label: 'City Feed', icon: CityFeedIcon, component: FeedPage, feedProps: { feedType: 'city' } },
     { id: 'community-feed', label: 'Community Feed', icon: CommunityFeedIcon, component: FeedPage, feedProps: { feedType: 'community' } },
     { id: 'groups', label: 'Groups', icon: GroupsIcon, component: GroupsPage },
-    { id: 'chat', label: 'Chat', icon: ChatIcon, component: ChatListPage },
     { id: 'discover', label: 'Discover', icon: DiscoverIcon, component: DiscoverContent }
   ];
 
@@ -369,7 +366,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
         </button>
       );
     }
-    if (activeTab === 3) { // Groups
+    if (activeTab === 2) { // Groups
       return (
         <button 
           onClick={() => setTriggerCreateGroup(true)} 
@@ -383,64 +380,73 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
   };
 
   return (
-    <div className={`h-full w-full flex flex-col overflow-hidden relative ${activeTab === tabs.findIndex(t => t.id === 'chat') ? 'bg-white' : 'bg-surface'}`}>
+    <div className="h-full w-full flex flex-col overflow-hidden relative bg-surface">
       
       {/* ─── FIXED GLOBAL HEADER ─── */}
-      <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-purple-100/30 flex-shrink-0 shadow-[0_2px_12px_rgba(124,58,237,0.02)]">
-        <div className="flex items-center justify-between px-5 h-14">
+      <div className="bg-white/85 backdrop-blur-xl sticky top-0 z-40 border-b border-purple-100/30 flex-shrink-0 shadow-[0_2px_12px_rgba(124,58,237,0.03)] text-left select-none">
+        <div className="flex items-center justify-between px-4 h-14">
           {isSearchOpen ? (
-            <div className="flex-1 flex items-center gap-3 bg-purple-50/40 border border-purple-100/20 px-3.5 py-1.5 rounded-xl">
-              <Search size={18} className="text-purple-400" />
+            <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl">
+              <Search size={16} className="text-purple-600 shrink-0" />
               <input
                 type="text"
-                placeholder="Search posts..."
+                placeholder="Search posts & groups..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent outline-none w-full text-[14px] text-text-primary font-bold placeholder-text-muted"
+                className="bg-transparent outline-none w-full text-[13px] text-slate-800 font-extrabold placeholder-slate-400"
                 autoFocus
               />
               <button 
                 onClick={() => setIsFilterOpen(true)}
-                className="text-purple-400 hover:text-brand-primary p-0.5"
+                className="text-slate-400 hover:text-purple-600 p-0.5 press-scale"
                 title="Filter Category"
               >
-                <SlidersHorizontal size={18} />
+                <SlidersHorizontal size={16} />
               </button>
               <button onClick={() => {
                 setSearchQuery('');
                 setIsSearchOpen(false);
-              }} className="text-purple-400 hover:text-brand-primary p-0.5">
-                <X size={18} />
+              }} className="text-slate-400 hover:text-purple-600 p-0.5 press-scale">
+                <X size={16} />
               </button>
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-4">
-                <button className="text-text-primary" onClick={() => setMobileMenuOpen(true)}>
-                  <Menu size={24} />
+              <div className="flex items-center gap-3">
+                <button 
+                  className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-colors press-scale" 
+                  onClick={() => setMobileMenuOpen(true)}
+                >
+                  <Menu size={20} strokeWidth={2.5} />
                 </button>
-                <h1 className={`font-bold text-text-primary tracking-tight whitespace-nowrap overflow-hidden text-ellipsis ${activeTab < 2 ? 'text-[14px] sm:text-[16px]' : 'text-[19px]'}`}>{getHeaderTitle()}</h1>
+                <div className="text-left">
+                  <h1 className={`font-extrabold text-slate-800 tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${activeTab < 2 ? 'text-[15px] sm:text-[16px]' : 'text-[17px]'}`}>{getHeaderTitle()}</h1>
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Social Hub & Feed</p>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <button className="text-text-primary" onClick={() => setIsSearchOpen(true)}>
-                  <Search size={21} />
+              <div className="flex items-center gap-2">
+                <button 
+                  className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-purple-50 transition-all press-scale" 
+                  onClick={() => setIsSearchOpen(true)}
+                >
+                  <Search size={18} />
                 </button>
-                <button className="relative text-text-primary" onClick={() => navigate('/member/notifications?module=community')}>
-                  <Bell size={21} />
+                <button 
+                  className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 relative hover:bg-purple-50 transition-all press-scale" 
+                  onClick={() => navigate('/member/notifications?module=community')}
+                >
+                  <Bell size={18} />
                   {getUnreadCountForModule('community') > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white">
-                      {getUnreadCountForModule('community')}
-                    </span>
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-purple-600 rounded-full" />
                   )}
                 </button>
-
               </div>
             </>
           )}
         </div>
 
         {/* ─── TAB BAR ─── */}
-        <div className="flex relative">
+        <div className="flex relative border-t border-slate-100">
           {tabs.map((tab, idx) => {
             const Icon = tab.icon;
             const isActive = activeTab === idx;
@@ -448,18 +454,19 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
               <button 
                 key={tab.id}
                 onClick={() => scrollToTab(idx)}
-                className={`flex-1 py-3.5 flex items-center justify-center transition-all ${isActive ? 'text-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                className={`flex-1 py-3 flex items-center justify-center transition-all press-scale ${isActive ? 'text-purple-600' : 'text-slate-400 hover:text-slate-700'}`}
               >
-                <Icon size={24} isActive={isActive} className={isActive ? 'drop-shadow-sm scale-110' : ''} />
+                <Icon size={22} isActive={isActive} className={isActive ? 'drop-shadow-sm scale-110' : ''} />
               </button>
             );
           })}
           {/* Active Tab Indicator */}
-          <div className="absolute bottom-0 left-0 h-[3px] bg-gradient-to-r from-brand-primary to-brand-glow rounded-t-full transition-all duration-300 ease-out" 
+          <div className="absolute bottom-0 left-0 h-[3px] bg-gradient-to-r from-purple-600 to-indigo-600 rounded-t-full transition-all duration-300 ease-out" 
                style={{ width: `${100 / tabs.length}%`, transform: `translateX(${activeTab * 100}%)` }} 
           />
         </div>
       </div>
+
 
       {/* ─── SWIPEABLE CONTENT CONTAINER ─── */}
       <div 
@@ -482,7 +489,7 @@ const SocialHubPage = ({ initialTab = 'city-feed' }) => {
               key={tab.id} 
               data-tab-id={tab.id}
               onScroll={handleTabScroll}
-              className={`w-full h-full flex-shrink-0 overflow-y-auto ${tab.id === 'chat' ? 'bg-white pb-0' : 'pb-28'}`}
+              className="w-full h-full flex-shrink-0 overflow-y-auto pb-28"
             >
               <Component isHub={true} {...extraProps} {...groupsProps} searchQuery={searchQuery} isFilterOpen={isFilterOpen} setIsFilterOpen={setIsFilterOpen} />
             </div>

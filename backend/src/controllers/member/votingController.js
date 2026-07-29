@@ -2,7 +2,7 @@ const Voting = require('../../models/Voting');
 const Vote = require('../../models/Vote');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
-const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
+const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master'];
 
 // Helper to check if a voting election belongs to the requester's community (or if requester is admin)
 const isSameCommunity = (doc, req) => {

@@ -1,7 +1,7 @@
-const Campaign = require('../../models/Campaign');
 const Donation = require('../../models/Donation');
 const paymentService = require('../../services/paymentService');
 const { notifyDonationReceived, notifyDonationReceipt } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const crypto = require('crypto');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
 
@@ -10,81 +10,47 @@ exports.getCampaigns = async (req, res) => {
   try {
     let baseFilter = {
       isDeleted: { $ne: true },
-      status: { $nin: ['Completed', 'Suspended', 'Archived', 'Deleted'] }
+      status: { $nin: ['Completed', 'Closed', 'Suspended', 'Archived', 'Deleted'] }
     };
 
-    // Apply Centralized 2-Level Multi-Tenancy Scope (Community mandatory + City optional + Campaign Targeting opt-in)
+    // Apply Centralized 2-Level Multi-Tenancy Scope
     const filter = applyScopeFilter(req, baseFilter, { includeCampaignTargeting: true });
 
-    const [campaignDocs, donationDocs] = await Promise.all([
-      Campaign.find(filter).sort({ createdAt: -1 }).lean().catch(() => []),
-      Donation.find({ ...filter, title: { $exists: true, $ne: '' } }).sort({ createdAt: -1 }).lean().catch(() => [])
-    ]);
+    const donationDocs = await Donation.find({ ...filter, title: { $exists: true, $ne: '' } })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const formattedCampaigns = [
-      ...donationDocs.map(d => {
-        const rAmount = d.raisedAmount || 0;
-        const tAmount = d.targetAmount || 0;
-        const dCount = d.donorCount || (Array.isArray(d.recentDonations) ? d.recentDonations.length : 0);
-        return {
-          id: d._id,
-          _id: d._id,
-          title: d.title,
-          titleEn: d.title,
-          raised: rAmount,
-          raisedAmount: rAmount,
-          collectedAmount: rAmount,
-          target: tAmount,
-          targetAmount: tAmount,
-          donorCount: dCount,
-          recentDonations: d.recentDonations || [],
-          percentage: tAmount > 0 ? Math.min(Math.round((rAmount / tAmount) * 100), 100) : 0,
-          desc: d.description || '',
-          description: d.description || '',
-          city: d.city || 'Indore',
-          category: d.category || 'General',
-          visibility: d.isGlobalCampaign ? 'All Members' : (d.targetedCommunities?.length ? 'Selected Communities' : 'Entire Community'),
-          isGlobalCampaign: d.isGlobalCampaign || false,
-          targetedCommunities: d.targetedCommunities || [],
-          status: d.status || 'Active',
-          bannerImage: d.coverImage || null,
-          coverImage: d.coverImage || null,
-          startDate: d.createdAt,
-          endDate: null
-        };
-      }),
-      ...campaignDocs.map(c => {
-        const rAmount = c.collectedAmount || c.raisedAmount || 0;
-        const tAmount = c.targetAmount || 0;
-        const dCount = c.donorCount || (Array.isArray(c.recentDonations) ? c.recentDonations.length : 0);
-        return {
-          id: c._id,
-          _id: c._id,
-          title: c.title,
-          titleEn: c.title,
-          raised: rAmount,
-          raisedAmount: rAmount,
-          collectedAmount: rAmount,
-          target: tAmount,
-          targetAmount: tAmount,
-          donorCount: dCount,
-          recentDonations: c.recentDonations || [],
-          percentage: tAmount > 0 ? Math.min(Math.round((rAmount / tAmount) * 100), 100) : 0,
-          desc: c.description || c.shortDescription || '',
-          description: c.description || c.shortDescription || '',
-          city: c.city || 'Indore',
-          category: c.category || 'General',
-          visibility: c.isGlobalCampaign ? 'All Members' : (c.targetedCommunities?.length ? 'Selected Communities' : (c.visibility || 'Entire Community')),
-          isGlobalCampaign: c.isGlobalCampaign || false,
-          targetedCommunities: c.targetedCommunities || [],
-          status: c.status || 'Active',
-          bannerImage: c.bannerImage || null,
-          coverImage: c.bannerImage || null,
-          startDate: c.startDate,
-          endDate: c.endDate
-        };
-      })
-    ];
+    const formattedCampaigns = donationDocs.map(d => {
+      const rAmount = d.raisedAmount || 0;
+      const tAmount = d.targetAmount || 0;
+      const dCount = d.donorCount || (Array.isArray(d.recentDonations) ? d.recentDonations.length : 0);
+      return {
+        id: d._id,
+        _id: d._id,
+        title: d.title,
+        titleEn: d.title,
+        raised: rAmount,
+        raisedAmount: rAmount,
+        collectedAmount: rAmount,
+        target: tAmount,
+        targetAmount: tAmount,
+        donorCount: dCount,
+        recentDonations: d.recentDonations || [],
+        percentage: tAmount > 0 ? Math.min(Math.round((rAmount / tAmount) * 100), 100) : 0,
+        desc: d.description || d.shortDescription || '',
+        description: d.description || d.shortDescription || '',
+        city: d.city || 'Indore',
+        category: d.category || 'General',
+        visibility: d.isGlobalCampaign ? 'All Members' : (d.targetedCommunities?.length ? 'Selected Communities' : (d.visibility || 'Entire Community')),
+        isGlobalCampaign: d.isGlobalCampaign || false,
+        targetedCommunities: d.targetedCommunities || [],
+        status: d.status || 'Active',
+        bannerImage: d.coverImage || null,
+        coverImage: d.coverImage || null,
+        startDate: d.startDate || d.createdAt,
+        endDate: d.endDate || null
+      };
+    });
 
     res.status(200).json({ success: true, status: 'success', data: formattedCampaigns });
   } catch (error) {
@@ -96,12 +62,7 @@ exports.getCampaigns = async (req, res) => {
 // Get single campaign details
 exports.getCampaignById = async (req, res) => {
   try {
-    let campaign = await Campaign.findById(req.params.id).populate('createdBy', 'name avatar role');
-    let isCampaignModel = true;
-    if (!campaign) {
-      campaign = await Donation.findById(req.params.id).populate('user', 'name avatar');
-      isCampaignModel = false;
-    }
+    const campaign = await Donation.findById(req.params.id).populate('createdBy', 'name avatar role');
     if (!campaign) {
       return res.status(404).json({ success: false, status: 'error', message: 'Campaign not found' });
     }
@@ -130,7 +91,7 @@ exports.getCampaignById = async (req, res) => {
     .sort({ createdAt: -1 });
 
     const realRaisedSum = realDonations.reduce((sum, d) => sum + (d.amount || 0), 0);
-    const raised = Math.max(campaign.raisedAmount || 0, campaign.collectedAmount || 0, realRaisedSum);
+    const raised = Math.max(campaign.raisedAmount || 0, realRaisedSum);
     const target = campaign.targetAmount || 0;
 
     const formattedRealDonors = realDonations.map(d => {
@@ -147,7 +108,7 @@ exports.getCampaignById = async (req, res) => {
     // Merge recentDonations from campaign document if any
     const existingRecent = Array.isArray(campaign.recentDonations) ? campaign.recentDonations : [];
     const combinedRecentDonations = formattedRealDonors.length > 0 ? formattedRealDonors : existingRecent;
-    const donorCount = Math.max(campaign.donorCount || 0, campaign.contributorsCount || 0, combinedRecentDonations.length);
+    const donorCount = Math.max(campaign.donorCount || 0, combinedRecentDonations.length);
 
     const formattedCampaign = {
       id: campaign._id,
@@ -174,8 +135,8 @@ exports.getCampaignById = async (req, res) => {
       status: campaign.status || 'Active',
       startDate: campaign.startDate || campaign.createdAt,
       endDate: campaign.endDate || null,
-      bannerImage: campaign.bannerImage || campaign.coverImage || null,
-      coverImage: campaign.coverImage || campaign.bannerImage || null,
+      bannerImage: campaign.coverImage || null,
+      coverImage: campaign.coverImage || null,
       documents: campaign.documents || [],
       createdBy: campaign.createdBy ? (typeof campaign.createdBy === 'object' ? campaign.createdBy : { name: 'Community Admin' }) : null,
       donorCount,
@@ -234,12 +195,8 @@ exports.getRecentDonors = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verify campaign belongs to user's community scope
     const campaignFilter = applyScopeFilter(req, { _id: id });
-    let campaign = await Campaign.findOne(campaignFilter);
-    if (!campaign) {
-      campaign = await Donation.findOne(campaignFilter);
-    }
+    const campaign = await Donation.findOne(campaignFilter);
 
     if (!campaign) {
       return res.status(404).json({ status: 'error', message: 'Campaign not found or access denied' });
@@ -289,13 +246,7 @@ exports.createDonation = async (req, res) => {
       return res.status(400).json({ success: false, status: 'error', message: 'Valid donation amount is required' });
     }
 
-    let campaign = await Campaign.findById(targetId);
-    let isDonationModel = false;
-    if (!campaign) {
-      campaign = await Donation.findById(targetId);
-      isDonationModel = true;
-    }
-
+    const campaign = await Donation.findById(targetId);
     if (!campaign) {
       return res.status(404).json({ success: false, status: 'error', message: 'Campaign not found' });
     }
@@ -328,26 +279,18 @@ exports.createDonation = async (req, res) => {
     await paymentRecord.save().catch((err) => console.warn('Payment record save notice:', err.message));
 
     // Update target campaign collected amount and donor count
-    if (isDonationModel) {
-      campaign.raisedAmount = (campaign.raisedAmount || 0) + amount;
-      campaign.donorCount = (campaign.donorCount || 0) + 1;
-      if (!Array.isArray(campaign.recentDonations)) {
-        campaign.recentDonations = [];
-      }
-      campaign.recentDonations.unshift({
-        donorName,
-        amount,
-        date: new Date(),
-        paymentStatus: 'success'
-      });
-      await campaign.save();
-    } else {
-      campaign.collectedAmount = (campaign.collectedAmount || 0) + amount;
-      campaign.raisedAmount = (campaign.raisedAmount || 0) + amount;
-      campaign.donorCount = (campaign.donorCount || 0) + 1;
-      campaign.contributorsCount = (campaign.contributorsCount || 0) + 1;
-      await campaign.save();
+    campaign.raisedAmount = (campaign.raisedAmount || 0) + amount;
+    campaign.donorCount = (campaign.donorCount || 0) + 1;
+    if (!Array.isArray(campaign.recentDonations)) {
+      campaign.recentDonations = [];
     }
+    campaign.recentDonations.unshift({
+      donorName,
+      amount,
+      date: new Date(),
+      paymentStatus: 'success'
+    });
+    await campaign.save();
 
     const dDate = new Date();
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -390,15 +333,11 @@ exports.createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ success: false, status: 'error', message: 'Valid donation amount is required' });
     }
 
-    let campaign = await Campaign.findById(targetId);
-    if (!campaign) {
-      campaign = await Donation.findById(targetId);
-    }
+    const campaign = await Donation.findById(targetId);
     if (!campaign) {
       return res.status(404).json({ success: false, status: 'error', message: 'Campaign not found' });
     }
 
-    // Create order via Razorpay paymentService (receipt must be max 40 chars)
     const receipt = `don_${campaign._id.toString().slice(-12)}_${Date.now().toString().slice(-8)}`;
     const order = await paymentService.initiatePayment({
       gateway: 'razorpay',
@@ -412,7 +351,6 @@ exports.createRazorpayOrder = async (req, res) => {
       }
     });
 
-    // Audit Trail: Create pending donation record in DB
     const pendingDonation = new Donation({
       user: req.user?._id,
       campaign: campaign._id,
@@ -466,7 +404,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ success: false, status: 'error', message: 'Missing Razorpay payment verification parameters' });
     }
 
-    // 1. HMAC Signature Verification
     const isValidSignature = paymentService.verifyPayment({
       gateway: 'razorpay',
       orderId,
@@ -479,7 +416,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ success: false, status: 'error', message: 'Invalid payment signature. Verification failed.' });
     }
 
-    // 2. Idempotency Guard: Check if order/payment is already processed & approved
     const existingApproved = await Donation.findOne({
       $or: [{ orderId }, { paymentId }, { txnId: paymentId }],
       status: { $in: ['Approved', 'Success', 'Active'] }
@@ -498,29 +434,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
       });
     }
 
-    // 3. Razorpay Server API Fetch Verification (Double Check status)
-    try {
-      const paymentDetails = await paymentService.fetchRazorpayPaymentDetails(paymentId);
-      if (paymentDetails && paymentDetails.status && !['captured', 'authorized'].includes(paymentDetails.status)) {
-        await Donation.findOneAndUpdate({ orderId }, { status: 'Failed' }).catch(() => {});
-        return res.status(400).json({ success: false, status: 'error', message: `Payment status is ${paymentDetails.status}, expected captured.` });
-      }
-    } catch (apiErr) {
-      console.warn('Razorpay API direct fetch notice (proceeding with verified signature):', apiErr.message);
-    }
-
-    // 4. Find Campaign / Donation Target
-    let campaign = await Campaign.findById(targetId || existingApproved?.campaign);
-    let isDonationModel = false;
-    if (!campaign && targetId) {
-      campaign = await Donation.findById(targetId);
-      isDonationModel = true;
-    }
-
+    const campaign = await Donation.findById(targetId || existingApproved?.campaign);
     const finalAmount = Number(reqAmount) || 0;
     const finalDonorName = reqDonorName || req.user?.name || 'Anonymous';
 
-    // 5. Update / Create Approved Donation Record
     let donationRecord = await Donation.findOne({ orderId });
     if (!donationRecord) {
       donationRecord = new Donation({
@@ -544,36 +461,34 @@ exports.verifyRazorpayPayment = async (req, res) => {
     if (finalAmount > 0) donationRecord.amount = finalAmount;
     await donationRecord.save();
 
-    // 6. Atomic Campaign Update
     if (campaign && finalAmount > 0) {
-      if (isDonationModel) {
-        await Donation.findByIdAndUpdate(campaign._id, {
-          $inc: { raisedAmount: finalAmount, collectedAmount: finalAmount, donorCount: 1, contributorsCount: 1 },
-          $push: {
-            recentDonations: {
-              $each: [{ donorName: finalDonorName, amount: finalAmount, date: new Date(), paymentStatus: 'success' }],
-              $position: 0
-            }
+      await Donation.findByIdAndUpdate(campaign._id, {
+        $inc: { raisedAmount: finalAmount, donorCount: 1 },
+        $push: {
+          recentDonations: {
+            $each: [{ donorName: finalDonorName, amount: finalAmount, date: new Date(), paymentStatus: 'success' }],
+            $position: 0
           }
-        });
-      } else {
-        await Campaign.findByIdAndUpdate(campaign._id, {
-          $inc: { collectedAmount: finalAmount, raisedAmount: finalAmount, donorCount: 1, contributorsCount: 1 },
-          $push: {
-            recentDonations: {
-              $each: [{ donorName: finalDonorName, amount: finalAmount, date: new Date(), paymentStatus: 'success' }],
-              $position: 0
-            }
-          }
-        });
-      }
+        }
+      });
     }
 
-    // 7. Trigger Notifications
     if (campaign && req.user) {
       try {
         notifyDonationReceived(campaign.headId, [], finalDonorName, finalAmount, campaign.title, campaign._id);
-        notifyDonationReceipt(req.user._id, finalAmount, campaign.title, campaign._id);
+        const receiptNotif = await notifyDonationReceipt(req.user._id, finalAmount, campaign.title, campaign._id);
+
+        if (receiptNotif) {
+          sendPushNotification({
+            userId: req.user._id,
+            notificationId: receiptNotif._id,
+            type: 'donation_receipt',
+            title: 'Donation Receipt ✅',
+            message: `Thank you! Your donation of ₹${finalAmount} to "${campaign.title}" was received.`,
+            icon: '✅',
+            actionUrl: '/member/donations'
+          }).catch(err => console.error('[DonationPushError]', err.message));
+        }
       } catch (nErr) {
         console.warn('Donation notification notice:', nErr.message);
       }
@@ -621,7 +536,6 @@ exports.handleRazorpayWebhook = async (req, res) => {
       const { id: paymentId, order_id: orderId, amount: amountPaise, notes } = payload;
       const amount = (amountPaise || 0) / 100;
 
-      // Idempotency check
       const existing = await Donation.findOne({
         $or: [{ orderId }, { paymentId }, { txnId: paymentId }],
         status: { $in: ['Approved', 'Success', 'Active'] }
@@ -651,31 +565,15 @@ exports.handleRazorpayWebhook = async (req, res) => {
         await donationRecord.save();
 
         if (campaignId && amount > 0) {
-          let campaign = await Campaign.findById(campaignId);
-          if (campaign) {
-            await Campaign.findByIdAndUpdate(campaign._id, {
-              $inc: { collectedAmount: amount, raisedAmount: amount, donorCount: 1, contributorsCount: 1 },
-              $push: {
-                recentDonations: {
-                  $each: [{ donorName: notes?.donorName || 'Anonymous', amount, date: new Date(), paymentStatus: 'success' }],
-                  $position: 0
-                }
+          await Donation.findByIdAndUpdate(campaignId, {
+            $inc: { raisedAmount: amount, donorCount: 1 },
+            $push: {
+              recentDonations: {
+                $each: [{ donorName: notes?.donorName || 'Anonymous', amount, date: new Date(), paymentStatus: 'success' }],
+                $position: 0
               }
-            });
-          } else {
-            let donCam = await Donation.findById(campaignId);
-            if (donCam) {
-              await Donation.findByIdAndUpdate(donCam._id, {
-                $inc: { raisedAmount: amount, collectedAmount: amount, donorCount: 1, contributorsCount: 1 },
-                $push: {
-                  recentDonations: {
-                    $each: [{ donorName: notes?.donorName || 'Anonymous', amount, date: new Date(), paymentStatus: 'success' }],
-                    $position: 0
-                  }
-                }
-              });
             }
-          }
+          });
         }
       }
     } else if (event === 'payment.failed' && payload) {
@@ -707,8 +605,8 @@ exports.getStats = async (req, res) => {
     ]);
     const totalDonatedAmount = amountAggr.length > 0 ? (amountAggr[0].totalAmount || 0) : 0;
 
-    const completedPurposesFilter = applyScopeFilter(req, { status: 'Completed' });
-    const completedPurposes = await Campaign.countDocuments(completedPurposesFilter);
+    const completedPurposesFilter = applyScopeFilter(req, { status: { $in: ['Completed', 'Closed'] } });
+    const completedPurposes = await Donation.countDocuments(completedPurposesFilter);
 
     const impactStats = [
       { id: "st1", label: "Total Contributors", value: `${totalDonors || 0}+` },
@@ -717,7 +615,6 @@ exports.getStats = async (req, res) => {
       { id: "st4", label: "People Benefited", value: "5000+" }
     ];
 
-    // Fetch top 5 approved individual donations
     const topFilter = applyScopeFilter(req, { amount: { $exists: true, $gt: 0 } });
     let topDonations = await Donation.find(topFilter)
       .sort({ amount: -1 })
@@ -772,26 +669,6 @@ exports.getAllDonors = async (req, res) => {
       .populate({ path: 'campaign', select: 'title name' })
       .lean();
 
-    // Map and resolve campaign title even for legacy records created before ref was added
-    const campaignIdsToFetch = donations
-      .map(d => d.campaign ? (d.campaign._id || d.campaign) : null)
-      .filter(Boolean);
-
-    let campaignMap = {};
-    if (campaignIdsToFetch.length > 0) {
-      const fetchedCampaigns = await Campaign.find({ _id: { $in: campaignIdsToFetch } }).select('title name').lean();
-      fetchedCampaigns.forEach(c => {
-        campaignMap[c._id.toString()] = c.title || c.name;
-      });
-      // Also check Donation model for legacy campaign drives
-      const fetchedDonationDrives = await Donation.find({ _id: { $in: campaignIdsToFetch } }).select('title name').lean();
-      fetchedDonationDrives.forEach(d => {
-        if (d.title || d.name) {
-          campaignMap[d._id.toString()] = d.title || d.name;
-        }
-      });
-    }
-
     let donors = donations.map((d) => {
       const uName = d.user ? d.user.name : (d.donorName || 'Anonymous');
       const uInitials = uName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -799,11 +676,7 @@ exports.getAllDonors = async (req, res) => {
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
       const cObj = d.campaign;
-      const cIdStr = cObj ? (cObj._id || cObj).toString() : null;
-      const cTitle = (cObj && typeof cObj === 'object' && cObj.title) 
-        ? cObj.title 
-        : (cIdStr ? campaignMap[cIdStr] : null);
-
+      const cTitle = (cObj && typeof cObj === 'object' && cObj.title) ? cObj.title : null;
       const finalPurpose = cTitle || d.title || d.purpose || d.campaignTitle || 'General Samaj Fund';
 
       return {
@@ -829,3 +702,4 @@ exports.getAllDonors = async (req, res) => {
     res.status(500).json({ success: false, status: 'error', message: error.message });
   }
 };
+

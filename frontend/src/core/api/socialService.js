@@ -156,13 +156,37 @@ const updateUserProfile = async (payload) => {
   return response.data;
 };
 
+const updatePost = async (id, postData) => {
+  const response = await axiosPrivate.put(`${API_URL}/posts/${id}`, postData);
+  return response.data;
+};
+
+const deletePost = async (id) => {
+  const response = await axiosPrivate.delete(`${API_URL}/posts/${id}`);
+  return response.data;
+};
+
+const updateComment = async (commentId, commentData) => {
+  const response = await axiosPrivate.put(`${API_URL}/comments/${commentId}`, commentData);
+  return response.data;
+};
+
+const deleteComment = async (commentId) => {
+  const response = await axiosPrivate.delete(`${API_URL}/comments/${commentId}`);
+  return response.data;
+};
+
 const socialService = {
   getPosts,
   getPostById,
   createPost,
+  updatePost,
+  deletePost,
   toggleLike,
   getComments,
   addComment,
+  updateComment,
+  deleteComment,
   toggleCommentLike,
   toggleSave,
   recordView,

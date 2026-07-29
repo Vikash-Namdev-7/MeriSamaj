@@ -21,6 +21,8 @@ const mockSuccessStories = [
 import ReferAndEarnBanner from './ReferAndEarnBanner';
 import donationService from '../../../../core/api/donationService';
 import { successStoryService } from '../../../../core/api/matrimonialService';
+import { axiosPrivate } from '../../../../core/api/axiosPrivate';
+import { AnimatedIconCards } from '../../components/common/AnimatedIconCards';
 
 
 
@@ -116,13 +118,39 @@ const HomePage = () => {
   
   const [liveTopDonors, setLiveTopDonors] = useState([]);
   const [liveSuccessStories, setLiveSuccessStories] = useState([]);
+  const [censusSummary, setCensusSummary] = useState(null);
+  const [totalFundsAmount, setTotalFundsAmount] = useState(0);
+  const [liveCommunityHead, setLiveCommunityHead] = useState(null);
+  const [liveSubLeaders, setLiveSubLeaders] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
+    
+    axiosPrivate.get('/member/census/summary')
+      .then(res => {
+        if (isMounted && res.data?.data?.summary) {
+          setCensusSummary(res.data.data.summary);
+        }
+      })
+      .catch(() => {});
+
+    axiosPrivate.get('/member/leadership')
+      .then(res => {
+        if (isMounted && res.data?.success && res.data?.data) {
+          if (res.data.data.communityHead) setLiveCommunityHead(res.data.data.communityHead);
+          if (Array.isArray(res.data.data.subLeaders)) setLiveSubLeaders(res.data.data.subLeaders);
+        }
+      })
+      .catch(() => {});
+
     donationService.getStats()
       .then(res => {
-        if (isMounted && (res.success || res.status === 'success') && Array.isArray(res.data?.topDonors) && res.data.topDonors.length > 0) {
-          setLiveTopDonors(res.data.topDonors);
+        if (isMounted) {
+          if (Array.isArray(res.data?.topDonors) && res.data.topDonors.length > 0) {
+            setLiveTopDonors(res.data.topDonors);
+          }
+          const rawAmount = res.data?.totalDonatedAmount || res.data?.summary?.totalDonatedAmount || 0;
+          setTotalFundsAmount(rawAmount);
         }
       })
       .catch(() => {});
@@ -149,10 +177,18 @@ const HomePage = () => {
   const shradhanjaliCount = getUnreadCountForModule('shradhanjali') || 0;
 
   // Dynamic counts for summary cards
+  const newBookingsCount = notifications?.filter(n => (n.type === 'booking' || n.category === 'dharamshala') && !n.isRead)?.length || 0;
   const newDonationsCount = notifications?.filter(n => n.type === 'donation' && !n.isRead)?.length || 0;
   const newNoticesCount = notifications?.filter(n => n.type === 'announcement' && !n.isRead)?.length || 0;
   const newEventsCount = notifications?.filter(n => n.type === 'event' && !n.isRead)?.length || 0;
-  const totalUpdatesCount = newDonationsCount + newNoticesCount + newEventsCount + 2; // +2 for bookings & funds mockup
+  const totalUpdatesCount = notifications?.filter(n => !n.isRead)?.length || (newBookingsCount + newDonationsCount + newNoticesCount + newEventsCount);
+
+  const formattedFunds = useMemo(() => {
+    if (!totalFundsAmount || totalFundsAmount === 0) return '₹0';
+    if (totalFundsAmount >= 100000) return `₹${(totalFundsAmount / 1000).toFixed(0)}k`;
+    if (totalFundsAmount >= 1000) return `₹${(totalFundsAmount / 1000).toFixed(1)}k`;
+    return `₹${totalFundsAmount}`;
+  }, [totalFundsAmount]);
 
   const unreadCount = getUnreadCountForModule('home');
   const userCommunity = currentUser?.community || '';
@@ -286,86 +322,78 @@ const HomePage = () => {
     <div className="min-h-screen bg-surface pb-28">
 
       {/* ─── SAMAJ HERO BANNER ─── */}
-      <div className="relative w-full overflow-hidden" style={{ minHeight: '290px' }}>
-        {/* Background Image — Cultural landmark */}
+      <div className="relative w-full overflow-hidden" style={{ minHeight: '260px' }}>
+        {/* Background Image — Cultural landmark / Live Community Banner */}
         <img 
-          src={homepageContentSettings?.hero?.backgroundImage || getSamajImage(userCommunity)} 
+          src={
+            currentUser?.communityId?.bannerUrl || 
+            currentUser?.communityBanner || 
+            homepageContentSettings?.hero?.backgroundImage || 
+            getSamajImage(userCommunity)
+          } 
           alt={userCommunity}
           className="absolute inset-0 w-full h-full object-cover scale-105"
           style={{ filter: 'saturate(1.1)' }}
         />
-        {/* Gradient overlays — layered depth */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#3C1777]/70 via-[#4C1D95]/30 to-[#1e1145]/85 z-[1]" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#1a0e45] to-transparent z-[1]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#1e1145]/20 via-transparent to-[#1e1145]/10 z-[1]" />
+        {/* Layered Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1F0940]/85 via-[#3B1578]/50 to-[#120726]/95 z-[1]" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#120726] to-transparent z-[1]" />
 
-        {/* Floating ambient orbs */}
-        <div className="absolute top-8 right-12 w-24 h-24 rounded-full z-[2] pointer-events-none" 
-          style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.25) 0%, transparent 70%)', filter: 'blur(16px)', animation: 'float-orb 8s ease-in-out infinite' }} 
-        />
-        <div className="absolute bottom-16 left-8 w-16 h-16 rounded-full z-[2] pointer-events-none" 
-          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%)', filter: 'blur(12px)', animation: 'float-orb 6s ease-in-out infinite 2s' }} 
-        />
-        <div className="absolute top-20 left-1/3 w-12 h-12 rounded-full z-[2] pointer-events-none" 
-          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)', filter: 'blur(10px)', animation: 'float-orb 10s ease-in-out infinite 4s' }} 
+        {/* Ambient Floating Glow Orbs */}
+        <div className="absolute top-6 right-10 w-28 h-28 rounded-full z-[2] pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.25) 0%, transparent 70%)', filter: 'blur(18px)' }} 
         />
 
-        {/* Floating Navbar */}
-        <div className="relative z-10 px-5 pt-6 pb-3 flex items-center justify-between">
+        {/* Floating Top Navbar */}
+        <div className="relative z-10 px-4 pt-4 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/member/profile')}>
-            {/* Avatar with premium glow ring */}
+            {/* Neutral Round Avatar Circle */}
             <div className="relative">
               {currentUser?.avatar ? (
                 <img 
                   src={currentUser.avatar} 
                   alt={currentUser.name} 
-                  className="w-[46px] h-[46px] rounded-[18px] object-cover border-[1px] border-white/25 shadow-lg group-hover:scale-105 transition-transform duration-300 z-10 relative"
+                  className="w-11 h-11 rounded-full object-cover border-2 border-white/40 shadow-sm group-hover:scale-105 transition-transform duration-200"
                 />
               ) : (
                 <div 
-                  className="w-[46px] h-[46px] rounded-[18px] text-white flex items-center justify-center text-[20px] font-serif relative overflow-hidden group-hover:scale-105 transition-transform duration-300"
-                  style={{ 
-                    background: 'linear-gradient(135deg, rgba(124,58,237,0.5), rgba(167,139,250,0.3))',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    boxShadow: '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-                  }}
+                  className="w-11 h-11 rounded-full bg-white/20 text-white font-black text-[15px] flex items-center justify-center backdrop-blur-md border border-white/30 shadow-sm group-hover:scale-105 transition-transform duration-200"
                 >
-                  {/* Inner shine */}
-                  <div className="absolute inset-0 rounded-[18px]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
-                  <span className="relative z-10">{(currentUser?.name || userCommunity).substring(0, 1)}</span>
+                  {(currentUser?.name || userCommunity).substring(0, 1).toUpperCase()}
                 </div>
               )}
-              {/* Glow ring pulse */}
-              <div className="absolute inset-0 rounded-[18px] pointer-events-none" style={{ boxShadow: '0 0 0 1.5px rgba(167,139,250,0.4), 0 0 12px rgba(124,58,237,0.25)' }} />
             </div>
+
             <div className="text-left">
-              <p className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(196,181,253,0.7)' }}>{greeting}</p>
-              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>{currentUser?.name || 'Member'}</h1>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-extrabold tracking-wider uppercase text-purple-200/90">{greeting}</span>
+                <OmIcon size={11} className="text-amber-300 opacity-90" />
+              </div>
+              <h1 className="text-[18px] sm:text-[20px] font-black text-white tracking-tight leading-tight">{currentUser?.name || 'Member'}</h1>
               {currentUser?.community && (
-                <p className="text-[10.5px] font-bold text-purple-200 mt-0.5 leading-tight select-none">
+                <p className="text-[10.5px] font-bold text-purple-200/80 mt-0.5 leading-tight select-none flex items-center gap-1">
+                  <MapPin size={10} className="text-amber-400" />
                   {currentUser.community}{currentUser.city ? ` · ${currentUser.city}` : ''}
                 </p>
               )}
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-              className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white text-[11px] font-black uppercase press-scale transition-all"
-              style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[11px] font-black uppercase press-scale transition-all bg-white/15 backdrop-blur-md border border-white/25 hover:bg-white/25"
             >
               {language === 'en' ? 'HI' : 'EN'}
             </button>
             <button 
-              className="relative w-10 h-10 rounded-[14px] flex items-center justify-center press-scale transition-all"
-              style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center press-scale transition-all bg-white/15 backdrop-blur-md border border-white/25 hover:bg-white/25 text-white"
               onClick={() => navigate('/member/notifications?module=home')}
             >
-              <Bell size={19} className="text-white" />
+              <Bell size={18} />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-gradient-to-br from-red-400 to-rose-600 rounded-full border-2 border-[#1e1145] flex items-center justify-center shadow-md">
-                  <span className="text-[7px] text-white font-black">{unreadCount}</span>
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white font-black text-[9px] rounded-full border-2 border-[#120726] flex items-center justify-center">
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -373,23 +401,25 @@ const HomePage = () => {
         </div>
 
         {/* Samaj Identity Content — bottom of hero */}
-        <div className="relative z-10 px-5 pt-8 pb-4 flex flex-col justify-end text-left">
+        <div className="relative z-10 px-5 pt-6 pb-3 flex flex-col justify-end text-left">
           {homepageContentSettings?.hero?.title && (
-            <h2 className="text-white text-base font-extrabold tracking-tight drop-shadow">{homepageContentSettings.hero.title}</h2>
+            <h2 className="text-white text-[15px] font-extrabold tracking-tight drop-shadow">{homepageContentSettings.hero.title}</h2>
           )}
           {homepageContentSettings?.hero?.subtitle && (
-            <p className="text-white/80 text-[11px] font-semibold mt-1 leading-snug max-w-xs">{homepageContentSettings.hero.subtitle}</p>
+            <p className="text-white/80 text-[11px] font-medium mt-0.5 leading-snug max-w-xs">{homepageContentSettings.hero.subtitle}</p>
           )}
           {homepageContentSettings?.hero?.buttonText && (
             <button 
               onClick={() => navigate(homepageContentSettings.hero.buttonLink || '/member/directory')}
-              className="bg-white hover:bg-slate-50 text-indigo-950 text-[10px] font-bold px-3 py-1.5 rounded-lg mt-3 self-start shadow-sm press-scale cursor-pointer"
+              className="bg-white hover:bg-purple-50 text-indigo-950 text-[10.5px] font-extrabold px-3.5 py-1 rounded-xl mt-2.5 self-start shadow-sm press-scale cursor-pointer"
             >
               {homepageContentSettings.hero.buttonText} →
             </button>
           )}
         </div>
       </div>
+
+
 
       {/* Spacer */}
       <div className="h-4" />
@@ -457,7 +487,7 @@ const HomePage = () => {
                     localStorage.setItem('merisamaj_onboarding_resume_step', 'onboarding-1');
                     navigate('/member/onboarding');
                   }}
-                  className="bg-white hover:bg-slate-50 text-brand-primary text-[11px] font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1 shrink-0 transition-all press-scale shadow-sm"
+                  className="bg-white hover:bg-purple-50 text-purple-900 text-[11px] font-extrabold px-3.5 py-2.5 rounded-xl flex items-center gap-1 shrink-0 transition-all press-scale shadow-sm"
                 >
                   Continue <ArrowRight size={13} strokeWidth={2.5} />
                 </button>
@@ -468,70 +498,13 @@ const HomePage = () => {
       })()}
 
       {/* ─── INTERACTIVE HIGHLIGHTS MODULE ─── */}
-      <div className="px-3 mt-3 relative z-10 flex gap-3">
-        {/* Invitations (Invitation) */}
-        <motion.div 
-          onClick={() => navigate('/member/invitations')}
-          whileHover={{ y: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
-        >
-          <div className="relative">
-            <div className="w-13 h-13 bg-gradient-to-br from-indigo-400 to-purple-600 shadow-lg shadow-purple-500/25 rounded-[22px] flex items-center justify-center">
-              <Mail className="text-white" size={22} strokeWidth={2} />
-            </div>
-            {invitationCount > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {invitationCount}
-              </div>
-            )}
-          </div>
-          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Invitations</h4>
-          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">View new invites</p>
-        </motion.div>
+      <AnimatedIconCards
+        invitationCount={invitationCount}
+        donationCount={donationCount}
+        shradhanjaliCount={shradhanjaliCount}
+        onNavigate={navigate}
+      />
 
-        {/* Contributions (Yogdan) */}
-        <motion.div 
-          onClick={() => navigate('/member/donation')}
-          whileHover={{ y: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
-        >
-          <div className="relative">
-            <div className="w-13 h-13 bg-gradient-to-br from-[#FF4D85] to-[#FF2162] shadow-lg shadow-rose-500/25 rounded-[22px] flex items-center justify-center">
-              <HeartHandshake className="text-white" size={22} strokeWidth={2} />
-            </div>
-            {donationCount > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {donationCount}
-              </div>
-            )}
-          </div>
-          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Contributions</h4>
-          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">Support the Samaj</p>
-        </motion.div>
-
-        {/* Obituary (Shradhanjali) */}
-        <motion.div 
-          onClick={() => navigate('/member/shradhanjali')}
-          whileHover={{ y: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex-1 bg-white p-3.5 pb-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-[0_8px_24px_rgba(109,40,217,0.04)] border border-[#F2EFFE] rounded-[32px] relative overflow-hidden transition-all duration-300"
-        >
-          <div className="relative">
-            <div className="w-13 h-13 bg-gradient-to-br from-[#FFAD00] to-[#FF6200] shadow-lg shadow-orange-500/25 rounded-[22px] flex items-center justify-center">
-              <DiyaIcon className="text-white" size={24} />
-            </div>
-            {shradhanjaliCount > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9.5px] font-black w-[19px] h-[19px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {shradhanjaliCount}
-              </div>
-            )}
-          </div>
-          <h4 className="text-[13px] font-extrabold text-gray-800 mt-3 tracking-tight leading-tight">Obituary</h4>
-          <p className="text-[9px] font-semibold text-gray-400 mt-1 leading-tight">Heartfelt tributes</p>
-        </motion.div>
-      </div>
 
       {/* ─── TOP 5 DONORS SECTION ─── */}
       <div className="px-3 mt-6 relative z-10 animate-fade-in-up">
@@ -738,7 +711,7 @@ const HomePage = () => {
               <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.15)' }}>
                 <Home className="text-emerald-500" size={14} strokeWidth={2.5} />
               </div>
-              <span className="text-[14px] font-black text-text-primary leading-none">2</span>
+              <span className="text-[14px] font-black text-text-primary leading-none">{newBookingsCount}</span>
               <span className="text-[8px] font-semibold text-text-muted leading-tight">Bookings</span>
             </div>
 
@@ -750,7 +723,7 @@ const HomePage = () => {
               <div className="w-8 h-8 rounded-[12px] flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.15)' }}>
                 <Wallet className="text-brand-primary" size={14} strokeWidth={2.5} />
               </div>
-              <span className="text-[14px] font-black text-text-primary leading-none tracking-tight">₹245k</span>
+              <span className="text-[14px] font-black text-text-primary leading-none tracking-tight">{formattedFunds}</span>
               <span className="text-[8px] font-semibold text-text-muted leading-tight">Funds</span>
             </div>
 
@@ -870,24 +843,55 @@ const HomePage = () => {
           </div>
 
           <div className="relative z-10 mx-2 mb-2 bg-white/8 backdrop-blur-md rounded-2xl border border-white/10 grid grid-cols-4 divide-x divide-white/10">
-            {[
-              {
-                icon: <Users size={15} className="text-white" />,
-                iconBg: 'bg-purple-400/30', value: '100%', label: 'Total Members', sublabel: 'Total Count', bar: 'bg-purple-300', barW: 'w-full'
-              },
-              {
-                icon: <User size={15} className="text-white" />,
-                iconBg: 'bg-blue-400/30', value: '52%', label: 'Men', sublabel: '% of Total', bar: 'bg-blue-300', barW: 'w-[52%]'
-              },
-              {
-                icon: <User size={15} className="text-white" />,
-                iconBg: 'bg-pink-400/30', value: '38%', label: 'Women', sublabel: '% of Total', bar: 'bg-pink-300', barW: 'w-[38%]'
-              },
-              {
-                icon: <Smile size={15} className="text-white" />,
-                iconBg: 'bg-green-400/30', value: '10%', label: 'Children', sublabel: '(0-17 yrs)', bar: 'bg-green-300', barW: 'w-[10%]'
-              },
-            ].map((stat, i) => (
+            {(() => {
+              const total = censusSummary?.totalMembers || 0;
+              const males = censusSummary?.malesCount || 0;
+              const females = censusSummary?.femalesCount || 0;
+              const kids = censusSummary?.kidsCount || 0;
+
+              const malePct = total > 0 ? Math.round((males / total) * 100) : 52;
+              const femalePct = total > 0 ? Math.round((females / total) * 100) : 38;
+              const kidsPct = total > 0 ? Math.round((kids / total) * 100) : 10;
+
+              return [
+                {
+                  icon: <Users size={15} className="text-white" />,
+                  iconBg: 'bg-purple-400/30',
+                  value: total > 0 ? `${total}` : '100%',
+                  label: 'Total Members',
+                  sublabel: total > 0 ? 'Verified Count' : 'Total Count',
+                  bar: 'bg-purple-300',
+                  barPct: 100
+                },
+                {
+                  icon: <User size={15} className="text-white" />,
+                  iconBg: 'bg-blue-400/30',
+                  value: `${malePct}%`,
+                  label: 'Men',
+                  sublabel: total > 0 ? `${males} members` : '% of Total',
+                  bar: 'bg-blue-300',
+                  barPct: malePct
+                },
+                {
+                  icon: <User size={15} className="text-white" />,
+                  iconBg: 'bg-pink-400/30',
+                  value: `${femalePct}%`,
+                  label: 'Women',
+                  sublabel: total > 0 ? `${females} members` : '% of Total',
+                  bar: 'bg-pink-300',
+                  barPct: femalePct
+                },
+                {
+                  icon: <Smile size={15} className="text-white" />,
+                  iconBg: 'bg-green-400/30',
+                  value: `${kidsPct}%`,
+                  label: 'Children',
+                  sublabel: total > 0 ? `${kids} kids` : '(0-17 yrs)',
+                  bar: 'bg-green-300',
+                  barPct: kidsPct
+                },
+              ];
+            })().map((stat, i) => (
               <div key={i} className="flex flex-col items-center py-2.5 px-1 gap-0.5">
                 <div className={`w-8 h-8 rounded-xl ${stat.iconBg} flex items-center justify-center mb-0.5 border border-white/10`}>
                   {stat.icon}
@@ -896,7 +900,7 @@ const HomePage = () => {
                 <span className="text-[8px] font-medium text-white/80 text-center leading-tight">{stat.label}</span>
                 <div className="w-full px-1 mt-0.5">
                   <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className={`h-full ${stat.bar} ${stat.barW} rounded-full`} />
+                    <div className={`h-full ${stat.bar} rounded-full`} style={{ width: `${stat.barPct}%` }} />
                   </div>
                 </div>
                 <span className="text-[7px] text-white/50 text-center leading-tight">{stat.sublabel}</span>
@@ -1059,9 +1063,37 @@ const HomePage = () => {
       {/* ─── YOUR LEADERS (Samaj Netrutva) ─── */}
       <div className="px-3 mb-8">
         {(() => {
-          const president = mockAdmins.find(a => a.role === 'President' && (currentUser.city?.toLowerCase().includes(a.city?.toLowerCase()) || a.city?.toLowerCase().includes(currentUser.city?.toLowerCase()))) || mockAdmins[1];
-          const coreCommittee = mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role) && a.city?.toLowerCase() === president.city?.toLowerCase());
-          
+          const fallbackPresident = mockAdmins.find(a => a.role === 'President') || mockAdmins[1];
+          const rawRole = liveCommunityHead?.designation || liveCommunityHead?.role;
+          const headRole = (!rawRole || rawRole.toLowerCase() === 'member') ? 'Community Head' : rawRole;
+
+          const president = liveCommunityHead ? {
+            id: liveCommunityHead._id,
+            name: liveCommunityHead.name,
+            role: headRole,
+            city: liveCommunityHead.city || 'Indore',
+            state: liveCommunityHead.state || 'Madhya Pradesh',
+            phone: liveCommunityHead.phone || '',
+            avatar: liveCommunityHead.avatar || liveCommunityHead.cover || ''
+          } : {
+            ...fallbackPresident,
+            role: (!fallbackPresident.role || fallbackPresident.role.toLowerCase() === 'member') ? 'Community Head' : fallbackPresident.role
+          };
+
+          const defaultLeaderPhoto = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80';
+          const leaderAvatarPhoto = (president.avatar && !president.avatar.includes('ui-avatars.com'))
+            ? president.avatar
+            : defaultLeaderPhoto;
+
+          const coreCommittee = (liveSubLeaders && liveSubLeaders.length > 0) ? liveSubLeaders.map(sl => ({
+            id: sl._id || sl.id,
+            name: sl.name,
+            role: sl.designation || sl.role || 'Executive Member',
+            city: sl.city || 'Indore',
+            phone: sl.phone || '',
+            avatar: sl.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sl.name)}&background=6C3BFF&color=ffffff&bold=true`
+          })) : mockAdmins.filter(a => ['Vice President', 'Secretary', 'Joint Secretary', 'Treasurer'].includes(a.role));
+
           return (
             <div className="flex flex-col gap-5">
               {/* Core Committee Header */}
@@ -1075,20 +1107,24 @@ const HomePage = () => {
                 </button>
               </div>
 
-              {/* President Section */}
+              {/* President / Community Head Section */}
               <div 
                 onClick={() => navigate('/member/leadership', { state: { selectedId: president.id } })}
-                className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] shadow-xl shadow-purple-500/10 border border-purple-400/10 overflow-hidden p-5 shrink-0 cursor-pointer active:scale-[0.99] transition-all duration-300"
+                className="relative w-full rounded-[24px] bg-gradient-to-r from-[#1e1145] via-[#2d1b69] to-[#4C1D95] shadow-xl shadow-purple-500/10 border border-purple-400/10 overflow-hidden p-5 shrink-0 cursor-pointer active:scale-[0.99] transition-all duration-300 min-h-[170px]"
               >
-                {/* Blended portrait */}
+                {/* Full-height blended portrait photo on right (Image 2 style) */}
                 <img 
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80" 
-                  className="absolute right-0 top-0 bottom-0 w-[58%] h-full object-cover object-[center_30%] pointer-events-none z-0" 
+                  src={leaderAvatarPhoto} 
+                  className="absolute right-0 top-0 bottom-0 w-[58%] h-full object-cover object-[center_20%] pointer-events-none z-0" 
                   style={{
                     WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)',
                     maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 8%, rgba(0,0,0,0.85) 60%, black 100%)'
                   }}
                   alt={president.name} 
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = defaultLeaderPhoto;
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#1e1145] via-[#2d1b69]/70 via-[#2d1b69]/15 to-transparent pointer-events-none z-0" />
 
@@ -1098,8 +1134,8 @@ const HomePage = () => {
                     <div className="w-9 h-9 rounded-full border-2 border-amber-400/60 flex items-center justify-center bg-black/20 shadow-sm shrink-0">
                       <Crown size={16} className="text-amber-400 fill-amber-400" />
                     </div>
-                    <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30">
-                      President
+                    <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border border-purple-400/30 truncate">
+                      {president.role || 'Community Head'}
                     </span>
                   </div>
 
@@ -1108,7 +1144,7 @@ const HomePage = () => {
                       {president.name}
                     </h4>
                     <p className="text-amber-300/90 text-[11px] font-bold mt-0.5 uppercase tracking-wide">
-                      Samaj President
+                      {president.role || 'Community Head'}
                     </p>
                   </div>
 
@@ -1122,13 +1158,13 @@ const HomePage = () => {
                   {/* Location */}
                   <div className="flex items-center gap-2 text-white/90 text-[10px] font-medium mb-3.5">
                     <MapPin size={11} className="text-white/70 shrink-0" />
-                    <span>{president.city}, Madhya Pradesh</span>
+                    <span>{president.city || 'Indore'}, {president.state || 'Madhya Pradesh'}</span>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex gap-2 w-full" onClick={(e) => e.stopPropagation()}>
                     <a 
-                      href={`tel:${president.phone}`}
+                      href={`tel:${president.phone || ''}`}
                       className="flex-1 py-1.5 rounded-xl border border-purple-300/30 hover:bg-white/5 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-center backdrop-blur-sm"
                     >
                       <Phone size={11} /> Call
@@ -1145,32 +1181,15 @@ const HomePage = () => {
                 
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-3 px-3">
                 {coreCommittee.map((member, idx) => {
-                    const badgeColor = member.role === 'Vice President' 
+                    const badgeColor = member.role?.toLowerCase().includes('vice') 
                       ? 'bg-[#7c3aed]' 
-                      : member.role === 'Secretary' 
+                      : member.role?.toLowerCase().includes('secretary') || member.role?.toLowerCase().includes('सचिव')
                       ? 'bg-[#ff3b68]' 
-                      : member.role === 'Joint Secretary' 
-                      ? 'bg-[#ff3b68]' 
-                      : member.role === 'Treasurer'
+                      : member.role?.toLowerCase().includes('treasurer') || member.role?.toLowerCase().includes('कोषाध्यक्ष')
                       ? 'bg-[#00a651]'
                       : 'bg-amber-500';
                       
-                    const hindiRole = member.role === 'Vice President' 
-                      ? 'उपाध्यक्ष' 
-                      : member.role === 'Secretary' 
-                      ? 'महासचिव' 
-                      : member.role === 'Joint Secretary' 
-                      ? 'संगठन मंत्री' 
-                      : member.role === 'Treasurer'
-                      ? 'कोषाध्यक्ष'
-                      : 'अध्यक्ष';
-
-                    const cleanName = member.name
-                      .replace(' Agrawal', '')
-                      .replace(' Sharma', '')
-                      .replace(' Patel', '')
-                      .replace(' Gupta', '')
-                      .replace('Shri ', '');
+                    const displayRole = member.role || 'उपसंयोजक';
 
                     return (
                       <div 
@@ -1180,38 +1199,38 @@ const HomePage = () => {
                       >
                         {/* Full Width Portrait Photo */}
                         <div className="w-full aspect-[4/3.8] overflow-hidden bg-gray-50 shrink-0 mb-1.5 pointer-events-none rounded-t-3xl">
-                          <img src={`https://i.pravatar.cc/150?u=${member.initials}`} className="w-full h-full object-cover" alt={member.name} />
+                          <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=6C3BFF&color=ffffff&bold=true`} className="w-full h-full object-cover" alt={member.name} />
                         </div>
                         
                         {/* Role Badge - below photo */}
                         <span className={`text-white text-[7.5px] font-black px-1.5 py-0.5 rounded-md shadow-sm leading-none mb-1.5 shrink-0 ${badgeColor}`}>
-                          {hindiRole}
+                          {displayRole}
                         </span>
                         
                         {/* Office Bearer Name */}
                         <h4 className="text-slate-900 text-[9.5px] font-extrabold text-center leading-tight mb-2 px-1 h-5 flex items-center justify-center truncate w-full">
-                          {cleanName}
+                          {member.name}
                         </h4>
                         
-                        {/* Action Buttons Row */}
-                        <div className="flex justify-center gap-1.5 w-full mt-auto" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            onClick={() => window.open(`tel:${member.phone || '9999999999'}`)} 
-                            className="w-7 h-7 rounded-full border border-purple-200 flex items-center justify-center text-[#a855f7] hover:bg-purple-50 transition-colors shrink-0"
+                        {/* Interactive Buttons: Call & Chat */}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <a 
+                            href={`tel:${member.phone || ''}`}
+                            className="w-6 h-6 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 hover:bg-purple-600 hover:text-white transition-colors"
                           >
                             <Phone size={10} />
-                          </button>
+                          </a>
                           <button 
-                            onClick={() => navigate(`/member/chat/member/${member.id}`)} 
-                            className="w-7 h-7 rounded-full border border-emerald-250 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+                            onClick={() => navigate(`/member/chat/member/${member.id}`)}
+                            className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors"
                           >
                             <MessageCircle size={10} />
                           </button>
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                })}
+              </div>
             </div>
           );
         })()}

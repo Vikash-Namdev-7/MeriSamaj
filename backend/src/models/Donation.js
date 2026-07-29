@@ -1,30 +1,73 @@
 const mongoose = require('mongoose');
 
 const donationSchema = new mongoose.Schema({
-  title: { type: String, trim: true },
+  title: { type: String, trim: true, required: true },
+  shortDescription: { type: String, trim: true },
   description: { type: String, trim: true },
-  targetAmount: { type: Number, min: 0 },
-  raisedAmount: { type: Number, default: 0, min: 0 },
-  donorCount: { type: Number, default: 0, min: 0 },
+  purpose: { type: String, trim: true },
   category: { type: String, default: 'General', trim: true },
+  priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
+
+  targetAmount: { type: Number, required: true, min: 0 },
+  raisedAmount: { type: Number, default: 0, min: 0 },
+  expenseAmount: { type: Number, default: 0, min: 0 },
+  donorCount: { type: Number, default: 0, min: 0 },
+  minDonation: { type: Number, default: 1 },
+  maxDonation: { type: Number },
+  currency: { type: String, default: 'INR' },
+
+  city: { type: String, trim: true },
+  communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true },
+  isGlobalCampaign: { type: Boolean, default: false, index: true },
+  targetedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true }],
+  targetedMembers: [{ type: String }],
+  targetAudiences: [{ type: String }],
+  visibility: { type: String, default: 'All Members' },
+
+  status: {
+    type: String,
+    enum: ['Draft', 'Pending', 'Scheduled', 'Active', 'Completed', 'Closed', 'Suspended', 'Archived'],
+    default: 'Active',
+    index: true
+  },
+
+  startDate: { type: Date, default: Date.now },
+  endDate: { type: Date },
+
+  // Single standardized cover image field (Head UI forms will map to this field)
   coverImage: { type: String, trim: true },
-  status: { type: String, default: 'Pending', index: true },
+  galleryImages: [{ type: String }],
+  documents: [{
+    fileName: String,
+    fileUrl: String,
+    fileType: String
+  }],
+
+  settings: {
+    showDonorNames: { type: Boolean, default: true },
+    anonymousAllowed: { type: Boolean, default: true },
+    enableProgressBar: { type: Boolean, default: true },
+    enableDonationCounter: { type: Boolean, default: true },
+    enableCountdown: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false }
+  },
+
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isDeleted: { type: Boolean, default: false, index: true },
+  deletedAt: { type: Date, default: null },
+
+  // Individual payment transaction fields
   txnId: { type: String, sparse: true, index: true },
   orderId: { type: String, sparse: true, index: true },
   paymentId: { type: String, sparse: true, index: true },
   signature: { type: String, sparse: true },
-  currency: { type: String, default: 'INR' },
   paymentMethod: { type: String, default: 'Razorpay' },
+  paymentMode: { type: String, default: 'Razorpay' },
   paidAt: { type: Date },
   donorName: { type: String, default: 'Anonymous' },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign' },
-  communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
-  isGlobalCampaign: { type: Boolean, default: false, index: true },
-  targetedCommunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Community', index: true }],
+  campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Donation' },
   amount: { type: Number, default: 0 },
-  paymentMode: { type: String, default: 'Razorpay' },
   recentDonations: [
     {
       donorName: { type: String, default: 'Anonymous' },
@@ -42,3 +85,4 @@ donationSchema.index({ status: 1, isDeleted: 1, communityId: 1, category: 1, cre
 donationSchema.index({ title: 'text' });
 
 module.exports = mongoose.model('Donation', donationSchema);
+

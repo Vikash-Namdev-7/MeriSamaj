@@ -18,13 +18,13 @@ const headLeadershipService = {
     return response.data;
   },
 
-  toggleSubLeaderStatus: async (id) => {
-    const response = await axiosPrivate.patch(`${BASE_URL}/sub-leaders/${id}/status`);
+  toggleSubLeaderStatus: async (id, isAppUser = true) => {
+    const response = await axiosPrivate.patch(`${BASE_URL}/sub-leaders/${id}/status`, { isAppUser });
     return response.data;
   },
 
-  deleteSubLeader: async (id) => {
-    const response = await axiosPrivate.delete(`${BASE_URL}/sub-leaders/${id}`);
+  deleteSubLeader: async (id, isAppUser = true) => {
+    const response = await axiosPrivate.delete(`${BASE_URL}/sub-leaders/${id}?isAppUser=${isAppUser}`);
     return response.data;
   }
 };

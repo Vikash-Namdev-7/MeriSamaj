@@ -9,7 +9,15 @@ const City = require('../../models/City');
 const User = require('../../models/User');
 const Community = require('../../models/Community');
 const Follower = require('../../models/Follower');
-const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
+const { applyScopeFilter, inheritTenantPayload, adminRoles } = require('../../utils/queryScopeHelper');
+const cloudinary = require('cloudinary').v2;
+const config = require('../../config/config');
+
+cloudinary.config({
+  cloud_name: config.cloudinary.cloudName,
+  api_key: config.cloudinary.apiKey,
+  api_secret: config.cloudinary.apiSecret
+});
 
 // In-memory cache for resolved city string to cityId
 const cityIdCache = new Map();
@@ -34,6 +42,16 @@ const getCityId = async (cityName) => {
     cityIdCache.set(cacheKey, resultId);
   }
   return resultId;
+};
+
+// Helper to verify if user has community access to a post
+const verifyPostCommunityAccess = (req, post) => {
+  if (adminRoles.includes(req.user?.role)) {
+    return true;
+  }
+  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+  const postCommId = (post?.communityId?._id || post?.communityId || '').toString();
+  return !!(userCommId && postCommId && userCommId === postCommId);
 };
 
 // Helper to extract raw ObjectIds for communityIds
@@ -178,7 +196,7 @@ exports.getPostById = async (req, res) => {
     }
 
     // Verify community matches
-    if (!['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
+    if (!['admin', 'super_admin', 'master_admin', 'master'].includes(req.user?.role)) {
       const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
       const postCommId = (post.communityId?._id || post.communityId || '').toString();
       if (!userCommId || !postCommId || userCommId !== postCommId) {
@@ -204,15 +222,6 @@ exports.getPostById = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-const cloudinary = require('cloudinary').v2;
-const config = require('../../config/config');
-
-cloudinary.config({
-  cloud_name: config.cloudinary.cloudName,
-  api_key: config.cloudinary.apiKey,
-  api_secret: config.cloudinary.apiSecret
-});
 
 // @desc    Create proper social post
 // @route   POST /api/v1/member/social/posts
@@ -383,16 +392,6 @@ exports.createPost = async (req, res) => {
   }
 };
 
-// Helper to verify post community ownership for non-admin actions
-const verifyPostCommunityAccess = (req, post) => {
-  if (['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role)) {
-    return true;
-  }
-  const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
-  const postCommId = (post?.communityId?._id || post?.communityId || '').toString();
-  return !!(userCommId && postCommId && userCommId === postCommId);
-};
-
 // @desc    Toggle unique like on a post
 // @route   POST /api/v1/member/social/posts/:id/like
 // @access  Private
@@ -506,23 +505,26 @@ exports.addComment = async (req, res) => {
     // Create Notification
     if (parentCommentId) {
       const parentComment = await Comment.findById(parentCommentId);
-      if (parentComment && parentComment.userId.toString() !== req.user._id.toString()) {
+      if (parentComment && parentComment.userId && parentComment.userId.toString() !== req.user._id.toString()) {
         await Notification.create({
           recipientId: parentComment.userId,
           senderId: req.user._id,
           type: 'reply',
           entityType: 'Comment',
           entityId: comment._id
-        });
+        }).catch(err => console.warn('Reply notification error:', err.message));
       }
-    } else if (post.userId.toString() !== req.user._id.toString()) {
-      await Notification.create({
-        recipientId: post.userId,
-        senderId: req.user._id,
-        type: 'comment',
-        entityType: 'Post',
-        entityId: postId
-      });
+    } else {
+      const postOwnerId = post.userId || post.authorId;
+      if (postOwnerId && postOwnerId.toString() !== req.user._id.toString()) {
+        await Notification.create({
+          recipientId: postOwnerId,
+          senderId: req.user._id,
+          type: 'comment',
+          entityType: 'Post',
+          entityId: postId
+        }).catch(err => console.warn('Comment notification error:', err.message));
+      }
     }
 
     res.status(201).json({ success: true, data: populated });
@@ -735,7 +737,7 @@ exports.getMySavedPosts = async (req, res) => {
   try {
     const userId = req.user._id;
     const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role);
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(req.user?.role);
 
     const savedRecords = await SavedPost.find({ userId })
       .sort({ createdAt: -1 })
@@ -775,7 +777,7 @@ exports.getMyLikedPosts = async (req, res) => {
   try {
     const userId = req.user._id;
     const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'head_admin'].includes(req.user?.role);
+    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(req.user?.role);
 
     const likedRecords = await PostLike.find({ userId })
       .sort({ createdAt: -1 })
@@ -866,6 +868,201 @@ exports.getUserPosts = async (req, res) => {
   } catch (error) {
     console.error('getUserPosts error:', error);
     res.status(500).json({ success: false, message: 'Server error loading user posts' });
+  }
+};
+
+// ─── POST EDIT & DELETE (Author / Head / Admin) ─────────────────────────────
+
+// @desc    Update a post (Author ONLY)
+// @route   PUT /api/v1/member/social/posts/:id
+// @access  Private
+exports.updatePost = async (req, res) => {
+  try {
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'This post has been removed by a moderator' });
+    }
+
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
+    }
+
+    // ONLY author can edit post content
+    const postAuthorId = (post.authorId?._id || post.authorId || post.userId?._id || post.userId || '').toString();
+    const reqUserId = (req.user?._id || req.user?.id || '').toString();
+    const isAuthor = !!(postAuthorId && reqUserId && postAuthorId === reqUserId);
+
+    if (!isAuthor) {
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this post' });
+    }
+
+    const { content } = req.body;
+    if (content !== undefined) {
+      post.content = content.trim();
+      post.isEdited = true;
+      post.editedAt = new Date();
+    }
+
+    await post.save();
+
+    const populated = await Post.findById(post._id)
+      .populate('userId', 'name avatar role city community communityId')
+      .populate('authorId', 'name avatar role city community communityId')
+      .populate('communityId', 'name slug city')
+      .populate('cityId', 'name');
+
+    res.json({ success: true, data: populated });
+  } catch (error) {
+    console.error('updatePost error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error updating post' });
+  }
+};
+
+// @desc    Delete a post (Soft delete: Author, Head of same community, or Admin)
+// @route   DELETE /api/v1/member/social/posts/:id
+// @access  Private
+exports.deletePost = async (req, res) => {
+  try {
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
+    }
+
+    const postAuthorId = (post.authorId?._id || post.authorId || post.userId?._id || post.userId || '').toString();
+    const reqUserId = (req.user?._id || req.user?.id || '').toString();
+    const isAuthor = !!(postAuthorId && reqUserId && postAuthorId === reqUserId);
+
+    const isAdmin = adminRoles.includes(req.user?.role);
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+    const postCommId = (post.communityId?._id || post.communityId || '').toString();
+    const isHeadSameCommunity = req.user?.role === 'head' && !!(userCommId && postCommId && userCommId === postCommId);
+
+    if (!isAuthor && !isHeadSameCommunity && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Access denied: insufficient permission to delete this post' });
+    }
+
+    // Soft delete post
+    post.isDeleted = true;
+    post.deletedAt = new Date();
+    await post.save();
+
+    // Cascading soft delete child comments
+    await Comment.updateMany({ postId: post._id }, { $set: { isDeleted: true } });
+
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('deletePost error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error deleting post' });
+  }
+};
+
+// ─── COMMENT EDIT & DELETE (Author / Post Author / Head / Admin) ───────────
+
+// @desc    Update a comment (Author ONLY)
+// @route   PUT /api/v1/member/social/comments/:id
+// @access  Private
+exports.updateComment = async (req, res) => {
+  try {
+    const comment = await Comment.findOne({ _id: req.params.id, isDeleted: false });
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    // ONLY comment author can edit comment text
+    const commentAuthorId = (comment.userId?._id || comment.userId || '').toString();
+    const reqUserId = (req.user?._id || req.user?.id || '').toString();
+    const isCommentAuthor = !!(commentAuthorId && reqUserId && commentAuthorId === reqUserId);
+
+    if (!isCommentAuthor) {
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this comment' });
+    }
+
+    const { text } = req.body;
+    if (text !== undefined) {
+      comment.text = text.trim();
+      comment.isEdited = true;
+      comment.editedAt = new Date();
+    }
+
+    await comment.save();
+
+    const populated = await Comment.findById(comment._id).populate('userId', 'name avatar');
+    res.json({ success: true, data: populated });
+  } catch (error) {
+    console.error('updateComment error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error updating comment' });
+  }
+};
+
+// @desc    Delete a comment (Soft delete with multi-level reply cascade & atomic commentsCount decrement)
+// @route   DELETE /api/v1/member/social/comments/:id
+// @access  Private
+exports.deleteComment = async (req, res) => {
+  try {
+    const comment = await Comment.findOne({ _id: req.params.id, isDeleted: false });
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const post = await Post.findById(comment.postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Parent post not found' });
+    }
+
+    if (!verifyPostCommunityAccess(req, post)) {
+      return res.status(403).json({ success: false, message: 'Access denied: post belongs to another community' });
+    }
+
+    const commentAuthorId = (comment.userId?._id || comment.userId || '').toString();
+    const postAuthorId = (post.authorId?._id || post.authorId || post.userId?._id || post.userId || '').toString();
+    const reqUserId = (req.user?._id || req.user?.id || '').toString();
+
+    const isCommentAuthor = !!(commentAuthorId && reqUserId && commentAuthorId === reqUserId);
+    const isPostAuthor = !!(postAuthorId && reqUserId && postAuthorId === reqUserId);
+    const isAdmin = adminRoles.includes(req.user?.role);
+    const userCommId = (req.communityId || req.user?.communityId?._id || req.user?.communityId || '').toString();
+    const postCommId = (post.communityId?._id || post.communityId || '').toString();
+    const isHeadSameCommunity = req.user?.role === 'head' && !!(userCommId && postCommId && userCommId === postCommId);
+
+    if (!isCommentAuthor && !isPostAuthor && !isHeadSameCommunity && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Access denied: insufficient permission to delete this comment' });
+    }
+
+    // Recursively collect all descendant comment IDs (multi-level reply cascade)
+    const collectDescendantIds = async (parentIds) => {
+      const children = await Comment.find({ parentCommentId: { $in: parentIds }, isDeleted: false }).select('_id').lean();
+      if (children.length === 0) return [];
+      const childIds = children.map(c => c._id);
+      const deeperIds = await collectDescendantIds(childIds);
+      return [...childIds, ...deeperIds];
+    };
+
+    const descendantIds = await collectDescendantIds([comment._id]);
+    const allTargetIds = [comment._id, ...descendantIds];
+
+    // Batch soft-delete comment + descendant replies
+    const updateResult = await Comment.updateMany(
+      { _id: { $in: allTargetIds } },
+      { $set: { isDeleted: true } }
+    );
+
+    const deletedCount = updateResult.modifiedCount || allTargetIds.length;
+
+    // Atomic decrement of commentsCount on parent Post
+    await Post.findByIdAndUpdate(post._id, { $inc: { commentsCount: -deletedCount } });
+
+    res.json({
+      success: true,
+      message: 'Comment deleted successfully',
+      deletedCount
+    });
+  } catch (error) {
+    console.error('deleteComment error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error deleting comment' });
   }
 };
 

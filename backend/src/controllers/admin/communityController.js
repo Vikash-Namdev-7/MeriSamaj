@@ -74,7 +74,7 @@ exports.createCommunity = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { name, description, logoUrl, settings, city, cityIds, status, headName, headEmail, headPhone, headPassword } = req.body;
+    const { name, description, logoUrl, bannerUrl, settings, city, cityIds, status, headName, headEmail, headPhone, headPassword } = req.body;
 
     if (!name || !name.trim()) {
       await session.abortTransaction();
@@ -139,6 +139,7 @@ exports.createCommunity = async (req, res) => {
       name: name.trim(),
       description,
       logoUrl,
+      bannerUrl: bannerUrl || '',
       city: city ? city.trim() : '',
       cityIds: Array.isArray(cityIds) ? cityIds : [],
       settings,
@@ -224,7 +225,7 @@ exports.updateCommunity = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { name, description, logoUrl, isActive, settings, city, cityIds, headId } = req.body;
+    const { name, description, logoUrl, bannerUrl, isActive, settings, city, cityIds, headId } = req.body;
 
     const community = await Community.findById(req.params.id).session(session);
     if (!community) {
@@ -236,6 +237,7 @@ exports.updateCommunity = async (req, res) => {
     if (name !== undefined) community.name = name.trim();
     if (description !== undefined) community.description = description;
     if (logoUrl !== undefined) community.logoUrl = logoUrl;
+    if (bannerUrl !== undefined) community.bannerUrl = bannerUrl;
     if (city !== undefined) community.city = city.trim();
     if (cityIds !== undefined && Array.isArray(cityIds)) community.cityIds = cityIds;
     if (isActive !== undefined) community.isActive = isActive;

@@ -39,9 +39,9 @@ const JoinRequestsSheet = ({ onClose, groupId }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
+      <div className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] my-auto border border-purple-100/30 animate-scale-in">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
           <h2 className="font-bold text-gray-900 text-[17px]">Join Requests</h2>

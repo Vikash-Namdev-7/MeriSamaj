@@ -2,19 +2,24 @@ const express = require('express');
 const router = express.Router();
 const donationController = require('../../controllers/head/donationController');
 const upload = require('../../middleware/uploadMiddleware');
+const { authorize } = require('../../middleware/authMiddleware');
 
-// Define routes for head panel donations
-router.get('/dashboard-stats', donationController.getDashboardStats);
-router.get('/campaigns', donationController.getAllCampaigns);
-router.post('/campaigns', upload.single('bannerImage'), donationController.createCampaign);
-router.get('/campaigns/:id', donationController.getCampaignById);
-router.put('/campaigns/:id', upload.single('bannerImage'), donationController.updateCampaign);
-router.delete('/campaigns/:id', donationController.deleteCampaign);
-router.patch('/campaigns/:id/status', donationController.updateCampaignStatus);
-router.get('/campaigns/:id/donors', donationController.getCampaignDonors);
+const headOrAdmin = authorize('head', 'admin', 'super_admin', 'master_admin');
+const headOrSubHead = authorize('head', 'sub_head', 'admin', 'super_admin', 'master_admin');
 
-router.post('/campaigns/:id/expenses', donationController.addExpense);
-router.get('/campaigns/:id/expenses', donationController.getCampaignExpenses);
-router.get('/ledger', donationController.getLedger);
+// READ: Dashboard Stats, Campaigns, Donors & Ledger (Head, Sub-Head, Admins)
+router.get('/dashboard-stats', headOrSubHead, donationController.getDashboardStats);
+router.get('/campaigns', headOrSubHead, donationController.getAllCampaigns);
+router.get('/campaigns/:id', headOrSubHead, donationController.getCampaignById);
+router.get('/campaigns/:id/donors', headOrSubHead, donationController.getCampaignDonors);
+router.get('/campaigns/:id/expenses', headOrSubHead, donationController.getCampaignExpenses);
+router.get('/ledger', headOrSubHead, donationController.getLedger);
+
+// WRITE/MUTATING: Campaign & Expense Creation/Editing/Status (Main Head and Admins only)
+router.post('/campaigns', headOrAdmin, upload.single('bannerImage'), donationController.createCampaign);
+router.put('/campaigns/:id', headOrAdmin, upload.single('bannerImage'), donationController.updateCampaign);
+router.delete('/campaigns/:id', headOrAdmin, donationController.deleteCampaign);
+router.patch('/campaigns/:id/status', headOrAdmin, donationController.updateCampaignStatus);
+router.post('/campaigns/:id/expenses', headOrAdmin, donationController.addExpense);
 
 module.exports = router;

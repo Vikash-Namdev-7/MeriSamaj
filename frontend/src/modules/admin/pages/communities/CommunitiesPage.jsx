@@ -48,6 +48,7 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
     description: '',
     cityIds: [],
     logoUrl: '',
+    bannerUrl: '',
     status: 'Active'
   });
   const [loading, setLoading] = useState(false);
@@ -128,9 +129,9 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
             </div>
           </div>
 
-          <div className="community-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+          <div className="community-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div className="community-form-group">
-              <label>Logo / Image</label>
+              <label>Community Logo</label>
               <input
                 type="file"
                 accept="image/*"
@@ -148,8 +149,18 @@ const CreateCommunityModal = ({ onClose, onCreated }) => {
                 style={{ padding: '8px' }}
               />
               {form.logoUrl && form.logoUrl.startsWith('data:image') && (
-                <div className="mt-1 text-xs text-brand-primary">Image selected</div>
+                <div className="mt-1 text-xs text-brand-primary">Logo selected</div>
               )}
+            </div>
+            <div className="community-form-group">
+              <label>Community Banner (URL)</label>
+              <input
+                type="text"
+                placeholder="https://images.unsplash.com/..."
+                value={form.bannerUrl}
+                onChange={e => setForm(f => ({ ...f, bannerUrl: e.target.value }))}
+                className="community-input"
+              />
             </div>
             <div className="community-form-group">
               <label>Status</label>
@@ -215,6 +226,7 @@ const EditCommunityModal = ({ community, onClose, onUpdated }) => {
     city: community.city || '',
     cityIds: community.cityIds || [],
     logoUrl: community.logoUrl || '',
+    bannerUrl: community.bannerUrl || '',
     isActive: community.isActive !== undefined ? community.isActive : true,
     headId: community.headId?._id || community.headId || ''
   });
@@ -308,7 +320,7 @@ const EditCommunityModal = ({ community, onClose, onUpdated }) => {
           </div>
 
           <div className="community-form-group">
-            <label>Logo / Image</label>
+            <label>Community Logo</label>
             <input
               type="file"
               accept="image/*"
@@ -327,7 +339,23 @@ const EditCommunityModal = ({ community, onClose, onUpdated }) => {
             />
             {form.logoUrl && (
               <div className="mt-1 text-xs text-brand-primary truncate">
-                {form.logoUrl.startsWith('data:image') ? 'New image selected' : 'Current image: ' + form.logoUrl}
+                {form.logoUrl.startsWith('data:image') ? 'New logo selected' : 'Current logo: ' + form.logoUrl}
+              </div>
+            )}
+          </div>
+
+          <div className="community-form-group">
+            <label>Community Banner (URL)</label>
+            <input
+              type="text"
+              placeholder="https://images.unsplash.com/..."
+              value={form.bannerUrl}
+              onChange={e => setForm(f => ({ ...f, bannerUrl: e.target.value }))}
+              className="community-input"
+            />
+            {form.bannerUrl && (
+              <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 max-h-28">
+                <img src={form.bannerUrl} alt="Banner Preview" className="w-full h-24 object-cover" onError={(e) => e.target.style.display = 'none'} />
               </div>
             )}
           </div>
@@ -689,7 +717,7 @@ const COMMUNITIES_PAGE_STYLES = `
     padding: 24px;
     max-width: 1200px;
     margin: 0 auto;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Sora', sans-serif;
   }
   .communities-header {
     display: flex;

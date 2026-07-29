@@ -1,6 +1,7 @@
 const Professional = require('../../models/Professional');
 const User = require('../../models/User');
-const { notifyListingSubmitted } = require('../../services/notificationService');
+const { notifyListingSubmitted, createNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
 const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -193,15 +194,16 @@ exports.createProfessional = async (req, res) => {
 // 4. Update Professional Listing
 exports.updateProfessional = async (req, res) => {
   try {
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
-    const query = isAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isPrivilegedAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(userRole);
+    const query = isPrivilegedAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
     const p = await Professional.findOne(query);
     if (!p) {
       return res.status(404).json({ success: false, message: 'Business listing not found.' });
     }
 
     // Verify ownership
-    if (!isAdmin && p.ownerId.toString() !== req.user._id.toString()) {
+    if (!isPrivilegedAdmin && p.ownerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this listing.' });
     }
 
@@ -237,15 +239,16 @@ exports.updateProfessional = async (req, res) => {
 // 5. Delete Professional Listing
 exports.deleteProfessional = async (req, res) => {
   try {
-    const isAdmin = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'].includes((req.user?.role || '').toLowerCase());
-    const query = isAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isPrivilegedAdmin = ['admin', 'super_admin', 'master_admin', 'master'].includes(userRole);
+    const query = isPrivilegedAdmin ? { _id: req.params.id } : applyScopeFilter(req, { _id: req.params.id });
     const p = await Professional.findOne(query);
     if (!p) {
       return res.status(404).json({ success: false, message: 'Business listing not found.' });
     }
 
     // Verify ownership
-    if (!isAdmin && p.ownerId.toString() !== req.user._id.toString()) {
+    if (!isPrivilegedAdmin && p.ownerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this listing.' });
     }
 
@@ -266,5 +269,54 @@ exports.getActiveCategories = async (req, res) => {
   } catch (error) {
     console.error('getActiveCategories error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// 7. Submit Business Lead / Enquiry
+exports.submitBusinessEnquiry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message, senderPhone } = req.body;
+
+    const professional = await Professional.findById(id);
+    if (!professional) {
+      return res.status(404).json({ success: false, message: 'Business listing not found.' });
+    }
+
+    // Trigger In-App + FCM Push Lead Notification to Business Owner
+    if (professional.ownerId) {
+      const notification = await createNotification({
+        userId: professional.ownerId,
+        communityId: professional.communityId,
+        module: 'professional',
+        type: 'business_enquiry',
+        title: 'New Business Lead 💼',
+        message: `${req.user?.name || 'A customer'} sent an enquiry for "${professional.companyName}": "${message || 'Interested in your services'}"`,
+        icon: '💼',
+        priority: 'high',
+        actionUrl: `/member/professional/${professional._id}`,
+        referenceId: professional._id,
+        referenceType: 'Professional'
+      });
+
+      if (notification) {
+        sendPushNotification({
+          userId: professional.ownerId,
+          notificationId: notification._id,
+          type: 'business_enquiry',
+          title: 'New Business Lead 💼',
+          message: `${req.user?.name || 'A customer'} sent an enquiry for "${professional.companyName}". Phone: ${senderPhone || req.user?.phone || 'N/A'}`,
+          icon: '💼',
+          actionUrl: `/member/professional/${professional._id}`
+        }).catch(err => console.error('[EnquiryPushError]', err.message));
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Enquiry sent successfully to business owner.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

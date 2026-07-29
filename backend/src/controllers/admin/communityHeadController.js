@@ -118,6 +118,7 @@ exports.createCommunityHead = async (req, res) => {
       password, // Password hashed via model middleware
       plainPassword: password, // Save for admin visibility
       role: 'head',
+      designation: req.body.designation || 'Community Head',
       accountStatus: 'active',
       assignedCommunityIds: assignedCommunityIds || [],
       communityId: (assignedCommunityIds && assignedCommunityIds.length > 0) ? assignedCommunityIds[0] : null,

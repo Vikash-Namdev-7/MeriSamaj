@@ -24,7 +24,9 @@ router.route('/posts')
 router.get('/posts/user/:userId', socialController.getUserPosts);
 
 router.route('/posts/:id')
-  .get(socialController.getPostById);
+  .get(socialController.getPostById)
+  .put(socialController.updatePost)
+  .delete(socialController.deletePost);
 
 router.post('/posts/:id/like', socialController.toggleLike);
 router.post('/posts/:id/save', socialController.toggleSave);
@@ -34,6 +36,10 @@ router.post('/posts/:id/share', socialController.recordShare);
 router.route('/posts/:id/comments')
   .get(socialController.getComments)
   .post(socialController.addComment);
+
+router.route('/comments/:id')
+  .put(socialController.updateComment)
+  .delete(socialController.deleteComment);
 
 router.post('/comments/:id/like', socialController.toggleCommentLike);
 

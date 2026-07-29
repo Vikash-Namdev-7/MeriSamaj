@@ -34,10 +34,15 @@ try {
   console.warn('express-rate-limit package not loaded - run npm install to activate');
 }
 
+const { initEventReminderRunner } = require('./services/eventReminderRunner');
+
 const app = express();
 
 // Connect to Database
 connectDB();
+
+// Initialize Event Reminder Scheduled Task
+initEventReminderRunner();
 
 // Global Middlewares
 // CORS must be first so preflight and rate-limited requests get headers!

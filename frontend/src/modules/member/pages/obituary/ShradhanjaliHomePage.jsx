@@ -264,14 +264,14 @@ const ShradhanjaliHomePage = () => {
       <div
         className="responsive-fixed-top z-40 border-b"
         style={{
-          background: 'rgba(255,255,255,0.82)',
+          background: 'rgba(255,255,255,0.85)',
           backdropFilter: 'blur(24px)',
           borderColor: 'rgba(212,175,55,0.22)',
           boxShadow: '0 2px 14px rgba(124,92,46,0.04)',
           paddingTop: 'var(--spacing-safe-top)',
         }}
       >
-        <div className="flex items-center h-16 px-4 gap-3">
+        <div className="flex items-center h-14 px-4 gap-3">
           <AnimatePresence mode="wait">
             {showSearch ? (
               <motion.div
@@ -288,8 +288,8 @@ const ShradhanjaliHomePage = () => {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name..."
-                  className="flex-1 bg-transparent border-none text-[14px] text-gray-900 placeholder-amber-900/40 focus:outline-none font-medium"
+                  placeholder="Search by deceased name..."
+                  className="flex-1 bg-transparent border-none text-[13px] text-gray-900 placeholder-amber-900/40 focus:outline-none font-bold"
                 />
                 {search && (
                   <button onClick={() => setSearch('')}>
@@ -303,23 +303,23 @@ const ShradhanjaliHomePage = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-2 flex-1"
+                className="flex items-center gap-2.5 flex-1 text-left"
               >
-                <div className="flex items-center gap-2.5">
-                  <button 
-                    onClick={() => setMobileMenuOpen && setMobileMenuOpen(true)}
-                    className="p-1.5 -ml-1 rounded-xl bg-amber-900/5 hover:bg-amber-900/10 text-amber-900 transition-colors press-scale"
-                    aria-label="Open Navigation Menu"
-                  >
-                    <Menu size={20} style={{ color: '#7C5C2E' }} />
-                  </button>
-                  <span className="text-[20px]">🪔</span>
-                  <div>
-                    <h1 className="text-[16px] font-bold leading-tight" style={{ color: '#7C5C2E' }}>
-                      Obituary
-                    </h1>
-                    <p className="text-[10px] text-gray-400">Om Shanti</p>
-                  </div>
+                <button 
+                  onClick={() => setMobileMenuOpen && setMobileMenuOpen(true)}
+                  className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-amber-50 transition-colors press-scale"
+                  aria-label="Open Navigation Menu"
+                >
+                  <Menu size={20} style={{ color: '#7C5C2E' }} />
+                </button>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-700 shrink-0">
+                  <span className="text-[17px]">🪔</span>
+                </div>
+                <div>
+                  <h1 className="text-[16px] font-extrabold leading-tight tracking-tight" style={{ color: '#7C5C2E' }}>
+                    Shradhanjali
+                  </h1>
+                  <p className="text-[10px] font-extrabold text-amber-900/60 uppercase tracking-wider">Om Shanti</p>
                 </div>
               </motion.div>
             )}
@@ -329,16 +329,15 @@ const ShradhanjaliHomePage = () => {
           <div className="flex items-center gap-2 shrink-0">
             {!showSearch && filtered.length > 0 && (
               <span
-                className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full"
                 style={{ background: 'rgba(124,92,46,0.1)', color: '#7C5C2E' }}
               >
-                {filtered.length}
+                {filtered.length} Posts
               </span>
             )}
             <button
               onClick={() => navigate('/member/notifications?module=shradhanjali')}
-              className="p-2 rounded-full press-scale relative"
-              style={{ background: 'rgba(124,92,46,0.08)' }}
+              className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 relative hover:bg-amber-50 transition-all press-scale"
             >
               <Bell size={18} style={{ color: '#7C5C2E' }} />
               {getUnreadCountForModule('shradhanjali') > 0 && (
@@ -347,8 +346,7 @@ const ShradhanjaliHomePage = () => {
             </button>
             <button
               onClick={() => { setShowSearch(!showSearch); if (showSearch) setSearch(''); }}
-              className="p-2 rounded-full press-scale"
-              style={{ background: showSearch ? 'rgba(212,175,55,0.15)' : 'rgba(124,92,46,0.08)' }}
+              className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:bg-amber-50 transition-all press-scale"
             >
               {showSearch
                 ? <X size={18} style={{ color: '#7C5C2E' }} />
@@ -363,11 +361,12 @@ const ShradhanjaliHomePage = () => {
             <button
               key={tab.id}
               onClick={() => setActiveFilter(tab.id)}
-              className="shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all press-scale"
+              className="shrink-0 px-4 py-1.5 rounded-xl text-[11.5px] font-extrabold transition-all press-scale border"
               style={{
-                background: activeFilter === tab.id ? '#7C5C2E' : 'rgba(124,92,46,0.08)',
+                background: activeFilter === tab.id ? 'linear-gradient(135deg, #7C5C2E 0%, #A37A3E 100%)' : 'white',
                 color: activeFilter === tab.id ? 'white' : '#7C5C2E',
-                border: activeFilter === tab.id ? 'none' : '1px solid rgba(124,92,46,0.15)',
+                borderColor: activeFilter === tab.id ? '#7C5C2E' : 'rgba(124,92,46,0.2)',
+                boxShadow: activeFilter === tab.id ? '0 4px 14px rgba(124,92,46,0.25)' : 'none',
               }}
             >
               {tab.label}
@@ -377,7 +376,7 @@ const ShradhanjaliHomePage = () => {
       </div>
 
       {/* ─── Cards List ─── */}
-      <div className="pt-[116px] pb-32 px-4 max-w-lg mx-auto space-y-7">
+      <div className="pt-[116px] pb-32 px-4 max-w-lg mx-auto space-y-6">
         {obituariesLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <motion.div
@@ -387,15 +386,15 @@ const ShradhanjaliHomePage = () => {
             >
               🪔
             </motion.div>
-            <p className="text-[14px] text-gray-500 font-medium">Loading tributes...</p>
+            <p className="text-[13px] text-slate-600 font-extrabold">Loading tributes...</p>
           </div>
         ) : obituariesError ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
             <span className="text-[44px]">⚠️</span>
-            <p className="text-[14px] text-red-500 font-medium">{obituariesError}</p>
+            <p className="text-[13px] text-red-500 font-extrabold">{obituariesError}</p>
             <button
               onClick={loadObituaries}
-              className="px-4 py-2 rounded-xl text-[12px] font-bold text-white press-scale"
+              className="px-5 py-2.5 rounded-xl text-[12px] font-extrabold text-white press-scale shadow-md"
               style={{ background: '#7C5C2E' }}
             >
               Retry
@@ -405,13 +404,13 @@ const ShradhanjaliHomePage = () => {
           <>
             {filtered.length > 0 && (
               <div className="flex items-center justify-between pt-1 pb-1">
-                <span className="text-[13px] font-semibold text-gray-400">
-                  {filtered.length} Obituary Posts
+                <span className="text-[12px] font-extrabold text-slate-400">
+                  {filtered.length} Obituary Tributes
                 </span>
               </div>
             )}
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               {filtered.map((ob, idx) => (
                 <MemorialCard key={ob.id} obituary={ob} index={idx} />
               ))}
@@ -423,7 +422,7 @@ const ShradhanjaliHomePage = () => {
                 <button
                   onClick={loadMoreObituaries}
                   disabled={obituariesLoading}
-                  className="px-6 py-2.5 rounded-xl border border-[#7C5C2E]/20 text-[#7C5C2E] font-bold text-xs bg-amber-50/50 hover:bg-amber-100/50 transition-colors disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl border border-[#7C5C2E]/30 text-[#7C5C2E] font-extrabold text-xs bg-amber-50/60 hover:bg-amber-100/60 transition-colors disabled:opacity-50 press-scale"
                 >
                   {obituariesLoading ? 'Loading more tributes...' : 'Load More Tributes'}
                 </button>
@@ -435,20 +434,20 @@ const ShradhanjaliHomePage = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center gap-3 py-20"
+                className="flex flex-col items-center gap-3 py-16 bg-white rounded-[28px] border border-amber-200/60 p-8 shadow-xs text-center"
               >
-                <span className="text-[64px]">🔖</span>
-                <p className="text-[16px] font-bold text-gray-500">
+                <span className="text-[52px]">🪔</span>
+                <p className="text-[15px] font-extrabold text-slate-800">
                   {activeFilter === 'saved' ? 'No saved obituaries yet' : 'No obituaries found'}
                 </p>
                 {activeFilter === 'saved' && (
-                  <p className="text-[13px] text-gray-400 text-center max-w-xs">
+                  <p className="text-[12px] text-slate-400 font-medium max-w-xs">
                     Tribute posts that you bookmark will appear here for easy access.
                   </p>
                 )}
                 {search && (
-                  <p className="text-[13px] text-gray-400 text-center">
-                    No results for "{search}"
+                  <p className="text-[12px] text-slate-400 font-medium">
+                    No results found matching "{search}"
                   </p>
                 )}
               </motion.div>
@@ -463,13 +462,13 @@ const ShradhanjaliHomePage = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/member/shradhanjali/create')}
-          className="responsive-fixed-fab flex items-center gap-2 px-5 py-3.5 rounded-2xl text-white font-bold text-[14px] shadow-xl z-40"
+          className="fixed bottom-[92px] right-5 flex items-center gap-2 px-5 py-3 rounded-2xl text-white font-extrabold text-[13px] shadow-xl z-40 press-scale"
           style={{
             background: 'linear-gradient(135deg, #7C5C2E 0%, #D4AF37 100%)',
-            boxShadow: '0 8px 24px rgba(124,92,46,0.4)',
+            boxShadow: '0 8px 24px rgba(124,92,46,0.35)',
           }}
         >
-          <Plus size={20} strokeWidth={2.5} />
+          <Plus size={18} strokeWidth={2.5} />
           <span>Post Obituary</span>
         </motion.button>
       )}

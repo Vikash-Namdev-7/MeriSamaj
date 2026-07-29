@@ -8,7 +8,6 @@ import { currentUser as initialUser, mockMembers as initialMembers, mockAdmins a
 import { mockPosts as initialPosts } from '../data/mockPosts';
 import { mockEvents as initialEvents } from '../data/mockEvents';
 import { mockMatrimonialProfiles as initialMatrimonial } from '../data/mockMatrimonial'; // DEPRECATED: matrimonial module now uses MatrimonialContext, not DataProvider
-import { mockObituaries as initialObituaries } from '../data/mockObituaries';
 // mockChats/mockMessages DEPRECATED — Community Chat now uses useMemberChat hook + real API
 // import { mockChats as initialChats, mockMessages as initialMessages } from '../data/mockChats';
 import { mockProfessionals as initialProfessionals } from '../data/mockProfessionals';
@@ -571,6 +570,22 @@ const defaultGranularPrivacy = {
   m6: { phone: 'private', email: 'private', familyTree: 'private', gallery: 'private' }
 };
 
+const defaultInvitationFormConfig = {
+  enableMembersTab: true,
+  enablePresidentsTab: true,
+  enableGroupsTab: true,
+  enableFriendsTab: true,
+  enableBatchInvite: true,
+  formFields: [
+    { id: 'timeFood', label: 'Feast Time Field', desc: 'Allow members to specify food timing', type: 'time', required: false, enabled: true },
+    { id: 'timeProgram', label: 'Program Time Field', desc: 'Allow members to specify main event timing', type: 'time', required: false, enabled: true },
+    { id: 'mapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs', type: 'url', required: false, enabled: true },
+    { id: 'contact', label: 'Contact Number Field', desc: 'Require contact number on invitations', type: 'tel', required: true, enabled: true },
+    { id: 'message', label: 'Personal Message Field', desc: 'Allow members to add a custom message', type: 'text', required: false, enabled: true },
+    { id: 'photos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards', type: 'file', required: false, enabled: true }
+  ]
+};
+
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
@@ -637,7 +652,22 @@ export const DataProvider = ({ children }) => {
       setCurrentUser(null);
     }
   }, [auth.isAuthenticated, auth.user]);
+
   const [members, setMembers] = useState(() => loadState('members', initialMembers));
+
+  // Invitation Form Configuration State
+  const [invitationFormConfig, setInvitationFormConfig] = useState(() => {
+    return loadState('invitationFormConfig_v2', loadState('invitationFormConfig', defaultInvitationFormConfig));
+  });
+
+  useEffect(() => {
+    saveState('invitationFormConfig', invitationFormConfig);
+    saveState('invitationFormConfig_v2', invitationFormConfig);
+  }, [invitationFormConfig]);
+
+  const updateInvitationConfig = (newConfig) => {
+    setInvitationFormConfig(newConfig);
+  };
 
   const loadMembers = async () => {
     try {
@@ -737,27 +767,7 @@ export const DataProvider = ({ children }) => {
   const [obituariesLoading, setObituariesLoading] = useState(false);
   const [obituariesError, setObituariesError] = useState(null);
 
-  // Dynamic Configuration for Invitation Form Fields
-  const [invitationFormConfig, setInvitationFormConfig] = useState(() => loadState('invitationFormConfig_v2', {
-    formFields: [
-      { id: 'timeFood', label: 'Feast Time Field', desc: 'Allow members to specify food timing', type: 'time', required: false, enabled: true },
-      { id: 'timeProgram', label: 'Program Time Field', desc: 'Allow members to specify main event timing', type: 'time', required: false, enabled: true },
-      { id: 'mapLink', label: 'Google Map Link Field', desc: 'Allow members to add Google Map URLs', type: 'url', required: false, enabled: true },
-      { id: 'contact', label: 'Contact Number Field', desc: 'Require contact number on invitations', type: 'tel', required: true, enabled: true },
-      { id: 'message', label: 'Personal Message Field', desc: 'Allow members to add a custom message', type: 'text', required: false, enabled: true },
-      { id: 'photos', label: 'Photo/Card Upload', desc: 'Allow members to upload images of their invitation cards', type: 'file', required: false, enabled: true }
-    ],
-    enableMembersTab: true,
-    enablePresidentsTab: true,
-    enableGroupsTab: true,
-    enableFriendsTab: true,
-    enableBatchInvite: true
-  }));
 
-  const updateInvitationConfig = (newConfig) => {
-    setInvitationFormConfig(newConfig);
-    saveState('invitationFormConfig_v2', newConfig);
-  };
 
   const [professionals, setProfessionals] = useState(() => {
     const saved = loadState('professionals', initialProfessionals);
@@ -970,31 +980,21 @@ export const DataProvider = ({ children }) => {
   // useEffect(() => saveState('invitations', invitations), [invitations]); // Disabled persistence so newly created cards reset on refresh
 
   // Follow System Methods
-  const sendFollowRequest = (targetUserId) => {
+  const sendFollowRequest = async (targetUserId) => {
     const myId = currentUser?.id || currentUser?._id || 'u1';
     setFollowRelations(prev => {
       const exists = prev.some(r => r.followerId === myId && r.followingId === targetUserId);
       if (exists) return prev;
-
       const targetPrivacy = profilePrivacy[targetUserId] || 'public';
       const status = targetPrivacy === 'private' ? 'pending' : 'accepted';
-
       return [...prev, { followerId: myId, followingId: targetUserId, status }];
     });
 
-    // Add simulated follow notification for other user if private
-    const targetPrivacy = profilePrivacy[targetUserId] || 'public';
-    if (targetPrivacy === 'private') {
-      const targetName = members.find(m => m.id === targetUserId)?.name || admins.find(a => a.id === targetUserId)?.name || 'Someone';
-      const newNotification = {
-        id: `nf_follow_req_${Date.now()}`,
-        type: 'follow_request_sent',
-        title: 'Follow Request Sent',
-        message: `You requested to follow ${targetName}.`,
-        time: 'Just now',
-        isRead: false
-      };
-      setNotifications(prev => [newNotification, ...prev]);
+    try {
+      const res = await socialService.toggleFollow(targetUserId);
+      return res;
+    } catch (err) {
+      console.error('Failed to send follow request via API:', err);
     }
   };
 
@@ -1012,7 +1012,6 @@ export const DataProvider = ({ children }) => {
       return r;
     }));
 
-    // Add a notification for current user
     const sender = members.find(m => m.id === senderUserId) || admins.find(a => a.id === senderUserId);
     const senderName = sender ? sender.name : 'A member';
     const newNotification = {
@@ -1031,9 +1030,16 @@ export const DataProvider = ({ children }) => {
     setFollowRelations(prev => prev.filter(r => !(r.followerId === senderUserId && r.followingId === myId && r.status === 'pending')));
   };
 
-  const unfollowUser = (targetUserId) => {
+  const unfollowUser = async (targetUserId) => {
     const myId = currentUser?.id || currentUser?._id || 'u1';
     setFollowRelations(prev => prev.filter(r => !(r.followerId === myId && r.followingId === targetUserId)));
+
+    try {
+      const res = await socialService.toggleFollow(targetUserId);
+      return res;
+    } catch (err) {
+      console.error('Failed to unfollow user via API:', err);
+    }
   };
 
   const removeFollower = (targetUserId) => {
@@ -3085,6 +3091,10 @@ export const DataProvider = ({ children }) => {
     // Mobile Menu
     isMobileMenuOpen,
     setMobileMenuOpen,
+
+    // Invitation Form Configuration
+    invitationFormConfig,
+    updateInvitationConfig,
   };
 
   return (

@@ -2,6 +2,8 @@ const Leadership = require('../../models/Leadership');
 const User = require('../../models/User');
 const mongoose = require('mongoose');
 const { applyScopeFilter } = require('../../utils/queryScopeHelper');
+const { createNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 
 // @desc    Get leadership directory for member's community (Dynamic Head + Sub-Leaders)
 // @route   GET /api/v1/member/leadership
@@ -31,12 +33,16 @@ exports.getCommunityLeadership = async (req, res) => {
       .select('name email phone city state designation bio avatar cover socialLinks termYears createdAt')
       .lean();
 
+    const headDesignation = (!communityHeadUser?.designation || communityHeadUser.designation.toLowerCase() === 'member')
+      ? 'Community Head'
+      : communityHeadUser.designation;
+
     const formattedHead = communityHeadUser ? {
       _id: communityHeadUser._id,
       name: communityHeadUser.name,
       initials: communityHeadUser.name ? communityHeadUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CH',
-      designation: communityHeadUser.designation || 'Community Head',
-      role: communityHeadUser.designation || 'President',
+      designation: headDesignation,
+      role: headDesignation,
       city: communityHeadUser.city || 'Indore',
       state: communityHeadUser.state || 'Madhya Pradesh',
       phone: communityHeadUser.phone || '',
@@ -114,10 +120,15 @@ exports.getCommunityLeadership = async (req, res) => {
       isHead: false
     }));
 
-    // Combine subordinate leaders (User sub_heads + Leadership docs) avoiding duplicates
+    // Combine subordinate leaders (User sub_heads + Leadership docs) with read-time deduplication (zero DB writes)
     const allSubLeaders = [...formattedSubHeads];
     formattedLegacy.forEach(leg => {
-      if (!allSubLeaders.some(s => s.name === leg.name)) {
+      const isDuplicate = allSubLeaders.some(s => 
+        (s.phone && leg.phone && s.phone.trim() === leg.phone.trim()) ||
+        (s.email && leg.email && s.email.trim().toLowerCase() === leg.email.trim().toLowerCase()) ||
+        (s.name.toLowerCase() === leg.name.toLowerCase() && (s.city || '').toLowerCase() === (leg.city || '').toLowerCase())
+      );
+      if (!isDuplicate) {
         allSubLeaders.push(leg);
       }
     });
@@ -126,17 +137,95 @@ exports.getCommunityLeadership = async (req, res) => {
     const designationsSet = new Set(['Vice President', 'Secretary', 'Treasurer', 'Coordinator', 'Executive Member', 'Committee Member']);
     allSubLeaders.forEach(l => { if (l.designation) designationsSet.add(l.designation); });
 
+    // Calculate real dynamic stats matching the 4 metrics (Total Members, States, Districts, Village Units)
+    const statsUserFilter = applyScopeFilter(req, { accountStatus: { $ne: 'deleted' } });
+    
+    const primaryUsersCount = await User.countDocuments(statsUserFilter).catch(() => 0);
+    const usersWithFam = await User.find(statsUserFilter).select('familyMembers').lean();
+    let familyMembersCount = 0;
+    usersWithFam.forEach(u => {
+      if (Array.isArray(u.familyMembers)) familyMembersCount += u.familyMembers.length;
+    });
+
+    const totalMembersCount = primaryUsersCount + familyMembersCount;
+    const distinctStates = await User.distinct('state', statsUserFilter).catch(() => []);
+    const distinctDistricts = await User.distinct('district', statsUserFilter).catch(() => []);
+    const distinctCities = await User.distinct('city', statsUserFilter).catch(() => []);
+
+    const validStatesCount = distinctStates.filter(Boolean).length;
+    const validDistrictsCount = distinctDistricts.filter(Boolean).length;
+    const validCitiesCount = distinctCities.filter(Boolean).length;
+
+    const stats = {
+      totalMembers: totalMembersCount > 0 ? totalMembersCount : 1,
+      totalStates: validStatesCount > 0 ? validStatesCount : 1,
+      totalDistricts: validDistrictsCount > 0 ? validDistrictsCount : Math.max(validCitiesCount, 1),
+      totalVillageUnits: Math.max(validCitiesCount, 1)
+    };
+
     res.json({
       success: true,
       status: 'success',
       data: {
         communityHead: formattedHead,
         subLeaders: allSubLeaders,
-        designations: Array.from(designationsSet)
+        designations: Array.from(designationsSet),
+        stats
       }
     });
   } catch (error) {
     console.error('getCommunityLeadership error:', error);
     res.status(500).json({ success: false, message: 'Server error fetching leadership directory' });
+  }
+};
+
+// @desc    Submit a leadership role claim / application
+// @route   POST /api/v1/member/leadership/claim
+// @access  Private
+exports.submitLeadershipClaim = async (req, res) => {
+  try {
+    const { designation, department, reason } = req.body;
+    const communityId = req.communityId || req.user?.communityId;
+
+    if (!designation) {
+      return res.status(400).json({ success: false, message: 'Designation is required for leadership claim.' });
+    }
+
+    // Find Community Head to notify
+    const headUser = await User.findOne({ communityId, role: 'head', accountStatus: 'active' }).select('_id').lean();
+    if (headUser) {
+      const notification = await createNotification({
+        userId: headUser._id,
+        communityId,
+        module: 'leadership',
+        type: 'leadership_claim_submitted',
+        title: 'Leadership Claim Submitted 📜',
+        message: `${req.user?.name || 'A member'} applied for "${designation}" in ${department || 'General Governance'}.`,
+        icon: '📜',
+        priority: 'high',
+        actionUrl: '/head/leadership',
+        referenceId: req.user._id,
+        referenceType: 'User'
+      });
+
+      if (notification) {
+        sendPushNotification({
+          userId: headUser._id,
+          notificationId: notification._id,
+          type: 'leadership_claim_submitted',
+          title: 'Leadership Claim Submitted 📜',
+          message: `${req.user?.name || 'A member'} applied for "${designation}".`,
+          icon: '📜',
+          actionUrl: '/head/leadership'
+        }).catch(err => console.error('[LeadershipClaimPushError]', err.message));
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Leadership claim submitted successfully for review.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

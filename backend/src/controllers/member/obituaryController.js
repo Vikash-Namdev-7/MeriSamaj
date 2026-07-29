@@ -1,9 +1,10 @@
 const Obituary = require('../../models/Obituary');
 const User = require('../../models/User');
-const { notifyObituaryPosted, notifyObituaryPostedToHead } = require('../../services/notificationService');
+const { notifyObituaryPosted, notifyObituaryPostedToHead, createBroadcastNotification } = require('../../services/notificationService');
+const { sendPushNotification } = require('../../services/pushNotificationService');
 const { applyScopeFilter, inheritTenantPayload } = require('../../utils/queryScopeHelper');
 
-const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master', 'head_admin'];
+const ADMIN_ROLES = ['admin', 'super_admin', 'master_admin', 'master'];
 
 // Helper to check if user is a privileged user (head or any admin role)
 const isPrivilegedUser = (req) => {
@@ -130,14 +131,18 @@ exports.createObituary = async (req, res) => {
     // ── Notification: notify community members & head ────────────────────────────
     try {
       if (req.communityId) {
-        const members = await User.find({
+        createBroadcastNotification({
           communityId: req.communityId,
-          accountStatus: 'active',
-          verificationStatus: 'verified',
-          _id: { $ne: req.user._id }
-        }).select('_id role').lean();
-
-        notifyObituaryPosted(members.map(m => m._id), fullName, savedObituary._id);
+          module: 'obituary',
+          type: 'obituary_posted',
+          title: 'Obituary Notice 🕊️',
+          message: `An obituary has been posted for "${fullName}". Please keep the family in your prayers.`,
+          icon: '🕊️',
+          priority: 'high',
+          actionUrl: `/member/shradhanjali/${savedObituary._id}`,
+          referenceId: savedObituary._id,
+          referenceType: 'Obituary'
+        });
 
         // Find community head(s) and send specific head notification
         const heads = await User.find({

@@ -1,107 +1,201 @@
 const User = require('../../models/User');
 const Community = require('../../models/Community');
-const Campaign = require('../../models/Campaign');
-const Donation = require('../../models/Donation');
-const Expense = require('../../models/Expense');
+const MatrimonialProfile = require('../../models/MatrimonialProfile');
+const Event = require('../../models/Event');
+const Professional = require('../../models/Professional');
+const Obituary = require('../../models/Obituary');
 const Post = require('../../models/Post');
+const PostLike = require('../../models/PostLike');
+const Comment = require('../../models/Comment');
+const EventResponse = require('../../models/EventResponse');
 const Voting = require('../../models/Voting');
+const Donation = require('../../models/Donation');
+const Contribution = require('../../models/Contribution');
+const DharmashalaBooking = require('../../models/DharmashalaBooking');
+const Expense = require('../../models/Expense');
 
+/**
+ * @desc    Get consolidated platform-wide analytics for Admin Dashboard Overview
+ * @route   GET /api/v1/admin/dashboard/overview
+ * @access  Private (Admin / Master Admin)
+ */
 exports.getDashboardOverview = async (req, res) => {
   try {
-    // 1. Members
-    const totalMembers = await User.countDocuments({ role: 'user' });
-    const verifiedMembers = await User.countDocuments({ role: 'user', verificationStatus: 'verified' });
-    
-    // 2. Communities
-    let totalCommunities = await Community.countDocuments();
-    let activeCommunities = await Community.countDocuments({ isActive: true });
-    
-    if (totalCommunities === 0) {
-      const distinctComms = await User.distinct('community');
-      totalCommunities = distinctComms.filter(c => c && c.trim()).length;
-      activeCommunities = totalCommunities;
-    }
-    
-    // 3. Cities (Distinct cities among users)
-    const cities = await User.distinct('city');
-    const totalCities = cities.filter(c => c && c.trim()).length;
-    
-    // 4. Community Heads
-    const totalHeads = await User.countDocuments({ role: { $in: ['head', 'admin'] } });
-    
-    // 5. Matrimonial Statistics
-    const singleUsers = await User.countDocuments({ maritalStatus: { $regex: /single|unmarried|divorced|widow/i } });
-    const marriedUsers = await User.countDocuments({ maritalStatus: { $regex: /married/i } });
-    const matrimonialProfiles = await User.find({ maritalStatus: { $exists: true, $ne: '' } }).select('maritalStatus');
-    
-    // 6. Event/Campaign Statistics
-    const totalCampaigns = await Campaign.countDocuments();
-    const activeCampaigns = await Campaign.countDocuments({ status: { $in: ['Active', 'Published'] } });
-    const completedCampaigns = await Campaign.countDocuments({ status: 'Completed' });
-    
-    // 7. Professional Directory Statistics
-    const professionals = await User.find({ profession: { $exists: true, $ne: '' } }).select('profession');
-    const totalProfessionals = professionals.length;
-    
-    // 8. Engagement Overview
-    const totalPosts = await Post.countDocuments();
-    const totalElections = await Voting.countDocuments();
-    
-    // 9. Revenue Overview
-    const donationAgg = await Donation.aggregate([
-      { $match: { isDeleted: { $ne: true } } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$raisedAmount', '$amount'] } } } }
+    const [
+      // 1. Members
+      totalMembers,
+      verifiedMembers,
+      activeMembers,
+      pendingMembers,
+      inactiveMembers,
+
+      // 2. Communities
+      totalCommunities,
+      activeCommunities,
+
+      // 3. Cities
+      distinctCities,
+
+      // 4. Community Heads
+      activeHeads,
+
+      // 5. Matrimonial Statistics (Real MatrimonialProfile collection)
+      totalMatrimonialProfiles,
+      verifiedMatrimonialProfiles,
+      marriedMatrimonialProfiles,
+
+      // 6. Event Statistics (Real Event collection)
+      totalEvents,
+      activeEvents,
+      completedEvents,
+
+      // 7. Professional Directory Statistics (Real Professional collection)
+      totalProfessionals,
+      approvedProfessionals,
+
+      // 8. Community Engagement Overview
+      totalPosts,
+      totalPostLikes,
+      totalComments,
+      totalEventRSVPs,
+      totalElections,
+
+      // 9. Obituaries Metric (Real Obituary collection)
+      totalObituaries,
+
+      // 10. Financial Aggregates (Donations, Contributions, Dharmashala Bookings, Expenses)
+      donationRevenueAgg,
+      contributionRevenueAgg,
+      dharmashalaRevenueAgg,
+      expenseAgg
+    ] = await Promise.all([
+      // 1. Members Breakdown
+      User.countDocuments({ role: 'user' }),
+      User.countDocuments({ role: 'user', verificationStatus: 'verified' }),
+      User.countDocuments({ role: 'user', accountStatus: 'active' }),
+      User.countDocuments({ role: 'user', accountStatus: { $in: ['pending verification', 'inactive'] } }),
+      User.countDocuments({ role: 'user', accountStatus: { $in: ['blocked', 'deleted'] } }),
+
+      // 2. Communities
+      Community.countDocuments(),
+      Community.countDocuments({ isActive: true }),
+
+      // 3. Cities
+      User.distinct('city'),
+
+      // 4. Active Heads (roles 'head' and 'sub_head' only, excluding platform 'admin')
+      User.countDocuments({ role: { $in: ['head', 'sub_head'] }, accountStatus: 'active' }),
+
+      // 5. Matrimonial Statistics (Real MatrimonialProfile collection)
+      MatrimonialProfile.countDocuments({ status: { $ne: 'deleted' } }),
+      MatrimonialProfile.countDocuments({ verificationStatus: 'verified', status: { $ne: 'deleted' } }),
+      MatrimonialProfile.countDocuments({ status: 'married' }),
+
+      // 6. Event Statistics (Real Event collection)
+      Event.countDocuments({ status: { $ne: 'Deleted' }, isDeleted: { $ne: true } }),
+      Event.countDocuments({ status: { $in: ['Published', 'Upcoming', 'Ongoing'] }, isDeleted: { $ne: true } }),
+      Event.countDocuments({ status: 'Completed', isDeleted: { $ne: true } }),
+
+      // 7. Professional Directory Statistics (Real Professional collection)
+      Professional.countDocuments(),
+      Professional.countDocuments({ status: 'Approved' }),
+
+      // 8. Engagement Overview
+      Post.countDocuments({ isDeleted: { $ne: true } }),
+      PostLike.countDocuments(),
+      Comment.countDocuments(),
+      EventResponse.countDocuments({ $or: [{ isGoing: true }, { registered: true }, { response: 'Going' }] }),
+      Voting.countDocuments(),
+
+      // 9. Obituaries Metric (Real Obituary collection)
+      Obituary.countDocuments({ isDeleted: { $ne: true } }),
+
+      // 10. Financial Aggregates
+      Donation.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ['$raisedAmount', '$amount'] } } } }
+      ]),
+      Contribution.aggregate([
+        { $match: { status: { $ne: 'Failed' } } },
+        { $group: { _id: null, total: { $sum: '$paidAmount' } } }
+      ]),
+      DharmashalaBooking.aggregate([
+        { $match: { status: { $in: ['paid', 'confirmed', 'completed', 'checked_in', 'checked_out'] } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ]),
+      Expense.aggregate([
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
     ]);
-    const totalRevenue = donationAgg.length > 0 ? donationAgg[0].total : 0;
-    
-    const expenseAgg = await Expense.aggregate([
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
+
+    const donationRev = donationRevenueAgg.length > 0 ? donationRevenueAgg[0].total : 0;
+    const contribRev = contributionRevenueAgg.length > 0 ? contributionRevenueAgg[0].total : 0;
+    const dharmashalaRev = dharmashalaRevenueAgg.length > 0 ? dharmashalaRevenueAgg[0].total : 0;
+    const totalRevenue = donationRev + contribRev + dharmashalaRev;
+
     const totalExpenses = expenseAgg.length > 0 ? expenseAgg[0].total : 0;
+    const availableBalance = totalRevenue - totalExpenses;
+
+    const totalCitiesCount = distinctCities.filter(c => c && c.trim()).length;
+    const singleMatrimonialProfiles = Math.max(0, totalMatrimonialProfiles - marriedMatrimonialProfiles);
 
     res.status(200).json({
       status: 'success',
       data: {
         members: {
           total: totalMembers,
-          verified: verifiedMembers
+          verified: verifiedMembers,
+          active: activeMembers,
+          pending: pendingMembers,
+          inactive: inactiveMembers
         },
         communities: {
           total: totalCommunities,
           active: activeCommunities
         },
         cities: {
-          total: totalCities
+          total: totalCitiesCount
         },
         heads: {
-          active: totalHeads
+          active: activeHeads
         },
         matrimonial: {
-          total: matrimonialProfiles.length,
-          single: singleUsers,
-          married: marriedUsers
+          total: totalMatrimonialProfiles,
+          verified: verifiedMatrimonialProfiles,
+          single: singleMatrimonialProfiles,
+          married: marriedMatrimonialProfiles
         },
         events: {
-          total: totalCampaigns,
-          active: activeCampaigns,
-          completed: completedCampaigns
+          total: totalEvents,
+          active: activeEvents,
+          completed: completedEvents
         },
         professionals: {
-          total: totalProfessionals
+          total: totalProfessionals,
+          approved: approvedProfessionals
         },
         engagement: {
           posts: totalPosts,
+          likes: totalPostLikes,
+          comments: totalComments,
+          rsvps: totalEventRSVPs,
           elections: totalElections
+        },
+        obituaries: {
+          total: totalObituaries
         },
         revenue: {
           total: totalRevenue,
+          donations: donationRev,
+          contributions: contribRev,
+          dharmashala: dharmashalaRev,
           expenses: totalExpenses,
-          available: totalRevenue - totalExpenses
+          available: availableBalance
         }
       }
     });
   } catch (error) {
-    console.error('Admin Dashboard Error:', error);
+    console.error('Admin Dashboard Overview Error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch dashboard overview' });
   }
 };

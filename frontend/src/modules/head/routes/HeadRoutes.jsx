@@ -23,6 +23,9 @@ import SocialCityFeed from '../pages/social/SocialCityFeed';
 import SocialCommunityFeed from '../pages/social/SocialCommunityFeed';
 import { HeadGroupsPage } from '../pages/groups/HeadGroupsPage';
 import HeadLeadershipManagement from '../pages/leadership/HeadLeadershipManagement';
+import { HeadCensusManagement } from '../pages/census/HeadCensusManagement';
+import { HeadNotificationCenter } from '../pages/notifications/HeadNotificationCenter';
+import HeadProfileSettings from '../pages/profile/HeadProfileSettings';
 
 export const HeadRoutes = () => {
   return (
@@ -39,6 +42,9 @@ export const HeadRoutes = () => {
           {/* Head Dashboard */}
           <Route path="dashboard" element={<HeadDashboard />} />
 
+          {/* Head Profile Settings */}
+          <Route path="profile" element={<HeadProfileSettings />} />
+
           {/* Social Feed Moderation Desk */}
           <Route path="social">
             <Route path="city-feed" element={<SocialCityFeed />} />
@@ -49,6 +55,7 @@ export const HeadRoutes = () => {
 
           {/* Member Management Desk */}
           <Route path="members" element={<MemberManagement />} />
+          <Route path="census" element={<HeadCensusManagement />} />
 
           {/* Other Head views */}
           <Route path="events" element={<EventManagement />} />
@@ -64,6 +71,7 @@ export const HeadRoutes = () => {
           <Route path="funds" element={<FundGovernance />} />
           <Route path="elections" element={<ElectionCommission />} />
 
+          <Route path="notifications" element={<HeadNotificationCenter />} />
           <Route path="home-content" element={<HomepageContentManager />} />
           <Route path="engagement" element={<CommunityEngagement />} />
           <Route path="leadership" element={<HeadLeadershipManagement />} />

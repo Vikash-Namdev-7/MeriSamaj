@@ -117,29 +117,29 @@ const ChatListPage = ({ isHub = false }) => {
         )}
 
         {/* Search */}
-        <div className="mb-3">
+        <div className="mb-3 pt-3 select-none">
           <div className="relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder={`Search ${activeTab === 'all' ? 'all conversations' : activeTab}...`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl py-2.5 pl-10 pr-4 text-[13px] font-medium outline-none bg-gray-50 border border-gray-100 focus:border-brand-primary/40 focus:bg-white transition-all text-gray-800 placeholder:text-gray-400"
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-10 pr-4 py-2.5 text-[13px] font-extrabold text-slate-800 placeholder-slate-400 outline-none focus:border-purple-500/50 focus:bg-white transition-all"
             />
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 overflow-x-auto hide-scrollbar">
+        <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar select-none">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex-1 whitespace-nowrap px-4 py-2.5 text-[13.5px] font-semibold border-b-2 transition-colors ${
+              className={`flex-1 whitespace-nowrap px-4 py-2.5 text-[13px] font-extrabold border-b-2 transition-all press-scale ${
                 activeTab === tab.id
-                  ? 'border-brand-primary text-brand-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               {tab.label}
@@ -153,7 +153,7 @@ const ChatListPage = ({ isHub = false }) => {
 
         {/* Error */}
         {error && (
-          <div className="mx-4 my-3 px-4 py-3 bg-red-50 rounded-xl border border-red-100 text-red-600 text-[13px] font-medium">
+          <div className="mx-4 my-3 px-4 py-3 bg-rose-50 rounded-2xl border border-rose-200/60 text-rose-700 text-[13px] font-extrabold">
             {error}
           </div>
         )}
@@ -162,11 +162,11 @@ const ChatListPage = ({ isHub = false }) => {
         {loading && filteredConvs.length === 0 && !error && (
           <div className="space-y-0">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3.5 px-4 py-3.5 border-b border-gray-50 animate-pulse">
-                <div className="w-12 h-12 bg-gray-200 rounded-full shrink-0" />
+              <div key={i} className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-100/70 animate-pulse">
+                <div className="w-12 h-12 bg-slate-100 rounded-full shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3.5 bg-gray-200 rounded-full w-1/2" />
-                  <div className="h-3 bg-gray-100 rounded-full w-3/4" />
+                  <div className="h-3.5 bg-slate-100 rounded-md w-1/2" />
+                  <div className="h-3 bg-slate-50 rounded-md w-3/4" />
                 </div>
               </div>
             ))}
@@ -175,19 +175,19 @@ const ChatListPage = ({ isHub = false }) => {
 
         {/* Empty State */}
         {!loading && filteredConvs.length === 0 && !error && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-2">
-              <EmptyIcon size={28} className={activeTab === 'matrimonial' ? 'text-pink-400' : 'text-gray-400'} />
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6 bg-white rounded-[28px] border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mx-4 my-6">
+            <div className="w-14 h-14 bg-purple-50 text-purple-600 border border-purple-100/60 rounded-2xl flex items-center justify-center shadow-2xs mb-1">
+              <EmptyIcon size={26} className={activeTab === 'matrimonial' ? 'text-pink-500' : 'text-purple-600'} />
             </div>
             <div>
-              <p className="text-gray-700 text-[16px] font-bold mb-2">{emptyState.title}</p>
-              <p className="text-gray-500 text-[13px] leading-relaxed mb-6">
+              <p className="text-slate-800 text-[15px] font-extrabold mb-1">{emptyState.title}</p>
+              <p className="text-slate-400 font-medium text-[12px] leading-relaxed max-w-xs mb-4">
                 {emptyState.desc}
               </p>
               {activeTab === 'direct' && (
                 <button
                   onClick={() => navigate('/member/directory')}
-                  className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-[12px] px-5 py-2.5 rounded-xl shadow-sm press-scale"
                 >
                   Browse Directory
                 </button>
@@ -195,7 +195,7 @@ const ChatListPage = ({ isHub = false }) => {
               {activeTab === 'matrimonial' && (
                 <button
                   onClick={() => navigate('/member/matrimony')}
-                  className="bg-brand-primary text-white font-bold text-[14px] px-6 py-2.5 rounded-xl shadow-md shadow-brand-primary/20 press-scale"
+                  className="bg-gradient-to-r from-pink-500 to-rose-600 text-white font-extrabold text-[12px] px-5 py-2.5 rounded-xl shadow-sm press-scale"
                 >
                   Find Matches
                 </button>

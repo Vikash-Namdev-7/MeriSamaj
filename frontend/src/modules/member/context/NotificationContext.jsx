@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { Bell, X, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../../core/auth/useAuth';
+import { useHeadAuth } from '../../../modules/head/auth/useHeadAuth';
+import { useAdminAuth } from '../../../modules/admin/auth/useAdminAuth';
 import { notificationService } from '../../../core/api/matrimonialService';
 import { getSocket } from '../hooks/useChatSocket';
+import { PushPermissionModal } from '../components/layout/PushPermissionModal';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const NotificationContext = createContext(null);
@@ -10,6 +13,10 @@ const NotificationContext = createContext(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
+  const { headAuth } = useHeadAuth();
+  const { adminAuth } = useAdminAuth();
+  const activeUser = user || headAuth?.headUser || adminAuth?.adminUser;
+
   const [unreadCount, setUnreadCount]               = useState(0);
   const [latestNotification, setLatestNotification] = useState(null);
   const [toastNotif, setToastNotif]                 = useState(null);
@@ -18,7 +25,8 @@ export const NotificationProvider = ({ children }) => {
 
   // ── Fetch initial unread count on mount / when user changes ────────────────
   useEffect(() => {
-    if (!user?._id && !user?.id) {
+    const userId = activeUser?._id || activeUser?.id;
+    if (!userId) {
       setUnreadCount(0);
       setLatestNotification(null);
       setToastNotif(null);
@@ -27,15 +35,16 @@ export const NotificationProvider = ({ children }) => {
     notificationService.getUnread()
       .then(res => setUnreadCount(res.data?.data?.count || res.data?.data?.unreadCount || 0))
       .catch(() => {}); // non-critical
-  }, [user?._id, user?.id]);
+  }, [activeUser?._id, activeUser?.id]);
 
   // ── Socket listener for real-time notifications ────────────────────────────
   useEffect(() => {
-    if (!user?._id) return;
+    const userId = activeUser?._id || activeUser?.id;
+    if (!userId) return;
 
-    const socket = getSocket(user._id);
+    const socket = getSocket(userId);
 
-    const handler = (notification) => {
+    const newHandler = (notification) => {
       setUnreadCount(c => c + 1);
       setLatestNotification(notification);
       setToastNotif(notification);
@@ -46,14 +55,25 @@ export const NotificationProvider = ({ children }) => {
       }, 6000);
     };
 
-    handlerRef.current = handler;
-    socket.on('notification:new', handler);
+    const updateHandler = (notification) => {
+      setLatestNotification(notification);
+      setToastNotif(notification);
+
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = setTimeout(() => {
+        setToastNotif(null);
+      }, 6000);
+    };
+
+    socket.on('notification:new', newHandler);
+    socket.on('notification:update', updateHandler);
 
     return () => {
-      socket.off('notification:new', handler);
+      socket.off('notification:new', newHandler);
+      socket.off('notification:update', updateHandler);
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
-  }, [user?._id]);
+  }, [activeUser?._id, activeUser?.id]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const resetUnreadCount     = useCallback(() => setUnreadCount(0), []);
@@ -106,6 +126,9 @@ export const NotificationProvider = ({ children }) => {
           </button>
         </div>
       )}
+
+      {/* ── Non-Intrusive Push Permission Prompt Modal ────────────────────── */}
+      <PushPermissionModal />
     </NotificationContext.Provider>
   );
 };

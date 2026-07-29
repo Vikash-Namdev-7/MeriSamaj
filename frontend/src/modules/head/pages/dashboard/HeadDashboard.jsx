@@ -1,175 +1,194 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, CheckCircle2, Heart, Calendar, Briefcase, Award, TrendingUp, 
   Search, ShieldAlert, Sparkles, Send, Plus, ChevronRight, X, Eye, 
   MapPin, Clock, ArrowUpRight, BarChart3, FileText, Check, AlertCircle, RefreshCw,
-  Settings
+  Settings, Loader, ThumbsUp, DollarSign, UserCheck, Shield
 } from 'lucide-react';
-import { useData } from '../../../member/context/DataProvider';
-import { useFund } from '../../../member/context/FundContext';
-import { Avatar } from '../../../member/components/common/Avatar';
+import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useHeadAuth } from '../../auth/useHeadAuth';
-import { filterMembersForHead } from '../../utils/headCommunityFilter';
+import { axiosPrivate } from '../../../../core/api/axiosPrivate';
 
 export const HeadDashboard = () => {
+  const navigate = useNavigate();
   const { headAuth } = useHeadAuth();
-  const { 
-    members, 
-    matrimonialProfiles, 
-    events, 
-    verifyMember, 
-    rejectMember, 
-    addEvent, 
-    createPost,
-    currentUser 
-  } = useData();
+  const headUser = headAuth?.headUser;
 
-  const headUser = headAuth?.headUser || currentUser;
-
-  // Filter members belonging to assigned communities for Head user
-  const communityMembers = useMemo(() => filterMembersForHead(members || [], headUser), [members, headUser]);
-
-  const { funds, expenses, contributions } = useFund();
+  const [statsData, setStatsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const [activeModal, setActiveModal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [timelineFilter, setTimelineFilter] = useState('all');
   const [toast, setToast] = useState(null);
-
-  const [eventForm, setEventForm] = useState({
-    title: '', date: '', time: '', venue: '', description: '', category: 'General', image: ''
-  });
-  const [announcementText, setAnnouncementText] = useState('');
   const [selectedProofMember, setSelectedProofMember] = useState(null);
 
-  const pendingMembers = useMemo(() => communityMembers.filter(m => !m.isVerified), [communityMembers]);
-  const verifiedCount = useMemo(() => communityMembers.filter(m => m.isVerified).length, [communityMembers]);
-  
+  const [eventForm, setEventForm] = useState({
+    title: '', date: '', time: '', venue: '', description: '', category: 'General'
+  });
+  const [announcementText, setAnnouncementText] = useState('');
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const handleApprove = (id, name) => {
-    verifyMember(id);
-    showToast(`Approved membership for ${name}!`, 'success');
-    if (selectedProofMember?.id === id) setSelectedProofMember(null);
+  // ── 1. Fetch Consolidated Head Dashboard Stats ──
+  const fetchDashboardStats = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axiosPrivate.get('/head/dashboard/stats');
+      if (res.data?.status === 'success' && res.data?.data) {
+        setStatsData(res.data.data);
+      } else {
+        setError('Unexpected response format from server');
+      }
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+      setError(err.response?.data?.message || 'Failed to connect to backend server');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  // ── 2. Member Verification Actions ──
+  const handleApproveMember = async (id, name) => {
+    setActionLoadingId(id);
+    try {
+      await axiosPrivate.patch(`/head/dashboard/members/${id}/approve`);
+      showToast(`Approved membership for ${name}!`, 'success');
+      if (selectedProofMember?._id === id || selectedProofMember?.id === id) {
+        setSelectedProofMember(null);
+      }
+      fetchDashboardStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to approve member', 'warning');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
-  const handleReject = (id, name) => {
-    rejectMember(id);
-    showToast(`Rejected membership for ${name}`, 'warning');
-    if (selectedProofMember?.id === id) setSelectedProofMember(null);
+  const handleRejectMember = async (id, name) => {
+    setActionLoadingId(id);
+    try {
+      await axiosPrivate.patch(`/head/dashboard/members/${id}/reject`);
+      showToast(`Rejected membership for ${name}`, 'warning');
+      if (selectedProofMember?._id === id || selectedProofMember?.id === id) {
+        setSelectedProofMember(null);
+      }
+      fetchDashboardStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to reject member', 'warning');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
-  const handleCreateEvent = (e) => {
+  const handleRevokeMember = async (id, name) => {
+    setActionLoadingId(id);
+    try {
+      await axiosPrivate.patch(`/head/dashboard/members/${id}/revoke`);
+      showToast(`Revoked verification for ${name}`, 'success');
+      fetchDashboardStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to revoke member verification', 'warning');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // ── 3. Create Event Handler ──
+  const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!eventForm.title || !eventForm.date || !eventForm.venue) {
-      showToast('Please fill in all mandatory fields', 'warning');
+      showToast('Please fill in all required fields', 'warning');
       return;
     }
-    const defaultImages = [
-      'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-      'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
-      'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800',
-    ];
-    addEvent({
-      title: eventForm.title,
-      date: new Date(eventForm.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-      time: eventForm.time || '06:00 PM',
-      venue: eventForm.venue,
-      description: eventForm.description || 'Samaj official community gathering.',
-      category: eventForm.category,
-      image: eventForm.image || defaultImages[Math.floor(Math.random() * defaultImages.length)],
-      attendees: 0,
-      isRegistered: false
-    });
-    showToast(`Successfully created event: "${eventForm.title}"!`);
-    setEventForm({ title: '', date: '', time: '', venue: '', description: '', category: 'General', image: '' });
-    setActiveModal(null);
+    try {
+      await axiosPrivate.post('/head/events', {
+        title: eventForm.title,
+        date: eventForm.date,
+        time: eventForm.time || '06:00 PM',
+        venue: eventForm.venue,
+        description: eventForm.description,
+        category: eventForm.category
+      });
+      showToast(`Successfully created event: "${eventForm.title}"!`);
+      setEventForm({ title: '', date: '', time: '', venue: '', description: '', category: 'General' });
+      setActiveModal(null);
+      fetchDashboardStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to create event', 'warning');
+    }
   };
 
-  const handleSendAnnouncement = (e) => {
+  // ── 4. Broadcast Announcement Handler ──
+  const handleSendAnnouncement = async (e) => {
     e.preventDefault();
     if (!announcementText.trim()) {
       showToast('Announcement content cannot be empty', 'warning');
       return;
     }
-    createPost(announcementText, [], { isPinned: true, isAnnouncement: true });
-    showToast('Global Announcement broadcasted successfully!');
-    setAnnouncementText('');
-    setActiveModal(null);
+    try {
+      await axiosPrivate.post('/head/social/posts', {
+        content: announcementText,
+        isAnnouncement: true
+      });
+      showToast('Global Announcement broadcasted successfully!');
+      setAnnouncementText('');
+      setActiveModal(null);
+      fetchDashboardStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to broadcast announcement', 'warning');
+    }
   };
 
+  // Destructure safe defaults from backend payload
+  const summary = statsData?.summary || {};
+  const pendingList = statsData?.pendingMembersList || [];
+  const recentRegistrations = statsData?.recentRegistrations || [];
+  const upcomingEvents = statsData?.upcomingEventsList || [];
+  const growthTrend = statsData?.memberGrowthTrend || [];
+  const profCategories = statsData?.professionalCategoryBreakdown || [];
+  const topContributors = statsData?.topContributors || [];
+
+  // Client search filter for Recent Registrations Table
   const filteredMembers = useMemo(() => {
-    return communityMembers.filter(m => 
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (m.profession && m.profession.toLowerCase().includes(searchQuery.toLowerCase()))
+    if (!searchQuery.trim()) return recentRegistrations;
+    const query = searchQuery.toLowerCase();
+    return recentRegistrations.filter(m => 
+      (m.name && m.name.toLowerCase().includes(query)) ||
+      (m.city && m.city.toLowerCase().includes(query)) ||
+      (m.profession && m.profession.toLowerCase().includes(query))
     );
-  }, [communityMembers, searchQuery]);
+  }, [recentRegistrations, searchQuery]);
 
-  const activityLog = useMemo(() => {
-    const logs = [];
-    communityMembers.slice(-4).forEach(m => {
-      logs.push({
-        id: `act-m-${m.id}`,
-        type: 'members',
-        user: m.name,
-        action: m.isVerified ? 'joined the community portal' : 'registered and requested verification',
-        time: '2 hours ago',
-        status: m.isVerified ? 'Active' : 'Pending',
-        details: `${m.city} • ${m.profession || 'Member'}`
-      });
-    });
-    events.slice(-2).forEach(ev => {
-      logs.push({
-        id: `act-ev-${ev.id}`,
-        type: 'events',
-        user: 'Council Admin',
-        action: `scheduled event: ${ev.title}`,
-        time: '1 day ago',
-        status: 'Scheduled',
-        details: ev.venue
-      });
-    });
-    matrimonialProfiles.slice(-2).forEach(mp => {
-      logs.push({
-        id: `act-mp-${mp.id}`,
-        type: 'matrimony',
-        user: mp.name,
-        action: 'activated public matrimonial match profile',
-        time: '3 hours ago',
-        status: 'Active Match',
-        details: `${mp.age} Yrs • ${mp.city}`
-      });
-    });
-    return logs.sort((a, b) => b.id.localeCompare(a.id));
-  }, [members, events, matrimonialProfiles]);
-
-  const filteredActivities = useMemo(() => {
-    if (timelineFilter === 'all') return activityLog;
-    return activityLog.filter(act => act.type === timelineFilter);
-  }, [activityLog, timelineFilter]);
-
-  const topContributors = [
-    { name: 'Suresh Agrawal', points: '₹45,000 Contributed', role: 'Patron Donor', initials: 'SA' },
-    { name: 'Dr. Kavita Agrawal', points: '12 Events Hosted', role: 'Medical Volunteer', initials: 'KA' },
-    { name: 'Vikas Agrawal', points: 'CA Audit Advisor', role: 'Committee Auditor', initials: 'VA' },
-  ];
+  // Max value calculation for growth chart bars
+  const maxGrowthValue = useMemo(() => {
+    if (growthTrend.length === 0) return 10;
+    const max = Math.max(...growthTrend.map(g => g.count));
+    return max > 0 ? max : 10;
+  }, [growthTrend]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
+    <div className="flex flex-col h-full bg-slate-50 relative min-h-screen">
 
-      {/* ─── TOAST ─── */}
+      {/* ─── TOAST NOTIFICATION ─── */}
       <AnimatePresence>
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border text-sm font-bold ${
+            className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border text-sm font-bold backdrop-blur-xl ${
               toast.type === 'success'
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                 : 'bg-amber-50 border-amber-200 text-amber-700'
@@ -181,669 +200,577 @@ export const HeadDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* ─── PAGE HEADER ─── */}
-      <div className="px-5 py-3 bg-white border border-slate-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20 shadow-sm">
+      {/* ─── STICKY HEADER BAR ─── */}
+      <div className="px-5 py-3.5 bg-white border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-            <LayoutDashboardIcon size={18} />
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100/60">
+            <LayoutDashboardIcon size={20} />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-800 tracking-tight whitespace-nowrap">
+            <h1 className="text-base font-bold text-slate-900 tracking-tight whitespace-nowrap">
               President Dashboard
             </h1>
-            <p className="text-[12px] text-slate-500 font-medium mt-0.5 whitespace-nowrap">
-              {currentUser?.community || 'Community Dashboard'} &nbsp;•&nbsp;
-              <span className="text-indigo-600 font-semibold">Session: Active Council</span>
+            <p className="text-[12px] text-slate-500 font-medium mt-0.5 whitespace-nowrap flex items-center gap-1.5">
+              <span>{headUser?.community || 'Community Governance'}</span>
+              <span>•</span>
+              <span className="text-indigo-600 font-semibold">Active Council Session</span>
             </p>
           </div>
         </div>
+        
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
           <button
             onClick={() => setActiveModal('approve')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer"
           >
-            <Check size={14} className="text-slate-500" />
+            <Check size={14} className="text-emerald-600" />
             <span>Approve Members</span>
-            {pendingMembers.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 min-w-[18px] text-center rounded-full bg-rose-500 text-white text-[9px] font-bold leading-none animate-pulse">
-                {pendingMembers.length}
+            {pendingList.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 min-w-[18px] text-center rounded-full bg-rose-500 text-white text-[9px] font-extrabold leading-none animate-pulse">
+                {pendingList.length}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveModal('event')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer"
           >
-            <Plus size={14} className="text-slate-500" />
+            <Plus size={14} className="text-indigo-600" />
             <span>Create Event</span>
           </button>
           <button
             onClick={() => setActiveModal('announce')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer"
           >
-            <Send size={13} className="text-slate-500" />
-            <span>Announcement</span>
+            <Send size={13} className="text-purple-600" />
+            <span>Broadcast Announcement</span>
           </button>
           <button
-            onClick={() => setActiveModal('reports')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all active:scale-95 shadow-sm shadow-indigo-500/10 cursor-pointer"
+            onClick={fetchDashboardStats}
+            title="Refresh Data"
+            disabled={loading}
+            className="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
           >
-            <FileText size={14} />
-            <span>View Reports</span>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
+      {/* ─── MAIN CONTENT BODY ─── */}
       <div className="p-6 flex-1 overflow-y-auto space-y-6">
 
-        {/* ─── STATS CARDS ─── */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-          {/* Card 1: Total Members */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
-              <Users size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Members</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{verifiedCount}</h3>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Total Accounts: {members.length}</p>
-            </div>
-            <div className="flex items-center gap-1 text-emerald-600 font-semibold text-xs bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 shrink-0">
-              <TrendingUp size={12} /> +4.2%
-            </div>
+        {loading && !statsData ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <Loader size={32} className="text-indigo-600 animate-spin mb-3" />
+            <h3 className="text-sm font-bold text-slate-800">Loading Community Dashboard...</h3>
+            <p className="text-xs text-slate-400 mt-1">Fetching dynamic statistics and community metrics</p>
           </div>
-
-          {/* Card 2: Pending Approvals */}
-          <div className={`bg-white p-5 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-200 ${pendingMembers.length > 0 ? 'border-rose-100 bg-rose-50/10' : 'border-slate-100'}`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${pendingMembers.length > 0 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}>
-              <CheckCircle2 size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Pending Approvals</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{pendingMembers.length}</h3>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Last Application: Today</p>
-            </div>
-            {pendingMembers.length > 0 ? (
-              <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 shrink-0">Action Required</span>
-            ) : (
-              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 shrink-0">All Clear</span>
-            )}
-          </div>
-
-          {/* Card 3: Matrimonial */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-pink-50 text-pink-500/95 flex items-center justify-center shrink-0">
-              <Heart size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Matrimonial Profiles</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{matrimonialProfiles.length}</h3>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">84% Response Rate</p>
-            </div>
-            <span className="text-[10px] font-semibold text-pink-600 bg-pink-50 px-2.5 py-1 rounded-full border border-pink-100 shrink-0">Active</span>
-          </div>
-
-          {/* Card 4: Events */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500/90 flex items-center justify-center shrink-0">
-              <Calendar size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Scheduled Events</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">{events.length}</h3>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Next: Career Seminar</p>
-            </div>
-            <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 shrink-0">Live RSVP</span>
-          </div>
-
-          {/* Card 5: Professionals */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-500/90 flex items-center justify-center shrink-0">
-              <Briefcase size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Professional Directory</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">24</h3>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Business Nodes: 8 Domains</p>
-            </div>
-            <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100 shrink-0">Jobs & Dir.</span>
-          </div>
-
-          {/* Card 6: Engagement Score */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500/90 flex items-center justify-center shrink-0">
-              <Award size={22} />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Activity Score</p>
-              <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-0.5">96.4%</h3>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Excellent Stability</p>
-            </div>
-            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 shrink-0">+1.8%</span>
-          </div>
-
-        </section>
-
-        {/* ─── ANALYTICS SECTION ─── */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 size={18} className="text-indigo-600" />
-                Samaj Analytics Overview
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Real-time graphic parameters from portal activities</p>
-            </div>
-            <button
-              onClick={() => showToast('Refreshing analytical datasets...', 'success')}
-              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 active:scale-95 transition-all border border-slate-200/80 cursor-pointer"
-            >
-              <RefreshCw size={14} />
+        ) : error ? (
+          <div className="p-6 rounded-2xl bg-rose-50 border border-rose-100 text-center text-rose-700 my-6">
+            <AlertCircle size={28} className="mx-auto mb-2 text-rose-500" />
+            <h3 className="text-sm font-bold">Failed to load dashboard statistics</h3>
+            <p className="text-xs mt-1 text-rose-600/90">{error}</p>
+            <button onClick={fetchDashboardStats} className="mt-4 px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold shadow-sm active:scale-95">
+              Retry Load
             </button>
           </div>
+        ) : (
+          <>
+            {/* ─── 8 REQUIRED METRICS CARDS GRID ─── */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-            {/* Chart 1: Member Growth */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Monthly Member Growth</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Growth of verified accounts over last 6 months</p>
-              </div>
-              <div className="h-40 mt-4">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
-                  <defs>
-                    <linearGradient id="lgt-area-grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366F1" stopOpacity="0.2"/>
-                      <stop offset="100%" stopColor="#6366F1" stopOpacity="0.01"/>
-                    </linearGradient>
-                  </defs>
-                  <line x1="20" y1="20" x2="280" y2="20" stroke="rgba(0,0,0,0.05)" strokeDasharray="3,3" />
-                  <line x1="20" y1="70" x2="280" y2="70" stroke="rgba(0,0,0,0.05)" strokeDasharray="3,3" />
-                  <line x1="20" y1="120" x2="280" y2="120" stroke="rgba(0,0,0,0.05)" strokeDasharray="3,3" />
-                  <path d="M20,120 Q60,110 100,90 T180,60 T260,35 L280,30 L280,130 L20,130 Z" fill="url(#lgt-area-grad)" />
-                  <path d="M20,120 Q60,110 100,90 T180,60 T260,35 L280,30" fill="none" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" />
-                  <circle cx="20" cy="120" r="4" fill="#6366F1" stroke="white" strokeWidth="2" />
-                  <circle cx="100" cy="90" r="4" fill="#6366F1" stroke="white" strokeWidth="2" />
-                  <circle cx="180" cy="60" r="4" fill="#6366F1" stroke="white" strokeWidth="2" />
-                  <circle cx="280" cy="30" r="4" fill="#818CF8" stroke="white" strokeWidth="2" />
-                  <text x="18" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Jan</text>
-                  <text x="95" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Mar</text>
-                  <text x="175" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">May</text>
-                  <text x="268" y="145" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Jul</text>
-                </svg>
-              </div>
-            </div>
-
-            {/* Chart 2: Event RSVP */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Event RSVP Turnout</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Registered members versus actual check-ins</p>
-              </div>
-              <div className="h-40 mt-4">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
-                  <line x1="10" y1="20" x2="290" y2="20" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="10" y1="70" x2="290" y2="70" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="10" y1="120" x2="290" y2="120" stroke="rgba(0,0,0,0.04)" />
-                  <defs>
-                    <linearGradient id="lgt-purple-bar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366F1"/>
-                      <stop offset="100%" stopColor="#A5B4FC"/>
-                    </linearGradient>
-                  </defs>
-                  <rect x="25" y="40" width="16" height="85" rx="3" fill="url(#lgt-purple-bar)" />
-                  <rect x="44" y="65" width="16" height="60" rx="3" fill="#93C5FD" />
-                  <rect x="95" y="15" width="16" height="110" rx="3" fill="url(#lgt-purple-bar)" />
-                  <rect x="114" y="35" width="16" height="90" rx="3" fill="#93C5FD" />
-                  <rect x="165" y="60" width="16" height="65" rx="3" fill="url(#lgt-purple-bar)" />
-                  <rect x="184" y="80" width="16" height="45" rx="3" fill="#93C5FD" />
-                  <rect x="235" y="30" width="16" height="95" rx="3" fill="url(#lgt-purple-bar)" />
-                  <rect x="254" y="55" width="16" height="70" rx="3" fill="#93C5FD" />
-                  <text x="27" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-1</text>
-                  <text x="97" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-2</text>
-                  <text x="167" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-3</text>
-                  <text x="237" y="142" fill="rgba(0,0,0,0.3)" fontSize="9" fontWeight="600">Evt-4</text>
-                </svg>
-              </div>
-              <div className="flex items-center gap-4 justify-center text-[10px] mt-2 border-t border-slate-50 pt-2">
-                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-indigo-500" /> RSVPs Cast</div>
-                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-blue-300" /> Checked In</div>
-              </div>
-            </div>
-
-            {/* Chart 3: Matrimonial Activity */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Matrimonial Activity</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Interests sent (Rose) vs Approvals (Indigo)</p>
-              </div>
-              <div className="h-40 mt-4">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
-                  <line x1="20" y1="20" x2="280" y2="20" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="20" y1="70" x2="280" y2="70" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="20" y1="120" x2="280" y2="120" stroke="rgba(0,0,0,0.04)" />
-                  <path d="M20,110 Q60,60 110,80 T200,45 T280,30" fill="none" stroke="#F43F5E" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M20,120 Q60,90 110,110 T200,65 T280,45" fill="none" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="280" cy="30" r="3" fill="#F43F5E" stroke="white" strokeWidth="1" />
-                  <circle cx="280" cy="45" r="3" fill="#6366F1" stroke="white" strokeWidth="1" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-4 justify-center text-[10px] border-t border-slate-50 pt-2">
-                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-rose-500" /> Requests</div>
-                <div className="flex items-center gap-1.5 text-slate-500"><div className="w-2 h-2 rounded bg-indigo-500" /> Matches</div>
-              </div>
-            </div>
-
-            {/* Chart 4: Professional Domains Donut */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Professional Directory Domains</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Sector metrics across verified community profiles</p>
-              </div>
-              <div className="h-40 mt-4 flex items-center justify-between gap-4">
-                <div className="w-24 h-24 shrink-0">
-                  <svg className="w-full h-full" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="rgba(0,0,0,0.05)" strokeWidth="4" />
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#6366F1" strokeWidth="4" strokeDasharray="35 65" strokeDashoffset="25" />
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#3B82F6" strokeWidth="4" strokeDasharray="25 75" strokeDashoffset="90" />
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#10B981" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="115" />
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#F59E0B" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="135" />
-                  </svg>
+              {/* 1. Total Members */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                  <Users size={22} />
                 </div>
-                <div className="flex-1 space-y-1.5 text-[11px] font-semibold text-slate-600">
-                  <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-indigo-500" /> IT / Tech</span><span>35%</span></div>
-                  <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-blue-500" /> CA / Finance</span><span>25%</span></div>
-                  <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500" /> Medical / MD</span><span>20%</span></div>
-                  <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-amber-500" /> Business</span><span>20%</span></div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Members</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.totalMembers || 0}</h3>
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Active Accounts: {summary.activeMembersCount || 0}</p>
                 </div>
               </div>
-            </div>
 
-            {/* Chart 5: Engagement Waves */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Weekly Activity Engagement</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Total platform interactions log count</p>
-              </div>
-              <div className="h-40 mt-4">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
-                  <line x1="10" y1="20" x2="290" y2="20" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="10" y1="70" x2="290" y2="70" stroke="rgba(0,0,0,0.04)" />
-                  <line x1="10" y1="120" x2="290" y2="120" stroke="rgba(0,0,0,0.04)" />
-                  <defs>
-                    <linearGradient id="lgt-engage-grad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#6366F1" />
-                      <stop offset="50%" stopColor="#818CF8" />
-                      <stop offset="100%" stopColor="#A5B4FC" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M10,80 C50,15 80,130 130,50 C180,-10 220,140 290,60" fill="none" stroke="url(#lgt-engage-grad)" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M10,95 C50,30 80,145 130,65 C180,5 220,155 290,75" fill="none" stroke="rgba(99,102,241,0.12)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Chart 6: Active vs Inactive */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-700">Active vs Inactive Ratio</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Accounts accessed in the last 14 days</p>
-              </div>
-              <div className="h-40 mt-4 flex flex-col items-center justify-center relative">
-                <div className="w-28 h-28">
-                  <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="rgba(99,102,241,0.05)" strokeWidth="4.5" />
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="url(#lgt-purple-bar)" strokeWidth="4.5" strokeDasharray="88 12" strokeDashoffset="0" strokeLinecap="round" />
-                  </svg>
+              {/* 2. Pending Member Approvals */}
+              <div className={`bg-white p-5 rounded-2xl border shadow-sm flex items-center gap-4 transition-all ${pendingList.length > 0 ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100'}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${pendingList.length > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                  <UserCheck size={22} />
                 </div>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center mt-3">
-                  <span className="text-2xl font-extrabold text-slate-800">88%</span>
-                  <span className="text-[9px] font-bold text-emerald-600 tracking-wider uppercase">Active</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Approvals</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.pendingMembersCount || 0}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Verification Desk</p>
                 </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        {/* ─── PENDING APPROVALS WIDGET ─── */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* Left: Pending Approvals */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <ShieldAlert size={16} className="text-amber-500" />
-                  Pending Verification Requests
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Approve new profiles to allow full catalog directory access</p>
-              </div>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                {pendingMembers.length} Requests
-              </span>
-            </div>
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[300px]">
-              {pendingMembers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-center bg-slate-50/50 border border-slate-100 border-dashed rounded-2xl">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-2">
-                    <Check size={18} />
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-700">All Clear!</h4>
-                  <p className="text-xs text-slate-400 mt-1">No pending verification requests.</p>
-                </div>
-              ) : (
-                pendingMembers.map((member) => (
-                  <div key={member.id} className="p-3 rounded-xl bg-slate-50/50 border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar initials={member.initials} size="md" imageUrl={member.avatar} color="bg-gradient-to-br from-indigo-400 to-purple-600 text-white font-bold" />
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{member.city} • {member.profession || 'Self Employed'} • <span className="text-indigo-600 font-semibold">{member.phone}</span></p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => setSelectedProofMember(member)} className="px-2.5 py-1 rounded-md text-slate-500 bg-white border border-slate-200/85 hover:bg-slate-50 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer">
-                        <Eye size={12} /> Proof
-                      </button>
-                      <button onClick={() => handleReject(member.id, member.name)} className="px-2.5 py-1 rounded-md text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-semibold border border-rose-100 transition-all cursor-pointer">
-                        Reject
-                      </button>
-                      <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold transition-all shadow-sm shadow-indigo-500/10 cursor-pointer">
-                        Approve
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Right: Quick Nav */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Sparkles size={16} className="text-indigo-500" />
-                Quick Navigation
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Instant portal access bookmarks</p>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
-              {[
-                { icon: Users, label: 'Members Desk', color: 'text-purple-600', bg: 'bg-purple-50/40 hover:bg-purple-50 border-purple-100/50' },
-                { icon: Heart, label: 'Matrimonial', color: 'text-pink-600', bg: 'bg-pink-50/40 hover:bg-pink-100 border-pink-100/50' },
-                { icon: Calendar, label: 'Events Desk', color: 'text-indigo-600', bg: 'bg-indigo-50/40 hover:bg-indigo-100 border-indigo-100/50' },
-                { icon: Briefcase, label: 'Professionals', color: 'text-amber-600', bg: 'bg-amber-50/40 hover:bg-amber-100 border-amber-100/50' },
-                { icon: FileText, label: 'Financials', color: 'text-indigo-600', bg: 'bg-indigo-50/40 hover:bg-indigo-100 border-indigo-100/50', onClick: () => setActiveModal('reports') },
-                { icon: Settings, label: 'System Config', color: 'text-slate-600', bg: 'bg-slate-50/50 hover:bg-slate-100 border-slate-200/80' },
-              ].map(({ icon: Icon, label, color, bg, onClick }) => (
-                <button key={label} onClick={onClick} className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all group duration-200 cursor-pointer ${bg}`}>
-                  <Icon size={16} className={`${color} group-hover:scale-110 duration-200`} />
-                  <span className={`text-xs font-semibold text-slate-700 mt-4 block`}>{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </section>
-
-        {/* ─── RECENT REGISTRATIONS TABLE ─── */}
-        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Users size={16} className="text-indigo-600" />
-                Recent Portal Registrations
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Chronological registry of community accounts</p>
-            </div>
-            <div className="relative w-full sm:w-60">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name or city..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50/50 border border-slate-200/80 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
-              />
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profile</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">City</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profession</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredMembers.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="p-8 text-center text-xs text-slate-400">No community profile matches the search query.</td>
-                  </tr>
+                {pendingList.length > 0 ? (
+                  <span className="text-[9px] font-extrabold text-rose-600 bg-rose-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Action</span>
                 ) : (
-                  filteredMembers.slice(0, 6).map((member) => (
-                    <tr key={member.id} className="hover:bg-slate-50/30 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <Avatar initials={member.initials} imageUrl={member.avatar} size="sm" color="bg-gradient-to-br from-purple-400 to-indigo-600 text-white font-bold" />
-                      </td>
-                      <td className="px-5 py-3.5 font-semibold text-slate-800 text-sm">{member.name}</td>
-                      <td className="px-5 py-3.5 text-slate-500 text-sm">{member.city}</td>
-                      <td className="px-5 py-3.5 font-semibold text-indigo-600 text-sm">{member.profession || 'Registered Member'}</td>
-                      <td className="px-5 py-3.5">
-                        {member.isVerified ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100/60">
-                            <Check size={10} /> Verified
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100/60">
-                            <AlertCircle size={10} /> Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {member.isVerified ? (
-                            <button onClick={() => { showToast(`Revoking verification profile ${member.name}`); verifyMember(member.id); }} className="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-semibold border border-rose-100/60 transition-all cursor-pointer">Revoke</button>
-                          ) : (
-                            <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-semibold border border-emerald-100/60 transition-all cursor-pointer">Approve</button>
-                          )}
-                          <button onClick={() => setSelectedProofMember(member)} className="px-2.5 py-1 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-500 text-[10px] font-semibold border border-slate-200/60 transition-all cursor-pointer">Details</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Clear</span>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* ─── EVENTS & ACTIVITY LOG ─── */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* Events List */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Calendar size={16} className="text-indigo-600" />
-                  Community Events Desk
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Upcoming celebrations, assemblies and schedules</p>
               </div>
-              <button
-                onClick={() => setActiveModal('event')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100/60 text-xs font-semibold transition-all cursor-pointer"
-              >
-                <Plus size={12} /> Add Event
-              </button>
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[360px]">
-              {events.length === 0 ? (
-                <div className="col-span-2 flex flex-col items-center justify-center h-40 bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
-                  <p className="text-xs text-slate-500">No upcoming events listed.</p>
+
+              {/* 3. Active Matrimonial Profiles */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center shrink-0 border border-pink-100">
+                  <Heart size={22} />
                 </div>
-              ) : (
-                events.map((event) => (
-                  <div key={event.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col group hover:border-indigo-100 transition-all shadow-sm">
-                    <div className="h-28 overflow-hidden relative shrink-0">
-                      <img
-                        src={event.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'}
-                        alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 duration-500"
-                      />
-                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-indigo-600 text-white">
-                        {event.category || 'General'}
-                      </div>
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{event.title}</h4>
-                        <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1"><MapPin size={10} /> {event.venue}</p>
-                        <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1"><Clock size={10} /> {event.date} • {event.time || '6:00 PM'}</p>
-                      </div>
-                      <div className="mt-4 pt-3 border-t border-slate-100">
-                        <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold mb-1">
-                          <span>RSVP Register Target</span>
-                          <span className="text-indigo-600">{event.attendees || 0} Registered</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Matrimonial</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.activeMatrimonialCount || 0}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Verified Match Profiles</p>
+                </div>
+              </div>
+
+              {/* 4. Upcoming Events */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                  <Calendar size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Upcoming Events</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.upcomingEventsCount || 0}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">{summary.totalEventRSVPs || 0} Confirmed RSVPs ({summary.totalInterestedCount || 0} Interested)</p>
+                </div>
+              </div>
+
+              {/* 5. Professional Listings Overview */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+                  <Briefcase size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Professionals</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.totalProfessionalsCount || 0}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Verified Directory</p>
+                </div>
+              </div>
+
+              {/* 6. Community Posts & Likes (Engagement) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                  <ThumbsUp size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Posts & Likes</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{summary.totalCommunityPosts || 0}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">{summary.totalCommunityLikes || 0} Likes Recorded</p>
+                </div>
+              </div>
+
+              {/* 7. Total Community Funds Raised */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <DollarSign size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Community Funds</p>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mt-0.5">₹{(summary.totalFundsRaised || 0).toLocaleString('en-IN')}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Total Raised Amount</p>
+                </div>
+              </div>
+
+              {/* 8. Active Member Ratio */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100">
+                  <Award size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Member Ratio</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                    {summary.totalMembers > 0 ? Math.round((summary.activeMembersCount / summary.totalMembers) * 100) : 100}%
+                  </h3>
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">Community Health</p>
+                </div>
+              </div>
+
+            </section>
+
+            {/* ─── REAL DATA DYNAMIC CHARTS SECTION ─── */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* Chart 1: Member Growth Trend (Real Database Aggregation) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <BarChart3 size={16} className="text-indigo-600" />
+                      Monthly Member Registration Growth
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Real community registration trajectory over recent months</p>
+                  </div>
+                </div>
+                
+                {growthTrend.length === 0 ? (
+                  <div className="h-44 flex flex-col items-center justify-center bg-slate-50/50 rounded-xl border border-slate-100 text-center">
+                    <p className="text-xs text-slate-400 font-semibold">No member registration data recorded yet.</p>
+                  </div>
+                ) : (
+                  <div className="h-48 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-slate-100">
+                    {growthTrend.map((item, idx) => {
+                      const barHeight = Math.max(12, Math.round((item.count / maxGrowthValue) * 140));
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-2 group relative">
+                          {/* Tooltip on hover */}
+                          <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg whitespace-nowrap z-10 pointer-events-none">
+                            {item.count} Registered ({item.month} {item.year})
+                          </div>
+                          <span className="text-[10px] font-bold text-indigo-600">{item.count}</span>
+                          <div 
+                            style={{ height: `${barHeight}px` }} 
+                            className="w-full max-w-[36px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-lg transition-all duration-500 group-hover:from-indigo-700 group-hover:to-indigo-500 shadow-sm"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500">{item.month}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${Math.min(100, ((event.attendees || 0) / 150) * 100)}%` }} />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Chart 2: Professional Directory Breakdown */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Briefcase size={16} className="text-amber-500" />
+                    Professional Categories
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Real distribution across directory domains</p>
+                </div>
+
+                {profCategories.length === 0 ? (
+                  <div className="h-44 flex flex-col items-center justify-center bg-slate-50/50 rounded-xl border border-slate-100 text-center my-4">
+                    <p className="text-xs text-slate-400 font-semibold">No professional listings added yet.</p>
+                  </div>
+                ) : (
+                  <div className="my-4 space-y-2.5 max-h-44 overflow-y-auto pr-1">
+                    {profCategories.map((cat, idx) => {
+                      const totalProf = summary.totalProfessionalsCount || 1;
+                      const percentage = Math.round((cat.count / totalProf) * 100);
+                      const colors = ['bg-indigo-600', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
+                      const barColor = colors[idx % colors.length];
+
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span className="truncate max-w-[140px]">{cat.category}</span>
+                            <span>{cat.count} ({percentage}%)</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }} />
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Activity Log */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Clock size={16} className="text-indigo-600" />
-                Community Activity Log
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Chronological system events audit</p>
-              <div className="flex gap-1.5 mt-3 flex-wrap">
-                {['all', 'members', 'events', 'matrimony'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setTimelineFilter(tab)}
-                    className={`px-2 py-1 rounded-md text-[10px] font-semibold capitalize border transition-all cursor-pointer ${
-                      timelineFilter === tab
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                )}
               </div>
-            </div>
-            <div className="p-5 space-y-4 overflow-y-auto max-h-[300px]">
-              {filteredActivities.length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-10">No logs for this category.</p>
-              ) : (
-                filteredActivities.map((act) => (
-                  <div key={act.id} className="relative pl-6 pb-2 border-l-2 border-slate-200 last:border-none">
-                    <div className="absolute left-0 top-1 -translate-x-[5px] w-2.5 h-2.5 rounded-full bg-indigo-600 border-2 border-white" />
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs text-slate-600">
-                          <span className="font-semibold text-slate-800">{act.user}</span> {act.action}
-                        </p>
-                        {act.details && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{act.details}</p>
-                        )}
-                      </div>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase shrink-0">{act.time}</span>
-                    </div>
+
+            </section>
+
+            {/* ─── PENDING APPROVALS & QUICK NAV ─── */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* Pending Approvals Widget */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <ShieldAlert size={16} className="text-amber-500" />
+                      Pending Verification Requests
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Approve new member profiles to grant portal access</p>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-        </section>
-
-        {/* ─── ENGAGEMENT SUMMARY ─── */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          {/* Today/Weekly/Monthly Stats */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <TrendingUp size={16} className="text-indigo-600" />
-                Community Engagement Report
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Platform interactions statistics</p>
-            </div>
-            <div className="p-5">
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
-                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Today's Visits</p>
-                  <h4 className="text-lg font-bold text-slate-800 mt-1">124</h4>
-                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+2.4%</span>
-                </div>
-                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
-                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Weekly Visits</p>
-                  <h4 className="text-lg font-bold text-slate-800 mt-1">842</h4>
-                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+8.5%</span>
-                </div>
-                <div className="p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
-                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Visits</p>
-                  <h4 className="text-lg font-bold text-slate-800 mt-1">3.4k</h4>
-                  <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/40 px-1.5 py-0.5 rounded-full mt-1 inline-block">+12%</span>
-                </div>
-              </div>
-              <div className="mt-4 p-3 rounded-xl bg-indigo-50/40 border border-indigo-100/60 text-xs text-indigo-600">
-                <span className="font-semibold text-indigo-800 block">Adhyaksh Insight:</span>
-                Weekly check-ins rose due to newly created marriage match registrations and local dharmashala booking schedules.
-              </div>
-            </div>
-          </div>
-
-          {/* Top Contributors */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Award size={16} className="text-amber-500" />
-                Council Top Contributors
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Top volunteers and donors in community portal</p>
-            </div>
-            <div className="p-5 space-y-3">
-              {topContributors.map((c, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100/80 hover:bg-slate-50 transition-all">
-                  <div className="flex items-center gap-3">
-                    <Avatar initials={c.initials} size="sm" color="bg-gradient-to-br from-purple-400 to-indigo-600 text-white font-bold" />
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">{c.name}</h4>
-                      <p className="text-[10px] font-semibold text-indigo-500/80">{c.role}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/40">
-                    {c.points}
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    {pendingList.length} Pending
                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
 
-        </section>
+                <div className="p-4 space-y-3 overflow-y-auto max-h-[300px]">
+                  {pendingList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center bg-slate-50/50 border border-slate-100 border-dashed rounded-2xl">
+                      <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2">
+                        <Check size={18} />
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-700">All Clear!</h4>
+                      <p className="text-xs text-slate-400 mt-1">No pending verification requests in your community.</p>
+                    </div>
+                  ) : (
+                    pendingList.map((member) => {
+                      const memberId = member._id || member.id;
+                      const isActing = actionLoadingId === memberId;
+
+                      return (
+                        <div key={memberId} className="p-3 rounded-xl bg-slate-50/50 border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
+                              {member.name ? member.name.substring(0, 2).toUpperCase() : 'MB'}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {member.city || 'City N/A'} • {member.profession || 'Member'} • <span className="text-indigo-600 font-semibold">{member.phone}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => setSelectedProofMember(member)}
+                              className="px-2.5 py-1 rounded-md text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye size={12} /> Verification Info
+                            </button>
+                            <button
+                              disabled={isActing}
+                              onClick={() => handleRejectMember(memberId, member.name)}
+                              className="px-2.5 py-1 rounded-md text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-bold border border-rose-100 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              disabled={isActing}
+                              onClick={() => handleApproveMember(memberId, member.name)}
+                              className="px-2.5 py-1 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isActing ? <Loader size={12} className="animate-spin" /> : null}
+                              Approve
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Streamlined Quick Navigation Tiles */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Sparkles size={16} className="text-indigo-500" />
+                    Quick Shortcuts
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Streamlined portal navigation</p>
+                </div>
+                <div className="p-4 grid grid-cols-2 gap-3">
+                  {[
+                    { icon: Users, label: 'Members', color: 'text-purple-600', bg: 'bg-purple-50/50 hover:bg-purple-50 border-purple-100', path: '/head/census' },
+                    { icon: Heart, label: 'Matrimonial', color: 'text-pink-600', bg: 'bg-pink-50/50 hover:bg-pink-50 border-pink-100', path: '/head/matrimonial' },
+                    { icon: Calendar, label: 'Events', color: 'text-indigo-600', bg: 'bg-indigo-50/50 hover:bg-indigo-50 border-indigo-100', path: '/head/events' },
+                    { icon: Briefcase, label: 'Professionals', color: 'text-amber-600', bg: 'bg-amber-50/50 hover:bg-amber-50 border-amber-100', path: '/head/professional' },
+                    { icon: DollarSign, label: 'Funds & Donations', color: 'text-emerald-600', bg: 'bg-emerald-50/50 hover:bg-emerald-50 border-emerald-100', path: '/head/funds' },
+                    { icon: Settings, label: 'Settings', color: 'text-slate-600', bg: 'bg-slate-50/50 hover:bg-slate-100 border-slate-200', path: '/head/profile/settings' },
+                  ].map(({ icon: Icon, label, color, bg, path }) => (
+                    <button 
+                      key={label} 
+                      onClick={() => navigate(path)} 
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all group duration-200 cursor-pointer ${bg}`}
+                    >
+                      <Icon size={16} className={`${color} group-hover:scale-110 duration-200`} />
+                      <span className="text-xs font-bold text-slate-800 mt-3 block">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </section>
+
+            {/* ─── RECENT REGISTRATIONS TABLE (REAL DB DATA) ─── */}
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Users size={16} className="text-indigo-600" />
+                    Recent Registrations
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Chronological database registry of community accounts</p>
+                </div>
+                <div className="relative w-full sm:w-60">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or city..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <th className="px-5 py-3">Member</th>
+                      <th className="px-5 py-3">City</th>
+                      <th className="px-5 py-3">Profession</th>
+                      <th className="px-5 py-3">Registered</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredMembers.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-xs text-slate-400">No community account matches search query.</td>
+                      </tr>
+                    ) : (
+                      filteredMembers.map((member) => {
+                        const memberId = member._id || member.id;
+                        const isVerified = member.verificationStatus === 'verified' || member.accountStatus === 'active';
+                        const timeAgo = member.createdAt ? formatDistanceToNow(new Date(member.createdAt), { addSuffix: true }) : 'Recently';
+
+                        return (
+                          <tr key={memberId} className="hover:bg-slate-50/40 transition-colors group">
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                                  {member.name ? member.name.substring(0, 2).toUpperCase() : 'MB'}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-800 text-sm">{member.name}</p>
+                                  <p className="text-[10px] text-slate-400">{member.phone}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-slate-600 text-xs font-semibold">{member.city || 'Indore'}</td>
+                            <td className="px-5 py-3.5 font-semibold text-indigo-600 text-xs">{member.profession || 'Registered Member'}</td>
+                            <td className="px-5 py-3.5 text-slate-400 text-xs font-medium">{timeAgo}</td>
+                            <td className="px-5 py-3.5">
+                              {isVerified ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                  <Check size={10} /> Verified
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100">
+                                  <AlertCircle size={10} /> Pending
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {isVerified ? (
+                                  <button
+                                    onClick={() => handleRevokeMember(memberId, member.name)}
+                                    className="px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold border border-rose-100 transition-all cursor-pointer"
+                                  >
+                                    Revoke
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleApproveMember(memberId, member.name)}
+                                    className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-bold border border-emerald-100 transition-all cursor-pointer"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => setSelectedProofMember(member)}
+                                  className="px-2.5 py-1 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 transition-all cursor-pointer"
+                                >
+                                  Details
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* ─── EVENTS & TOP CONTRIBUTORS (REAL DB AGGREGATION) ─── */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* Upcoming Events Desk */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden lg:col-span-2">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <Calendar size={16} className="text-indigo-600" />
+                      Community Events Desk
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Upcoming assemblies and programs</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveModal('event')}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Plus size={12} /> Add Event
+                  </button>
+                </div>
+
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[340px]">
+                  {upcomingEvents.length === 0 ? (
+                    <div className="col-span-2 flex flex-col items-center justify-center py-10 bg-slate-50 border border-slate-200 border-dashed rounded-2xl text-center">
+                      <Calendar size={24} className="text-slate-300 mb-2" />
+                      <p className="text-xs text-slate-500 font-bold">No upcoming events scheduled.</p>
+                    </div>
+                  ) : (
+                    upcomingEvents.map((evt) => (
+                      <div key={evt._id || evt.id} className="rounded-2xl border border-slate-100 bg-white p-4 flex flex-col justify-between shadow-sm hover:border-indigo-100 transition-all">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">
+                              {evt.category || 'General'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {evt.date ? new Date(evt.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 'Upcoming'}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{evt.title}</h4>
+                          <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1"><MapPin size={10} /> {evt.venue || 'Samaj Bhawan'}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Real Top Contributors (Aggregated from Donation DB) */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Award size={16} className="text-amber-500" />
+                    Top Donors & Supporters
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Real community fund contribution leaders</p>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {topContributors.length === 0 ? (
+                    <div className="py-8 text-center bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="text-xs text-slate-400 font-semibold">No recorded contribution transactions yet.</p>
+                    </div>
+                  ) : (
+                    topContributors.map((c, idx) => (
+                      <div key={c._id || idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                            #{idx + 1}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">{c.name}</h4>
+                            <p className="text-[10px] text-slate-400 font-medium">{c.city || 'Community Donor'} • {c.txnCount || 1} Txns</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
+                          ₹{(c.totalPaid || 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </section>
+          </>
+        )}
 
       </div>
 
-      {/* ─── MODALS ─── */}
+      {/* ─── ACTION MODALS ─── */}
       <AnimatePresence>
 
         {/* Modal 1: Approve Members */}
@@ -852,28 +779,33 @@ export const HeadDashboard = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><ShieldAlert size={16} className="text-amber-500" /> Approve Pending Accounts</h3>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><ShieldAlert size={16} className="text-amber-500" /> Pending Account Verification</h3>
                 <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <div className="p-5 space-y-3 overflow-y-auto max-h-[380px]">
-                {pendingMembers.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-10">No pending accounts need verification.</p>
+                {pendingList.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-10">No pending accounts require verification.</p>
                 ) : (
-                  pendingMembers.map((member) => (
-                    <div key={member.id} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar initials={member.initials} size="sm" imageUrl={member.avatar} color="bg-gradient-to-br from-indigo-400 to-purple-600 text-white font-bold" />
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
-                          <p className="text-[10px] text-slate-400">{member.city} • {member.phone}</p>
+                  pendingList.map((member) => {
+                    const memberId = member._id || member.id;
+                    return (
+                      <div key={memberId} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                            {member.name ? member.name.substring(0, 2).toUpperCase() : 'MB'}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">{member.name}</h4>
+                            <p className="text-[10px] text-slate-400">{member.city} • {member.phone}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => handleRejectMember(memberId, member.name)} className="px-2.5 py-1.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold border border-rose-100 hover:bg-rose-100 transition-all cursor-pointer">Reject</button>
+                          <button onClick={() => handleApproveMember(memberId, member.name)} className="px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">Approve</button>
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => handleReject(member.id, member.name)} className="px-2.5 py-1.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-semibold border border-rose-100 hover:bg-rose-100 transition-all cursor-pointer">Reject</button>
-                        <button onClick={() => handleApprove(member.id, member.name)} className="px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-[10px] font-semibold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-500/10 cursor-pointer">Approve</button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </motion.div>
@@ -886,43 +818,39 @@ export const HeadDashboard = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-lg bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Calendar size={16} className="text-indigo-600" /> Schedule Samaj Celebration</h3>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Calendar size={16} className="text-indigo-600" /> Schedule Community Event</h3>
                 <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <form onSubmit={handleCreateEvent} className="p-6 space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Title *</label>
-                  <input type="text" required placeholder="e.g., Annual Sneh Milan" value={eventForm.title} onChange={(e) => setEventForm({...eventForm, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 transition-all" />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Event Title *</label>
+                  <input type="text" required placeholder="e.g., Annual Sneh Milan" value={eventForm.title} onChange={(e) => setEventForm({...eventForm, title: e.target.value})} className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Date *</label>
-                    <input type="date" required value={eventForm.date} onChange={(e) => setEventForm({...eventForm, date: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date *</label>
+                    <input type="date" required value={eventForm.date} onChange={(e) => setEventForm({...eventForm, date: e.target.value})} className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Time</label>
-                    <input type="text" placeholder="e.g., 07:00 PM" value={eventForm.time} onChange={(e) => setEventForm({...eventForm, time: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</label>
+                    <input type="text" placeholder="e.g., 07:00 PM" value={eventForm.time} onChange={(e) => setEventForm({...eventForm, time: e.target.value})} className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Venue Location *</label>
-                  <input type="text" required placeholder="e.g., Samaj Bhawan, Indore" value={eventForm.venue} onChange={(e) => setEventForm({...eventForm, venue: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800" />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Venue Location *</label>
+                  <input type="text" required placeholder="e.g., Samaj Bhawan, Indore" value={eventForm.venue} onChange={(e) => setEventForm({...eventForm, venue: e.target.value})} className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Event Category</label>
-                  <select value={eventForm.category} onChange={(e) => setEventForm({...eventForm, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</label>
+                  <select value={eventForm.category} onChange={(e) => setEventForm({...eventForm, category: e.target.value})} className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800">
                     <option value="General">General Gatherings</option>
                     <option value="Festival">Festival & Satsang</option>
                     <option value="Youth">Youth Careers & Seminars</option>
                     <option value="Education">Education Awards</option>
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</label>
-                  <textarea rows="3" placeholder="Enter short event synopsis..." value={eventForm.description} onChange={(e) => setEventForm({...eventForm, description: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 resize-none" />
-                </div>
-                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 active:scale-95 transition-all cursor-pointer">
-                  Create & Broadcast Event
+                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm cursor-pointer active:scale-95 transition-all">
+                  Publish Event
                 </button>
               </form>
             </motion.div>
@@ -935,104 +863,82 @@ export const HeadDashboard = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Send size={16} className="text-indigo-600" /> Broadcast Announcement</h3>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Send size={16} className="text-purple-600" /> Broadcast Announcement</h3>
                 <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <form onSubmit={handleSendAnnouncement} className="p-6 space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Announcement Text</label>
-                  <textarea rows="5" required placeholder="Write official council circular text here..." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="w-full px-4 py-3 bg-slate-50/40 border border-slate-200/80 rounded-lg outline-none focus:ring-2 focus:ring-indigo-50 focus:border-indigo-200 text-sm text-slate-800 resize-none" />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Announcement Text</label>
+                  <textarea rows="4" required placeholder="Write official circular text here..." value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800 resize-none" />
                 </div>
-                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm shadow-indigo-500/10 active:scale-95 transition-all cursor-pointer">
-                  Broadcast to Feed
+                <button type="submit" className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm cursor-pointer active:scale-95 transition-all">
+                  Broadcast Announcement
                 </button>
               </form>
             </motion.div>
           </div>
         )}
 
-        {/* Modal 4: Reports */}
-        {activeModal === 'reports' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-2xl bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileText size={16} className="text-indigo-600" /> Samaj Financial Audit Reports</h3>
-                <button onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
-                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Donations / Funds Collected</h4>
-                    <div className="mt-3 space-y-2">
-                      {funds.map((f) => {
-                        const fContribs = contributions[f.id] || [];
-                        const fCollected = fContribs.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0);
-                        return (
-                          <div key={f.id} className="flex justify-between text-sm text-slate-700">
-                            <span>{f.name}</span>
-                            <span className="font-semibold">₹{fCollected.toLocaleString('en-IN')}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100">
-                    <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Expenses Audited</h4>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex justify-between text-sm text-slate-700"><span>Hall Renovation Costs</span><span className="font-semibold text-rose-600">₹45,000</span></div>
-                      <div className="flex justify-between text-sm text-slate-700"><span>Food Distribution Event</span><span className="font-semibold text-rose-600">₹18,500</span></div>
-                      <div className="flex justify-between text-sm text-slate-700"><span>Scholarship Allocations</span><span className="font-semibold text-rose-600">₹25,000</span></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100/50 text-sm text-indigo-700">
-                  <h4 className="font-bold text-indigo-800 mb-1">Treasury Overview:</h4>
-                  Total cash reserves are audited and synced to localStorage records. Invoices are archived for secure verification audits.
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Modal 5: Proof Viewer */}
+        {/* Modal 4: Member Verification Details / Proof Viewer */}
         {selectedProofMember && (
           <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedProofMember(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }} className="w-full max-w-md bg-white rounded-2xl border border-slate-100 shadow-xl relative z-10 overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">Verification Credential</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Proof submitted by {selectedProofMember.name}</p>
+                  <h3 className="text-sm font-bold text-slate-800">Member Credential Summary</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Profile audit for {selectedProofMember.name}</p>
                 </div>
                 <button onClick={() => setSelectedProofMember(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"><X size={16} /></button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-950 p-4 border border-white/10 flex flex-col justify-between text-white relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full filter blur-xl" />
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="text-[11px] font-bold tracking-wider uppercase text-purple-300">Identity Card of India</h4>
-                      <p className="text-[7px] text-purple-400 font-bold uppercase mt-0.5">Government of India Verification</p>
-                    </div>
-                    <div className="w-6 h-6 rounded bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-[10px]">🇮🇳</div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs text-slate-700">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-semibold">Full Name:</span>
+                    <span className="font-bold text-slate-900">{selectedProofMember.name}</span>
                   </div>
-                  <div className="flex items-center gap-3.5 mt-3">
-                    <Avatar initials={selectedProofMember.initials} size="md" color="bg-purple-600 text-white font-bold" />
-                    <div>
-                      <p className="text-xs font-bold">{selectedProofMember.name}</p>
-                      <p className="text-[8px] text-purple-300 font-semibold mt-0.5">DOB: 1991-03-15 • Male</p>
-                      <p className="text-[8px] text-purple-300 font-semibold mt-0.5">CITY: {selectedProofMember.city}</p>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-semibold">Phone:</span>
+                    <span className="font-bold text-slate-900">{selectedProofMember.phone || 'N/A'}</span>
                   </div>
-                  <div className="border-t border-white/10 pt-2 flex items-center justify-between mt-3 text-[9px] font-mono tracking-widest text-purple-300/80">
-                    <span>9948 1002 9948</span>
-                    <span className="text-[7px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-sans font-bold">DIGI-VERIFIED</span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-semibold">City / Location:</span>
+                    <span className="font-bold text-slate-900">{selectedProofMember.city || 'Indore'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-semibold">Profession:</span>
+                    <span className="font-bold text-slate-900">{selectedProofMember.profession || 'Member'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-semibold">Aadhaar Status:</span>
+                    <span className={`font-bold ${selectedProofMember.isAadharVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {selectedProofMember.isAadharVerified ? 'Aadhaar Verified' : 'Aadhaar Pending'}
+                    </span>
                   </div>
                 </div>
+
+                <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-100 text-center text-xs text-indigo-700">
+                  <Shield size={16} className="mx-auto mb-1 text-indigo-600" />
+                  <p className="font-medium">
+                    {selectedProofMember.isAadharVerified 
+                      ? 'Identity verified through government credential check.' 
+                      : 'No document image uploaded yet. Verification pending manual head approval.'}
+                  </p>
+                </div>
+
                 <div className="flex gap-3">
-                  <button onClick={() => handleReject(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2 rounded-lg bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all text-center cursor-pointer">Reject Proof</button>
-                  <button onClick={() => handleApprove(selectedProofMember.id, selectedProofMember.name)} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold active:scale-95 transition-all text-center cursor-pointer">Approve Member</button>
+                  <button 
+                    onClick={() => handleRejectMember(selectedProofMember._id || selectedProofMember.id, selectedProofMember.name)} 
+                    className="flex-1 py-2 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100 hover:bg-rose-100 transition-all text-center cursor-pointer"
+                  >
+                    Reject Account
+                  </button>
+                  <button 
+                    onClick={() => handleApproveMember(selectedProofMember._id || selectedProofMember.id, selectedProofMember.name)} 
+                    className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all text-center shadow-sm cursor-pointer"
+                  >
+                    Approve Account
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -1044,7 +950,7 @@ export const HeadDashboard = () => {
   );
 };
 
-// Inline icon for dashboard header (LayoutDashboard from lucide)
+// Inline Icon Component
 const LayoutDashboardIcon = ({ size, className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>

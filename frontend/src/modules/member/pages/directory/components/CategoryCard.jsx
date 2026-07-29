@@ -67,30 +67,30 @@ const CategoryCard = ({ category, isSelected, onClick }) => {
       whileHover={{ y: -3, scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`relative w-[155px] h-[98px] rounded-2xl p-3 flex flex-col items-center justify-center text-center transition-all duration-200 shrink-0 cursor-pointer ${
+      className={`relative w-[150px] h-[95px] rounded-[22px] p-3 flex flex-col items-center justify-center text-center transition-all duration-300 shrink-0 cursor-pointer ${
         isSelected
-          ? 'bg-white border-2 border-indigo-600 shadow-md shadow-indigo-600/10'
-          : 'bg-white/80 border border-slate-200/80 hover:bg-white hover:shadow-sm'
+          ? 'bg-white border-2 border-purple-600 shadow-md shadow-purple-500/15'
+          : 'bg-white/80 border border-slate-200/80 hover:bg-white hover:border-purple-200 hover:shadow-sm'
       }`}
     >
       {/* Selected Indicator Pill */}
       {isSelected && (
-        <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-indigo-600" />
+        <span className="absolute top-2.5 right-3 w-2 h-2 rounded-full bg-purple-600 shadow-xs" />
       )}
 
-      {/* Circular Icon Container */}
+      {/* Icon Container */}
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1.5 bg-gradient-to-br ${gradient} text-white shadow-xs transition-transform duration-200 ${
-          isSelected ? 'scale-105 ring-2 ring-indigo-600/20' : ''
+        className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-1.5 bg-gradient-to-br ${gradient} text-white shadow-xs transition-transform duration-200 ${
+          isSelected ? 'scale-105 ring-2 ring-purple-600/20' : ''
         }`}
       >
-        <Icon className="w-5 h-5 stroke-[2]" />
+        <Icon className="w-5 h-5 stroke-[2.2]" />
       </div>
 
       {/* Category Name */}
       <span
-        className={`text-xs font-bold truncate max-w-full tracking-tight ${
-          isSelected ? 'text-indigo-600' : 'text-slate-800'
+        className={`text-[11.5px] font-extrabold truncate max-w-full tracking-tight ${
+          isSelected ? 'text-purple-700' : 'text-slate-750'
         }`}
       >
         {category.name}
